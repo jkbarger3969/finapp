@@ -1,0 +1,11 @@
+type Business {
+  id:ID!
+  name:String!
+  budget:Budget
+  departments:[Department!]
+}
+
+extend type Query {
+  businesses(searchByName:String):[Business!]!
+  business(id:ID!):Business!
+}

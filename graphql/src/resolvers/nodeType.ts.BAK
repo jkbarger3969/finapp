@@ -1,0 +1,99 @@
+import { GraphQLResolveInfo } from 'graphql';
+import {ObjectID} from "mongodb";
+
+import {QueryResolvers, NodeTypeInput} from "../graphTypes";
+import {Context, INodeType} from "../types";
+
+export const nodeType:QueryResolvers["nodeType"] = 
+  (parent, args, context, info) => 
+{
+  
+  const {nodeTypes} = context;
+  const {id = null, typename = null} = args
+
+  let nodeTypeResult:INodeType;
+
+  if(id) {
+
+   nodeTypeResult =nodeTypes.id.get(id);
+
+    if(!nodeTypeResult) {
+      throw Error(`Query "nodeType" id ${id} does not exists.`);
+    }
+
+  } else if(typename){
+
+   nodeTypeResult =nodeTypes.type.get(typename);
+
+    if(!nodeTypeResult) {
+      throw Error(`Query "nodeType" typename ${typename} does not exists.`);
+    }
+
+  } else {
+    
+    throw Error(`Query "nodeType" requires an "id" or "typename" argument.`);
+  
+  }
+
+  return {id:nodeTypeResult.id, typename:nodeTypeResult.typename};
+
+}
+
+export const nodeTypes:QueryResolvers["nodeTypes"] = 
+  (parent, args, context, info) => 
+{
+
+  const {nodeTypes} = context;
+
+  return Array.from(nodeTypes.id).map(([,{id, typename}])=>({
+    id,
+    typename
+  }));
+
+}
+
+export const nodeTypeDocResolver = 
+  async (nodeNodeType:NodeTypeInput, context:Context) =>
+{
+
+  const {node, id} = nodeNodeType;
+  const {db, nodeTypes} = context;
+
+  const {collection, typename} = nodeTypes.id.get(node.toString());
+
+  const docLookUp = await db.collection(collection).aggregate([
+    {$match:{_id:new ObjectID(id.toString())}},
+    {$limit:1},
+    {$addFields: {
+      id:{$toString: "$_id"}
+    }}
+  ]).toArray();
+
+  docLookUp[0]["__typename"] = typename;
+
+  return docLookUp[0];
+
+}
+
+export const nodeTypeResolver = 
+  (parentObj, args, context:Context, info:GraphQLResolveInfo) => 
+{
+     
+  const obj = parentObj[info.fieldName];
+
+  if("node" in obj && "id" in obj) {
+
+    return nodeTypeDocResolver(obj, context);
+
+  }
+    
+  return obj;
+
+}
+
+export const nodeTypeField = 
+  (parent, args, context:Context, info:GraphQLResolveInfo) => 
+{
+  return context.nodeTypes
+    .type.get(info.parentType.toString()).id.toString();
+}

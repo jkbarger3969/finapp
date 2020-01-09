@@ -1,0 +1,69 @@
+type JournalEntry {
+  id:ID!
+  date:String!
+  department:Department!
+  type:JournalEntryType!
+  paymentMethod:PaymentMethod!
+  total:Rational!
+  source:JournalEntrySource!
+}
+
+enum JournalEntrySourceType {
+  BUSINESS
+  DEPARTMENT
+  PERSON
+}
+
+input JournalEntrySourceInput {
+  sourceType:JournalEntrySourceType!
+  id:ID!
+}
+
+input JournalEntryUpdateFields {
+  date:String
+  department:ID
+  type:ID
+  paymentMethod:ID
+  total:RationalInput
+  source:JournalEntrySourceInput
+}
+
+input JournalEntryAddFields {
+  date:String!
+  department:ID!
+  type:ID!
+  paymentMethod:ID!
+  total:RationalInput!
+  source:JournalEntrySourceInput!
+}
+
+enum JournalEntriesColumn {
+  DEPARTMENT
+  TYPE
+  # ROOT_TYPE
+  PAYMENT_METHOD
+  TOTAL
+  DATE
+  SOURCE
+}
+
+input JournalEntriesSortByInput {
+  column:JournalEntriesColumn!
+  direction:SortDirection = ASC
+}
+
+type JournalEntriesRes {
+  totalCount:Int!
+  entries:[JournalEntry!]!
+}
+
+type Query {
+  journalEntries(paginate:PaginateInput!, sortBy:[JournalEntriesSortByInput!]):
+    JournalEntriesRes!
+}
+
+type Mutation {
+  updateJournalEntry(id:ID!, fields:JournalEntryUpdateFields!):
+    JournalEntry!
+  addJournalEntry(fields:JournalEntryAddFields!):JournalEntry!
+}

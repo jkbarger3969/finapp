@@ -1,0 +1,52 @@
+{
+  "name": "graphql-server",
+  "version": "0.0.1",
+  "description": "Graphql server",
+  "main": "build/index.js",
+  "nodemonConfig": {
+    "watch": [
+      "src/*",
+      "schema/*"
+    ],
+    "ext": "ts, gql, graphql",
+    "ignore": [
+      "node_modules/*"
+    ],
+    "exec": "npm run start:dev"
+  },
+  "scripts": {
+    "build": "npm run build:gql-gen && npm run build:ts",
+    "build:ts": "node_modules/typescript/bin/tsc",
+    "build:gql-gen": "node_modules/@graphql-codegen/cli/dist/commonjs/bin.js",
+    "start:dev": "npm run build:gql-gen && NODE_ENV=development node_modules/ts-node/dist/bin.js src/index.ts",
+    "start:dev-watch": "node_modules/nodemon/bin/nodemon.js"
+  },
+  "author": "Michael Price <mikepricedev@gmail.com>",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@intacct/intacct-sdk": "^1.1.4",
+    "apollo-server": "^2.9.7",
+    "apollo-server-koa": "^2.9.7",
+    "async-exit-hook": "^2.0.1",
+    "graphql": "^14.5.8",
+    "humanparser": "^1.11.0",
+    "koa": "^2.11.0",
+    "merge-graphql-schemas": "^1.7.3",
+    "moment": "^2.24.0",
+    "mongodb": "^3.3.3"
+  },
+  "devDependencies": {
+    "@graphql-codegen/cli": "^1.8.3",
+    "@graphql-codegen/fragment-matcher": "^1.8.3",
+    "@graphql-codegen/typescript": "^1.8.3",
+    "@graphql-codegen/typescript-resolvers": "^1.9.1",
+    "@types/express": "^4.17.2",
+    "@types/humanparser": "^1.1.1",
+    "@types/mongodb": "^3.3.8",
+    "@types/node": "^12.12.5",
+    "dotenv": "^8.2.0",
+    "nodemon": "^1.19.4",
+    "ts-node": "^8.4.1",
+    "typescript": "^3.6.4"
+  }
+}

@@ -1,0 +1,9 @@
+enum SortDirection {
+  ASC
+  DESC
+}
+
+input PaginateInput {
+  skip:Int!
+  limit:Int!
+}

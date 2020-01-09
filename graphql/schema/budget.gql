@@ -1,0 +1,12 @@
+union BudgetOwner = Department | Business
+
+type Budget {
+  id:ID!
+  budget:Rational!
+  owner: BudgetOwner!
+}
+
+extend type Query {
+  budgets:[Budget!]!
+  budget(id:ID!):Budget!
+}

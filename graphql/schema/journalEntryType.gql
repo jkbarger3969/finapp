@@ -1,0 +1,10 @@
+type JournalEntryType {
+  id:ID!
+  type:String!
+  parent:JournalEntryType
+  ancestors:[JournalEntryType!]!
+}
+
+extend type Query {
+  journalEntryTypes(from:ID):[JournalEntryType!]!
+}

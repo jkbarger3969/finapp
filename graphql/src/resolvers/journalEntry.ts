@@ -1,0 +1,539 @@
+import {ObjectID} from "mongodb";
+import * as moment from "moment";
+
+import {SortDirection} from "./shared";
+import {MutationResolvers, QueryResolvers, JournalEntryResolvers,
+JournalEntrySourceType} from "../graphTypes";
+import {nodeFieldResolver} from "./utils/nodeResolver";
+import {NodeValue} from "../types";
+
+const userNodeType = new ObjectID("5dca0427bccd5c6f26b0cde2");
+
+const addFields = {$addFields:{
+  id:{$toString: "$_id"},
+  department:{$arrayElemAt: ["$department.value",0]},
+  type:{$arrayElemAt: ["$type.value",0]},
+  paymentMethod:{$arrayElemAt: ["$paymentMethod.value",0]},
+  total:{$arrayElemAt: ["$total.value",0]},
+  source:{$arrayElemAt: ["$source.value",0]},
+  date:{$arrayElemAt: ["$date.value",0]}
+}};
+
+const defaultSort = {$sort:{lastUpdate:-1}};
+
+const project = {$project: {
+  deleted:false,
+  lastUpdate:false,
+  parent:false,
+  createdBy:false
+}};
+
+enum SortBy {
+  "DEPARTMENT" = "department",
+  "TYPE" = "type",
+  // "ROOT_TYPE" = "_rootType",
+  "PAYMENT_METHOD" = "paymentMethod",
+  "TOTAL" = "_total", //Must be decimal to sort (stored as rational)
+  "DATE" = "date",
+  "SOURCE" = "source"
+}
+
+const  sortByTotalField = {$addFields: {
+  _total:{$divide: ["$total.num", "$total.den"]}
+}};
+
+export const journalEntries:QueryResolvers["journalEntries"] =  
+  async (parent, args, context, info) => 
+{
+
+  const {
+    paginate:{
+      skip,
+      limit
+    },
+    sortBy = null,
+  } = args;
+  
+  const skipAndLimit = [{$skip: skip}, {$limit: limit}];
+    
+  const {db} = context;
+  
+  const pipeline:object[] = [
+    {$match: {"deleted.0.value":false}}
+  ];
+  
+
+  if(sortBy === null) {
+
+    pipeline.push(defaultSort, ...skipAndLimit, addFields);
+    
+  } else {
+
+    pipeline.push(addFields);
+
+    const $sort = {};
+
+    for(const {column, direction} of sortBy) {
+
+      $sort[SortBy[column]] = SortDirection[direction];
+      
+      if(column === "TOTAL") {
+        pipeline.push(sortByTotalField);
+      }
+
+    }
+
+    pipeline.push({$sort},...skipAndLimit);
+
+  }
+
+  pipeline.push(project);
+
+  const totalCount = await db.collection("journalEntries")
+    .countDocuments({"deleted.0.value":false});
+  
+  const entries = await db.collection("journalEntries")
+    .aggregate(pipeline).toArray();
+
+    return {
+    totalCount,
+    entries
+  };
+
+
+}
+
+export const updateJournalEntry:
+  MutationResolvers["updateJournalEntry"] = 
+  async (parent, args, context, info) => 
+{
+  
+  const {id, fields} = args;
+  const {db, nodeMap, user} = context;
+
+  const createdBy = {
+    node: userNodeType,
+    id: user.id
+  };
+
+  const createdOn  = new Date();
+  const lastUpdate = createdOn;
+
+  const $push = {};
+
+  const updateQuery = {
+    $set:{
+      lastUpdate,
+    },
+    $push
+  };
+
+  const {date:dateString = null, source:sourceInput = null, 
+    department:departmentId = null, total = null, type:typeId = null,
+    paymentMethod:paymentMethodId = null} = fields;
+
+  let numFieldsToUpdate = 0;
+  if(dateString !== null) {
+
+    numFieldsToUpdate++;
+
+    const date = moment(dateString, moment.ISO_8601);
+
+    if(!date.isValid()){
+      throw new Error(`Mutation "updateJournalEntry" date argument "${dateString}" not a valid ISO 8601 date string.`);
+    }
+
+    $push["date"] = {
+      $each:[{
+        value:date.toDate(),
+        createdBy,
+        createdOn,
+      }],
+      $position:0
+    };
+      
+  }
+
+  if(sourceInput !== null) {
+
+    numFieldsToUpdate++;
+    
+    const {id:sourceId, sourceType} = sourceInput;
+    
+    const id = new ObjectID(sourceId);
+
+    const value = {id} as NodeValue;
+
+    let collection:string;
+    switch(sourceType) {
+      case JournalEntrySourceType.Business:
+        if(nodeMap.typename.has("Business")) {
+          const nodeInfo = nodeMap.typename.get("Business");
+          collection = nodeInfo.collection;
+          value.node = new ObjectID(nodeInfo.id);
+        }
+        break;
+      case JournalEntrySourceType.Department:
+        if(nodeMap.typename.has("Department")) {
+          const nodeInfo = nodeMap.typename.get("Department");
+          collection = nodeInfo.collection;
+          value.node = new ObjectID(nodeInfo.id);
+        }
+        break;
+      case JournalEntrySourceType.Person:
+        if(nodeMap.typename.has("Person")) {
+          const nodeInfo = nodeMap.typename.get("Person");
+          collection = nodeInfo.collection;
+          value.node = new ObjectID(nodeInfo.id);
+        }
+        break;
+    }
+
+    // Confirm id exists in node
+    if(0 === (await db.collection(collection).find({_id:id})
+      .limit(1).count())) 
+    {
+      throw new Error(`Mutation "updateJournalEntry" source type "${sourceType}" with id ${sourceId} does not exist.`);
+    } else if(value.node === undefined) {
+      throw new Error(`Mutation "updateJournalEntry" source type "${sourceType}" not found.`);
+    }
+
+    $push["source"] = {
+      $each:[{
+        value,
+        createdBy,
+        createdOn,
+      }],
+      $position:0
+    };
+
+  }
+
+  if(departmentId !== null) {
+
+    numFieldsToUpdate++;
+
+    const {collection, id:node} = nodeMap.typename.get("Department");
+
+    const id = new ObjectID(departmentId);
+
+    if(0 === (await db.collection(collection)
+      .find({_id:id}).limit(1).count()))
+    {
+      throw new Error(`Mutation "updateJournalEntry" type "Department" with id ${departmentId} does not exist.`);
+    }
+
+    $push["department"] = {
+      $each:[{
+        value:{
+          node:new ObjectID(node),
+          id
+        },
+        createdBy,
+        createdOn,
+      }],
+      $position:0
+    };
+    
+  }
+  
+  if(total !== null) {
+
+    numFieldsToUpdate++;
+    
+    $push["total"] = {
+      $each:[{
+        value:total,
+        createdBy,
+        createdOn,
+      }],
+      $position:0
+    };
+
+  }
+  
+  if(typeId !== null) {
+
+    numFieldsToUpdate++;
+    
+    const {collection, id:node} = 
+      nodeMap.typename.get("JournalEntryType");
+
+    const id = new ObjectID(typeId);
+
+    if(0 === (await db.collection(collection).find({_id:id})
+      .limit(1).count())) 
+    {
+      throw new Error(`Mutation "updateJournalEntry" type "JournalEntryType" with id ${typeId} does not exist.`);
+    }
+
+    $push["type"] = {
+      $each:[{
+        value:{
+          node:new ObjectID(node),
+          id
+        },
+        createdBy,
+        createdOn,
+      }],
+      $position:0
+    };
+    
+  }
+  
+  if(paymentMethodId !== null) {
+
+    numFieldsToUpdate++;
+    
+    const {collection, id:node} = 
+      nodeMap.typename.get("PaymentMethod");
+
+    const id = new ObjectID(paymentMethodId);
+
+    if(0 === (await db.collection(collection)
+      .find({_id:id}).limit(1).count())) 
+    {
+      throw new Error(`Mutation "updateJournalEntry" type "PaymentMethod" with id ${paymentMethodId} does not exist.`);
+    }
+
+    $push["paymentMethod"] = {
+      $each:[{
+        value:{
+          node:new ObjectID(node),
+          id
+        },
+        createdBy,
+        createdOn,
+      }],
+      $position:0
+    };
+    
+  }
+
+  if(numFieldsToUpdate === 0) {
+    throw new Error(`Mutation "updateJournalEntry" requires at least one of the following fields: "date", "source", "department", "total", "type", or "paymentMethod"`)
+  }
+
+  const {modifiedCount} = await 
+    db.collection("journalEntries")
+      .updateOne({_id:new ObjectID(id)}, updateQuery);
+
+  if(modifiedCount === 0) {
+    throw new Error(`Mutation "updateJournalEntry" arguments "${JSON.stringify(args)}" failed.`);    
+  }
+
+  const doc = await db.collection("journalEntries")
+    .aggregate([
+      {$match:{_id:new ObjectID(id)}},
+      addFields,
+      project
+    ]).toArray();
+
+  return doc[0];
+
+}
+
+export const addJournalEntry:
+  MutationResolvers["addJournalEntry"] = 
+  async (parent, args, context, info) => 
+{
+
+  const {fields:{
+    date:dateString,
+    department:departmentId,
+    type:typeId,
+    source:{
+      id:sourceId,
+      sourceType
+    },
+    paymentMethod:paymentMethodId,
+    total
+  }} = args;
+
+  const {db, user, nodeMap} = context;
+
+  const createdOn = new Date();
+  const lastUpdate = createdOn;
+  
+  const createdBy = {
+    node: userNodeType,
+    id: user.id
+  };
+
+  const insertDoc = {
+    total:[{
+      value:total,
+      createdBy,
+      createdOn,
+    }],
+    lastUpdate,
+    createdOn,
+    createdBy,
+    deleted:[{
+      value:false,
+      createdBy,
+      createdOn
+    }],
+  } as any;
+
+  // Date
+  const date = moment(dateString, moment.ISO_8601);
+  if(!date.isValid()){
+    throw new Error(`Mutation "addJournalEntry" date argument "${dateString}" not a valid ISO 8601 date string.`);
+  }
+
+  insertDoc["date"] = [{
+    value:date.toDate(),
+    createdBy,
+    createdOn,
+  }];
+
+  // Department
+  {
+
+    const {collection, id:node} = nodeMap.typename.get("Department");
+
+    const id = new ObjectID(departmentId);
+
+    if(0 === (await db.collection(collection).find({_id:id})
+      .limit(1).count()))
+    {
+      throw new Error(`Mutation "addJournalEntry" type "Department" with id ${departmentId} does not exist.`);
+    }
+
+    insertDoc["department"] = [{
+      value:{
+        node:new ObjectID(node),
+        id
+      },
+      createdBy,
+      createdOn,
+    }];
+
+  }
+  
+  // JournalEntryType
+  {
+
+    const {collection, id:node} = 
+      nodeMap.typename.get("JournalEntryType");
+
+    const id = new ObjectID(typeId);
+
+    if(0 === (await db.collection(collection).find({_id:id})
+      .limit(1).count())) 
+    {
+      throw new Error(`Mutation "addJournalEntry" type "JournalEntryType" with id ${typeId} does not exist.`);
+    }
+
+    insertDoc["type"] = [{
+      value:{
+        node:new ObjectID(node),
+        id
+      },
+      createdBy,
+      createdOn,
+    }];
+
+  }
+
+  // JournalEntrySource
+  {
+    
+    const id = new ObjectID(sourceId);
+
+    const value = {id} as NodeValue;
+
+    let collection:string;
+    switch(sourceType) {
+      case JournalEntrySourceType.Business:
+        if(nodeMap.typename.has("Business")) {
+          const nodeInfo = nodeMap.typename.get("Business");
+          collection = nodeInfo.collection;
+          value.node = new ObjectID(nodeInfo.id);
+        }
+        break;
+      case JournalEntrySourceType.Department:
+        if(nodeMap.typename.has("Department")) {
+          const nodeInfo = nodeMap.typename.get("Department");
+          collection = nodeInfo.collection;
+          value.node = new ObjectID(nodeInfo.id);
+        }
+        break;
+      case JournalEntrySourceType.Person:
+        if(nodeMap.typename.has("Person")) {
+          const nodeInfo = nodeMap.typename.get("Person");
+          collection = nodeInfo.collection;
+          value.node = new ObjectID(nodeInfo.id);
+        }
+        break;
+    }
+
+    // Confirm id exists in node
+    if(0 === (await db.collection(collection).find({_id:id})
+      .limit(1).count())) 
+    {
+      throw new Error(`Mutation "addJournalEntry" source type "${sourceType}" with id ${sourceId} does not exist.`);
+    } else if(value.node === undefined) {
+      throw new Error(`Mutation "addJournalEntry" source type "${sourceType}" not found.`);
+    }
+    
+    insertDoc["source"] = [{
+      value,
+      createdBy,
+      createdOn,
+    }];
+
+  }
+
+  // PaymentMethod
+  {
+    
+    const {collection, id:node} = 
+      nodeMap.typename.get("PaymentMethod");
+
+    const id = new ObjectID(paymentMethodId);
+
+    if(0 === (await db.collection(collection)
+      .find({_id:id}).limit(1).count())) 
+    {
+      throw new Error(`Mutation "addJournalEntry" type "PaymentMethod" with id ${paymentMethodId} does not exist.`);
+    }
+  
+    insertDoc["paymentMethod"] = [{
+      value:{
+        node:new ObjectID(node),
+        id
+      },
+      createdBy,
+      createdOn,
+    }];
+    
+  }
+
+  const {insertedId, insertedCount} = 
+    await db.collection("journalEntries").insertOne(insertDoc);
+
+  if(insertedCount === 0) {
+    throw new Error(`Mutation "addJournalEntry" arguments "${JSON.stringify(args)}" failed.`);   
+  }
+
+  const newEntry = await db.collection("journalEntries").aggregate([
+    {$match:{_id:insertedId}},
+    addFields,
+    project
+  ]).toArray();
+
+  return newEntry[0];
+
+}
+
+export const JournalEntry:JournalEntryResolvers = {
+  department:nodeFieldResolver,
+  type:nodeFieldResolver,
+  paymentMethod:nodeFieldResolver,
+  source:nodeFieldResolver,
+  date:(parent, args, context, info) => {
+    return (parent.date as any as Date).toISOString();
+  }
+};

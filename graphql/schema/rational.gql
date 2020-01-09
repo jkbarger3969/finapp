@@ -1,0 +1,9 @@
+type Rational {
+  num:Int!
+  den:Int!
+}
+
+input RationalInput {
+  num:Int!
+  den:Int!
+}

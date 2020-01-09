@@ -1,0 +1,26 @@
+type PersonName {
+  first:String!
+  last:String!
+}
+
+input PersonNameInput {
+  first:String!
+  last:String!
+}
+
+input PersonAddFields {
+  name:PersonNameInput!
+}
+
+type Person {
+  id:ID!
+  name:PersonName!
+}
+
+extend type Query {
+  people(searchByName:PersonNameInput):[Person!]!
+}
+
+extend type Mutation {
+  addPerson(fields:PersonAddFields!): Person!
+}

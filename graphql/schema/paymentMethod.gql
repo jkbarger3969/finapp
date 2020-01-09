@@ -1,0 +1,11 @@
+type PaymentMethod {
+  id:ID!
+  active:Boolean!
+  method:String!
+  parent:PaymentMethod
+  ancestors:[PaymentMethod!]!
+}
+
+extend type Query {
+  paymentMethods:[PaymentMethod!]!
+}
