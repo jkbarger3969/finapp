@@ -4,23 +4,24 @@ import isEqual from "lodash.isequal";
 import {JournalEntrySourceType, JournalEntrySourceInput, RationalInput
 } from "../../apollo/graphTypes";
 import {Create, CREATE, Cancel, CANCEL, Clear, CLEAR,
+  
   SetSrcType, SET_SRC_TYPE,
-  SetSrc, SET_SRC, ClearSrc, CLEAR_SRC,
   
   SetDateInput, SET_DATE_INPUT, ClearDateInput, CLEAR_DATE_INPUT,
   SetDateValue, SET_DATE_VALUE, ClearDateValue, CLEAR_DATE_VALUE,
   SetDateError, SET_DATE_ERROR, ClearDateError, CLEAR_DATE_ERROR,
+
+  SetTypeValue, SET_TYPE_VALUE, ClearTypeValue, CLEAR_TYPE_VALUE,
 
   SetSrcInput, SET_SRC_INPUT, ClearSrcInput, CLEAR_SRC_INPUT,
   SetSrcValue, SET_SRC_VALUE, ClearSrcValue, CLEAR_SRC_VALUE,
   SetSrcError, SET_SRC_ERROR, ClearSrcError, CLEAR_SRC_ERROR,
   SetSrcOpen , SET_SRC_OPEN
 } from "../actionTypes/journalEntryUpsert";
-// import {InputValue} from "./types";
 import {InputValue} from "./utils";
 
 type Actions = Create | Cancel | Clear | SetSrcType |
-  SetSrcInput | SetSrc | ClearSrc | SetDateInput |
+  SetSrcInput | SetDateInput | SetTypeValue | ClearTypeValue |
   ClearDateInput | SetDateValue | ClearDateValue | SetDateError | 
   ClearDateError | SetSrcInput | ClearSrcInput | SetSrcValue |
   ClearSrcValue | SetSrcError | ClearSrcError | SetSrcOpen;
@@ -28,66 +29,6 @@ type Actions = Create | Cancel | Clear | SetSrcType |
 
 export enum SrcType { None, Person, Business } //NO falsy values
 
-// interface Inputs {
-//   deptInput:string;
-//   totalInput:string;
-//   srcInput:string;
-//   srcType:JournalEntrySourceType | null;
-// }
-
-// const inputs = (state:Inputs = {
-//     deptInput:"",
-//     totalInput:"",
-//     srcInput:"",
-//     srcType:null
-//   }, action:Actions):Inputs => 
-// {
-//   switch(action.type) {
-//     case SET_SRC_TYPE:{
-//       const srcType = action.payload.srcType;
-//       if(state.srcType !== srcType && srcType !== null) {
-//         return {
-//           ...state,
-//           srcInput:"",
-//           srcType
-//         };
-//       }
-//       return state;
-//     }
-//     // case SET_SRC_INPUT:{
-//     //   const srcInput = action.payload.srcInput.trimStart();
-//     //   if(state.srcInput !== srcInput && srcInput){
-//     //     return {
-//     //       ...state,
-//     //       srcInput
-//     //     };
-//     //   }
-//     //   return state;
-//     // }
-//     case CLEAR_SRC_INPUT:
-//       if(state.srcInput !== "") {
-//         return {
-//           ...state,
-//           srcInput:""
-//         };
-//       }
-//       return state;
-//     default:
-//       return state;
-//   }
-
-// }
-
-// interface Values {
-//   id:string | null;
-//   date:InputValue<Date>
-//   department:InputValue<string>[];
-//   type:InputValue<string> | null;
-//   paymentMethod:InputValue<string> | null;
-//   total:InputValue<RationalInput> | null;
-//   srcType:SrcType;
-//   source:InputValue<JournalEntrySourceInput>[];
-// }
 
 const date = (state = new InputValue<Date, null>(null), action:Actions)
   :InputValue<Date, null> => 
@@ -148,42 +89,31 @@ const source = (state = Object.assign(
 
 }
 
+const type = (state = Object.assign(new InputValue<string, null>(null),
+  {open:false}), action:Actions):InputValue<string, null> & {open:boolean}  =>
+{
+
+  switch(action.type) {
+    case SET_TYPE_VALUE:
+      return action.payload.value && state.value !== action.payload.value ?
+        {...state, value:action.payload.value} : state;
+    case CLEAR_TYPE_VALUE:
+      return state.value === null ? state : {...state, value:null};
+    default:
+      return state;
+  }
+  
+}
+
 const values = combineReducers({
   id:(state:string | null = null, action:Actions) => action.type === CREATE ?
     (action.payload.entryId || null) : state,
   date,
+  type,
   srcType:(state:JournalEntrySourceType | null = null, action:Actions) => 
     action.type === SET_SRC_TYPE ? action.payload.srcType : state,
   source
-  
 });
-
-/* const values = (state:Values = {
-  id:null,
-  date:{input:"", value:null, error:"" },
-  department:[],
-  type:{input:"", value:null, error:"" },
-  paymentMethod:{input:"", value:null, error:"" },
-  total:{input:"", value:null, error:""},
-  srcType:SrcType.None,
-  source:[]
-}, action:Actions) => 
-{
-
-  switch(action.type) {
-    case SET_DATE_INPUT:
-      if(state.date.input !== action.payload.input) {
-        return {
-          ...state,
-
-        }
-      }
-    default:
-      return state;
-
-  }
-
-} */
 
 interface Fields {
   id:string | null;
@@ -218,22 +148,6 @@ const fields = (state:Fields = {
       }
       return state;
     }
-    case SET_SRC:
-      if(!isEqual(state.source, action.payload.src)){
-        return {
-          ...state,
-          source:[...action.payload.src]
-        };
-      }
-      return state;
-    case CLEAR_SRC:
-      if(state.source.length > 0) {
-        return {
-          ...state,
-          source:[]
-        };
-      }
-      return state;
     default:
       return state;
   }
@@ -245,7 +159,6 @@ const id = (state:string = "", action:Actions) =>
 const journalEntryUpsert = combineReducers({
   id,
   values,
-  // inputs,
   fields
 });
 
@@ -295,14 +208,14 @@ export const journalEntryUpserts = (state:JournalEntryUpsert[] = [],
       return state;
     }
     
-    case SET_SRC:
-    case CLEAR_SRC:
     case SET_DATE_INPUT:
     case CLEAR_DATE_INPUT:
     case SET_DATE_VALUE:
     case CLEAR_DATE_VALUE:
     case SET_DATE_ERROR:
     case CLEAR_DATE_ERROR:
+    case SET_TYPE_VALUE:
+    case CLEAR_TYPE_VALUE:
     case SET_SRC_TYPE:
     case SET_SRC_INPUT:
     case CLEAR_SRC_INPUT:

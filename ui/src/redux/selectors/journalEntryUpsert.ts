@@ -20,6 +20,10 @@ export const isRequired = (state:Root, upsertId:string):boolean => {
   return !(getEntry(state, upsertId)?.values.id);
 }
 
+export const getType = (state:Root, upsertId:string):string | null => {
+  return getEntry(state, upsertId)?.values.type.value || null;
+}
+
 export const getSrcType = (state:Root, upsertId:string)
   :JournalEntrySourceType | null => 
 {

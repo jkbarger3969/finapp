@@ -53,8 +53,12 @@ export const SET_DEPT = "journalEntryUpsert/SET_DEPT";
 export const CLEAR_DEPT = "journalEntryUpsert/CLEAR_DEPT";
 
 // Type
-export const SET_TYPE = "journalEntryUpsert/SET_TYPE";
-export const CLEAR_TYPE = "journalEntryUpsert/CLEAR_TYPE";
+export const SET_TYPE_VALUE = "journalEntryUpsert/SET_TYPE_VALUE";
+export type SetTypeValue = SetValueAction<typeof SET_TYPE_VALUE, string>;
+export const CLEAR_TYPE_VALUE = "journalEntryUpsert/CLEAR_TYPE_VALUE";
+export type ClearTypeValue = ClearAction<typeof CLEAR_TYPE_VALUE>;
+
+export const SET_TYPE_OPEN = "journalEntryUpsert/CLEAR_TYPE_VALUE";
 
 // Source
 export const SET_SRC_TYPE = "journalEntryUpsert/SET_SRC_TYPE";
@@ -85,20 +89,6 @@ export type ClearSrcError = ClearAction<typeof CLEAR_SRC_ERROR>;
 export const SET_SRC_OPEN = "journalEntryUpsert/SET_SRC_OPEN";
 export type SetSrcOpen = 
   Action<typeof SET_SRC_OPEN, {upsertId:string, open:boolean}>;
-
-
-// export const SET_SRC_INPUT = "journalEntryUpsert/SET_SRC_INPUT";
-// export type SetSrcInput =
-//   Action<typeof SET_SRC_INPUT,{upsertId:string, srcInput:string}>;
-// export const CLEAR_SRC_INPUT = "journalEntryUpsert/CLEAR_SRC_INPUT";
-// export type ClearSrcInput =
-//   Action<typeof CLEAR_SRC_INPUT, {upsertId:string}>;
-
-export const SET_SRC = "journalEntryUpsert/SET_SRC";
-export type SetSrc =
-  Action<typeof SET_SRC,{upsertId:string, src:JournalEntrySourceInput[]}>;
-export const CLEAR_SRC = "journalEntryUpsert/CLEAR_SRC";
-export type ClearSrc = Action<typeof CLEAR_SRC, {upsertId:string}>;
 
 // Payment Method
 export const SET_PAY_METHOD = "journalEntryUpsert/SET_PAY_METHOD";

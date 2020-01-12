@@ -1,4 +1,5 @@
-import React from 'react';
+import React, {useMemo, useCallback, ChangeEvent} from 'react';
+import {useSelector, useDispatch, shallowEqual} from "react-redux";
 import {useQuery} from '@apollo/react-hooks';
 import FormControl, {FormControlProps} from '@material-ui/core/FormControl';
 import InputLabel from '@material-ui/core/InputLabel';
@@ -9,7 +10,11 @@ import {capitalCase} from 'change-case';
 import gql from 'graphql-tag';
 
 import {TypeInput_1Query} from '../../apollo/graphTypes';
-import useJournalEntryUpsert from "./useJournalEntryUpsert";
+import {Root} from "../../redux/reducers/root";
+import {setTypeValue, clearTypeValue
+} from "../../redux/actions/journalEntryUpsert";
+import { getType, isRequired
+} from "../../redux/selectors/journalEntryUpsert";
 
 const TYPE_INPUT_QUERY = gql`
   query TypeInput_1 {
@@ -21,6 +26,11 @@ const TYPE_INPUT_QUERY = gql`
   }
 `; 
 
+interface SelectorResult {
+  required:boolean;
+  value:string | null;
+}
+
 export interface TypeInputProps {
   entryUpsertId:string;
   autoFocus?:boolean;
@@ -31,42 +41,52 @@ const TypeInput = function(props:TypeInputProps) {
 
   const {entryUpsertId, autoFocus = false, variant = "filled"} = props;
 
-  const {loading:loading1, error:error1, data} 
+  const dispatch = useDispatch();
+
+  const {loading, error, data} 
     = useQuery<TypeInput_1Query>(TYPE_INPUT_QUERY);
   
-  const {loading:loading2, error:error2, upsert, update} 
-    = useJournalEntryUpsert(entryUpsertId);
+  const {value, required} = 
+    useSelector<Root, SelectorResult>((state)=>({
+      required:isRequired(state, entryUpsertId),
+      value:getType(state, entryUpsertId)
+    }), shallowEqual);
+  
+  const journalEntryTypes = useMemo(()=> data?.journalEntryTypes || [],[data]);
 
-  if(loading1 || loading2){
-    return <Skeleton variant="rect" height={56} />;
-  } else if(error1 || error2) {
-    console.error(error1 || error2);
-    return <p>{(error1 || error2)?.message}</p>;
-  }
-
-  const journalEntryTypes = data?.journalEntryTypes || [];
-  const required = !(upsert?.fields?.id);
-  const value = upsert?.fields?.type || "";
-
-  const formControlProps:FormControlProps = {
+  const formControlProps:FormControlProps = useMemo(()=>({
     required,
     fullWidth:true,
     variant
-  };
-  
-  const selectProps:SelectProps = {
-    autoFocus,
-    children:journalEntryTypes.map(({id, type})=>(<MenuItem {...{
+  }),[required, variant]);
+
+  const children = useMemo(()=>journalEntryTypes.map(({id, type})=>(
+    <MenuItem {...{
       value:id,
       key:id,
       children:capitalCase(type)
-    } as MenuItemProps as any }/>)),
-    onChange:(event)=> {
-      update.fields.type((event?.target?.value) as string || null);
-    },
-    MenuProps:{
-      disablePortal:true
-    },
+    } as MenuItemProps as any }/>)),[journalEntryTypes]);
+
+  const onChange = useCallback((event) => {
+    const value = event?.target?.value as string || null;
+    if(value) {
+      dispatch(setTypeValue(entryUpsertId, value));
+    } else {
+      dispatch(clearTypeValue(entryUpsertId));
+    }
+  },[dispatch, entryUpsertId]);
+
+  if(loading){
+    return <Skeleton variant="rect" height={56} />;
+  } else if(error) {
+    console.error(error);
+    return <p>{error.message}</p>;
+  }
+  
+  const selectProps:SelectProps = {
+    autoFocus,
+    children,
+    onChange,
     value
   };
 

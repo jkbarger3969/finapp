@@ -61,6 +61,17 @@ export const clearDateError = (upsertId:string):upsertActions.ClearDateError =>
     payload:{upsertId}
   });
 
+//Type
+export const setTypeValue = (upsertId:string, value:string)
+  :upsertActions.SetTypeValue => ({
+    type:upsertActions.SET_TYPE_VALUE,
+    payload:{upsertId, value}
+  });
+export const clearTypeValue = (upsertId:string):upsertActions.ClearTypeValue => 
+({
+  type:upsertActions.CLEAR_TYPE_VALUE,
+  payload:{upsertId}
+});
 // Department
 export const searchDept = (upsertId:string, search:string):
   upsertActions.SearchDept => ({
@@ -137,14 +148,3 @@ export const setSrcOpen = (upsertId:string, open:boolean)
     type:upsertActions.SET_SRC_OPEN,
     payload:{upsertId, open}
   });
-// OLD Source
-export const setSrc = (upsertId:string, src:JournalEntrySourceInput[])
-  :upsertActions.SetSrc => ({
-    type:upsertActions.SET_SRC,
-    payload:{upsertId, src}
-  });
-
-export const clearSrc = (upsertId:string):upsertActions.ClearSrc => ({
-  type:upsertActions.CLEAR_SRC,
-  payload:{upsertId}
-});
