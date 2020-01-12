@@ -1,17 +1,22 @@
-import React, {useRef} from 'react';
+import React, {useRef, useMemo, useCallback} from 'react';
+import {useSelector, useDispatch, shallowEqual} from "react-redux";
 import {useQuery} from '@apollo/react-hooks';
 import { makeStyles, createStyles, Theme } from '@material-ui/core';
 import TextField, {TextFieldProps} from '@material-ui/core/TextField';
 import Autocomplete, {AutocompleteProps, RenderInputParams
 } from '@material-ui/lab/Autocomplete';
-import Skeleton from '@material-ui/lab/Skeleton';
 import gql from 'graphql-tag';
+import isEqual from "lodash.isequal";
 
 import {PeopleSrcOpts_1Query as PeopleSrcOptsQuery,
   PeopleSrcOpts_1QueryVariables as PeopleSrcOptsQueryVariables,
   JournalEntrySourceType
 } from '../../../apollo/graphTypes';
-import useJournalEntryUpsert from "../useJournalEntryUpsert";
+import {Root} from "../../../redux/reducers/root";
+import {setSrcInput, clearSrcInput, setSrcValue, clearSrcValue,
+} from "../../../redux/actions/journalEntryUpsert";
+import {getSrcInput, getSrc, isRequired
+} from "../../../redux/selectors/journalEntryUpsert";
 
 const PEOPLE_SRC_OPTS_QUERY = gql`
   query PeopleSrcOpts_1($searchByName:PersonNameInput!) {
@@ -32,20 +37,19 @@ const styles = makeStyles((theme:Theme) => createStyles({
   },
 }));
 
-const leadingWS = /^\s+/;
+type PersonValue = PeopleSrcOptsQuery["people"][0] | null
 
-const getPerson = (personId:string | null, 
-  peopleOpts:PeopleSrcOptsQuery['people']) => 
-{
-  if(personId) {
-    for(const person of peopleOpts) {
-      if(person.id === personId) {
-        return person;
-      }
-    }
-  }
-  return null;
+interface SelectorResult {
+  srcInput:string;
+  isSrcSet:boolean;
+  freeSolo:boolean;
+  required:boolean;
 }
+
+// Static cbs for AutocompleteProps
+const filterOptions = (opts) => opts;
+const getOptionLabel = (opt:NonNullable<PersonValue>) => 
+  `${opt.name.first} ${opt.name.last}`;
 
 export interface PersonSrcProps {
   entryUpsertId: string;
@@ -53,62 +57,94 @@ export interface PersonSrcProps {
   variant:"filled" | "outlined";
 }
 
+
 const PersonSrc = function(props:PersonSrcProps) {
 
   const classes = styles();
   
+  const dispatch = useDispatch();
+
   const {entryUpsertId, autoFocus, variant} = props;
+  
+  const {srcInput, isSrcSet, required, freeSolo} = 
+    useSelector<Root, SelectorResult>((state) => {
+    
+      const src = getSrc(state, entryUpsertId);
 
-  const {loading:loading1, error:error1, upsert, update, refetchUpsert} 
-    = useJournalEntryUpsert(entryUpsertId);
+      return {
+        srcInput:getSrcInput(state, entryUpsertId),
+        isSrcSet:!!src,
+        freeSolo:!src,
+        required:isRequired(state, entryUpsertId)
+      };
 
-  const srcInput = upsert?.inputValues?.srcInput ? 
-    (upsert?.inputValues?.srcInput?.replace(leadingWS,"") || null) : null;
-  const selectedSources = upsert?.fields?.source || [];
-  const required = !(upsert?.fields?.id);
+    }, shallowEqual);
 
-  const {loading:loading2, error:error2, data} = 
+  const searchCharRef = useRef("");
+  if(!isSrcSet) {
+    searchCharRef.current = srcInput.substr(0,1).toLowerCase();
+  }
+
+  const {loading, error, data} = 
     useQuery<PeopleSrcOptsQuery, PeopleSrcOptsQueryVariables>(
     PEOPLE_SRC_OPTS_QUERY, {
-      skip:!srcInput,
+      skip:!searchCharRef.current,
       variables:{
         searchByName:{
-          first:(srcInput || "").substr(0,1).toLowerCase(),
-          last:(srcInput || "").substr(0,1).toLowerCase()
+          first:searchCharRef.current,
+          last:searchCharRef.current
         }
       }
   });
 
-  const peopleOptsRefContainer = useRef(data?.people || []);
+  const options = useMemo(()=>{
+    const options = data?.people || [];
+    if(!isSrcSet || !srcInput) {
+      return options;
+    }
+    const test = new RegExp(`(^|\\s)${srcInput}`,'i');
+    return options
+      .filter((opt) => test.test(`${opt.name.first} ${opt.name.last}`));
+  },[srcInput, data, isSrcSet]);
 
-  if(loading1){
-    return <Skeleton variant="rect" height={56} />;
-  } else if(error1 || error2) {
-    console.error(error1 || error2);
-    return <p>{(error1 || error2)?.message}</p>;
-  }
-  
-  const personId = selectedSources[0]?.id || null;
-  
-  const peopleOpts = (() => {
+  const value = useSelector<Root, PersonValue | null>((state) => {
 
-    if(data?.people) {
-
-      peopleOptsRefContainer.current = data.people;
-
-    } else if(!personId) {
-
-      peopleOptsRefContainer.current = [];
-
+    const src = getSrc(state, entryUpsertId);      
+    
+    if(src){
+      for(const person of options) {
+        if(person.id === src.id) {
+          return person;
+        }
+      }
     }
 
-    return peopleOptsRefContainer.current;
+    return null;
 
-  })();
-  
-  const person = getPerson(personId, peopleOpts);
-  const inputValue = person ? `${person.name.first} ${person.name.last}` :
-    (srcInput || "");
+  }, isEqual);
+
+  const inputValue = isSrcSet ? 
+    `${value?.name.first} ${value?.name.last}` : srcInput;
+
+  const onChange = useCallback((event, newSrc:PersonValue)=> {
+    newSrc = newSrc || null;
+    if(newSrc) {
+      dispatch(setSrcValue(entryUpsertId, [{
+        sourceType:JournalEntrySourceType.Person,
+        id:newSrc.id
+      }]));
+    } else {
+      dispatch(clearSrcValue(entryUpsertId));
+    }
+  },[dispatch, entryUpsertId]);
+
+  const onInputChange = useCallback((event:any, value:string) => {
+    if(value) {
+      dispatch(setSrcInput(entryUpsertId, value));
+    } else {
+      dispatch(clearSrcInput(entryUpsertId));
+    }
+  },[dispatch, entryUpsertId]);
 
   const textFieldProps:TextFieldProps = {
     required,
@@ -118,91 +154,38 @@ const PersonSrc = function(props:PersonSrcProps) {
     variant,
   };
 
+  const renderInput = useCallback((params:RenderInputParams) => {
+    const InputProps  = params?.InputProps;
+    if(InputProps) {
+      const className = InputProps?.className || "";
+      InputProps.className = `${className} ${classes.fixHeight}`
+    } else {
+      params.InputProps = {
+        className:classes.fixHeight
+      } as  RenderInputParams['InputProps'];
+    }
+    return <TextField {...textFieldProps} {...params}/>
+  },[classes, textFieldProps]);
+
+  if(error) {
+    console.error(error);
+    return <p>{error?.message || `${error}`}</p>;
+  }
+
   const autoCompleteProps:AutocompleteProps = {
-    loading:loading2,
+    loading,
     autoHighlight:true,
-    autoSelect:true,
+    autoSelect:false,
     autoComplete:true,
-    // BUG: Clear action does not trigger onInputChange
-    disableClearable:selectedSources.length === 0,
-    freeSolo:selectedSources.length === 0,
-    options:peopleOpts,
+    freeSolo,
+    options,
     inputValue,
-    value:person,
-    onChange:(event, value = null)=>{
-    
-      // Allow for free solo, do NOT reset srcInput when there is nothing to 
-      // add or clear
-      if(!value) {
-       
-        const upsert = refetchUpsert();
-       
-        if(upsert) {
-       
-          const source = upsert?.fields?.source || [];
-       
-          if(source.length === 0) {
-            return;
-          }
-       
-        } else {
-        
-          return;
-        
-        }
-      
-      }
-
-      update.inputValues.srcInput(null);
-      if(value) {
-        update.fields.replaceSources([{
-          sourceType:JournalEntrySourceType.Person,
-          id:value.id
-        }]);
-      } else {
-        update.fields.clearSources();
-      }
-    
-    },
-    onInputChange:(event, value) => {
-      
-      value = value?.replace(leadingWS,"") || null;
-      
-      const upsert = refetchUpsert();
-
-      if(!upsert) {
-        return;
-      }
-      
-      const source = upsert?.fields?.source || [];
-
-      if(value && source.length) {
-        update.inputValues.srcInput(null);
-      } else {
-        update.inputValues.srcInput(value);
-      }
-    
-    },
-    renderInput:(params:RenderInputParams) => {
-      const InputProps  = params?.InputProps;
-      if(InputProps) {
-        const className = InputProps?.className || "";
-        InputProps.className = `${className} ${classes.fixHeight}`
-      } else {
-        params.InputProps = {
-          className:classes.fixHeight
-        } as  RenderInputParams['InputProps'];
-      }
-      return <TextField {...textFieldProps} {...params}/>
-    },
-    getOptionLabel:(opt) => `${opt.name.first} ${opt.name.last}`,
-    filterOptions:(opts) => {
-      if(!srcInput || !srcInput.trim()) {
-        return opts;
-      }
-      const test = new RegExp(`(^|\\s)${srcInput}`,'i');
-      return opts.filter((opt) => test.test(`${opt.name.first} ${opt.name.last}`));
-    },
+    value,
+    onChange,
+    onInputChange,
+    renderInput,
+    filterOptions,
+    getOptionLabel
   };
 
   return <Autocomplete {...autoCompleteProps}/>;

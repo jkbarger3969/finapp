@@ -1,11 +1,18 @@
-import React from 'react';
-import {KeyboardDatePicker, KeyboardDatePickerProps, MuiPickersUtilsProvider}
-  from '@material-ui/pickers';
-import Skeleton from '@material-ui/lab/Skeleton';
-import moment from 'moment';
+import React, { useMemo, useCallback } from 'react';
+import { useSelector, useDispatch, shallowEqual } from "react-redux";
+import {KeyboardDatePicker, KeyboardDatePickerProps, MuiPickersUtilsProvider
+} from '@material-ui/pickers';
+import moment, { Moment } from 'moment';
 import MomentUtils from '@date-io/moment';
 
-import useJournalEntryUpsert from "./useJournalEntryUpsert";
+import {Root} from "../../redux/reducers/root";
+import {setDateValue, clearDateValue
+} from "../../redux/actions/journalEntryUpsert";
+import {getDate, isRequired } from "../../redux/selectors/journalEntryUpsert";
+
+const inputProps = {
+  inputMode:"numeric",
+} as const;
 
 export interface DateInputProps {
   entryUpsertId: string;
@@ -18,20 +25,20 @@ const DateInput = function(props:DateInputProps) {
   const {entryUpsertId, autoFocus = false, 
     variant:inputVariant = 'filled'} = props;
   
-  const {loading, error, upsert , update} 
-    = useJournalEntryUpsert(entryUpsertId);
+  const dispatch = useDispatch();
+  
+  const {date, required} = useSelector<Root, {
+    date:Date | null, required:boolean}>((state) => ({
+      date:getDate(state, entryUpsertId),
+      required:isRequired(state, entryUpsertId)
+    }), shallowEqual);
+  
+  const value = useMemo(()=> date ? moment(date) : null ,[date]);
 
-  if(loading){
-    return <Skeleton variant="rect" height={56} />;
-  } else if(error) {
-    console.error(error);
-    return <p>{error.message}</p>;
-  }
-
-  const required = !(upsert?.fields?.id);
-  const date = upsert?.fields?.date;
-
-  const value = date ? moment(date) : null;
+  const onChange = useCallback((date:Moment | null) => {
+      date?.isValid() ? dispatch(setDateValue(entryUpsertId, date.toDate())) 
+        : dispatch(clearDateValue(entryUpsertId));
+  }, [entryUpsertId, dispatch]);
 
   const dataPickerProps:KeyboardDatePickerProps = {
     required,
@@ -43,20 +50,15 @@ const DateInput = function(props:DateInputProps) {
     format:"MM/DD/YYYY",
     margin:"none",
     label:"Date",
-    initialFocusedDate:value,
+    initialFocusedDate:value || moment(),
     value,
-    onChange:(date) => update.fields.date(date?.toISOString() || null),
+    onChange,
     autoOk:true,
-    InputProps:{
+    InputProps:useMemo(()=>({
       autoFocus
-    },
-    inputProps:{
-      inputMode:"numeric",
-    },
+    }),[autoFocus]),
+    inputProps,
     placeholder:'mm/dd/yyyy',
-    PopoverProps:{
-      disablePortal:true
-    },
   };
 
   return <MuiPickersUtilsProvider utils={MomentUtils}>

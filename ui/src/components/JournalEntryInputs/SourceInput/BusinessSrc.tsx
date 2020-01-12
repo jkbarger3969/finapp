@@ -1,22 +1,27 @@
-import React, {useRef, useState} from "react";
+import React, {useRef, useMemo, useCallback} from "react";
+import {useSelector, useDispatch, shallowEqual} from "react-redux";
 import {useQuery} from "@apollo/react-hooks";
-import { makeStyles, createStyles, Theme } from "@material-ui/core";
 import TextField, {TextFieldProps} from "@material-ui/core/TextField";
 import Chip from "@material-ui/core/Chip";
 import Box from '@material-ui/core/Box';
 import Autocomplete, {AutocompleteProps, RenderInputParams
 } from "@material-ui/lab/Autocomplete";
 import ChevronRight from '@material-ui/icons/ChevronRight';
-import Skeleton from "@material-ui/lab/Skeleton";
 import gql from "graphql-tag";
+import isEqual from "lodash.isequal";
 
-import useJournalEntryUpsert from "../useJournalEntryUpsert";
 import {BusinessSrcOptsInput_1Query as BusinessSrcOptsInputQuery,
   BusinessSrcOptsInput_1QueryVariables as BusinessSrcOptsInputQueryVariables,
   BusinessSrcBizOpts_1Fragment as BusinessSrcBizOptsFragment,
   BusinessSrcDeptOpts_1Fragment as BusinessSrcDeptOptsFragment,
-  JournalEntrySourceType
+  JournalEntrySourceType, JournalEntrySourceInput
 } from "../../../apollo/graphTypes";
+import {Root} from "../../../redux/reducers/root";
+import {setSrcInput, clearSrcInput, clearSrcValue, setSrcOpen,
+  setSrcValueAndClearInput
+} from "../../../redux/actions/journalEntryUpsert";
+import {getSrcInput, getSrc, isRequired, isSrcOpen, getSrcChain
+} from "../../../redux/selectors/journalEntryUpsert";
 
 const BUSINESS_SRC_OPTS_INPUT_QUERY = gql`
   query BusinessSrcOptsInput_1($searchByName:String!) {
@@ -48,20 +53,9 @@ const BUSINESS_SRC_OPTS_INPUT_QUERY = gql`
   }
 `;
 
-const styles = makeStyles((theme:Theme) => createStyles({
-  fixHeight:{
-    maxHeight:56
-  },
-}));
-
-const leadingWS = /^\s+/;
-
-export interface BusinessSrcProps {
-  entryUpsertId: string;
-  autoFocus:boolean;
-  variant:"filled" | "outlined";
-}
-
+// Static cbs for AutocompleteProps
+const filterOptions = (opts) => opts;
+const getOptionLabel = (opt) => opt.name;
 const renderTags:AutocompleteProps["renderTags"] = (
   srcOpts:(BusinessSrcBizOptsFragment | BusinessSrcDeptOptsFragment)[],
   getTagProps) => 
@@ -87,17 +81,20 @@ const renderTags:AutocompleteProps["renderTags"] = (
   });
 }
 
-const getSrcValue = (srcId:string | null, 
-  opts:BusinessSrcOptsInputQuery["bizOpts"] | BusinessSrcDeptOptsFragment[]) =>
-{
-  if(srcId) {
-    for(const opt of opts){
-      if(opt.id === srcId){
-        return opt;
-      }
-    }
-  }
-  return null;
+interface SelectorResult  {
+  srcInput:string;
+  src:JournalEntrySourceInput | null;
+  bizSrc:JournalEntrySourceInput | null;
+  srcChain:JournalEntrySourceInput[];
+  isSrcSet:boolean;
+  required:boolean;
+  open:boolean;
+}
+
+export interface BusinessSrcProps {
+  entryUpsertId: string;
+  autoFocus:boolean;
+  variant:"filled" | "outlined";
 }
 
 const BusinessSrc = function(props:BusinessSrcProps) {
@@ -105,307 +102,262 @@ const BusinessSrc = function(props:BusinessSrcProps) {
   const {entryUpsertId, autoFocus, variant} = props;
 
   // const classes = styles();
+  const dispatch = useDispatch();
   
-  const [open, setOpen] = useState(false);
+  const {srcInput, src, bizSrc, srcChain, isSrcSet, required, open
+  } = useSelector<Root, SelectorResult>((state) => {
 
-  const {loading:loading1, error:error1, upsert, update}
-    = useJournalEntryUpsert(entryUpsertId);
+    const src = getSrc(state, entryUpsertId);
 
-  const srcInput = upsert?.inputValues?.srcInput?.replace(leadingWS,"") || null;
+    const srcChain = getSrcChain(state, entryUpsertId);
 
-  const selectedSources = upsert?.fields?.source || [];
+    return {
+      srcInput:getSrcInput(state, entryUpsertId),
+      src,
+      bizSrc:srcChain[0] || null,
+      srcChain,
+      isSrcSet:!!src,
+      required:isRequired(state, entryUpsertId),
+      open:isSrcOpen(state, entryUpsertId)
+    };
 
-  const {loading:loading2, error:error2, data} = 
+  }, shallowEqual);
+
+  const onBlur = useCallback(() => dispatch(setSrcOpen(entryUpsertId, false)),[
+    entryUpsertId, 
+    dispatch
+  ]);
+  const onFocus = useCallback(() => dispatch(setSrcOpen(entryUpsertId, true)),[
+    entryUpsertId, 
+    dispatch
+  ]);
+  const onClose = useCallback(() => dispatch(setSrcOpen(entryUpsertId, false)),[
+    entryUpsertId, 
+    dispatch
+  ]);
+  const onOpen = useCallback(() => dispatch(setSrcOpen(entryUpsertId, true)),[
+    entryUpsertId, 
+    dispatch
+  ]);
+
+  const searchCharRef = useRef("");
+  if(!isSrcSet) {
+    searchCharRef.current = srcInput.substr(0,1).toLowerCase();
+  }
+
+  const {loading, error, data} = 
     useQuery<BusinessSrcOptsInputQuery, BusinessSrcOptsInputQueryVariables>(
     BUSINESS_SRC_OPTS_INPUT_QUERY,{
-      skip:!srcInput || selectedSources.length > 0,
+      skip:!searchCharRef.current,
       variables:{
-        searchByName:(srcInput || "").substr(0,1).toLowerCase()
+        searchByName:searchCharRef.current
       }
     });
   
-  const bizRefContainer = useRef(data?.bizOpts || []);
-
-  if(loading1) {
-    return <Skeleton variant="rect" height={56} />;
-  } else if(error1 || error2) {
-    console.error(error1 || error2);
-    return <p>{(error1 || error2)?.message}</p>;
-  }
+  const bizOpts = useMemo(() => data?.bizOpts || [], [data]);
   
-  const bizId = selectedSources[0]?.id || null;
-  
-  const bizOpts = (() => {
+  const bizVal = useMemo(() => {
+    if(bizSrc) {
+      for(const bizOpt of bizOpts) {
+        if(bizOpt.id === bizSrc.id) {
+          return bizOpt;
+        }
+      }
+    }
+    return null;
+  },[bizOpts, bizSrc]);
 
-    if(data?.bizOpts) {
+  const deptOpts = useMemo(() => bizVal?.deptOpts || [], [bizVal]);
 
-      bizRefContainer.current = data.bizOpts;
+  const srcVal = useMemo(() => {
+    if(isEqual(src, bizSrc)) {
+      return bizVal;
+    } else if(src) {
+      for(const deptOpt of deptOpts) {
+        if(deptOpt.id === src.id) {
+          return deptOpt;
+        }
+      }
+    }
+    return null;
+  },[src, bizSrc, deptOpts, bizVal]);
+
+  const options = useMemo(()=>{
+
+    // Shape addresses TS weirdness. BE CAREFUL when modifying,
+    // Both types of options biz and dept MUST be filtered separately.
+    if(!srcInput) {
+      
+      return srcVal ? 
+        deptOpts.filter((opt) => opt.parent.id === srcVal.id) : bizOpts;
 
     }
 
-    return bizRefContainer.current;
+    const test = new RegExp(`(^|\\s)${srcInput}`,'i');
 
-  })();
+    if(srcVal) {
+      return deptOpts.filter((opt:any) => 
+        opt.parent.id === srcVal.id && test.test(opt.name));
+    }
+    
+    return bizOpts.filter((opt:any) => test.test(opt.name));
   
-  const bizVal = getSrcValue(bizId, bizOpts) as 
-  (BusinessSrcBizOptsFragment | null);
-  
-  const deptOpts = bizVal?.deptOpts || [];
-  
-  const srcId = selectedSources[selectedSources.length -1]?.id || null;
-  const srcVal = bizId === srcId ?
-    bizVal : getSrcValue(srcId, deptOpts);
-  
-  const options = srcVal ? 
-    deptOpts.filter((dept) => dept.parent.id === srcId) : [...bizOpts];
+  },[srcInput, srcVal, bizOpts, deptOpts]);
 
-  // Switch to multi when there is source and there are option OR already multi
-  const value = selectedSources.length > 0 && options.length > 0 ? 
-    selectedSources.map(({id:srcId}, i) => {
-      return getSrcValue(srcId, i === 0 ? bizOpts : deptOpts);
-    }) : srcVal;
-  
+  const hasOptions = options.length > 0;
+
+  const value = useMemo(()=>{
+
+    const value:(BusinessSrcBizOptsFragment | BusinessSrcDeptOptsFragment)[] = 
+      [];
+
+    // If there is NO bizVal there is NO value.
+    if(!bizVal) {
+      return null;
+    }
+
+    value.push(bizVal);
+
+    // bizVal is always the first and srcVal the last value
+    for(let i = 1, stop = srcChain.length - 1; i < stop; i++) {
+      const src = srcChain[i];
+      for(const deptOpt of deptOpts) {
+        if(deptOpt.id === src.id) {
+          value.push(deptOpt);
+        }
+      }
+    }
+
+    if(srcVal && srcVal !== bizVal) {
+      value.push(srcVal);
+    }
+
+    const numValues = value.length;
+
+    if(numValues === 1) {
+      return hasOptions ? value : value[0] as BusinessSrcBizOptsFragment;
+    }
+    
+    return value;
+
+  }, [bizVal, srcVal, srcChain, deptOpts, hasOptions]);
 
   const multiple = Array.isArray(value);
   
-  const required = !(upsert?.fields?.id);
-
-  const textFieldProps:TextFieldProps = {
+  const textFieldProps:TextFieldProps = useMemo(()=>({
     required,
     autoFocus,
     fullWidth:true,
     variant,
     label:multiple ? "Business > Departments..." : "Business"
-  };
+  }),[required, autoFocus, variant, multiple]);
+  
+  const renderInput = useCallback((params:RenderInputParams) => {
+    return <TextField {...textFieldProps} {...params}/>
+  },[textFieldProps]);
+
+  type Value = typeof value;
+
+  const onChange = useCallback((event, value:Value) => {
+
+    if(value) {
+      
+      value = Array.isArray(value) ? value : [value];
+
+      dispatch(setSrcValueAndClearInput(entryUpsertId, value.map((src, i) =>({
+        sourceType:i === 0 ? 
+          JournalEntrySourceType.Business : JournalEntrySourceType.Department,
+        id:src.id
+      }))));
+      
+    } else {
+      
+      dispatch(clearSrcValue(entryUpsertId));
+
+    }
+
+  },[entryUpsertId, dispatch]);
+
+  const onInputChange = useCallback((event:any, value:string) => {
+    if(value) {
+      dispatch(setSrcInput(entryUpsertId, value));
+    } else {
+      dispatch(clearSrcInput(entryUpsertId));
+    }
+  },[dispatch, entryUpsertId]);
 
   const autocompleteProps:AutocompleteProps = {
-    loading:loading2,
+    loading,
+    multiple,
     open,
+    options,
     autoHighlight:true,
     disableCloseOnSelect:true,
-    renderTags:multiple ? (values: any[], getTagProps) => {
-      const lastIndex = values.length - 1;
-      return values.map((srcValue: any, index: number) => (<Chip
-        disabled={index !== lastIndex}
-        variant="outlined"
-        label={srcValue.name}
-        size="small"
-        {...getTagProps({index})}
-      />));
-    } : undefined,
-    getOptionLabel:(opt) => opt.name,
-    filterOptions:(opts) => {
-      if(srcInput === null || srcInput.length === 1) {
-        return opts;
-      }
-      const test = new RegExp(`(^|\\s)${srcInput}`,'i');
-      return opts.filter((opt) => test.test(opt.name));
-    },
-    renderInput:(params:RenderInputParams) => {
-      return <TextField {...textFieldProps} {...params}/>
-    },
+    getOptionLabel,
+    filterOptions,
+    renderInput,
+    onChange,
+    onInputChange,
+    value,
+    inputValue:srcInput
   };
+
+  if(error) {
+    console.error(error);
+    return <p>{error.message}</p>;
+  }
 
   // No selected values
   if(!srcVal) {
 
     autocompleteProps.multiple = false;
     autocompleteProps.freeSolo = true;
-    autocompleteProps.options = [...bizOpts];
-    autocompleteProps.inputValue = srcInput || "";
-    autocompleteProps.value = null;
-    autocompleteProps.onChange = (event,
-      value:BusinessSrcBizOptsFragment | null = null) => 
-    {
-
-      // Allow for free solo, do NOT reset srcInput when there is nothing to 
-      // add or clear
-      if(value) {
-        
-        update.inputValues.srcInput(null);
-
-        update.fields.addSource({
-          sourceType:value.__typename === "Business" ? 
-            JournalEntrySourceType.Business 
-            : JournalEntrySourceType.Department,
-          id:value.id
-        });
-      
-      }
-
-    }
-    autocompleteProps.onInputChange = (event, value) => {
-      value = value?.replace(leadingWS,"") || null;
-      update.inputValues.srcInput(value);
-    }
-    autocompleteProps.onBlur = () => setOpen(false);
-    autocompleteProps.onFocus = () => setOpen(true);
-    autocompleteProps.onClose = () => setOpen(false);
-    autocompleteProps.onOpen = () => setOpen(true);
+    
+    autocompleteProps.onBlur = onBlur;
+    autocompleteProps.onFocus = onFocus;
+    autocompleteProps.onClose = onClose;
+    autocompleteProps.onOpen = onOpen;
   
   // Selected a business
-  } else if(selectedSources.length === 1) {
-
-    const options = deptOpts.filter((dept) => dept.parent.id === srcId)
-
-    autocompleteProps.inputValue = srcInput || "";
+  } else if(srcChain.length === 1) {
 
     // Has NO depts
     if(options.length === 0) {
-
-      autocompleteProps.multiple = false;
+      
+      autocompleteProps.inputValue = srcVal.name;
       autocompleteProps.open = false;
-      // Change can ONLY be cleared
-      autocompleteProps.onChange = (event) => {
-        update.fields.clearSources();
-      }
-      autocompleteProps.value = srcVal;
-      autocompleteProps.onInputChange = (event, value:string | null, reason) => 
-      {
-        value = value?.replace(leadingWS, "") || null;
-        if(value !== srcVal.name.replace(leadingWS, "")) {
-          update.fields.clearSources();
-        }
-        update.inputValues.srcInput(value);
-      }
 
     // Has depts
     } else {
 
-      autocompleteProps.multiple = true;
-      autocompleteProps.options = options;
-      autocompleteProps.value = [getSrcValue(bizVal?.id || null, bizOpts)];
       autocompleteProps.renderTags = renderTags;
-      autocompleteProps.onBlur = () => setOpen(false);
-      autocompleteProps.onFocus = () => setOpen(true);
-      autocompleteProps.onClose = () => setOpen(false);
-      autocompleteProps.onOpen = () => setOpen(true);
-      autocompleteProps.onChange = (event,
-        sources:(BusinessSrcBizOptsFragment | BusinessSrcDeptOptsFragment)[] |
-        BusinessSrcDeptOptsFragment | null) => 
-      {
-        sources = sources || null;
-        update.inputValues.srcInput(null);
-        if(sources) {
-
-          if(Array.isArray(sources)) {
-            
-            update.fields.replaceSources(sources.map((src)=>({
-              sourceType:src.__typename === "Business" ? 
-                JournalEntrySourceType.Business 
-                : JournalEntrySourceType.Department,
-              id:src.id
-            })));
-
-          } else {
-
-            update.fields.addSource({
-              sourceType:JournalEntrySourceType.Department,
-              id:sources.id
-            });
-
-          }
-
-        } else {
-          update.fields.clearSources();
-        }
-      }
-      autocompleteProps.onInputChange = (event, value:string | null, reason) => 
-      {
-        if(reason === "reset") {
-          return;
-        }
-        value = value?.replace(leadingWS, "") || null;
-        update.inputValues.srcInput(value);
-      }
+      autocompleteProps.onBlur = onBlur;
+      autocompleteProps.onFocus = onFocus;
+      autocompleteProps.onClose = onClose;
+      autocompleteProps.onOpen = onOpen;
 
     }
 
   } else {
 
-    const options = deptOpts.filter((dept) => dept.parent.id === srcId);
-
-    autocompleteProps.inputValue = srcInput || "";
 
     // Has NO sub depts
     if(options.length === 0) {
       
       autocompleteProps.disabled = true;
       autocompleteProps.inputValue = "";
-      autocompleteProps.multiple = true;
-      autocompleteProps.onChange = (event,
-        sources:(BusinessSrcBizOptsFragment | BusinessSrcDeptOptsFragment)[] 
-        | null) =>  
-      {
-        sources = sources || null;
-        if(sources) {
-          update.fields.replaceSources(sources.map((src)=>({
-            sourceType:src.__typename === "Business" ? 
-              JournalEntrySourceType.Business 
-              : JournalEntrySourceType.Department,
-            id:src.id
-          })));
-        } else {
-          update.fields.clearSources();
-        }
-      }
       autocompleteProps.open = false;
       autocompleteProps.renderTags = renderTags;
-      autocompleteProps.value = selectedSources.map(({id}, i) => 
-          getSrcValue(id, i === 0 ? bizOpts : deptOpts));
 
     // Has SUB depts
     } else {
 
       autocompleteProps.autoHighlight = true;
-      autocompleteProps.multiple = true;
       autocompleteProps.renderTags = renderTags;
-      autocompleteProps.onBlur = () => setOpen(false);
-      autocompleteProps.onFocus = () => setOpen(true);
-      autocompleteProps.onClose = () => setOpen(false);
-      autocompleteProps.onOpen = () => setOpen(true);
-      autocompleteProps.options = options;
-      autocompleteProps.inputValue = srcInput || "";
-      autocompleteProps.value = selectedSources.map(({id}, i) => 
-        getSrcValue(id, i === 0 ? bizOpts : deptOpts));
-      autocompleteProps.onChange = (event,
-        sources:(BusinessSrcBizOptsFragment | BusinessSrcDeptOptsFragment)[] |
-        BusinessSrcDeptOptsFragment | null) => 
-      {
-        sources = sources || null;
-        update.inputValues.srcInput(null);
-        if(sources) {
-
-          if(Array.isArray(sources)) {
-            
-            update.fields.replaceSources(sources.map((src)=>({
-              sourceType:src.__typename === "Business" ? 
-                JournalEntrySourceType.Business 
-                : JournalEntrySourceType.Department,
-              id:src.id
-            })));
-
-          } else {
-
-            update.fields.addSource({
-              sourceType:JournalEntrySourceType.Department,
-              id:sources.id
-            });
-
-          }
-
-        } else {
-          update.fields.clearSources();
-        }
-      }
-      autocompleteProps.onInputChange = (event, value:string | null, reason) => 
-      {
-        if(reason === "reset") {
-          return;
-        }
-        value = value?.replace(leadingWS, "") || null;
-        update.inputValues.srcInput(value);
-      }
+      autocompleteProps.onBlur = onBlur;
+      autocompleteProps.onFocus = onFocus;
+      autocompleteProps.onClose = onClose;
+      autocompleteProps.onOpen = onOpen;
 
     }
 

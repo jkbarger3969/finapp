@@ -1,5 +1,5 @@
-import React, { MouseEvent } from "react";
-import Skeleton from "@material-ui/lab/Skeleton";
+import React, { useCallback } from "react";
+import {useSelector, useDispatch, shallowEqual} from "react-redux";
 import Box from "@material-ui/core/Box";
 import ToggleButton, {ToggleButtonProps} from "@material-ui/lab/ToggleButton";
 import ToggleButtonGroup, {ToggleButtonGroupProps
@@ -8,10 +8,13 @@ import {Person as PersonIcon, Business as BusinessIcon
 } from "@material-ui/icons";
 import { makeStyles, createStyles, Theme } from "@material-ui/core";
 
-import useJournalEntryUpsert from "../useJournalEntryUpsert";
 import {JournalEntrySourceType} from '../../../apollo/graphTypes';
+import {Root} from "../../../redux/reducers/root";
+import {setSrcType} from "../../../redux/actions/journalEntryUpsert";
+import {getSrcType, getSrcInput, getSrc
+} from "../../../redux/selectors/journalEntryUpsert";
 
-  const styles = makeStyles((theme:Theme) => createStyles({
+const styles = makeStyles((theme:Theme) => createStyles({
   sourceToggle:{
     marginRight:theme.spacing(1)
   },
@@ -24,9 +27,23 @@ import {JournalEntrySourceType} from '../../../apollo/graphTypes';
   }
 }));
 
+const bizToggleButtonProps:ToggleButtonProps = {
+  value:JournalEntrySourceType.Business
+};
+
+const personToggleButtonProps:ToggleButtonProps = {
+  value:JournalEntrySourceType.Person
+};
+
 export interface SourceTypeToggleProps {
   entryUpsertId: string;
 }
+
+interface SelectorResult {
+  value:JournalEntrySourceType | null;
+  srcInput:string;
+  isSrcSet:boolean;
+} 
 
 const SourceTypeToggle = function(props:SourceTypeToggleProps) {
   
@@ -34,49 +51,34 @@ const SourceTypeToggle = function(props:SourceTypeToggleProps) {
 
   const classes = styles();
 
-  const {loading, error, upsert, update} 
-    = useJournalEntryUpsert(entryUpsertId);
+  const {value, srcInput, isSrcSet} = 
+    useSelector<Root, SelectorResult>((state) => 
+      ({
+        value:getSrcType(state, entryUpsertId),
+        srcInput:getSrcInput(state, entryUpsertId),
+        isSrcSet:!!getSrc(state, entryUpsertId)
+      }), shallowEqual);
 
-  if(loading){
-    return <Skeleton variant="rect" height={56} width={81}/>;
-  } else if(error) {
-    console.error(error);
-    return <p>{error.message}</p>;
-  }
+  const dispatch = useDispatch();
 
-  const srcInput = upsert?.inputValues?.srcInput || null;
-  const srcType = upsert?.inputValues?.srcType || null;
-  const source = upsert?.fields?.source || [];
+  const onChange = useCallback((event, newSrcType:JournalEntrySourceType) => {
+    dispatch(setSrcType(entryUpsertId, newSrcType));
+  },[dispatch, entryUpsertId]);
 
-  if(srcType === JournalEntrySourceType.Business) {
-    if((source && source.length > 0 ) || srcInput) {
+  if(isSrcSet || srcInput) {
+    if(value === JournalEntrySourceType.Person) {
+      return <PersonIcon className={classes.sourceIcon} />;
+    } else {
       return <BusinessIcon className={classes.sourceIcon} />;
     }
-  } else if(srcType === JournalEntrySourceType.Person){
-    if((source && source.length > 0) || srcInput) {
-      return <PersonIcon className={classes.sourceIcon} />;
-    }
   }
 
-  const bizToggleButtonProps:ToggleButtonProps = {
-    value:JournalEntrySourceType.Business || ""
-  };
-  
-  const personToggleButtonProps:ToggleButtonProps = {
-    value:JournalEntrySourceType.Person || ""
-  };
-  
   const toggleButtonGroupProps:ToggleButtonGroupProps = {
     className:classes.sourceToggle,
     size:"small",
     exclusive:true,
-    onChange:(event:MouseEvent<HTMLElement>, 
-      value:JournalEntrySourceType | null) => 
-    {
-      value = value ? value : null;
-      update.inputValues.srcType(value); 
-    },
-    value:srcType || "NONE"
+    onChange,
+    value
   };
 
   return <Box py={1} clone>
