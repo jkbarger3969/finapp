@@ -2,7 +2,8 @@ import {useCallback, useMemo} from "react";
 import {Action} from "redux";
 import {useDispatch, batch} from "react-redux";
 import {ThunkAction, ThunkDispatch} from "redux-thunk";
-import isEqual from "lodash.isequal";
+
+import {Thunk} from "./actions/types";
 
 export const useBatchDispatch = () => {
 
@@ -30,19 +31,21 @@ export const useBatchDispatch = () => {
 
 }
 
+export type DebounceA = Action<any> | Thunk<any, any>;
+
 const globalDebounceDispatchState = {
   dispatchId:null as ReturnType<typeof setTimeout> | null,
-  dispatchQueue:new Map<string, 
-    [Action, ThunkDispatch<any, any, Action<any>>]>(),
+  dispatchQueue:new Map<string | symbol,
+    [DebounceA, ThunkDispatch<any, any, any>]>(),
   ms:5
 };
 
 export function useDebounceDispatch(global:true):
-  <A extends Action<any>>(action: A) => void;
+  <A extends DebounceA>(action: A) => void;
 export function useDebounceDispatch(global:false, ms:number):
-  <A extends Action<any>>(action: A) => void;
+  <A extends DebounceA>(action: A) => void;
   export function useDebounceDispatch(global?:boolean, ms?:number):
-  <A extends Action<any>>(action: A) => void;
+  <A extends DebounceA>(action: A) => void;
 export function useDebounceDispatch(global:boolean = true, ms = 5){
 
   const dispatch = useDispatch();
@@ -50,15 +53,15 @@ export function useDebounceDispatch(global:boolean = true, ms = 5){
   const debounceDispatchState = useMemo(() => {
     return global ? globalDebounceDispatchState : {
       dispatchId:null as ReturnType<typeof setTimeout> | null,
-      dispatchQueue:new Map<any,
-        [Action, ThunkDispatch<any, any, Action<any>>]>(),
+      dispatchQueue:new Map<string | symbol,
+        [DebounceA, ThunkDispatch<any, any, any>]>(),
       ms
     }
   },[global, ms]);
 
-  const debouchDispatch = useCallback(<A extends Action>(action:A) => {
+  const debouchDispatch = useCallback(<A extends DebounceA>(action:A) => {
 
-    const thunk:ThunkAction<void, any, any, Action> = (dispatch) => {
+    const thunk:ThunkAction<void, any, any, any> = (dispatch) => {
       
       const {dispatchQueue} = debounceDispatchState;
 
@@ -79,8 +82,11 @@ export function useDebounceDispatch(global:boolean = true, ms = 5){
         }, debounceDispatchState.ms);
       
       }
-  
-      dispatchQueue.set(action.type, [action, dispatch]); 
+      
+      const key = typeof action === "function" ? Symbol() : 
+        (action as any)?.type as string;
+
+      dispatchQueue.set(key, [action, dispatch]); 
 
     }
 

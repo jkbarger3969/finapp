@@ -10,6 +10,8 @@ import {JournalEntrySourceInput, JournalEntrySourceType,
   AddPerson_1MutationVariables as AddPersonVars,
   AddJournalEntry_2Mutation as AddJournalEntry,
   AddJournalEntry_2MutationVariables as AddJournalEntryVars,
+  AddBusiness_1Mutation as AddBusiness,
+  AddBusiness_1MutationVariables as AddBusinessVars
 } from "../../apollo/graphTypes";
 import {SubmitStatus} from "../reducers/journalEntryUpserts";
 import * as upsertActions from "../actionTypes/journalEntryUpsert";
@@ -96,6 +98,16 @@ const ADD_PERSON = gql`
   }
 `;
 
+const ADD_BUSINESS = gql`
+  mutation AddBusiness_1($fields:BusinessAddFields!) {
+    addBusiness(fields:$fields) {
+      __typename
+      id
+      name
+    }
+  }
+`;
+
 const ADD_JOURNAL_ENTRY = gql`
   mutation AddJournalEntry_2($fields:JournalEntryAddFields!) {
     addJournalEntry(fields:$fields) {
@@ -163,6 +175,7 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
       
       if(!source) {
         
+        
         const srcType = selectors.getSrcType(state, upsertId);
         const srcInput = selectors.getSrcInput(state, upsertId);
 
@@ -198,8 +211,6 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
             await Promise.resolve();
 
             dispatch(_submit_(upsertId, client));
-
-            return;
             
           } catch(error) {
             
@@ -208,14 +219,46 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
                 new Error(error?.message || `${error}`)));
               dispatch(setSubmitStatus(upsertId, SubmitStatus.NotSubmitted));
             });
-      
-            return;
 
           }
 
         } else {
           
-          // TODO: Implement add business
+          try {
+
+            const result = await client.mutate<AddBusiness, AddBusinessVars>({
+              mutation:ADD_BUSINESS,
+              variables:{
+                fields:{
+                  name:srcInput
+                }
+              }
+            });
+
+            if(!result.data?.addBusiness.id) {
+              
+              throw new Error("Something went wrong. Server did not respond with new business id.");
+
+            }
+
+            dispatch(setSrcValue(upsertId, [{
+              sourceType:JournalEntrySourceType.Business,
+              id:result.data.addBusiness.id
+            }]));
+            
+            await Promise.resolve();
+
+            dispatch(_submit_(upsertId, client));
+
+          } catch(error) {
+
+            batch(()=>{
+              dispatch(setSubmitError(upsertId,
+                new Error(error?.message || `${error}`)));
+              dispatch(setSubmitStatus(upsertId, SubmitStatus.NotSubmitted));
+            });
+
+          }
 
         }
 
@@ -358,7 +401,13 @@ export const validateDate = (upsertId:string)
     if(date) {
       
       if(Number.isNaN(date.getTime())) {
-        dispatch(setDateError(upsertId, new Error("Date is required.")));
+        
+        dispatch(setDateError(upsertId, new Error("Invalid date.")));
+      
+      } else if(dateError) {
+        
+        dispatch(clearDateError(upsertId));
+      
       }
 
     // Required

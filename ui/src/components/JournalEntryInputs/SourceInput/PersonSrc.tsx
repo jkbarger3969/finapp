@@ -15,9 +15,9 @@ import {PeopleSrcOpts_1Query as PeopleSrcOptsQuery,
 } from '../../../apollo/graphTypes';
 import {Root} from "../../../redux/reducers/root";
 import {useDebounceDispatch} from "../../../redux/hooks";
-import {setSrcInput, clearSrcInput, setSrcValue, clearSrcValue,
+import {setSrcInput, clearSrcInput, setSrcValue, clearSrcValue, validateSrc
 } from "../../../redux/actions/journalEntryUpsert";
-import {getSrcInput, getSrc, isRequired
+import {getSrcInput, getSrc, isRequired, getSrcError,
 } from "../../../redux/selectors/journalEntryUpsert";
 
 const PERSON_SRC_OPT_FRAGMENT = gql`
@@ -54,6 +54,8 @@ interface SelectorResult {
   isSrcSet:boolean;
   freeSolo:boolean;
   required:boolean;
+  hasError:boolean;
+  errorMsg:string | null;
 }
 
 // Static cbs for AutocompleteProps
@@ -78,17 +80,20 @@ const PersonSrc = function(props:PersonSrcProps) {
 
   const {entryUpsertId, autoFocus, variant} = props;
   
-  const {src, srcInput, isSrcSet, required, freeSolo} = 
+  const {src, srcInput, isSrcSet, required, freeSolo, hasError, errorMsg} = 
     useSelector<Root, SelectorResult>((state) => {
     
       const src = getSrc(state, entryUpsertId);
+      const error = getSrcError(state, entryUpsertId);
 
       return {
         src,
         srcInput:getSrcInput(state, entryUpsertId),
         isSrcSet:!!src,
         freeSolo:!src,
-        required:isRequired(state, entryUpsertId)
+        required:isRequired(state, entryUpsertId),
+        hasError:!!error,
+        errorMsg:error?.message || null
       };
 
     }, shallowEqual);
@@ -150,12 +155,19 @@ const PersonSrc = function(props:PersonSrcProps) {
     }
   },[dispatch, entryUpsertId]);
 
+  const validate  = useCallback(() => {
+    dispatch(validateSrc(entryUpsertId))
+  },[dispatch, entryUpsertId]);
+
   const textFieldProps:TextFieldProps = {
     required,
+    onBlur:validate as any,
     autoFocus,
     label:"Name",
     fullWidth:true,
     variant,
+    error:hasError,
+    helperText:errorMsg
   };
 
   const renderInput = useCallback((params:RenderInputParams) => {

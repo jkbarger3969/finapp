@@ -1,6 +1,6 @@
 import React, {useRef, useMemo, useCallback} from "react";
-import {useSelector, useDispatch} from "react-redux";
-import {useQuery} from "@apollo/react-hooks";
+import {useSelector} from "react-redux";
+import {useQuery, useApolloClient} from "@apollo/react-hooks";
 import TextField, {TextFieldProps} from "@material-ui/core/TextField";
 import Chip from "@material-ui/core/Chip";
 import Box from '@material-ui/core/Box';
@@ -23,20 +23,7 @@ import {setSrcInput, clearSrcInput, clearSrcValue, setSrcOpen, setSrcValue
 import {getSrcInput, getSrc, isRequired, isSrcOpen, getSrcChain
 } from "../../../redux/selectors/journalEntryUpsert";
 
-const BUSINESS_SRC_OPTS_INPUT_QUERY = gql`
-  query BusinessSrcOptsInput_1($searchByName:String!) {
-    bizOpts: businesses(searchByName:$searchByName) {
-      ...BusinessSrcBizOpts_1Fragment
-    }
-  }
-  fragment BusinessSrcBizOpts_1Fragment on Business {
-    __typename
-    id
-    name
-    deptOpts: departments {
-      ...BusinessSrcDeptOpts_1Fragment
-    }
-  }
+const BIZ_SRC_DEPT_OPTS_FRAGMENT = gql`
   fragment BusinessSrcDeptOpts_1Fragment on Department {
     __typename
     id
@@ -51,6 +38,27 @@ const BUSINESS_SRC_OPTS_INPUT_QUERY = gql`
       }
     }
   }
+`;
+
+const BIZ_SRC_BIZ_OPTS_FRAGMENT = gql`
+  fragment BusinessSrcBizOpts_1Fragment on Business {
+    __typename
+    id
+    name
+    deptOpts: departments {
+      ...BusinessSrcDeptOpts_1Fragment
+    }
+  }
+  ${BIZ_SRC_DEPT_OPTS_FRAGMENT}
+`;
+
+const BUSINESS_SRC_OPTS_INPUT_QUERY = gql`
+  query BusinessSrcOptsInput_1($searchByName:String!) {
+    bizOpts: businesses(searchByName:$searchByName) {
+      ...BusinessSrcBizOpts_1Fragment
+    }
+  }
+  ${BIZ_SRC_BIZ_OPTS_FRAGMENT}
 `;
 
 // Static cbs for AutocompleteProps
@@ -100,9 +108,9 @@ export interface BusinessSrcProps {
 const BusinessSrc = function(props:BusinessSrcProps) {
   
   const {entryUpsertId, autoFocus, variant} = props;
+  
+  const client = useApolloClient();
 
-  // const classes = styles();
-  // const dispatch = useDispatch();
   const dispatch = useDebounceDispatch();
   
   const {srcInput, src, bizSrc, srcChain, isSrcSet, required, open
@@ -159,29 +167,34 @@ const BusinessSrc = function(props:BusinessSrcProps) {
   
   const bizVal = useMemo(() => {
     if(bizSrc) {
-      for(const bizOpt of bizOpts) {
-        if(bizOpt.id === bizSrc.id) {
-          return bizOpt;
-        }
-      }
+      // Read fragment, so that when submitting a new business, the new business 
+      // is pulled from the cache
+      return client.readFragment<BusinessSrcBizOptsFragment>({
+        id:`Business:${bizSrc.id}`,
+        fragment:BIZ_SRC_BIZ_OPTS_FRAGMENT,
+        fragmentName: "BusinessSrcBizOpts_1Fragment",
+      }) || null;
     }
     return null;
-  },[bizOpts, bizSrc]);
+  },[client, bizSrc]);
 
   const deptOpts = useMemo(() => bizVal?.deptOpts || [], [bizVal]);
 
   const srcVal = useMemo(() => {
     if(isEqual(src, bizSrc)) {
+  
       return bizVal;
+  
     } else if(src) {
-      for(const deptOpt of deptOpts) {
-        if(deptOpt.id === src.id) {
-          return deptOpt;
-        }
-      }
+      
+      return client.readFragment<BusinessSrcDeptOptsFragment>({
+        id:`Department:${src.id}`,
+        fragment:BIZ_SRC_DEPT_OPTS_FRAGMENT
+      }) || null;
+    
     }
     return null;
-  },[src, bizSrc, deptOpts, bizVal]);
+  },[src, bizSrc, client, bizVal]);
 
   const options = useMemo(()=>{
 
@@ -208,7 +221,7 @@ const BusinessSrc = function(props:BusinessSrcProps) {
 
   const hasOptions = options.length > 0;
 
-  const value = useMemo(()=>{
+  const value = useMemo(() => {
 
     const value:(BusinessSrcBizOptsFragment | BusinessSrcDeptOptsFragment)[] = 
       [];
@@ -223,11 +236,15 @@ const BusinessSrc = function(props:BusinessSrcProps) {
     // bizVal is always the first and srcVal the last value
     for(let i = 1, stop = srcChain.length - 1; i < stop; i++) {
       const src = srcChain[i];
-      for(const deptOpt of deptOpts) {
-        if(deptOpt.id === src.id) {
-          value.push(deptOpt);
-        }
+      const deptOpt = client.readFragment<BusinessSrcDeptOptsFragment>({
+        id:`Department:${src.id}`,
+        fragment:BIZ_SRC_DEPT_OPTS_FRAGMENT
+      }) || null;
+      
+      if(deptOpt) {
+        value.push(deptOpt);
       }
+    
     }
 
     if(srcVal && srcVal !== bizVal) {
@@ -242,7 +259,7 @@ const BusinessSrc = function(props:BusinessSrcProps) {
     
     return value;
 
-  }, [bizVal, srcVal, srcChain, deptOpts, hasOptions]);
+  }, [bizVal, srcVal, srcChain, hasOptions, client]);
 
   const multiple = Array.isArray(value);
   

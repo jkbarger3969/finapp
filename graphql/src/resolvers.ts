@@ -1,6 +1,6 @@
 import {Resolvers} from "./graphTypes";
 import {Budget, budgets} from "./resolvers/budget";
-import {Business, businesses} from "./resolvers/business";
+import {Business, businesses, addBusiness} from "./resolvers/business";
 import {Department, departments, department} from "./resolvers/departments";
 import {journalEntries, addJournalEntry, updateJournalEntry, JournalEntry
 } from "./resolvers/journalEntry";
@@ -33,7 +33,8 @@ const resolvers:Resolvers = {
   Mutation:{
     addJournalEntry,
     updateJournalEntry,
-    addPerson
+    addPerson,
+    addBusiness
   }
 };
 

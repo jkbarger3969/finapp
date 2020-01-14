@@ -29,6 +29,10 @@ export type Business = {
   departments?: Maybe<Array<Department>>,
 };
 
+export type BusinessAddFields = {
+  name: Scalars['String'],
+};
+
 export type Department = {
    __typename?: 'Department',
   id: Scalars['ID'],
@@ -119,9 +123,15 @@ export type JournalEntryUpdateFields = {
 
 export type Mutation = {
    __typename?: 'Mutation',
+  addBusiness: Business,
   updateJournalEntry: JournalEntry,
   addJournalEntry: JournalEntry,
   addPerson: Person,
+};
+
+
+export type MutationAddBusinessArgs = {
+  fields: BusinessAddFields
 };
 
 
@@ -346,6 +356,7 @@ export type ResolversTypes = {
   PersonName: ResolverTypeWrapper<PersonName>,
   PersonNameInput: PersonNameInput,
   Mutation: ResolverTypeWrapper<{}>,
+  BusinessAddFields: BusinessAddFields,
   JournalEntryUpdateFields: JournalEntryUpdateFields,
   RationalInput: RationalInput,
   JournalEntrySourceInput: JournalEntrySourceInput,
@@ -382,6 +393,7 @@ export type ResolversParentTypes = {
   PersonName: PersonName,
   PersonNameInput: PersonNameInput,
   Mutation: {},
+  BusinessAddFields: BusinessAddFields,
   JournalEntryUpdateFields: JournalEntryUpdateFields,
   RationalInput: RationalInput,
   JournalEntrySourceInput: JournalEntrySourceInput,
@@ -450,6 +462,7 @@ export type JournalEntryTypeResolvers<ContextType = Context, ParentType extends 
 };
 
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
+  addBusiness?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<MutationAddBusinessArgs, 'fields'>>,
   updateJournalEntry?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationUpdateJournalEntryArgs, 'id' | 'fields'>>,
   addJournalEntry?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationAddJournalEntryArgs, 'fields'>>,
   addPerson?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<MutationAddPersonArgs, 'fields'>>,

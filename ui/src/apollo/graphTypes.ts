@@ -32,6 +32,10 @@ export type Business = {
   departments?: Maybe<Array<Department>>,
 };
 
+export type BusinessAddFields = {
+  name: Scalars['String'],
+};
+
 export enum CacheControlScope {
   Public = 'PUBLIC',
   Private = 'PRIVATE'
@@ -185,9 +189,15 @@ export enum Lc_JournalEntryUpsertType {
 
 export type Mutation = {
    __typename?: 'Mutation',
+  addBusiness: Business,
   updateJournalEntry: JournalEntry,
   addJournalEntry: JournalEntry,
   addPerson: Person,
+};
+
+
+export type MutationAddBusinessArgs = {
+  fields: BusinessAddFields
 };
 
 
@@ -428,6 +438,13 @@ export type AddPerson_1MutationVariables = {
 
 export type AddPerson_1Mutation = { __typename?: 'Mutation', addPerson: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } };
 
+export type AddBusiness_1MutationVariables = {
+  fields: BusinessAddFields
+};
+
+
+export type AddBusiness_1Mutation = { __typename?: 'Mutation', addBusiness: { __typename: 'Business', id: string, name: string } };
+
 export type AddJournalEntry_2MutationVariables = {
   fields: JournalEntryAddFields
 };
@@ -530,6 +547,7 @@ export type ResolversTypes = {
   PersonName: ResolverTypeWrapper<PersonName>,
   PersonNameInput: PersonNameInput,
   Mutation: ResolverTypeWrapper<{}>,
+  BusinessAddFields: BusinessAddFields,
   JournalEntryUpdateFields: JournalEntryUpdateFields,
   RationalInput: RationalInput,
   JournalEntrySourceInput: JournalEntrySourceInput,
@@ -575,6 +593,7 @@ export type ResolversParentTypes = {
   PersonName: PersonName,
   PersonNameInput: PersonNameInput,
   Mutation: {},
+  BusinessAddFields: BusinessAddFields,
   JournalEntryUpdateFields: JournalEntryUpdateFields,
   RationalInput: RationalInput,
   JournalEntrySourceInput: JournalEntrySourceInput,
@@ -689,6 +708,7 @@ export type Lc_JournalEntryUpsertSourceResolvers<ContextType = Context, ParentTy
 };
 
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
+  addBusiness?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<MutationAddBusinessArgs, 'fields'>>,
   updateJournalEntry?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationUpdateJournalEntryArgs, 'id' | 'fields'>>,
   addJournalEntry?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationAddJournalEntryArgs, 'fields'>>,
   addPerson?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<MutationAddPersonArgs, 'fields'>>,

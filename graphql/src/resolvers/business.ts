@@ -1,4 +1,7 @@
-import {QueryResolvers, BusinessResolvers} from "../graphTypes";
+import {ObjectID} from "mongodb";
+
+import {QueryResolvers, MutationResolvers, BusinessResolvers
+} from "../graphTypes";
 import {departments as departmentsResolver} from "./departments";
 import {nodeFieldResolver} from "./utils/nodeResolver";
 
@@ -37,6 +40,35 @@ export const departments:BusinessResolvers["departments"] =
   const {id} = parent;
 
   return departmentsResolver({}, {fromParent:id}, context, info);
+
+}
+
+export const addBusiness:MutationResolvers["addBusiness"] = 
+  async (parent, args, context, info) =>
+{
+
+  const {db} = context;
+
+  const {fields:{name}} = args;
+
+  if(!name.trim()) {
+    throw new Error(`Mutation "addBusiness" name.`)
+  }
+
+  const {insertedCount, insertedId} = 
+    await db.collection("businesses").insertOne({name, verified:false});
+
+  if(insertedCount === 0) {
+    throw new Error(`Mutation "addBusiness" arguments "${JSON.stringify(args)}" failed.`);
+  }
+
+  const newBusiness = await db.collection("businesses").aggregate([
+    {$match:{_id:new ObjectID(insertedId)}},
+    {$limit:1},
+    {$addFields:{id:{$toString:"$_id"}}}
+  ]).toArray();
+
+  return newBusiness[0];
 
 }
 

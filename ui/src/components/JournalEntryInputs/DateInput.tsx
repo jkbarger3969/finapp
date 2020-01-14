@@ -6,13 +6,21 @@ import moment, { Moment } from 'moment';
 import MomentUtils from '@date-io/moment';
 
 import {Root} from "../../redux/reducers/root";
-import {setDateValue, clearDateValue
+import {setDateValue, clearDateValue, validateDate
 } from "../../redux/actions/journalEntryUpsert";
-import {getDate, isRequired } from "../../redux/selectors/journalEntryUpsert";
+import {getDate, isRequired, getDateError
+} from "../../redux/selectors/journalEntryUpsert";
 
 const inputProps = {
   inputMode:"numeric",
 } as const;
+
+interface SelectorResult {
+  date:Date | null;
+  required:boolean;
+  error:boolean;
+  errorMsg:string | null;
+}
 
 export interface DateInputProps {
   entryUpsertId: string;
@@ -27,13 +35,25 @@ const DateInput = function(props:DateInputProps) {
   
   const dispatch = useDispatch();
   
-  const {date, required} = useSelector<Root, {
-    date:Date | null, required:boolean}>((state) => ({
+  const {date, required, error, errorMsg
+  } = useSelector<Root,SelectorResult>((state) => {
+    
+    const error = getDateError(state, entryUpsertId);
+    
+    return {
       date:getDate(state, entryUpsertId),
-      required:isRequired(state, entryUpsertId)
-    }), shallowEqual);
+      required:isRequired(state, entryUpsertId),
+      error:!!error,
+      errorMsg:error?.message || null
+    }
+
+  }, shallowEqual);
   
   const value = useMemo(()=> date ? moment(date) : null ,[date]);
+
+  const validate = useCallback((event) => {
+    dispatch(validateDate(entryUpsertId));
+  }, [entryUpsertId, dispatch]);
 
   const onChange = useCallback((date:Moment | null) => {
       date?.isValid() ? dispatch(setDateValue(entryUpsertId, date.toDate())) 
@@ -41,7 +61,11 @@ const DateInput = function(props:DateInputProps) {
   }, [entryUpsertId, dispatch]);
 
   const dataPickerProps:KeyboardDatePickerProps = {
+    error,
+    helperText:errorMsg,
     required,
+    onBlur:validate,
+    onClose:validate as any,
     animateYearScrolling:true,
     disableToolbar:true,
     disableFuture:true,

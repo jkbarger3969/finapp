@@ -5,7 +5,15 @@ type Business {
   departments:[Department!]
 }
 
+input BusinessAddFields {
+  name:String!
+}
+
 extend type Query {
   businesses(searchByName:String):[Business!]!
   business(id:ID!):Business!
+}
+
+extend type Mutation {
+  addBusiness(fields:BusinessAddFields!):Business!
 }
