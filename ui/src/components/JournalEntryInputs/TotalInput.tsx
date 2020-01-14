@@ -1,11 +1,24 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import TextField, {TextFieldProps} from '@material-ui/core/TextField';
 import InputAdornment  from '@material-ui/core/InputAdornment';
-import Skeleton from '@material-ui/lab/Skeleton';
-import Fraction from 'fraction.js';
 
-import {Rational} from '../../apollo/graphTypes';
-import useJournalEntryUpsert from "./useJournalEntryUpsert";
+import {Root} from "../../redux/reducers/root";
+import {useDebounceDispatch} from "../../redux/hooks";
+import {setTotalInput, clearTotalInput, setTotalValue, clearTotalValue
+} from "../../redux/actions/journalEntryUpsert";
+import { getTotalInput, isRequired
+} from "../../redux/selectors/journalEntryUpsert";
+import { useSelector, shallowEqual } from 'react-redux';
+
+const inputProps = {
+  min:"0",
+  inputMode:"decimal",
+} as const;
+
+interface SelectorResult {
+  totalInput:string;
+  required:boolean;
+}
 
 export interface TotalInputProps {
   entryUpsertId:string;
@@ -18,22 +31,28 @@ const TotalInput = function(props:TotalInputProps) {
   
   const {entryUpsertId, autoFocus = false, helperText = false,
     variant = 'filled'} = props;
+  
+  const dispatch = useDebounceDispatch();
 
-  const {loading, error, upsert, update} = 
-    useJournalEntryUpsert(entryUpsertId);
+  const {totalInput, required} = useSelector<Root, SelectorResult>((state)=>({
+    totalInput:getTotalInput(state, entryUpsertId),
+    required:isRequired(state, entryUpsertId)
+  }), shallowEqual);
   
-  if(loading){
-    return <Skeleton variant="rect" height={56}/>;
-  } else if(error) {
-    console.error(error);
-    return <p>{error.message}</p>;
-  }
-  
-  const required = !(upsert?.fields?.id);
-  const totalInput = upsert?.inputValues?.totalInput;
+  const onChange = useCallback((event)=> {
+    const value = (event.target.value || "");
+    if(value) { 
+      dispatch(setTotalInput(entryUpsertId, value));
+      dispatch(setTotalValue(entryUpsertId, value * 1));
+    } else {
+      dispatch(clearTotalInput(entryUpsertId));
+      dispatch(clearTotalValue(entryUpsertId));
+    }
+
+  }, [dispatch]);
 
   const textFieldProps:TextFieldProps = {
-    value: totalInput || "",
+    value: totalInput,
     variant,
     required,
     helperText:helperText ? 'Transaction Total' : undefined,
@@ -41,31 +60,13 @@ const TotalInput = function(props:TotalInputProps) {
     label:"Total",
     name:"total",
     placeholder:"0.00",
-    onChange:(event)=> {
-      // Limit max number of decimal places
-      const value = (event.target.value || "").trim().split('.')
-        .map((val, i) => i === 0 ? val : val.substr(0,2)).join('.') ||  null;
-      // Convert input to number.  Note: Cannot use parseFloat, need NaN falsy
-      const parsedFloat = 1 * ((value || "") as any);
-      let totalInput:string | null = null;
-      let total:Rational | null = null;
-      if(parsedFloat) {
-        totalInput = value;
-        const {n:num, d:den} = new Fraction(parsedFloat.toFixed(2));
-        total = {num, den};
-      }
-      update.inputValues.totalInput(totalInput);
-      update.fields.total(total);
-    },
-    inputProps:{
-      min:"0",
-      inputMode:"decimal",
-    },
-    InputProps:{
+    onChange,
+    inputProps,
+    InputProps:useMemo(() => ({
       type:"number",
       autoFocus,
       startAdornment: <InputAdornment position="start">$</InputAdornment>,
-    }
+    }),[autoFocus])
   }
 
   return <TextField {...textFieldProps} />;

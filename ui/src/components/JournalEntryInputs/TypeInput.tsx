@@ -1,5 +1,5 @@
-import React, {useMemo, useCallback, ChangeEvent} from 'react';
-import {useSelector, useDispatch, shallowEqual} from "react-redux";
+import React, {useMemo, useCallback} from 'react';
+import {useSelector, shallowEqual} from "react-redux";
 import {useQuery} from '@apollo/react-hooks';
 import FormControl, {FormControlProps} from '@material-ui/core/FormControl';
 import InputLabel from '@material-ui/core/InputLabel';
@@ -11,6 +11,7 @@ import gql from 'graphql-tag';
 
 import {TypeInput_1Query} from '../../apollo/graphTypes';
 import {Root} from "../../redux/reducers/root";
+import {useDebounceDispatch} from "../../redux/hooks";
 import {setTypeValue, clearTypeValue
 } from "../../redux/actions/journalEntryUpsert";
 import { getType, isRequired
@@ -28,7 +29,7 @@ const TYPE_INPUT_QUERY = gql`
 
 interface SelectorResult {
   required:boolean;
-  value:string | null;
+  value:string;
 }
 
 export interface TypeInputProps {
@@ -41,7 +42,7 @@ const TypeInput = function(props:TypeInputProps) {
 
   const {entryUpsertId, autoFocus = false, variant = "filled"} = props;
 
-  const dispatch = useDispatch();
+  const dispatch = useDebounceDispatch();
 
   const {loading, error, data} 
     = useQuery<TypeInput_1Query>(TYPE_INPUT_QUERY);

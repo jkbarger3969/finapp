@@ -1,5 +1,5 @@
 import React, {useRef, useMemo, useCallback} from "react";
-import {useSelector, useDispatch, shallowEqual} from "react-redux";
+import {useSelector, useDispatch} from "react-redux";
 import {useQuery} from "@apollo/react-hooks";
 import TextField, {TextFieldProps} from "@material-ui/core/TextField";
 import Chip from "@material-ui/core/Chip";
@@ -17,8 +17,8 @@ import {BusinessSrcOptsInput_1Query as BusinessSrcOptsInputQuery,
   JournalEntrySourceType, JournalEntrySourceInput
 } from "../../../apollo/graphTypes";
 import {Root} from "../../../redux/reducers/root";
-import {setSrcInput, clearSrcInput, clearSrcValue, setSrcOpen,
-  setSrcValueAndClearInput
+import {useDebounceDispatch} from "../../../redux/hooks";
+import {setSrcInput, clearSrcInput, clearSrcValue, setSrcOpen, setSrcValue
 } from "../../../redux/actions/journalEntryUpsert";
 import {getSrcInput, getSrc, isRequired, isSrcOpen, getSrcChain
 } from "../../../redux/selectors/journalEntryUpsert";
@@ -102,7 +102,8 @@ const BusinessSrc = function(props:BusinessSrcProps) {
   const {entryUpsertId, autoFocus, variant} = props;
 
   // const classes = styles();
-  const dispatch = useDispatch();
+  // const dispatch = useDispatch();
+  const dispatch = useDebounceDispatch();
   
   const {srcInput, src, bizSrc, srcChain, isSrcSet, required, open
   } = useSelector<Root, SelectorResult>((state) => {
@@ -121,7 +122,7 @@ const BusinessSrc = function(props:BusinessSrcProps) {
       open:isSrcOpen(state, entryUpsertId)
     };
 
-  }, shallowEqual);
+  }, isEqual);
 
   const onBlur = useCallback(() => dispatch(setSrcOpen(entryUpsertId, false)),[
     entryUpsertId, 
@@ -200,6 +201,7 @@ const BusinessSrc = function(props:BusinessSrcProps) {
         opt.parent.id === srcVal.id && test.test(opt.name));
     }
     
+    // No src ALWAYS bizOpts
     return bizOpts.filter((opt:any) => test.test(opt.name));
   
   },[srcInput, srcVal, bizOpts, deptOpts]);
@@ -264,11 +266,12 @@ const BusinessSrc = function(props:BusinessSrcProps) {
       
       value = Array.isArray(value) ? value : [value];
 
-      dispatch(setSrcValueAndClearInput(entryUpsertId, value.map((src, i) =>({
+      dispatch(setSrcValue(entryUpsertId, value.map((src, i) =>({
         sourceType:i === 0 ? 
           JournalEntrySourceType.Business : JournalEntrySourceType.Department,
         id:src.id
       }))));
+      dispatch(clearSrcInput(entryUpsertId));
       
     } else {
       

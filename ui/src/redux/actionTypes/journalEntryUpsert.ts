@@ -1,6 +1,7 @@
 import {Action} from "./types";
-import {JournalEntrySourceInput, JournalEntrySourceType
+import {JournalEntrySourceInput, JournalEntrySourceType, RationalInput
 } from "../../apollo/graphTypes";
+import {SubmitStatus} from "../reducers/journalEntryUpserts";
 
 type SetInputAction<A> = Action<A, {upsertId:string, input:string}>;
 type SetValueAction<A, T> = Action<A, {upsertId:string, value:T}>;
@@ -14,11 +15,21 @@ export type Create = Action<typeof CREATE, {upsertId:string, entryId?:string}>;
 export const CANCEL = "journalEntryUpsert/CANCEL";
 export type Cancel = Action<typeof CANCEL, {upsertId:string}>;
 
-export const SUBMIT = "journalEntryUpsert/SUBMIT";
-export type Submit = Action<typeof SUBMIT, {upsertId:string}>;
-
 export const CLEAR = "journalEntryUpsert/CLEAR";
 export type Clear = ClearAction<typeof CLEAR>;
+
+// Submit
+export const SET_SUBMIT_STATUS = "journalEntryUpsert/SUBMIT";
+export type SetSubmitStatus = 
+  Action<typeof SET_SUBMIT_STATUS, {upsertId:string, status:SubmitStatus}>;
+
+export const SET_SUBMIT_ERROR = "journalEntryUpsert/SET_SUBMIT_ERROR";
+export type SetSubmitError = 
+  Action<typeof SET_SUBMIT_ERROR, {upsertId:string, error:Error}>;
+
+export const CLEAR_SUBMIT_ERROR = "journalEntryUpsert/CLEAR_SUBMIT_ERROR";
+export type ClearSubmitError = 
+  Action<typeof CLEAR_SUBMIT_ERROR, {upsertId:string}>;
 
 // Date
 export const SET_DATE_INPUT = "journalEntryUpsert/SET_DATE_INPUT";
@@ -40,23 +51,38 @@ export const CLEAR_DATE_ERROR = "journalEntryUpsert/CLEAR_DATE_ERROR";
 export type ClearDateError = ClearAction<typeof CLEAR_DATE_ERROR>;
 
 // Department
+export const SET_DEPT_INPUT = "journalEntryUpsert/SET_DEPT_INPUT";
+export type SetDeptInput = SetInputAction<typeof SET_DEPT_INPUT>;
 
-export const SEARCH_DEPT = "journalEntryUpsert/SEARCH_DEPT";
-export type SearchDept = 
-  Action<typeof SEARCH_DEPT, {upsertId:string, search:string}>;
-export const CLEAR_SEARCH_DEPT = 
-  "journalEntryUpsert/CLEAR_SEARCH_DEPT";
-export type ClearSearchDept =
-  Action<typeof CLEAR_SEARCH_DEPT, {upsertId:string}>;
+export const CLEAR_DEPT_INPUT = "journalEntryUpsert/CLEAR_DEPT_INPUT";
+export type ClearDeptInput = ClearAction<typeof CLEAR_DEPT_INPUT>;
 
-export const SET_DEPT = "journalEntryUpsert/SET_DEPT";
-export const CLEAR_DEPT = "journalEntryUpsert/CLEAR_DEPT";
+export const SET_DEPT_VALUE = "journalEntryUpsert/SET_DEPT_VALUE";
+export type SetDeptValue = SetValueAction<typeof SET_DEPT_VALUE, string[]>;
+
+export const CLEAR_DEPT_VALUE = "journalEntryUpsert/CLEAR_DEPT_VALUE";
+export type ClearDeptValue = ClearAction<typeof CLEAR_DEPT_VALUE>;
+
+export const SET_DEPT_ERROR = "journalEntryUpsert/SET_DEPT_ERROR";
+export type SetDeptError = SetErrorAction<typeof SET_DEPT_ERROR>;
+
+export const CLEAR_DEPT_ERROR = "journalEntryUpsert/CLEAR_DEPT_ERROR";
+export type ClearDeptError = ClearAction<typeof CLEAR_DEPT_ERROR>;
+
+export const SET_DEPT_OPEN = "journalEntryUpsert/SET_DEPT_OPEN";
+export type SetDeptOpen = 
+  Action<typeof SET_DEPT_OPEN, {upsertId:string, open:boolean}>;
 
 // Type
 export const SET_TYPE_VALUE = "journalEntryUpsert/SET_TYPE_VALUE";
 export type SetTypeValue = SetValueAction<typeof SET_TYPE_VALUE, string>;
 export const CLEAR_TYPE_VALUE = "journalEntryUpsert/CLEAR_TYPE_VALUE";
 export type ClearTypeValue = ClearAction<typeof CLEAR_TYPE_VALUE>;
+
+export const SET_TYPE_ERROR = "journalEntryUpsert/SET_TYPE_ERROR";
+export type SetTypeError = SetErrorAction<typeof SET_TYPE_ERROR>;
+export const CLEAR_TYPE_ERROR = "journalEntryUpsert/CLEAR_TYPE_ERROR";
+export type ClearTypeError = ClearAction<typeof CLEAR_TYPE_ERROR>;
 
 export const SET_TYPE_OPEN = "journalEntryUpsert/CLEAR_TYPE_VALUE";
 
@@ -91,9 +117,35 @@ export type SetSrcOpen =
   Action<typeof SET_SRC_OPEN, {upsertId:string, open:boolean}>;
 
 // Payment Method
-export const SET_PAY_METHOD = "journalEntryUpsert/SET_PAY_METHOD";
-export const CLEAR_PAY_METHOD = "journalEntryUpsert/CLEAR_PAY_METHOD";
+export const SET_PAY_METHOD_VALUE = "journalEntryUpsert/SET_PAY_METHOD_VALUE";
+export type SetPayMethodValue = 
+  SetValueAction<typeof SET_PAY_METHOD_VALUE, string>;
+export const CLEAR_PAY_METHOD_VALUE = 
+  "journalEntryUpsert/CLEAR_PAY_METHOD_VALUE";
+export type ClearPayMethodValue = ClearAction<typeof CLEAR_PAY_METHOD_VALUE>;
+
+export const SET_PAY_METHOD_ERROR = "journalEntryUpsert/SET_PAY_METHOD_ERROR";
+export type SetPayMethodError = SetErrorAction<typeof SET_PAY_METHOD_ERROR>;
+export const CLEAR_PAY_METHOD_ERROR 
+  = "journalEntryUpsert/CLEAR_PAY_METHOD_ERROR";
+export type ClearPayMethodError = ClearAction<typeof CLEAR_PAY_METHOD_ERROR>;
 
 // Total
-export const SET_TOTAL = "journalEntryUpsert/SET_TOTAL";
-export const CLEAR_TOTAL = "journalEntryUpsert/CLEAR_TOTAL";
+export const SET_TOTAL_INPUT = "journalEntryUpsert/SET_TOTAL_INPUT";
+export type SetTotalInput = SetInputAction<typeof SET_TOTAL_INPUT>;
+
+export const CLEAR_TOTAL_INPUT = "journalEntryUpsert/CLEAR_TOTAL_INPUT";
+export type ClearTotalInput = ClearAction<typeof CLEAR_TOTAL_INPUT>;
+
+export const SET_TOTAL_VALUE = "journalEntryUpsert/SET_TOTAL_VALUE";
+export type SetTotalValue = SetValueAction<typeof SET_TOTAL_VALUE, 
+  RationalInput>;
+
+export const CLEAR_TOTAL_VALUE = "journalEntryUpsert/CLEAR_TOTAL_VALUE";
+export type ClearTotalValue = ClearAction<typeof CLEAR_TOTAL_VALUE>;
+
+export const SET_TOTAL_ERROR = "journalEntryUpsert/SET_TOTAL_ERROR";
+export type SetTotalError = SetErrorAction<typeof SET_TOTAL_ERROR>;
+
+export const CLEAR_TOTAL_ERROR = "journalEntryUpsert/CLEAR_TOTAL_ERROR";
+export type ClearTotalError = ClearAction<typeof CLEAR_TOTAL_ERROR>;

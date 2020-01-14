@@ -1,6 +1,6 @@
 import React, { ReactElement } from "react";
+import {useApolloClient} from "@apollo/react-hooks";
 import {useDispatch} from "react-redux";
-import {useMutation} from "@apollo/react-hooks";
 import Fab from "@material-ui/core/Fab";
 import Tooltip from "@material-ui/core/Tooltip";
 import {Add, Error, Cancel} from "@material-ui/icons/";
@@ -13,7 +13,7 @@ import {Lc_JournalEntryUpsertSubmitStatus as SubmitStatus
 } from "../../../apollo/graphTypes";
 import useJournalEntryUpsert 
   from "../../JournalEntryInputs/useJournalEntryUpsert";
-import {create as createR, cancel as cancelR
+import {create as createR, cancel as cancelR, submit
 } from "../../../redux/actions/journalEntryUpsert";
 
 const styles = makeStyles((theme)=> {
@@ -35,6 +35,8 @@ const JournalPAB = function(props) {
   const {entryUpsertId} = props;
 
   const classes = styles();
+
+  const client = useApolloClient();
 
   const dispatch = useDispatch();
 
@@ -75,7 +77,7 @@ const JournalPAB = function(props) {
       case SubmitStatus.NotSubmitted:
         tip = "Cancel";
         icon = <Cancel />;
-        onClick = () => { cancel(); dispatch(cancelR(entryUpsertId)); };
+        onClick = () => { /* cancel(); */ dispatch(submit(entryUpsertId, client)); };
         break;
       case SubmitStatus.Submitting:
         tip = "Submitting";

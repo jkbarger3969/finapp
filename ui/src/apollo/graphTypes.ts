@@ -404,17 +404,36 @@ export type BusinessSrcBizOpts_1Fragment = { __typename: 'Business', id: string,
 
 export type BusinessSrcDeptOpts_1Fragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
 
+export type PersonSrcOpt_1Fragment = { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } };
+
 export type PeopleSrcOpts_1QueryVariables = {
   searchByName: PersonNameInput
 };
 
 
-export type PeopleSrcOpts_1Query = { __typename?: 'Query', people: Array<{ __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } }> };
+export type PeopleSrcOpts_1Query = { __typename?: 'Query', people: Array<(
+    { __typename?: 'Person' }
+    & PersonSrcOpt_1Fragment
+  )> };
 
 export type TypeInput_1QueryVariables = {};
 
 
 export type TypeInput_1Query = { __typename?: 'Query', journalEntryTypes: Array<{ __typename: 'JournalEntryType', id: string, type: string }> };
+
+export type AddPerson_1MutationVariables = {
+  fields: PersonAddFields
+};
+
+
+export type AddPerson_1Mutation = { __typename?: 'Mutation', addPerson: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } };
+
+export type AddJournalEntry_2MutationVariables = {
+  fields: JournalEntryAddFields
+};
+
+
+export type AddJournalEntry_2Mutation = { __typename?: 'Mutation', addJournalEntry: { __typename: 'JournalEntry', id: string } };
 
 
 

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, {useMemo, useCallback} from 'react';
+import {useSelector, shallowEqual} from "react-redux";
 import {useQuery} from '@apollo/react-hooks';
 import FormControl, {FormControlProps} from '@material-ui/core/FormControl';
 import InputLabel from '@material-ui/core/InputLabel';
@@ -8,9 +9,14 @@ import Skeleton from '@material-ui/lab/Skeleton';
 import {capitalCase} from 'change-case';
 import gql from 'graphql-tag';
 
-import useJournalEntryUpsert from "./useJournalEntryUpsert";
 import {PayMethodInput_1Query as PayMethodInputQuery
 } from '../../apollo/graphTypes';
+import {Root} from "../../redux/reducers/root";
+import {useDebounceDispatch} from "../../redux/hooks";
+import {setPayMethodValue, clearPayMethodValue
+} from "../../redux/actions/journalEntryUpsert";
+import { getPayMethod, isRequired
+} from "../../redux/selectors/journalEntryUpsert";
 
 const PAY_METHOD_INPUT_QUERY = gql`
   query PayMethodInput_1 {
@@ -22,6 +28,11 @@ const PAY_METHOD_INPUT_QUERY = gql`
   }
 `;
 
+interface SelectorResult {
+  required:boolean;
+  value:string;
+}
+
 export interface PaymentMethodInputProps {
   entryUpsertId: string;
   autoFocus?:boolean;
@@ -32,44 +43,52 @@ const PaymentMethod = function(props:PaymentMethodInputProps) {
 
   const {entryUpsertId, autoFocus = false, variant = "filled"} = props;
 
-  const {loading:loading1, error:error1, upsert, update} 
-    = useJournalEntryUpsert(entryUpsertId);
+  const dispatch = useDebounceDispatch();
 
-  const {loading:loading2, error:error2, data} 
+  const {value, required} = 
+    useSelector<Root, SelectorResult>((state)=>({
+      required:isRequired(state, entryUpsertId),
+      value:getPayMethod(state, entryUpsertId)
+    }), shallowEqual);
+
+  const {loading, error, data} 
     = useQuery<PayMethodInputQuery>(PAY_METHOD_INPUT_QUERY);
+  
+  const paymentMethods = useMemo(()=>data?.paymentMethods || [],[data]);
 
-  if(loading1 || loading2){
-    return <Skeleton variant="rect" height={56}/>;
-  } else if(error1 || error2) {
-    console.error(error1 || error2);
-    return <p>{(error1 || error2)?.message}</p>;
-  }
-
-  const paymentMethods = data?.paymentMethods || [];
-  const required = !(upsert?.fields?.id);
-  const value = upsert?.fields?.paymentMethod || "";
-
-  const formControlProps:FormControlProps = {
+  const formControlProps:FormControlProps = useMemo(()=>({
     required,
     fullWidth:true,
     variant
-  };
+  }),[required, variant]);
+
+  const onChange = useCallback((event) => {
+    const value = event?.target?.value as string || null;
+    if(value) {
+      dispatch(setPayMethodValue(entryUpsertId, value));
+    } else {
+      dispatch(clearPayMethodValue(entryUpsertId));
+    }
+  },[dispatch, entryUpsertId]);
+
+  const children = useMemo(()=>paymentMethods.map(({id, method})=>(
+    <MenuItem {...{
+      value:id,
+      key:id,
+      children:capitalCase(method)
+    } as MenuItemProps as any }/>)),[paymentMethods]);
+
+  if(loading){
+    return <Skeleton variant="rect" height={56}/>;
+  } else if(error) {
+    console.error(error);
+    return <p>{error?.message}</p>;
+  }
   
   const selectProps:SelectProps = {
     autoFocus,
-    children:(paymentMethods || []).map(({id, method})=>(<MenuItem 
-      {...{
-        value:id,
-        key:id,
-        children:capitalCase(method)
-      } as MenuItemProps as any}
-    />)),
-    onChange:(event)=> {
-      update.fields.paymentMethod((event?.target?.value) as string || null);
-    },
-    MenuProps:{
-      disablePortal:true
-    },
+    children,
+    onChange,
     value
   };
 

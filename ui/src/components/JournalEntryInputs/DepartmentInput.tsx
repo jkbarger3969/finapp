@@ -1,4 +1,5 @@
-import React, {useMemo, useState} from 'react';
+import React, {useMemo, useCallback} from "react";
+import {useSelector} from "react-redux";
 import {useQuery} from '@apollo/react-hooks';
 import TextField, {TextFieldProps} from '@material-ui/core/TextField';
 import Chip from '@material-ui/core/Chip';
@@ -6,14 +7,19 @@ import Box from '@material-ui/core/Box';
 import Autocomplete, {AutocompleteProps, RenderInputParams
 } from '@material-ui/lab/Autocomplete';
 import ChevronRight from '@material-ui/icons/ChevronRight';
-import Skeleton from '@material-ui/lab/Skeleton';
 import gql from 'graphql-tag';
+import isEqual from "lodash.isequal";
 
-import useJournalEntryUpsert from "./useJournalEntryUpsert";
 import {DeptInputOpts_1Query as DeptInputOptsQuery, 
   DeptInputOpts_1QueryVariables as DeptInputOptsQueryVariables,
   DeptInputOptsDept_1Fragment as DeptInputOptsDeptFragment
 } from '../../apollo/graphTypes';
+import {Root} from "../../redux/reducers/root";
+import {useDebounceDispatch} from "../../redux/hooks";
+import {setDeptInput, clearDeptInput, clearDeptValue, setDeptOpen, setDeptValue
+} from "../../redux/actions/journalEntryUpsert";
+import {getDeptInput, getDept, isRequired, isDeptOpen, getDeptChain
+} from "../../redux/selectors/journalEntryUpsert";
 
 const DEPT_INPUT_OPTS_QUERY = gql`
   query DeptInputOpts_1($fromParent:ID) {
@@ -37,17 +43,12 @@ const DEPT_INPUT_OPTS_QUERY = gql`
   }
 `;
 
-const leadingWS = /^\s+/;
-
 const rootParentId = "5dc4b09bcf96e166daaa0090";
 const variables = {fromParent:rootParentId};
 
-export interface DepartmentInputProps {
-  entryUpsertId: string;
-  autoFocus?:boolean;
-  variant?:"filled" | "outlined";
-}
-
+// Static cbs for AutocompleteProps
+const filterOptions = (opts) => opts;
+const getOptionLabel = (opt) => opt.name;
 const renderTags:AutocompleteProps["renderTags"] = (
   values: DeptInputOptsDeptFragment[], getTagProps) => 
 {
@@ -85,41 +86,143 @@ const getDeptValue = (deptId:string | null,
   return null;
 }
 
+interface SelectorResult {
+  deptInput:string;
+  dept:string | null;
+  deptChain:string[];
+  required:boolean;
+  open:boolean;
+}
+
+export interface DepartmentInputProps {
+  entryUpsertId: string;
+  autoFocus?:boolean;
+  variant?:"filled" | "outlined";
+}
+
 const DepartmentInput = function(props:DepartmentInputProps) 
 {
   
   const {entryUpsertId, autoFocus = false, variant = 'filled'} = props;
   
-  const {loading:loading1, error:error1, upsert, update, write}
-    = useJournalEntryUpsert(entryUpsertId);
+  const dispatch = useDebounceDispatch();
 
-  const {loading:loading2, error:error2, data} = 
+  const onBlur = useCallback(() => dispatch(setDeptOpen(entryUpsertId, false)),[
+    entryUpsertId, 
+    dispatch
+  ]);
+  const onFocus = useCallback(() => dispatch(setDeptOpen(entryUpsertId, true)),[
+    entryUpsertId, 
+    dispatch
+  ]);
+  const onClose = useCallback(() => dispatch(setDeptOpen(entryUpsertId, false)),[
+    entryUpsertId, 
+    dispatch
+  ]);
+  const onOpen = useCallback(() => dispatch(setDeptOpen(entryUpsertId, true)),[
+    entryUpsertId, 
+    dispatch
+  ]);
+
+  const {
+    deptInput, dept, deptChain, required, open
+  } = useSelector<Root, SelectorResult>((state)=>{
+
+    const dept = getDept(state, entryUpsertId);
+
+    const deptChain = getDeptChain(state, entryUpsertId);
+
+    return {
+      deptInput:getDeptInput(state, entryUpsertId),
+      dept,
+      deptChain,
+      required:isRequired(state, entryUpsertId),
+      open:isDeptOpen(state, entryUpsertId)
+    };
+
+  },isEqual);
+
+  const {loading, error, data} = 
     useQuery<DeptInputOptsQuery, DeptInputOptsQueryVariables>(
       DEPT_INPUT_OPTS_QUERY,{
       variables
     });
   
-  const [open, setOpen] = useState(false);
-
-  
-  const required = !(upsert?.fields?.id);
-  const selectedDepts = upsert?.fields?.department || [];
-  const deptId = selectedDepts[selectedDepts.length -1] || null;
-  
-  const deptInput = upsert?.inputValues?.deptInput || null;
-  
   const deptOpts = data?.deptOpts || [];
-  
-  const deptVal = 
-    useMemo(()=>getDeptValue(deptId, deptOpts),[deptOpts, deptId]);
-  
 
-  if(loading1){
-    return <Skeleton variant="rect" height={56}/>;
-  } else if(error1 || error2) {
-    console.error(error1 || error2);
-    return <p>{(error1 || error2)?.message}</p>;
-  }
+  const deptVal = useMemo(()=>getDeptValue(dept, deptOpts),[dept, deptOpts]);
+
+  const options = useMemo(()=>{
+    
+    if(!deptInput) {
+      return dept ? deptOpts.filter((opt)=> opt.parent.id === dept) : deptOpts;
+    }
+
+    const test = new RegExp(`(^|\\s)${deptInput}`,'i');
+
+    if(dept) {
+      return deptOpts.filter((opt) => 
+        opt.parent.id === dept && test.test(opt.name));
+    }
+
+    return deptOpts.filter((opt) => test.test(opt.name));
+
+  },[dept, deptInput, deptOpts]);
+
+  const hasOptions = options.length > 0;
+
+  const value = useMemo(()=>{
+
+    if(!deptVal) {
+      return null;
+    }
+
+    const value:typeof deptOpts = [];
+
+    // deptVal is ALWAYS the last dept in the chain
+    for(let i = 0, len = deptChain.length -1; i < len; i++) {
+      value.push(
+        getDeptValue(deptChain[i], deptOpts) as DeptInputOptsDeptFragment);
+    }
+
+    value.push(deptVal);
+
+    if(value.length === 1) {
+      return hasOptions ? value : value[0];
+    }
+
+    return value;
+
+  },[deptOpts, deptChain, deptVal, hasOptions]);
+
+  const multiple = Array.isArray(value);
+  
+  type Value = typeof value;
+
+  const onChange = useCallback((event, value:Value) => {
+
+    if(value) {
+      
+      value = Array.isArray(value) ? value : [value];
+
+      dispatch(setDeptValue(entryUpsertId, value.map((dept, i) => dept.id)));
+      dispatch(clearDeptInput(entryUpsertId));
+      
+    } else {
+      
+      dispatch(clearDeptValue(entryUpsertId));
+
+    }
+
+  },[entryUpsertId, dispatch]);
+
+  const onInputChange = useCallback((event:any, value:string) => {
+    if(value) {
+      dispatch(setDeptInput(entryUpsertId, value));
+    } else {
+      dispatch(clearDeptInput(entryUpsertId));
+    }
+  },[dispatch, entryUpsertId]);
 
   const textFieldProps:TextFieldProps = {
     required,
@@ -128,208 +231,84 @@ const DepartmentInput = function(props:DepartmentInputProps)
     label:"Department",
     variant
   };
+  
+  const renderInput = useCallback((params:RenderInputParams) => {
+    return <TextField {...textFieldProps} {...params}/>
+  },[textFieldProps]);
 
   const autocompleteProps:AutocompleteProps = {
-    loading:loading2,
+    loading,
+    multiple,
     autoComplete:true,
     disableCloseOnSelect:true,
-    getOptionLabel:(opt) => opt.name,
-    filterOptions:(opts) => {
-      if(!deptInput) {
-        return opts;
-      }
-      const test = new RegExp(`(^|\\s)${deptInput.trim().split(' ')
-        .join('\\s')}`,'i');
-      return opts.filter((opt) => test.test(opt.name));
-    },
+    getOptionLabel,
+    filterOptions,
     open,
-    renderInput:(params:RenderInputParams) => {
-      return <TextField {...textFieldProps} {...params}/>
-    },
+    renderInput,
+    options,
+    onChange,
+    onInputChange,
+    value,
+    inputValue:deptInput
   };
   
+  if(error) {
+    console.error(error);
+    return <p>{error.message}</p>;
+  }
+
   // No selected values
   if(!deptVal) {
     
     autocompleteProps.autoHighlight = true;
     autocompleteProps.autoSelect = true;
-    autocompleteProps.onChange = (event, dept:DeptInputOptsDeptFragment) => {
-      // update.inputValues.deptInput(null);
-      if(dept) {
-        write({
-          inputValues:{
-            deptInput:null,
-          },
-          fields:{
-            department:[dept.id]
-          }
-        },"replace", true);
-      } else {
-        write({
-          inputValues:{
-            deptInput:null,
-          },
-          fields:{
-            department:[]
-          }
-        },"replace", true);
-      }
-    }
-    autocompleteProps.onBlur = () => setOpen(false);
-    autocompleteProps.onFocus = () => setOpen(true);
-    autocompleteProps.onClose = () => setOpen(false);
-    autocompleteProps.onOpen = () => setOpen(true);
-    autocompleteProps.onInputChange = (event, value:string | null, reason) => {
-      value = value?.replace(leadingWS, "") || null;
-      write({
-        inputValues:{
-          deptInput:value,
-        }
-      },"replace", true);
-    }
-    autocompleteProps.options = 
-      deptOpts.filter(({parent}) => parent.id === rootParentId);
-    autocompleteProps.inputValue = deptInput || "";
-    autocompleteProps.value = null;
+    autocompleteProps.onBlur = onBlur;
+    autocompleteProps.onFocus = onFocus;
+    autocompleteProps.onClose = onClose;
+    autocompleteProps.onOpen = onOpen;
   
   // Only ROOT department is selected
-  } else if(selectedDepts.length === 1) {
-
-    const options = deptOpts.filter(({parent}) => parent.id === deptVal.id);
-
-    autocompleteProps.inputValue = deptInput || "";
-
-    // Has NO sub-depts
-    if(options.length === 0) {
-
-      // Change can ONLY be cleared
-      autocompleteProps.onChange = (event) => {
-        update.fields.clearDepartments();
-      }
-      autocompleteProps.onInputChange = (event, value:string | null, reason) => 
-      {
-        value = value?.replace(leadingWS, "") || null;
-        if(value !== deptVal.name.replace(leadingWS, "")) {
-          update.fields.clearDepartments();
-        }
-        update.inputValues.deptInput(value);   
-      }
-      autocompleteProps.open = false;
-      autocompleteProps.value = deptVal;
+  } else if(deptChain.length === 1) {
 
     // Has sub-depts
-    } else {
+    if(hasOptions) {
       
       autocompleteProps.autoHighlight = true;
-      autocompleteProps.multiple = true;
-      autocompleteProps.onChange = (event,
-        depts:DeptInputOptsDeptFragment[] | null) => 
-      {
-        depts = depts || null;
-        // update.inputValues.deptInput(null);
-        if(depts) {
-          write({
-            inputValues:{
-              deptInput:null
-            },
-            fields:{
-              department:depts.map(({id})=>id)
-            }
-          },"replace", true);
-          // update.fields.replaceDepartments(depts.map(({id})=>id));
-        // Clear input and departments 
-        } else {
-          write({
-            inputValues:{
-              deptInput:null,
-            },
-            fields:{
-              department:[]
-            }
-          },"replace", true);
-        }
-      }
-      autocompleteProps.onInputChange = (event, value:string | null, reason) => 
-      {
-        if(reason === "reset") {
-          return;
-        }
-        value = value?.replace(leadingWS, "") || null;
-        write({
-          inputValues:{
-            deptInput:value,
-          }
-        },"replace", true);
-      }
-      autocompleteProps.onBlur = () => setOpen(false);
-      autocompleteProps.onFocus = () => setOpen(true);
-      autocompleteProps.onClose = () => setOpen(false);
-      autocompleteProps.onOpen = () => setOpen(true);
+      autocompleteProps.onBlur = onBlur;
+      autocompleteProps.onFocus = onFocus;
+      autocompleteProps.onClose = onClose;
+      autocompleteProps.onOpen = onOpen;
       autocompleteProps.options = options;
       autocompleteProps.renderTags = renderTags;
-      autocompleteProps.value = 
-        selectedDepts.map((deptId) => getDeptValue(deptId, deptOpts));
-      
+
+    // Has NO sub-depts
+    } else {
+
+      autocompleteProps.inputValue = deptVal.name;
+      autocompleteProps.open = false;
+
     }
 
   } else {
 
-    const options = deptOpts.filter(({parent}) => parent.id === deptVal.id);
-
     // Has NO sub-depts
-    if(options.length === 0) {
+    if(hasOptions) {
       
-      autocompleteProps.disabled = true;
-      autocompleteProps.inputValue = "";
-      autocompleteProps.multiple = true;
-      autocompleteProps.onChange = (event,
-        depts:DeptInputOptsDeptFragment[] | null) => 
-      {
-        depts = depts || [];
-        if(depts) {
-          update.fields.replaceDepartments(depts.map(({id})=>id));
-        } else {
-          update.fields.clearDepartments();
-        }
-      }
-      autocompleteProps.open = false;
+      autocompleteProps.autoHighlight = true;
+      autocompleteProps.onBlur = onBlur;
+      autocompleteProps.onFocus = onFocus;
+      autocompleteProps.onClose = onClose;
+      autocompleteProps.onOpen = onOpen;
+      autocompleteProps.options = options
       autocompleteProps.renderTags = renderTags;
-      autocompleteProps.value = 
-        selectedDepts.map((deptId) => getDeptValue(deptId, deptOpts));
     
     // Has sub-depts
     } else {
       
-      autocompleteProps.autoHighlight = true;
-      autocompleteProps.inputValue = deptInput || "";
-      autocompleteProps.multiple = true;
-      autocompleteProps.onChange = (event,
-        depts:DeptInputOptsDeptFragment[] | null) => 
-      {
-        depts = depts || null;
-        update.inputValues.deptInput(null);
-        if(depts) {
-          update.fields.replaceDepartments(depts.map(({id})=>id));
-        } else {
-          update.fields.clearDepartments();
-        }
-      }
-      autocompleteProps.onInputChange = (event, value:string | null, reason) => 
-      {
-        if(reason === "reset") {
-          return;
-        }
-        value = value?.replace(leadingWS, "") || null;
-        update.inputValues.deptInput(value);
-      }
-      autocompleteProps.onBlur = () => setOpen(false);
-      autocompleteProps.onFocus = () => setOpen(true);
-      autocompleteProps.onClose = () => setOpen(false);
-      autocompleteProps.onOpen = () => setOpen(true);
-      autocompleteProps.options = options
+      autocompleteProps.disabled = true;
+      autocompleteProps.inputValue = "";
+      autocompleteProps.open = false;
       autocompleteProps.renderTags = renderTags;
-      autocompleteProps.value = 
-        selectedDepts.map((deptId) => getDeptValue(deptId, deptOpts));
 
     }
 

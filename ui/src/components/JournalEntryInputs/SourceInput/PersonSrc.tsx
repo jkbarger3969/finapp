@@ -1,6 +1,6 @@
 import React, {useRef, useMemo, useCallback} from 'react';
-import {useSelector, useDispatch, shallowEqual} from "react-redux";
-import {useQuery} from '@apollo/react-hooks';
+import {useSelector, shallowEqual} from "react-redux";
+import {useQuery, useApolloClient} from '@apollo/react-hooks';
 import { makeStyles, createStyles, Theme } from '@material-ui/core';
 import TextField, {TextFieldProps} from '@material-ui/core/TextField';
 import Autocomplete, {AutocompleteProps, RenderInputParams
@@ -10,25 +10,34 @@ import isEqual from "lodash.isequal";
 
 import {PeopleSrcOpts_1Query as PeopleSrcOptsQuery,
   PeopleSrcOpts_1QueryVariables as PeopleSrcOptsQueryVariables,
-  JournalEntrySourceType
+  JournalEntrySourceType, JournalEntrySourceInput,
+  PersonSrcOpt_1Fragment as PersonSrcOptFragment
 } from '../../../apollo/graphTypes';
 import {Root} from "../../../redux/reducers/root";
+import {useDebounceDispatch} from "../../../redux/hooks";
 import {setSrcInput, clearSrcInput, setSrcValue, clearSrcValue,
 } from "../../../redux/actions/journalEntryUpsert";
 import {getSrcInput, getSrc, isRequired
 } from "../../../redux/selectors/journalEntryUpsert";
 
+const PERSON_SRC_OPT_FRAGMENT = gql`
+  fragment PersonSrcOpt_1Fragment on Person {
+    __typename
+    id
+    name {
+      first
+      last
+    }
+  }
+`;
+
 const PEOPLE_SRC_OPTS_QUERY = gql`
   query PeopleSrcOpts_1($searchByName:PersonNameInput!) {
     people(searchByName:$searchByName){
-      __typename
-      id
-      name {
-        first
-        last
-      }
+      ...PersonSrcOpt_1Fragment
     }
   }
+  ${PERSON_SRC_OPT_FRAGMENT}
 `;
 
 const styles = makeStyles((theme:Theme) => createStyles({
@@ -37,9 +46,10 @@ const styles = makeStyles((theme:Theme) => createStyles({
   },
 }));
 
-type PersonValue = PeopleSrcOptsQuery["people"][0] | null
+type PersonValue = PersonSrcOptFragment | null
 
 interface SelectorResult {
+  src:JournalEntrySourceInput | null;
   srcInput:string;
   isSrcSet:boolean;
   freeSolo:boolean;
@@ -62,16 +72,19 @@ const PersonSrc = function(props:PersonSrcProps) {
 
   const classes = styles();
   
-  const dispatch = useDispatch();
+  const dispatch = useDebounceDispatch();
+
+  const client = useApolloClient();
 
   const {entryUpsertId, autoFocus, variant} = props;
   
-  const {srcInput, isSrcSet, required, freeSolo} = 
+  const {src, srcInput, isSrcSet, required, freeSolo} = 
     useSelector<Root, SelectorResult>((state) => {
     
       const src = getSrc(state, entryUpsertId);
 
       return {
+        src,
         srcInput:getSrcInput(state, entryUpsertId),
         isSrcSet:!!src,
         freeSolo:!src,
@@ -106,22 +119,13 @@ const PersonSrc = function(props:PersonSrcProps) {
     return options
       .filter((opt) => test.test(`${opt.name.first} ${opt.name.last}`));
   },[srcInput, data, isSrcSet]);
-
-  const value = useSelector<Root, PersonValue | null>((state) => {
-
-    const src = getSrc(state, entryUpsertId);      
-    
-    if(src){
-      for(const person of options) {
-        if(person.id === src.id) {
-          return person;
-        }
-      }
-    }
-
-    return null;
-
-  }, isEqual);
+  
+  // Read fragment, so that when submitting a new person, the new person 
+  // is pulled from the cache
+  const value = src ? client.readFragment<PersonSrcOptFragment>({
+    id:`Person:${src.id}`,
+    fragment:PERSON_SRC_OPT_FRAGMENT,
+  }) : null;
 
   const inputValue = isSrcSet ? 
     `${value?.name.first} ${value?.name.last}` : srcInput;
