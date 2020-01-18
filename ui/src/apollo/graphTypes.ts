@@ -86,8 +86,10 @@ export type JournalEntry = {
   department: Department,
   type: JournalEntryType,
   paymentMethod: PaymentMethod,
+  description?: Maybe<Scalars['String']>,
   total: Rational,
   source: JournalEntrySource,
+  reconciled: Scalars['Boolean'],
 };
 
 export type JournalEntryAddFields = {
@@ -95,8 +97,10 @@ export type JournalEntryAddFields = {
   department: Scalars['ID'],
   type: Scalars['ID'],
   paymentMethod: Scalars['ID'],
+  description?: Maybe<Scalars['String']>,
   total: RationalInput,
   source: JournalEntrySourceInput,
+  reconciled?: Maybe<Scalars['Boolean']>,
 };
 
 export type JournalEntrySource = Person | Business | Department;
@@ -125,8 +129,10 @@ export type JournalEntryUpdateFields = {
   department?: Maybe<Scalars['ID']>,
   type?: Maybe<Scalars['ID']>,
   paymentMethod?: Maybe<Scalars['ID']>,
+  description?: Maybe<Scalars['String']>,
   total?: Maybe<RationalInput>,
   source?: Maybe<JournalEntrySourceInput>,
+  reconciled?: Maybe<Scalars['Boolean']>,
 };
 
 export type Lc_JournalEntryUpsert = {
@@ -342,7 +348,7 @@ export type AddEntryInputsQueryVariables = {};
 
 export type AddEntryInputsQuery = { __typename?: 'Query', lc_journalEntryUpserts: Array<{ __typename?: 'LC_JournalEntryUpsert', fields: { __typename?: 'LC_JournalEntryUpsertFields', id: Maybe<string> } }> };
 
-export type JournalEntry_1Fragment = { __typename: 'JournalEntry', id: string, date: string, department: { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Department', id: string, deptName: string } | { __typename: 'Business', id: string, bizName: string }> }, type: { __typename: 'JournalEntryType', id: string, type: string, ancestors: Array<{ __typename: 'JournalEntryType', id: string, type: string }> }, paymentMethod: { __typename: 'PaymentMethod', id: string, method: string }, source: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } | { __typename: 'Business', id: string, bizName: string } | { __typename: 'Department', id: string, deptName: string }, total: { __typename?: 'Rational', num: number, den: number } };
+export type JournalEntry_1Fragment = { __typename: 'JournalEntry', id: string, date: string, description: Maybe<string>, reconciled: boolean, department: { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Department', id: string, deptName: string } | { __typename: 'Business', id: string, bizName: string }> }, type: { __typename: 'JournalEntryType', id: string, type: string, ancestors: Array<{ __typename: 'JournalEntryType', id: string, type: string }> }, paymentMethod: { __typename: 'PaymentMethod', id: string, method: string }, source: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } | { __typename: 'Business', id: string, bizName: string } | { __typename: 'Department', id: string, deptName: string }, total: { __typename?: 'Rational', num: number, den: number } };
 
 export type JournalEntries_1QueryVariables = {
   paginate: PaginateInput,
@@ -397,6 +403,13 @@ export type PayMethodInput_1QueryVariables = {};
 
 export type PayMethodInput_1Query = { __typename?: 'Query', paymentMethods: Array<{ __typename: 'PaymentMethod', id: string, method: string }> };
 
+export type BusinessSrcDeptOpts_1Fragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
+
+export type BusinessSrcBizOpts_1Fragment = { __typename: 'Business', id: string, name: string, deptOpts: Maybe<Array<(
+    { __typename?: 'Department' }
+    & BusinessSrcDeptOpts_1Fragment
+  )>> };
+
 export type BusinessSrcOptsInput_1QueryVariables = {
   searchByName: Scalars['String']
 };
@@ -406,13 +419,6 @@ export type BusinessSrcOptsInput_1Query = { __typename?: 'Query', bizOpts: Array
     { __typename?: 'Business' }
     & BusinessSrcBizOpts_1Fragment
   )> };
-
-export type BusinessSrcBizOpts_1Fragment = { __typename: 'Business', id: string, name: string, deptOpts: Maybe<Array<(
-    { __typename?: 'Department' }
-    & BusinessSrcDeptOpts_1Fragment
-  )>> };
-
-export type BusinessSrcDeptOpts_1Fragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
 
 export type PersonSrcOpt_1Fragment = { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } };
 
@@ -650,8 +656,10 @@ export type JournalEntryResolvers<ContextType = Context, ParentType extends Reso
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType>,
   type?: Resolver<ResolversTypes['JournalEntryType'], ParentType, ContextType>,
   paymentMethod?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType>,
+  description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>,
   total?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>,
   source?: Resolver<ResolversTypes['JournalEntrySource'], ParentType, ContextType>,
+  reconciled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>,
 };
 
 export type JournalEntrySourceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntrySource'] = ResolversParentTypes['JournalEntrySource']> = {

@@ -4,8 +4,10 @@ type JournalEntry {
   department:Department!
   type:JournalEntryType!
   paymentMethod:PaymentMethod!
+  description:String
   total:Rational!
   source:JournalEntrySource!
+  reconciled:Boolean!
 }
 
 enum JournalEntrySourceType {
@@ -24,8 +26,10 @@ input JournalEntryUpdateFields {
   department:ID
   type:ID
   paymentMethod:ID
+  description:String
   total:RationalInput
   source:JournalEntrySourceInput
+  reconciled:Boolean
 }
 
 input JournalEntryAddFields {
@@ -33,8 +37,10 @@ input JournalEntryAddFields {
   department:ID!
   type:ID!
   paymentMethod:ID!
+  description:String
   total:RationalInput!
   source:JournalEntrySourceInput!
+  reconciled:Boolean
 }
 
 enum JournalEntriesColumn {

@@ -14,10 +14,13 @@ type JournalEntriesQueryVars = any;
 type InfiniteLoaderProps = InfiniteLoader['props'];
 
 export interface BodyProps {
-  entry
+  height:number;
+  width:number;
 }
 
-const Body = function() {
+const Body = function(props:BodyProps) {
+
+  const {width, height} = props;
 
   const {error, data, fetchMore} = useQuery<JournalEntriesQuery, 
     JournalEntriesQueryVars>(JOURNAL_ENTRIES,
@@ -30,13 +33,8 @@ const Body = function() {
     }
   });
   
-  const {journalEntries = null} = data || {};
-  const {
-    entries:entriesNullable = null, 
-    totalCount:totalCountNullable = null
-  } = journalEntries || {};
-  const entries = useMemo(()=> entriesNullable || [],[entriesNullable]);
-  const totalCount = totalCountNullable || 500;
+  const entries = data?.journalEntries?.entries || [];
+  const totalCount = data?.journalEntries?.totalCount ?? 500;
   
   const isLoaded = useCallback<InfiniteLoaderProps['isItemLoaded']>((index)=>{
     return index in entries;
@@ -55,18 +53,10 @@ const Body = function() {
       },
       updateQuery:(prev, {fetchMoreResult = null}) => {
         
-        // previous
-        prev = prev || null;
-        const {journalEntries:prevJournalEntries = null} = prev || {};
-        const {entries:prevEntriesNullable = null} = prevJournalEntries || {};
-        const prevEntries = prevEntriesNullable || [];
+        // new entries
+        const newResults = fetchMoreResult?.journalEntries?.entries || [];
         
-        // new
-        const {journalEntries:newJournalEntries = null} = fetchMoreResult || {};
-        const {entries:newResultsNullable = null} = newJournalEntries || {};
-        const newResults = newResultsNullable || [];
-        
-        const entries = [...prevEntries];
+        const entries = [...(prev?.journalEntries?.entries || [])];
         entries.splice(start, newResults.length, ...newResults);
         
 
@@ -74,8 +64,8 @@ const Body = function() {
           ...(prev || {}),
           ...(fetchMoreResult || {}),
           journalEntries:{
-            ...(prevJournalEntries || {}),
-            ...(newJournalEntries || {}),
+            ...(prev?.journalEntries || {}),
+            ...(fetchMoreResult?.journalEntries || {}),
             entries
           }
         } as JournalEntriesQuery;
@@ -94,9 +84,8 @@ const Body = function() {
   
   },[entries]);
 
-  const autoSizerChildren = useCallback(({height, width})=>{
-
-    const children = ({onItemsRendered, ref})=><List 
+  const infiniteLoaderChildren = useCallback<InfiniteLoaderProps["children"]>( 
+    ({onItemsRendered, ref}) => <List
       onItemsRendered={onItemsRendered}
       ref={ref}
       height={height}
@@ -104,26 +93,23 @@ const Body = function() {
       itemCount={totalCount}
       itemSize={()=>53}
       overscanCount={10}
-    >{entryRow}</List>;
-
-    return <Box width={width} height={height} display="block" clone>
-      <TableBody component='div'>
-        <InfiniteLoader
-          isItemLoaded={isLoaded}
-          itemCount={totalCount}
-          minimumBatchSize={50}
-          loadMoreItems={loadMoreItems}
-          children={children}
-        />
-      </TableBody>
-    </Box>;
-  },[isLoaded, totalCount, loadMoreItems, entryRow]);
+    >{entryRow}</List>,[height, width, entryRow, totalCount]);
 
   if(error) {
     return <div>{error.message}</div>;
   }
 
-  return <AutoSizer>{autoSizerChildren}</AutoSizer>;
+  return <Box height={height} display="block" clone>
+    <TableBody component='div'>
+      <InfiniteLoader
+        isItemLoaded={isLoaded}
+        itemCount={totalCount}
+        minimumBatchSize={50}
+        loadMoreItems={loadMoreItems}
+        children={infiniteLoaderChildren}
+      />
+    </TableBody>
+  </Box>;
 
 }
 

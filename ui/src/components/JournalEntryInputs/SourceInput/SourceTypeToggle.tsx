@@ -11,7 +11,7 @@ import { makeStyles, createStyles, Theme } from "@material-ui/core";
 import {JournalEntrySourceType} from '../../../apollo/graphTypes';
 import {Root} from "../../../redux/reducers/root";
 import {setSrcType} from "../../../redux/actions/journalEntryUpsert";
-import {getSrcType, getSrcInput, getSrc
+import {getSrcType, getSrcInput, getSrc, getSrcError
 } from "../../../redux/selectors/journalEntryUpsert";
 
 const styles = makeStyles((theme:Theme) => createStyles({
@@ -43,6 +43,7 @@ interface SelectorResult {
   value:JournalEntrySourceType | null;
   srcInput:string;
   isSrcSet:boolean;
+  hasError:boolean;
 } 
 
 const SourceTypeToggle = function(props:SourceTypeToggleProps) {
@@ -51,15 +52,18 @@ const SourceTypeToggle = function(props:SourceTypeToggleProps) {
 
   const classes = styles();
 
-  const {value, srcInput, isSrcSet} = 
+  const {value, srcInput, isSrcSet, hasError} = 
     useSelector<Root, SelectorResult>((state) => 
       ({
         value:getSrcType(state, entryUpsertId),
         srcInput:getSrcInput(state, entryUpsertId),
-        isSrcSet:!!getSrc(state, entryUpsertId)
+        isSrcSet:!!getSrc(state, entryUpsertId),
+        hasError:!!getSrcError(state, entryUpsertId)
       }), shallowEqual);
 
   const dispatch = useDispatch();
+
+  const color = hasError ? "error" : undefined;
 
   const onChange = useCallback((event, newSrcType:JournalEntrySourceType) => {
     dispatch(setSrcType(entryUpsertId, newSrcType));
@@ -67,9 +71,9 @@ const SourceTypeToggle = function(props:SourceTypeToggleProps) {
 
   if(isSrcSet || srcInput) {
     if(value === JournalEntrySourceType.Person) {
-      return <PersonIcon className={classes.sourceIcon} />;
+      return <PersonIcon className={classes.sourceIcon} color={color} />;
     } else {
-      return <BusinessIcon className={classes.sourceIcon} />;
+      return <BusinessIcon className={classes.sourceIcon} color={color} />;
     }
   }
 
@@ -84,10 +88,10 @@ const SourceTypeToggle = function(props:SourceTypeToggleProps) {
   return <Box py={1} clone>
     <ToggleButtonGroup {...toggleButtonGroupProps}>
       <ToggleButton {...bizToggleButtonProps}>
-        <BusinessIcon />
+        <BusinessIcon color={color} />
       </ToggleButton>
       <ToggleButton {...personToggleButtonProps}>
-        <PersonIcon />
+        <PersonIcon color={color} />
       </ToggleButton>
     </ToggleButtonGroup>
   </Box>;

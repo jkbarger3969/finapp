@@ -18,7 +18,7 @@ const inputProps = {
 interface SelectorResult {
   date:Date | null;
   required:boolean;
-  error:boolean;
+  hasError:boolean;
   errorMsg:string | null;
 }
 
@@ -35,7 +35,7 @@ const DateInput = function(props:DateInputProps) {
   
   const dispatch = useDispatch();
   
-  const {date, required, error, errorMsg
+  const {date, required, hasError, errorMsg
   } = useSelector<Root,SelectorResult>((state) => {
     
     const error = getDateError(state, entryUpsertId);
@@ -43,7 +43,7 @@ const DateInput = function(props:DateInputProps) {
     return {
       date:getDate(state, entryUpsertId),
       required:isRequired(state, entryUpsertId),
-      error:!!error,
+      hasError:!!error,
       errorMsg:error?.message || null
     }
 
@@ -51,20 +51,26 @@ const DateInput = function(props:DateInputProps) {
   
   const value = useMemo(()=> date ? moment(date) : null ,[date]);
 
-  const validate = useCallback((event) => {
+  const validate = useCallback(() => {
     dispatch(validateDate(entryUpsertId));
   }, [entryUpsertId, dispatch]);
 
   const onChange = useCallback((date:Moment | null) => {
-      date?.isValid() ? dispatch(setDateValue(entryUpsertId, date.toDate())) 
-        : dispatch(clearDateValue(entryUpsertId));
-  }, [entryUpsertId, dispatch]);
+      if(date?.isValid()) {
+        dispatch(setDateValue(entryUpsertId, date.toDate()));
+        if(hasError) {
+          validate();
+        }
+      } else {
+        dispatch(clearDateValue(entryUpsertId));
+      }
+  }, [entryUpsertId, dispatch, hasError, validate]);
 
   const dataPickerProps:KeyboardDatePickerProps = {
-    error,
+    error:hasError,
     helperText:errorMsg,
     required,
-    onBlur:validate,
+    onBlur:validate as any,
     onClose:validate as any,
     animateYearScrolling:true,
     disableToolbar:true,

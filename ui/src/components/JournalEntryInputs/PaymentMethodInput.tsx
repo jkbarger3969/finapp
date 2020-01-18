@@ -3,6 +3,7 @@ import {useSelector, shallowEqual} from "react-redux";
 import {useQuery} from '@apollo/react-hooks';
 import FormControl, {FormControlProps} from '@material-ui/core/FormControl';
 import InputLabel from '@material-ui/core/InputLabel';
+import FormHelperText from '@material-ui/core/FormHelperText';
 import Select, {SelectProps} from '@material-ui/core/Select';
 import MenuItem, {MenuItemProps} from '@material-ui/core/MenuItem';
 import Skeleton from '@material-ui/lab/Skeleton';
@@ -13,9 +14,9 @@ import {PayMethodInput_1Query as PayMethodInputQuery
 } from '../../apollo/graphTypes';
 import {Root} from "../../redux/reducers/root";
 import {useDebounceDispatch} from "../../redux/hooks";
-import {setPayMethodValue, clearPayMethodValue
+import {setPayMethodValue, clearPayMethodValue, validatePayMethod
 } from "../../redux/actions/journalEntryUpsert";
-import { getPayMethod, isRequired
+import { getPayMethod, isRequired, getPayMethodError
 } from "../../redux/selectors/journalEntryUpsert";
 
 const PAY_METHOD_INPUT_QUERY = gql`
@@ -31,6 +32,8 @@ const PAY_METHOD_INPUT_QUERY = gql`
 interface SelectorResult {
   required:boolean;
   value:string;
+  hasError:boolean;
+  errorMsg:string | null;
 }
 
 export interface PaymentMethodInputProps {
@@ -45,11 +48,20 @@ const PaymentMethod = function(props:PaymentMethodInputProps) {
 
   const dispatch = useDebounceDispatch();
 
-  const {value, required} = 
-    useSelector<Root, SelectorResult>((state)=>({
-      required:isRequired(state, entryUpsertId),
-      value:getPayMethod(state, entryUpsertId)
-    }), shallowEqual);
+  const {value, required, hasError, errorMsg} = 
+    useSelector<Root, SelectorResult>((state)=>{
+      const error = getPayMethodError(state, entryUpsertId);
+      return {
+        required:isRequired(state, entryUpsertId),
+        value:getPayMethod(state, entryUpsertId),
+        hasError:!!error,
+        errorMsg:error?.message || null
+      };
+    }, shallowEqual);
+  
+  const validate  = useCallback(() => {
+    dispatch(validatePayMethod(entryUpsertId))
+  },[dispatch, entryUpsertId]);
 
   const {loading, error, data} 
     = useQuery<PayMethodInputQuery>(PAY_METHOD_INPUT_QUERY);
@@ -59,17 +71,21 @@ const PaymentMethod = function(props:PaymentMethodInputProps) {
   const formControlProps:FormControlProps = useMemo(()=>({
     required,
     fullWidth:true,
-    variant
-  }),[required, variant]);
+    variant,
+    error:hasError
+  }),[required, variant, hasError]);
 
   const onChange = useCallback((event) => {
     const value = event?.target?.value as string || null;
     if(value) {
       dispatch(setPayMethodValue(entryUpsertId, value));
+      if(hasError) {
+        validate();
+      }
     } else {
       dispatch(clearPayMethodValue(entryUpsertId));
     }
-  },[dispatch, entryUpsertId]);
+  },[dispatch, entryUpsertId, hasError, validate]);
 
   const children = useMemo(()=>paymentMethods.map(({id, method})=>(
     <MenuItem {...{
@@ -95,6 +111,7 @@ const PaymentMethod = function(props:PaymentMethodInputProps) {
   return <FormControl {...formControlProps}>
     <InputLabel>Payment Method</InputLabel>
     <Select {...selectProps}/>
+    {hasError && <FormHelperText>{errorMsg}</FormHelperText>}
   </FormControl>;
 
 }

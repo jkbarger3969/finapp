@@ -1,29 +1,29 @@
-import React from 'react';
+import React from "react";
 import {useSelector} from "react-redux";
-import TableCell from '@material-ui/core/TableCell';
-import Box from '@material-ui/core/Box';
-import {capitalCase} from 'change-case';
-
+import TableCell from "@material-ui/core/TableCell";
+import Box from "@material-ui/core/Box";
 
 import {JournalEntry_1Fragment as JournalEntryFragment
-} from '../../../../apollo/graphTypes';
-import {ROW_ID, TYPE_ID} from "./cellsReduxIni";
+} from "../../../../apollo/graphTypes";
+import {ROW_ID, DSCRPT_ID} from "./cellsReduxIni";
 import {Root} from "../../../../redux/reducers/root";
 import {TableCell as CellFormat} from "../../../../redux/reducers/tableRows";
 import {getCell} from "../../../../redux/selectors/tableRows";
 
-export interface TypeProps {
-  type:JournalEntryFragment['type'];
-  textColor:string;
+
+export interface DescriptionProps {
+  description:JournalEntryFragment["description"];
+  textColor:string
 }
 
-const Type = function(props:TypeProps) {
+const Description = function(props:DescriptionProps) {
 
-  const {type, textColor} = props;
+  const {description, textColor} = props;
   
   const cellFormat = useSelector<Root, CellFormat>((state)=> 
-    getCell(state, ROW_ID, TYPE_ID) as CellFormat);
-  
+    getCell(state, ROW_ID, DSCRPT_ID) as CellFormat);
+
+ 
   return <Box
     className={textColor}
     display="block"
@@ -36,9 +36,9 @@ const Type = function(props:TypeProps) {
     order={cellFormat.index > -1 ? cellFormat.index : undefined}
     clone
   >
-    <TableCell component='div'>{capitalCase(type.type)}</TableCell>
-  </Box>;
+    <TableCell component="div">{description}</TableCell>
+  </Box>
 
 }
 
-export default Type;
+export default Description;

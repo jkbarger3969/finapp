@@ -31,6 +31,7 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
         type
       }
     }
+    description
     paymentMethod {
       __typename
       id
@@ -58,6 +59,7 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
       num
       den
     }
+    reconciled
   }
 `;
 

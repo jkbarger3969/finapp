@@ -1,4 +1,5 @@
 import {combineReducers} from "redux";
+import * as _ from  "lodash"; 
 import isEqual from "lodash.isequal";
 
 import {JournalEntrySourceType, JournalEntrySourceInput, RationalInput
@@ -37,7 +38,7 @@ import {
   SET_TOTAL_ERROR, SetTotalError, CLEAR_TOTAL_ERROR, ClearTotalError
 
 } from "../actionTypes/journalEntryUpsert";
-import {InputValue} from "./utils";
+import {InputValue, reduceOneById} from "./utils";
 
 type Actions = Create | Cancel | Clear |
   SetSrcInput | SetDateInput | SetTypeValue | ClearTypeValue |
@@ -91,7 +92,7 @@ const department = (state = Object.assign(new InputValue<string[], []>([]),
     case CLEAR_DEPT_INPUT:
       return state.input === "" ? state : {...state, input:""};
     case SET_DEPT_VALUE:
-      return isEqual(state.value, action.payload.value) ?
+      return _.isEqual(state.value, action.payload.value) ?
         state : {...state, value:[...action.payload.value]};
     case CLEAR_DEPT_VALUE:
       return state.value ? {...state, value:[]} : state;
@@ -260,28 +261,6 @@ const journalEntryUpsert = combineReducers({
 
 export type JournalEntryUpsert = ReturnType<typeof journalEntryUpsert>;
 
-const reduceOneById = (state:JournalEntryUpsert[], action:Actions)
-  :JournalEntryUpsert[] =>
-{
-  const id = action.payload.upsertId;
-  for(let i = 0, len = state.length; i < len; i++){
-    const entry = state[i];
-    if(entry.id === id) {
-      const newEntry = journalEntryUpsert(entry, action);
-      if(newEntry !== entry) {
-        return [
-          ...state.slice(0, i),
-          newEntry,
-          ...state.slice(i + 1)
-        ];
-      } else {
-        return state;
-      }
-    }
-  }
-  return state;
-}
-
 export const journalEntryUpserts = (state:JournalEntryUpsert[] = [],
   action:Actions):JournalEntryUpsert[] => 
 {
@@ -342,7 +321,8 @@ export const journalEntryUpserts = (state:JournalEntryUpsert[] = [],
     case CLEAR_TYPE_ERROR:
     case SET_PAY_METHOD_ERROR:
     case CLEAR_PAY_METHOD_ERROR:
-      return reduceOneById(state, action);
+      return reduceOneById(state, action, 
+        action.payload.upsertId, "id", journalEntryUpsert);
     default:
       return state;
   }

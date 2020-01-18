@@ -3,6 +3,7 @@ import {useSelector, shallowEqual} from "react-redux";
 import {useQuery} from '@apollo/react-hooks';
 import FormControl, {FormControlProps} from '@material-ui/core/FormControl';
 import InputLabel from '@material-ui/core/InputLabel';
+import FormHelperText from '@material-ui/core/FormHelperText';
 import Select, {SelectProps} from '@material-ui/core/Select';
 import MenuItem, {MenuItemProps} from '@material-ui/core/MenuItem';
 import Skeleton from '@material-ui/lab/Skeleton';
@@ -12,9 +13,9 @@ import gql from 'graphql-tag';
 import {TypeInput_1Query} from '../../apollo/graphTypes';
 import {Root} from "../../redux/reducers/root";
 import {useDebounceDispatch} from "../../redux/hooks";
-import {setTypeValue, clearTypeValue
+import {setTypeValue, clearTypeValue, validateType
 } from "../../redux/actions/journalEntryUpsert";
-import { getType, isRequired
+import { getType, isRequired, getTypeError
 } from "../../redux/selectors/journalEntryUpsert";
 
 const TYPE_INPUT_QUERY = gql`
@@ -30,6 +31,8 @@ const TYPE_INPUT_QUERY = gql`
 interface SelectorResult {
   required:boolean;
   value:string;
+  hasError:boolean;
+  errorMsg:string | null;
 }
 
 export interface TypeInputProps {
@@ -47,19 +50,31 @@ const TypeInput = function(props:TypeInputProps) {
   const {loading, error, data} 
     = useQuery<TypeInput_1Query>(TYPE_INPUT_QUERY);
   
-  const {value, required} = 
-    useSelector<Root, SelectorResult>((state)=>({
+  const {value, required, hasError, errorMsg
+  } = useSelector<Root, SelectorResult>((state)=>{
+    
+    const error = getTypeError(state, entryUpsertId);
+
+    return  {
       required:isRequired(state, entryUpsertId),
-      value:getType(state, entryUpsertId)
-    }), shallowEqual);
+      value:getType(state, entryUpsertId),
+      hasError:!!error,
+      errorMsg:error?.message || null
+    };
+  }, shallowEqual);
+
+  const validate  = useCallback(() => {
+    dispatch(validateType(entryUpsertId))
+  },[dispatch, entryUpsertId]);
   
   const journalEntryTypes = useMemo(()=> data?.journalEntryTypes || [],[data]);
 
   const formControlProps:FormControlProps = useMemo(()=>({
     required,
     fullWidth:true,
-    variant
-  }),[required, variant]);
+    variant,
+    error:hasError
+  }),[required, variant, hasError]);
 
   const children = useMemo(()=>journalEntryTypes.map(({id, type})=>(
     <MenuItem {...{
@@ -72,10 +87,13 @@ const TypeInput = function(props:TypeInputProps) {
     const value = event?.target?.value as string || null;
     if(value) {
       dispatch(setTypeValue(entryUpsertId, value));
+      if(hasError) {
+        validate();
+      }
     } else {
       dispatch(clearTypeValue(entryUpsertId));
     }
-  },[dispatch, entryUpsertId]);
+  },[dispatch, entryUpsertId, hasError, validate]);
 
   if(loading){
     return <Skeleton variant="rect" height={56} />;
@@ -94,6 +112,7 @@ const TypeInput = function(props:TypeInputProps) {
   return <FormControl {...formControlProps}>
     <InputLabel>Type</InputLabel>
     <Select {...selectProps}/>
+    {hasError && <FormHelperText>{errorMsg}</FormHelperText>}
   </FormControl>;
 
 }

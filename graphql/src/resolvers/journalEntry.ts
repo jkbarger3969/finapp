@@ -16,6 +16,8 @@ const addFields = {$addFields:{
   paymentMethod:{$arrayElemAt: ["$paymentMethod.value",0]},
   total:{$arrayElemAt: ["$total.value",0]},
   source:{$arrayElemAt: ["$source.value",0]},
+  reconciled:{$arrayElemAt: ["$reconciled.value",0]},
+  description:{$ifNull: [ {$arrayElemAt: ["$description.value",0]}, null ]},
   date:{$arrayElemAt: ["$date.value",0]}
 }};
 
@@ -128,9 +130,10 @@ export const updateJournalEntry:
     $push
   };
 
-  const {date:dateString = null, source:sourceInput = null, 
+  const {date:dateString = null, source = null, 
     department:departmentId = null, total = null, type:typeId = null,
-    paymentMethod:paymentMethodId = null} = fields;
+    paymentMethod:paymentMethodId = null, description = null, reconciled = null
+  } = fields;
 
   let numFieldsToUpdate = 0;
   if(dateString !== null) {
@@ -154,11 +157,11 @@ export const updateJournalEntry:
       
   }
 
-  if(sourceInput !== null) {
+  if(source !== null) {
 
     numFieldsToUpdate++;
     
-    const {id:sourceId, sourceType} = sourceInput;
+    const {id:sourceId, sourceType} = source;
     
     const id = new ObjectID(sourceId);
 
@@ -310,6 +313,36 @@ export const updateJournalEntry:
     
   }
 
+  if(description !== null) {
+    
+    numFieldsToUpdate++;
+
+    $push["description"] = {
+      $each:[{
+        value:description,
+        createdBy,
+        createdOn,
+      }],
+      $position:0
+    };
+
+  }
+
+  if(reconciled !== null) {
+    
+    numFieldsToUpdate++;
+
+    $push["reconciled"] = {
+      $each:[{
+        value:reconciled,
+        createdBy,
+        createdOn,
+      }],
+      $position:0
+    };
+
+  }
+
   if(numFieldsToUpdate === 0) {
     throw new Error(`Mutation "updateJournalEntry" requires at least one of the following fields: "date", "source", "department", "total", "type", or "paymentMethod"`)
   }
@@ -338,7 +371,8 @@ export const addJournalEntry:
   async (parent, args, context, info) => 
 {
 
-  const {fields:{
+
+  const {
     date:dateString,
     department:departmentId,
     type:typeId,
@@ -346,9 +380,11 @@ export const addJournalEntry:
       id:sourceId,
       sourceType
     },
+    description = null,
     paymentMethod:paymentMethodId,
-    total
-  }} = args;
+    total,
+    reconciled = false
+  } = args.fields;
 
   const {db, user, nodeMap} = context;
 
@@ -374,7 +410,23 @@ export const addJournalEntry:
       createdBy,
       createdOn
     }],
+    reconciled:[{
+      value:reconciled,
+      createdBy,
+      createdOn
+    }],
   } as any;
+
+  // Description
+  if(description) {
+    insertDoc["description"] = [{
+      value:description,
+      createdBy,
+      createdOn
+    }]
+  } else {
+    insertDoc["description"] = [];
+  } 
 
   // Date
   const date = moment(dateString, moment.ISO_8601);

@@ -18,9 +18,10 @@ import {BusinessSrcOptsInput_1Query as BusinessSrcOptsInputQuery,
 } from "../../../apollo/graphTypes";
 import {Root} from "../../../redux/reducers/root";
 import {useDebounceDispatch} from "../../../redux/hooks";
-import {setSrcInput, clearSrcInput, clearSrcValue, setSrcOpen, setSrcValue
+import {setSrcInput, clearSrcInput, clearSrcValue, setSrcOpen, setSrcValue,
+  validateSrc
 } from "../../../redux/actions/journalEntryUpsert";
-import {getSrcInput, getSrc, isRequired, isSrcOpen, getSrcChain
+import {getSrcInput, getSrc, isRequired, isSrcOpen, getSrcChain, getSrcError
 } from "../../../redux/selectors/journalEntryUpsert";
 
 const BIZ_SRC_DEPT_OPTS_FRAGMENT = gql`
@@ -97,6 +98,8 @@ interface SelectorResult  {
   isSrcSet:boolean;
   required:boolean;
   open:boolean;
+  hasError:boolean;
+  errorMsg:string | null;
 }
 
 export interface BusinessSrcProps {
@@ -113,10 +116,13 @@ const BusinessSrc = function(props:BusinessSrcProps) {
 
   const dispatch = useDebounceDispatch();
   
-  const {srcInput, src, bizSrc, srcChain, isSrcSet, required, open
+  const {srcInput, src, bizSrc, srcChain, isSrcSet, required, open,
+    hasError, errorMsg
   } = useSelector<Root, SelectorResult>((state) => {
 
     const src = getSrc(state, entryUpsertId);
+
+    const error = getSrcError(state, entryUpsertId);
 
     const srcChain = getSrcChain(state, entryUpsertId);
 
@@ -127,14 +133,24 @@ const BusinessSrc = function(props:BusinessSrcProps) {
       srcChain,
       isSrcSet:!!src,
       required:isRequired(state, entryUpsertId),
-      open:isSrcOpen(state, entryUpsertId)
+      open:isSrcOpen(state, entryUpsertId),
+      hasError:!!error,
+      errorMsg:error?.message || null
     };
 
   }, isEqual);
 
-  const onBlur = useCallback(() => dispatch(setSrcOpen(entryUpsertId, false)),[
+  const validate  = useCallback(() => {
+    dispatch(validateSrc(entryUpsertId))
+  },[dispatch, entryUpsertId]);
+
+  const onBlur = useCallback(() => {
+    dispatch(setSrcOpen(entryUpsertId, false));
+    validate();
+  },[
     entryUpsertId, 
-    dispatch
+    dispatch,
+    validate
   ]);
   const onFocus = useCallback(() => dispatch(setSrcOpen(entryUpsertId, true)),[
     entryUpsertId, 
@@ -268,8 +284,10 @@ const BusinessSrc = function(props:BusinessSrcProps) {
     autoFocus,
     fullWidth:true,
     variant,
-    label:multiple ? "Business > Departments..." : "Business"
-  }),[required, autoFocus, variant, multiple]);
+    label:multiple ? "Business > Departments..." : "Business",
+    error:hasError,
+    helperText:errorMsg
+  }),[required, autoFocus, variant, multiple, hasError, errorMsg]);
   
   const renderInput = useCallback((params:RenderInputParams) => {
     return <TextField {...textFieldProps} {...params}/>
@@ -289,6 +307,10 @@ const BusinessSrc = function(props:BusinessSrcProps) {
         id:src.id
       }))));
       dispatch(clearSrcInput(entryUpsertId));
+
+      if(hasError) {
+        validate();
+      }
       
     } else {
       
@@ -296,7 +318,7 @@ const BusinessSrc = function(props:BusinessSrcProps) {
 
     }
 
-  },[entryUpsertId, dispatch]);
+  },[entryUpsertId, dispatch, hasError, validate]);
 
   const onInputChange = useCallback((event:any, value:string) => {
     if(value) {

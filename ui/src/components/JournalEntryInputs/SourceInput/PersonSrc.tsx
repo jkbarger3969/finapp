@@ -6,7 +6,6 @@ import TextField, {TextFieldProps} from '@material-ui/core/TextField';
 import Autocomplete, {AutocompleteProps, RenderInputParams
 } from '@material-ui/lab/Autocomplete';
 import gql from 'graphql-tag';
-import isEqual from "lodash.isequal";
 
 import {PeopleSrcOpts_1Query as PeopleSrcOptsQuery,
   PeopleSrcOpts_1QueryVariables as PeopleSrcOptsQueryVariables,
@@ -135,6 +134,10 @@ const PersonSrc = function(props:PersonSrcProps) {
   const inputValue = isSrcSet ? 
     `${value?.name.first} ${value?.name.last}` : srcInput;
 
+  const validate  = useCallback(() => {
+    dispatch(validateSrc(entryUpsertId))
+  },[dispatch, entryUpsertId]);
+
   const onChange = useCallback((event, newSrc:PersonValue)=> {
     newSrc = newSrc || null;
     if(newSrc) {
@@ -142,10 +145,13 @@ const PersonSrc = function(props:PersonSrcProps) {
         sourceType:JournalEntrySourceType.Person,
         id:newSrc.id
       }]));
+      if(hasError) {
+        validate();
+      }
     } else {
       dispatch(clearSrcValue(entryUpsertId));
     }
-  },[dispatch, entryUpsertId]);
+  },[dispatch, entryUpsertId, hasError, validate]);
 
   const onInputChange = useCallback((event:any, value:string) => {
     if(value) {
@@ -153,10 +159,6 @@ const PersonSrc = function(props:PersonSrcProps) {
     } else {
       dispatch(clearSrcInput(entryUpsertId));
     }
-  },[dispatch, entryUpsertId]);
-
-  const validate  = useCallback(() => {
-    dispatch(validateSrc(entryUpsertId))
   },[dispatch, entryUpsertId]);
 
   const textFieldProps:TextFieldProps = {

@@ -16,7 +16,10 @@ import Department from "./Cells/Department";
 import Type from "./Cells/Type";
 import Source from "./Cells/Source";
 import PaymentMethod from "./Cells/PaymentMethod";
+import Description from "./Cells/Description";
 import Total from "./Cells/Total";
+import Reconciled from "./Cells/Reconciled";
+
 
 const styles = makeStyles((theme:Theme)=>createStyles({
   positive:{
@@ -101,32 +104,37 @@ const Entry = function(props:EntryProps) {
 
   return <Box style={style} display="flex !important" clone>
     <TableRow component="div">
-      <Box minWidth={185} clone>
-        <Grid item container direction="column" xs={1} >
+      {/* <Box minWidth={185} clone>
+        <Grid item container direction="column" xs={1} > */}
           <TransactionDate
             textColor={textColor}
             entryDate={journalEntry.date}
           />
-        </Grid>
-      </Box>
-      <Grid item container direction="column" xs={3} >
+        {/* </Grid>
+      </Box> */}
+      {/* <Grid item container direction="column" xs={3} > */}
         <Department textColor={textColor} department={journalEntry.department} />
-      </Grid>
-      <Grid item container direction="column" xs={2} >
+      {/* </Grid> */}
+      {/* <Grid item container direction="column" xs={2} > */}
         <Type textColor={textColor} type={journalEntry.type}/>
-      </Grid>
-      <Grid item container direction="column" xs={3} >
+      {/* </Grid> */}
+      {/* <Grid item container direction="column" xs={3} > */}
         <Source textColor={textColor} source={journalEntry.source}/>
-      </Grid>
-      <Grid item container direction="column" xs={2} >
+      {/* </Grid> */}
+      {/* <Grid item container direction="column" xs={2} > */}
         <PaymentMethod 
           textColor={textColor}
           paymentMethod={journalEntry.paymentMethod}
         />
-      </Grid>
-      <Grid item container direction="column" xs={1} >
+        <Description
+          textColor={textColor}
+          description={journalEntry.description}
+        />
+      {/* </Grid> */}
+      {/* <Grid item container direction="column" xs={1} > */}
         <Total textColor={textColor} total={journalEntry.total} />
-      </Grid>
+        <Reconciled textColor={textColor} reconciled={journalEntry.reconciled}/>
+      {/* </Grid> */}
     </TableRow>
   </Box>;
 

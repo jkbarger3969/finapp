@@ -1,6 +1,7 @@
-import React from "react";
+import React, {useCallback} from "react";
 import Table from "@material-ui/core/Table";
 import Box from "@material-ui/core/Box";
+import AutoSizer, {Size} from 'react-virtualized-auto-sizer';
 
 import Header from "./Header";
 import Body from "./Body";
@@ -12,10 +13,14 @@ export const entryUpsertId = uuid("Journal", namespace);
 
 const Journal = function() {
 
+  const autoSizerChildren = useCallback(({width, height}:Size) => {
+    return <Body width={width} height={height} />;
+  },[]);
+
   return <Box
+    style={{overflowX:"auto"}}
     width="100%"
-    maxWidth="100vw"
-    overflow="auto"
+    overflow="hidden"
     flexGrow={1}
     display="flex"
     justifyContent="flex-start"
@@ -25,9 +30,7 @@ const Journal = function() {
     <form>
       <Box
         width="100%"
-        minWidth={1400}
         flexGrow={1}
-        overflow="auto"
         display="flex !important" // Override display:table from child Table
         justifyContent="flex-start"
         flexDirection="column"
@@ -36,7 +39,7 @@ const Journal = function() {
         <Table component="div">
           <Header />
           <Box flexGrow={1} >
-            <Body />
+            <AutoSizer children={autoSizerChildren}/>
           </Box>
           <Footer entryUpsertId={entryUpsertId} />
           <JournalPAB entryUpsertId={entryUpsertId} />

@@ -78,8 +78,10 @@ export type JournalEntry = {
   department: Department,
   type: JournalEntryType,
   paymentMethod: PaymentMethod,
+  description?: Maybe<Scalars['String']>,
   total: Rational,
   source: JournalEntrySource,
+  reconciled: Scalars['Boolean'],
 };
 
 export type JournalEntryAddFields = {
@@ -87,8 +89,10 @@ export type JournalEntryAddFields = {
   department: Scalars['ID'],
   type: Scalars['ID'],
   paymentMethod: Scalars['ID'],
+  description?: Maybe<Scalars['String']>,
   total: RationalInput,
   source: JournalEntrySourceInput,
+  reconciled?: Maybe<Scalars['Boolean']>,
 };
 
 export type JournalEntrySource = Person | Business | Department;
@@ -117,8 +121,10 @@ export type JournalEntryUpdateFields = {
   department?: Maybe<Scalars['ID']>,
   type?: Maybe<Scalars['ID']>,
   paymentMethod?: Maybe<Scalars['ID']>,
+  description?: Maybe<Scalars['String']>,
   total?: Maybe<RationalInput>,
   source?: Maybe<JournalEntrySourceInput>,
+  reconciled?: Maybe<Scalars['Boolean']>,
 };
 
 export type Mutation = {
@@ -446,8 +452,10 @@ export type JournalEntryResolvers<ContextType = Context, ParentType extends Reso
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType>,
   type?: Resolver<ResolversTypes['JournalEntryType'], ParentType, ContextType>,
   paymentMethod?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType>,
+  description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>,
   total?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>,
   source?: Resolver<ResolversTypes['JournalEntrySource'], ParentType, ContextType>,
+  reconciled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>,
 };
 
 export type JournalEntrySourceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntrySource'] = ResolversParentTypes['JournalEntrySource']> = {

@@ -66,8 +66,6 @@ const JournalPAB = function(props) {
   
   } else {
 
-    // const isUpdate = !!(upsert?.fields?.id);
-
     switch(upsert?.submitStatus || null) {
       case null:
         tip = "New"

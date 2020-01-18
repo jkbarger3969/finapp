@@ -16,9 +16,11 @@ import {DeptInputOpts_1Query as DeptInputOptsQuery,
 } from '../../apollo/graphTypes';
 import {Root} from "../../redux/reducers/root";
 import {useDebounceDispatch} from "../../redux/hooks";
-import {setDeptInput, clearDeptInput, clearDeptValue, setDeptOpen, setDeptValue
+import {setDeptInput, clearDeptInput, clearDeptValue, setDeptOpen, setDeptValue,
+  validateDept
 } from "../../redux/actions/journalEntryUpsert";
-import {getDeptInput, getDept, isRequired, isDeptOpen, getDeptChain
+import {getDeptInput, getDept, isRequired, isDeptOpen, getDeptChain,
+  getDeptError
 } from "../../redux/selectors/journalEntryUpsert";
 
 const DEPT_INPUT_OPTS_QUERY = gql`
@@ -92,6 +94,8 @@ interface SelectorResult {
   deptChain:string[];
   required:boolean;
   open:boolean;
+  hasError:boolean;
+  errorMsg:string | null;
 }
 
 export interface DepartmentInputProps {
@@ -107,17 +111,29 @@ const DepartmentInput = function(props:DepartmentInputProps)
   
   const dispatch = useDebounceDispatch();
 
-  const onBlur = useCallback(() => dispatch(setDeptOpen(entryUpsertId, false)),[
+  const validate  = useCallback(() => {
+    dispatch(validateDept(entryUpsertId))
+  },[dispatch, entryUpsertId]);
+
+  const onBlur = useCallback(() => {
+    dispatch(setDeptOpen(entryUpsertId, false));
+    validate();
+  },[
     entryUpsertId, 
-    dispatch
+    dispatch,
+    validate
   ]);
   const onFocus = useCallback(() => dispatch(setDeptOpen(entryUpsertId, true)),[
     entryUpsertId, 
     dispatch
   ]);
-  const onClose = useCallback(() => dispatch(setDeptOpen(entryUpsertId, false)),[
+  const onClose = useCallback(() => {
+    dispatch(setDeptOpen(entryUpsertId, false));
+    validate();
+  },[
     entryUpsertId, 
-    dispatch
+    dispatch,
+    validate
   ]);
   const onOpen = useCallback(() => dispatch(setDeptOpen(entryUpsertId, true)),[
     entryUpsertId, 
@@ -125,10 +141,12 @@ const DepartmentInput = function(props:DepartmentInputProps)
   ]);
 
   const {
-    deptInput, dept, deptChain, required, open
+    deptInput, dept, deptChain, required, open, hasError, errorMsg
   } = useSelector<Root, SelectorResult>((state)=>{
 
     const dept = getDept(state, entryUpsertId);
+
+    const error = getDeptError(state, entryUpsertId);
 
     const deptChain = getDeptChain(state, entryUpsertId);
 
@@ -137,7 +155,9 @@ const DepartmentInput = function(props:DepartmentInputProps)
       dept,
       deptChain,
       required:isRequired(state, entryUpsertId),
-      open:isDeptOpen(state, entryUpsertId)
+      open:isDeptOpen(state, entryUpsertId),
+      hasError:!!error,
+      errorMsg:error?.message || null
     };
 
   },isEqual);
@@ -207,6 +227,10 @@ const DepartmentInput = function(props:DepartmentInputProps)
 
       dispatch(setDeptValue(entryUpsertId, value.map((dept, i) => dept.id)));
       dispatch(clearDeptInput(entryUpsertId));
+
+      if(hasError) {
+        validate();
+      }
       
     } else {
       
@@ -214,7 +238,7 @@ const DepartmentInput = function(props:DepartmentInputProps)
 
     }
 
-  },[entryUpsertId, dispatch]);
+  },[entryUpsertId, dispatch, hasError, validate]);
 
   const onInputChange = useCallback((event:any, value:string) => {
     if(value) {
@@ -229,7 +253,9 @@ const DepartmentInput = function(props:DepartmentInputProps)
     autoFocus,
     fullWidth:true,
     label:"Department",
-    variant
+    variant,
+    error:hasError,
+    helperText:errorMsg
   };
   
   const renderInput = useCallback((params:RenderInputParams) => {
@@ -284,6 +310,7 @@ const DepartmentInput = function(props:DepartmentInputProps)
     // Has NO sub-depts
     } else {
 
+      autocompleteProps.onBlur = validate as any;
       autocompleteProps.inputValue = deptVal.name;
       autocompleteProps.open = false;
 
@@ -305,6 +332,7 @@ const DepartmentInput = function(props:DepartmentInputProps)
     // Has sub-depts
     } else {
       
+      autocompleteProps.onBlur = validate as any;
       autocompleteProps.disabled = true;
       autocompleteProps.inputValue = "";
       autocompleteProps.open = false;
