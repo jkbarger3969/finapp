@@ -1,0 +1,11 @@
+type JournalEntryCategory {
+  id:ID!
+  name:String!
+  parent:JournalEntryCategory
+  ancestors:[JournalEntryCategory!]!
+}
+
+extend type Query {
+  journalEntryCategories:[JournalEntryCategory!]!
+  journalEntryCategory(id:ID!):JournalEntryCategory!
+}

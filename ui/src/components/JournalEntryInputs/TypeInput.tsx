@@ -64,7 +64,7 @@ const TypeInput = function(props:TypeInputProps) {
   }, shallowEqual);
 
   const validate  = useCallback(() => {
-    dispatch(validateType(entryUpsertId))
+    dispatch(validateType(entryUpsertId));
   },[dispatch, entryUpsertId]);
   
   const journalEntryTypes = useMemo(()=> data?.journalEntryTypes || [],[data]);

@@ -1,6 +1,6 @@
 import React, {useCallback, useMemo, useEffect} from 'react';
 import {useSelector, shallowEqual} from "react-redux";
-import {useQuery, useSubscription} from '@apollo/react-hooks';
+import {useQuery, useApolloClient} from '@apollo/react-hooks';
 import TableBody from '@material-ui/core/TableBody';
 import Box from '@material-ui/core/Box';
 import {VariableSizeList as List} from 'react-window';
@@ -16,7 +16,7 @@ import {JournalEntries_1Query as JournalEntriesQuery,
   JournalEntries_1QueryVariables as JournalEntriesQueryVars,
   JournalEntriesColumn, SortDirection,
   JournalEntryAdded_1Subscription as JournalEntryAdded
-} from "../../../apollo/graphTypes"
+} from "../../../apollo/graphTypes";
 
 type InfiniteLoaderProps = InfiniteLoader['props'];
 
@@ -25,7 +25,17 @@ export interface BodyProps {
   width:number;
 }
 
-let notSubscribed = true; 
+let subscribed = false; 
+
+const variables:JournalEntriesQueryVars = {
+    paginate:{
+      skip:0,
+      limit:50 // Load entries in 50 block increments
+    },
+    sortBy:[
+      {column:JournalEntriesColumn.Date, direction:SortDirection.Desc}
+    ]
+ }
 
 const Body = function(props:BodyProps) {
 
@@ -40,37 +50,55 @@ const Body = function(props:BodyProps) {
 
   const width = Math.max(minWidth, props.width);
 
-  const {error, data, fetchMore, subscribeToMore} = useQuery<
+  const {error, data, fetchMore} = useQuery<
     JournalEntriesQuery, JournalEntriesQueryVars>(JOURNAL_ENTRIES,
   {
-    variables:{
-     paginate:{
-       skip:0,
-       limit:50 // Load entries in 50 block increments
-     },
-     sortBy:[
-       {column:JournalEntriesColumn.Date, direction:SortDirection.Desc}
-     ]
-    }
+    variables
   });
 
-  if(notSubscribed) {
-    notSubscribed = false;
-    subscribeToMore<JournalEntryAdded>({
-      document:JOURNAL_ENTRY_ADDED_SUB,
-      updateQuery:(prev, {subscriptionData:data = null}) => {
+  const client = useApolloClient();
+
+  // Lazy add persistent subscription.
+  useEffect(() => {
+    
+    if(!subscribed) {
+      
+      subscribed = true;
+      
+      client.subscribe<JournalEntryAdded>({
+        query:JOURNAL_ENTRY_ADDED_SUB
+      }).subscribe({next:({data})=>{
         
-        return {
+        if(!data?.journalEntryAdded) {
+          return;
+        }
+
+        const prev = client.readQuery<JournalEntriesQuery,
+          JournalEntriesQueryVars>({
+            query:JOURNAL_ENTRIES,
+            variables
+          });
+        
+        const update = {
           ...(prev || {}),
           journalEntries:{
-            ...(prev.journalEntries || {}),
-            totalCount:prev.journalEntries.totalCount + 1,
-            entries:[data?.data.journalEntryAdded as any, ...prev.journalEntries.entries]
+            ...(prev?.journalEntries || {}),
+            entries:[
+              data.journalEntryAdded,
+              ...(prev?.journalEntries.entries || [])
+            ]
           }
         };
-      }
-    });
-  }
+
+        client.writeQuery({
+          query:JOURNAL_ENTRIES,
+          variables,
+          data:update
+        });
+
+      }});
+    }
+  });
 
   const entries = data?.journalEntries?.entries || [];
   const totalCount = data?.journalEntries?.totalCount ?? 500;

@@ -64,7 +64,11 @@ const ancestors:JournalEntryTypeResolvers['ancestors'] =
 {
   
   const {db} = context;
-  const {id} = parent;
+  const id = parent?.id;
+
+  if(!id) {
+    return [];
+  }
 
   const results =  await db.collection('journalEntryTypes').aggregate([
     {$match:{_id:new ObjectID(id)}},

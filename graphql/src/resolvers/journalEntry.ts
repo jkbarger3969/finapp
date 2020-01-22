@@ -3,7 +3,8 @@ import * as moment from "moment";
 
 import {SortDirection} from "./shared";
 import {MutationResolvers, QueryResolvers, JournalEntryResolvers,
-JournalEntrySourceType, SubscriptionResolvers} from "../graphTypes";
+  JournalEntrySourceType, SubscriptionResolvers
+} from "../graphTypes";
 import {nodeFieldResolver} from "./utils/nodeResolver";
 import {NodeValue} from "../types";
 
@@ -15,6 +16,7 @@ const addFields = {$addFields:{
   id:{$toString: "$_id"},
   department:{$arrayElemAt: ["$department.value",0]},
   type:{$arrayElemAt: ["$type.value",0]},
+  category:{$arrayElemAt: ["$type.value",0]},
   paymentMethod:{$arrayElemAt: ["$paymentMethod.value",0]},
   total:{$arrayElemAt: ["$total.value",0]},
   source:{$arrayElemAt: ["$source.value",0]},
@@ -35,6 +37,7 @@ const project = {$project: {
 enum SortBy {
   "DEPARTMENT" = "department",
   "TYPE" = "type",
+  "CATEGORY" = "category",
   // "ROOT_TYPE" = "_rootType",
   "PAYMENT_METHOD" = "paymentMethod",
   "TOTAL" = "_total", //Must be decimal to sort (stored as rational)
@@ -133,8 +136,9 @@ export const updateJournalEntry:
   };
 
   const {date:dateString = null, source = null, 
-    department:departmentId = null, total = null, type:typeId = null,
-    paymentMethod:paymentMethodId = null, description = null, reconciled = null
+    department:departmentId = null, total = null, type:typeId = null, 
+    category:categoryId = null, paymentMethod:paymentMethodId = null,
+    description = null, reconciled = null
   } = fields;
 
   let numFieldsToUpdate = 0;
@@ -286,6 +290,35 @@ export const updateJournalEntry:
     
   }
   
+  if(categoryId !== null) {
+
+    numFieldsToUpdate++;
+    
+    const {collection, id:node} = 
+      nodeMap.typename.get("JournalEntryCategory");
+
+    const id = new ObjectID(categoryId);
+
+    if(0 === (await db.collection(collection).find({_id:id})
+      .limit(1).count()))
+    {
+      throw new Error(`Mutation "updateJournalEntry" type "JournalEntryCategory" with id ${typeId} does not exist.`);
+    }
+
+    $push["category"] = {
+      $each:[{
+        value:{
+          node:new ObjectID(node),
+          id
+        },
+        createdBy,
+        createdOn,
+      }],
+      $position:0
+    };
+
+  }
+
   if(paymentMethodId !== null) {
 
     numFieldsToUpdate++;
@@ -378,6 +411,7 @@ export const addJournalEntry:
     date:dateString,
     department:departmentId,
     type:typeId,
+    category:categoryId,
     source:{
       id:sourceId,
       sourceType
@@ -492,6 +526,31 @@ export const addJournalEntry:
 
   }
 
+  // JournalEntryCategory
+  {
+
+    const {collection, id:node} = 
+      nodeMap.typename.get("JournalEntryCategory");
+
+    const id = new ObjectID(typeId);
+
+    if(0 === (await db.collection(collection).find({_id:id})
+      .limit(1).count())) 
+    {
+      throw new Error(`Mutation "addJournalEntry" type "JournalEntryCategory" with id ${typeId} does not exist.`);
+    }
+
+    insertDoc["category"] = [{
+      value:{
+        node:new ObjectID(node),
+        id
+      },
+      createdBy,
+      createdOn,
+    }];
+
+  } 
+
   // JournalEntrySource
   {
     
@@ -589,6 +648,7 @@ export const addJournalEntry:
 export const JournalEntry:JournalEntryResolvers = {
   department:nodeFieldResolver,
   type:nodeFieldResolver,
+  category:nodeFieldResolver,
   paymentMethod:nodeFieldResolver,
   source:nodeFieldResolver,
   date:(parent, args, context, info) => {

@@ -110,6 +110,14 @@ export type JournalEntryAddFields = {
   reconciled?: Maybe<Scalars['Boolean']>,
 };
 
+export type JournalEntryCategory = {
+   __typename?: 'JournalEntryCategory',
+  id: Scalars['ID'],
+  name: Scalars['String'],
+  parent?: Maybe<JournalEntryCategory>,
+  ancestors: Array<JournalEntryCategory>,
+};
+
 export type JournalEntrySource = Person | Business | Department;
 
 export type JournalEntrySourceInput = {
@@ -274,6 +282,8 @@ export type Query = {
   departments: Array<Department>,
   department: Department,
   journalEntries: JournalEntriesRes,
+  journalEntryCategories: Array<JournalEntryCategory>,
+  journalEntryCategory: JournalEntryCategory,
   journalEntrySources: Array<JournalEntrySource>,
   journalEntryTypes: Array<JournalEntryType>,
   paymentMethods: Array<PaymentMethod>,
@@ -310,6 +320,11 @@ export type QueryDepartmentArgs = {
 export type QueryJournalEntriesArgs = {
   paginate: PaginateInput,
   sortBy: Array<JournalEntriesSortByInput>
+};
+
+
+export type QueryJournalEntryCategoryArgs = {
+  id: Scalars['ID']
 };
 
 
@@ -571,6 +586,7 @@ export type ResolversTypes = {
   JournalEntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'],
   Person: ResolverTypeWrapper<Person>,
   PersonName: ResolverTypeWrapper<PersonName>,
+  JournalEntryCategory: ResolverTypeWrapper<JournalEntryCategory>,
   PersonNameInput: PersonNameInput,
   Mutation: ResolverTypeWrapper<{}>,
   BusinessAddFields: BusinessAddFields,
@@ -619,6 +635,7 @@ export type ResolversParentTypes = {
   JournalEntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'],
   Person: Person,
   PersonName: PersonName,
+  JournalEntryCategory: JournalEntryCategory,
   PersonNameInput: PersonNameInput,
   Mutation: {},
   BusinessAddFields: BusinessAddFields,
@@ -690,6 +707,13 @@ export type JournalEntryAddedResResolvers<ContextType = Context, ParentType exte
   totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
   index?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
   entry?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType>,
+};
+
+export type JournalEntryCategoryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntryCategory'] = ResolversParentTypes['JournalEntryCategory']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>,
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
+  parent?: Resolver<Maybe<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
+  ancestors?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
 };
 
 export type JournalEntrySourceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntrySource'] = ResolversParentTypes['JournalEntrySource']> = {
@@ -779,6 +803,8 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, QueryDepartmentsArgs>,
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>,
   journalEntries?: Resolver<ResolversTypes['JournalEntriesRes'], ParentType, ContextType, RequireFields<QueryJournalEntriesArgs, 'paginate' | 'sortBy'>>,
+  journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
+  journalEntryCategory?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType, RequireFields<QueryJournalEntryCategoryArgs, 'id'>>,
   journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>,
   journalEntryTypes?: Resolver<Array<ResolversTypes['JournalEntryType']>, ParentType, ContextType, QueryJournalEntryTypesArgs>,
   paymentMethods?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType>,
@@ -812,6 +838,7 @@ export type Resolvers<ContextType = Context> = {
   JournalEntriesRes?: JournalEntriesResResolvers<ContextType>,
   JournalEntry?: JournalEntryResolvers<ContextType>,
   JournalEntryAddedRes?: JournalEntryAddedResResolvers<ContextType>,
+  JournalEntryCategory?: JournalEntryCategoryResolvers<ContextType>,
   JournalEntrySource?: JournalEntrySourceResolvers,
   JournalEntryType?: JournalEntryTypeResolvers<ContextType>,
   LC_JournalEntryUpsert?: Lc_JournalEntryUpsertResolvers<ContextType>,

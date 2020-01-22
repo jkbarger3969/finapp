@@ -32,7 +32,7 @@ export const nodeFieldResolver =
      
   const nodeValue = parentObj[info.fieldName];
 
-  if("node" in nodeValue && "id" in nodeValue) {
+  if(nodeValue && "node" in nodeValue && "id" in nodeValue) {
 
     return nodeDocResolver({
       node:new ObjectID(nodeValue.node),
