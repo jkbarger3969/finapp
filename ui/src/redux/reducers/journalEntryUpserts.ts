@@ -33,9 +33,14 @@ import {
   CLEAR_PAY_METHOD_VALUE, SET_PAY_METHOD_ERROR, SetPayMethodError,
   CLEAR_PAY_METHOD_ERROR, ClearPayMethodError,
 
+  SET_DSCRPT_VALUE, SetDscrptValue, CLEAR_DSCRPT_VALUE, ClearDscrptValue,
+
   SET_TOTAL_INPUT, SetTotalInput, CLEAR_TOTAL_INPUT, ClearTotalInput,
   SET_TOTAL_VALUE, SetTotalValue, CLEAR_TOTAL_VALUE, ClearTotalValue,
-  SET_TOTAL_ERROR, SetTotalError, CLEAR_TOTAL_ERROR, ClearTotalError
+  SET_TOTAL_ERROR, SetTotalError, CLEAR_TOTAL_ERROR, ClearTotalError,
+
+  SET_RECONCILED_VALUE, SetReconciledValue,
+  CLEAR_RECONCILED_VALUE, ClearReconciledValue
 
 } from "../actionTypes/journalEntryUpsert";
 import {InputValue, reduceOneById} from "./utils";
@@ -50,7 +55,8 @@ type Actions = Create | Cancel | Clear |
   SetTotalInput | ClearTotalInput | SetTotalValue | ClearTotalValue |
   SetTotalError | ClearTotalError | SetSubmitStatus | SetSubmitError | 
   ClearSubmitError | SetSrcType | SetTypeError | ClearTypeError |
-  SetPayMethodError | ClearPayMethodError;
+  SetPayMethodError | ClearPayMethodError | SetDscrptValue | ClearDscrptValue |
+  SetReconciledValue | ClearReconciledValue;
 
 
 const date = (state = new InputValue<Date, null>(null), action:Actions)
@@ -185,6 +191,23 @@ const paymentMethod = (state = Object.assign(new InputValue<string, null>(null),
   
 }
 
+const description = (state = new InputValue<string, null>(null), 
+  action:Actions ):InputValue<string, null> => 
+{
+
+  switch(action.type) {
+    case SET_DSCRPT_VALUE:{
+      const value = action.payload.value.trimStart();
+      return !value || state.value === value ? state : {...state, value};
+    }
+    case CLEAR_DSCRPT_VALUE:
+      return state.value === null ? state : {...state, value:null};
+    default:
+      return state;
+  }
+  
+}
+
 const total = (state = new InputValue<RationalInput, null>(null), 
   action:Actions ):InputValue<RationalInput, null> => 
 {
@@ -211,6 +234,22 @@ const total = (state = new InputValue<RationalInput, null>(null),
   
 }
 
+const reconciled = (state = new InputValue<boolean, false>(false), 
+  action:Actions ):InputValue<boolean, false> => 
+{
+
+  switch(action.type) {
+    case SET_RECONCILED_VALUE:
+      return state.value === action.payload.value ?
+        state : {...state, value:action.payload.value};
+    case CLEAR_RECONCILED_VALUE:
+      return state.value === false ? state : {...state, value:false};
+    default:
+      return state;
+  }
+  
+}
+
 const values = combineReducers({
   id:(state:string | null = null, action:Actions) => action.type === CREATE ?
     (action.payload.entryId || null) : state,
@@ -221,7 +260,9 @@ const values = combineReducers({
     action.type === SET_SRC_TYPE ? action.payload.srcType : state,
   source,
   paymentMethod,
-  total
+  description,
+  total,
+  reconciled
 });
 
 export enum SubmitStatus {
@@ -308,6 +349,8 @@ export const journalEntryUpserts = (state:JournalEntryUpsert[] = [],
     case SET_SRC_OPEN:
     case SET_PAY_METHOD_VALUE:
     case CLEAR_PAY_METHOD_VALUE:
+    case SET_DSCRPT_VALUE:
+    case CLEAR_DSCRPT_VALUE:
     case SET_TOTAL_INPUT:
     case CLEAR_TOTAL_INPUT:
     case SET_TOTAL_VALUE:
@@ -321,6 +364,8 @@ export const journalEntryUpserts = (state:JournalEntryUpsert[] = [],
     case CLEAR_TYPE_ERROR:
     case SET_PAY_METHOD_ERROR:
     case CLEAR_PAY_METHOD_ERROR:
+    case SET_RECONCILED_VALUE:
+    case CLEAR_RECONCILED_VALUE:
       return reduceOneById(state, action, 
         action.payload.upsertId, "id", journalEntryUpsert);
     default:

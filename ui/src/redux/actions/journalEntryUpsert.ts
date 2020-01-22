@@ -270,7 +270,11 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
       const department = selectors.getDept(state, upsertId);
       const type = selectors.getType(state, upsertId);
       const paymentMethod = selectors.getPayMethod(state, upsertId);
+      const description = 
+        selectors.getDscrptValue(state, upsertId) ?? undefined;
       const total = selectors.getTotalValue(state, upsertId);
+      const reconciled = 
+        selectors.getReconciledValue(state, upsertId) ?? undefined;
 
       if(!(date && department && type && paymentMethod && total)) {
         batch(()=>{
@@ -300,7 +304,9 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
                 source,
                 type,
                 paymentMethod,
-                total
+                description,
+                total,
+                reconciled
               }
             }
           });
@@ -690,6 +696,20 @@ export const validatePayMethod = (upsertId:string)
     }
 
 }
+
+// Description
+export const setDscrptValue = (upsertId:string, value:string)
+  :upsertActions.SetDscrptValue => ({
+      type:upsertActions.SET_DSCRPT_VALUE,
+      payload:{ upsertId, value}
+  });
+
+export const clearDscrptValue = (upsertId:string)
+  :upsertActions.ClearDscrptValue => ({
+    type:upsertActions.CLEAR_DSCRPT_VALUE,
+    payload:{upsertId}
+  });
+
 // Total
 export const setTotalInput = (upsertId:string, input:string)
   :upsertActions.SetTotalInput | upsertActions.SetTotalError =>
@@ -795,3 +815,16 @@ export const validateTotal = (upsertId:string)
     }
 
 }
+
+// Reconciled
+export const setReconciledValue = (upsertId:string, value:boolean)
+  :upsertActions.SetReconciledValue => ({
+      type:upsertActions.SET_RECONCILED_VALUE,
+      payload:{ upsertId, value}
+  });
+
+export const clearReconciledValue = (upsertId:string)
+  :upsertActions.ClearReconciledValue => ({
+    type:upsertActions.CLEAR_RECONCILED_VALUE,
+    payload:{upsertId}
+  });

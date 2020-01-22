@@ -1,4 +1,5 @@
-import React from "react";
+import React, {useCallback} from "react";
+import {useSelector, useDispatch} from "react-redux";
 import TableRow from "@material-ui/core/TableRow";
 import Skeleton from "@material-ui/lab/Skeleton";
 import Box from "@material-ui/core/Box";
@@ -9,8 +10,6 @@ import { Theme } from "@material-ui/core/styles";
 import {red, green} from "@material-ui/core/colors"
 
 import {randUUID} from "../../../utils/uuid";
-// import {JournalEntry_1Fragment as JournalEntryFragment
-// } from "../../../apollo/graphTypes";
 import TransactionDate from "./Cells/TransactionDate";
 import Department from "./Cells/Department";
 import Type from "./Cells/Type";
@@ -56,7 +55,15 @@ const Entry = function(props:EntryProps) {
 
   const classes = styles();
 
+  // const 
+  
   const {journalEntry = null, style} = props;
+
+  const onDoubleClick = useCallback((event) => {
+    if(journalEntry) {
+      console.log(journalEntry.id);
+    }
+  },[journalEntry]);
 
   if(journalEntry === null) {
     
@@ -103,38 +110,24 @@ const Entry = function(props:EntryProps) {
   }
 
   return <Box style={style} display="flex !important" clone>
-    <TableRow component="div">
-      {/* <Box minWidth={185} clone>
-        <Grid item container direction="column" xs={1} > */}
-          <TransactionDate
-            textColor={textColor}
-            entryDate={journalEntry.date}
-          />
-        {/* </Grid>
-      </Box> */}
-      {/* <Grid item container direction="column" xs={3} > */}
-        <Department textColor={textColor} department={journalEntry.department} />
-      {/* </Grid> */}
-      {/* <Grid item container direction="column" xs={2} > */}
-        <Type textColor={textColor} type={journalEntry.type}/>
-      {/* </Grid> */}
-      {/* <Grid item container direction="column" xs={3} > */}
-        <Source textColor={textColor} source={journalEntry.source}/>
-      {/* </Grid> */}
-      {/* <Grid item container direction="column" xs={2} > */}
-        <PaymentMethod 
-          textColor={textColor}
-          paymentMethod={journalEntry.paymentMethod}
-        />
-        <Description
-          textColor={textColor}
-          description={journalEntry.description}
-        />
-      {/* </Grid> */}
-      {/* <Grid item container direction="column" xs={1} > */}
-        <Total textColor={textColor} total={journalEntry.total} />
-        <Reconciled textColor={textColor} reconciled={journalEntry.reconciled}/>
-      {/* </Grid> */}
+    <TableRow onDoubleClick={onDoubleClick} component="div" hover>
+      <TransactionDate
+        textColor={textColor}
+        entryDate={journalEntry.date}
+      />
+      <Department textColor={textColor} department={journalEntry.department} />
+      <Type textColor={textColor} type={journalEntry.type}/>
+      <Source textColor={textColor} source={journalEntry.source}/>
+      <PaymentMethod 
+        textColor={textColor}
+        paymentMethod={journalEntry.paymentMethod}
+      />
+      <Description
+        textColor={textColor}
+        description={journalEntry.description}
+      />
+      <Total textColor={textColor} total={journalEntry.total} />
+      <Reconciled textColor={textColor} reconciled={journalEntry.reconciled}/>
     </TableRow>
   </Box>;
 

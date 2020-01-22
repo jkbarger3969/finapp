@@ -2,6 +2,7 @@ import React from 'react';
 import {useSelector} from "react-redux";
 import Grid from '@material-ui/core/Grid';
 import Box from '@material-ui/core/Box';
+import TextField from '@material-ui/core/TextField';
 import { makeStyles, createStyles, Theme } from "@material-ui/core";
 
 import { JournalEntrySourceType } from '../../apollo/graphTypes';
@@ -38,7 +39,12 @@ const SourceInput = function(props:SourceInputProps) {
     </Grid>
     <Grid item className={classes.sourceInput}>{(()=>{
       if(!srcType) {
-        return null;//<Skeleton variant="rect" height={56}/>;;
+        return <TextField 
+          fullWidth
+          disabled
+          variant={variant as any}
+          label="Source"
+        />;
       } else if(srcType === JournalEntrySourceType.Person) {
         return <PersonSrc
           entryUpsertId={entryUpsertId}

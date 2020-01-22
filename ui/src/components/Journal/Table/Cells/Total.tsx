@@ -32,8 +32,9 @@ const Total = function(props:TotalProps) {
     textOverflow="ellipsis"
     whiteSpace="nowrap"
     overflow="hidden"
-    width="100%"
+    // width="100%"
     minWidth={cellFormat.width}
+    flexBasis={cellFormat.width}
     flexGrow={cellFormat.width}
     order={cellFormat.index > -1 ? cellFormat.index : undefined}
     clone

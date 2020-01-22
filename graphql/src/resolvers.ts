@@ -2,7 +2,8 @@ import {Resolvers} from "./graphTypes";
 import {Budget, budgets} from "./resolvers/budget";
 import {Business, businesses, addBusiness} from "./resolvers/business";
 import {Department, departments, department} from "./resolvers/departments";
-import {journalEntries, addJournalEntry, updateJournalEntry, JournalEntry
+import {journalEntries, addJournalEntry, updateJournalEntry, JournalEntry,
+  journalEntryAdded
 } from "./resolvers/journalEntry";
 import {journalEntrySources} from "./resolvers/journalEntrySource";
 import {JournalEntryType, journalEntryTypes
@@ -35,6 +36,9 @@ const resolvers:Resolvers = {
     updateJournalEntry,
     addPerson,
     addBusiness
+  },
+  Subscription:{
+    journalEntryAdded
   }
 };
 

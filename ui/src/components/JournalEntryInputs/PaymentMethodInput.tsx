@@ -4,6 +4,7 @@ import {useQuery} from '@apollo/react-hooks';
 import FormControl, {FormControlProps} from '@material-ui/core/FormControl';
 import InputLabel from '@material-ui/core/InputLabel';
 import FormHelperText from '@material-ui/core/FormHelperText';
+import Box from '@material-ui/core/Box';
 import Select, {SelectProps} from '@material-ui/core/Select';
 import MenuItem, {MenuItemProps} from '@material-ui/core/MenuItem';
 import Skeleton from '@material-ui/lab/Skeleton';
@@ -109,7 +110,7 @@ const PaymentMethod = function(props:PaymentMethodInputProps) {
   };
 
   return <FormControl {...formControlProps}>
-    <InputLabel>Payment Method</InputLabel>
+    <InputLabel>Method</InputLabel>
     <Select {...selectProps}/>
     {hasError && <FormHelperText>{errorMsg}</FormHelperText>}
   </FormControl>;

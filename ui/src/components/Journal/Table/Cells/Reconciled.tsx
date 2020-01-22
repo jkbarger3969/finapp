@@ -2,6 +2,9 @@ import React from "react";
 import {useSelector} from "react-redux";
 import TableCell from "@material-ui/core/TableCell";
 import Box from "@material-ui/core/Box";
+import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@material-ui/icons/CheckBox';
+import DoneIcon from '@material-ui/icons/Done';
 
 import {JournalEntry_1Fragment as JournalEntryFragment
 } from "../../../../apollo/graphTypes";
@@ -22,20 +25,25 @@ const Reconciled = function(props:ReconciledProps) {
   
   const cellFormat = useSelector<Root, CellFormat>((state)=> 
     getCell(state, ROW_ID, RECONCILED_ID) as CellFormat);
-    
+  
   return <Box
     className={textColor}
-    display="block"
     textOverflow="ellipsis"
     whiteSpace="nowrap"
     overflow="hidden"
-    width="100%"
+    // width="100%"
     minWidth={cellFormat.width}
+    flexBasis={cellFormat.width}
     flexGrow={cellFormat.width}
     order={cellFormat.index > -1 ? cellFormat.index : undefined}
+    display="flex !important"
+    justifyContent="center"
+    alignItems="center"
     clone
   >
-    <TableCell component="div">{reconciled ? "false" : "true"}</TableCell>
+    <TableCell component="div">
+      {reconciled ? <DoneIcon /> : null}
+    </TableCell>
   </Box>;
 
 }

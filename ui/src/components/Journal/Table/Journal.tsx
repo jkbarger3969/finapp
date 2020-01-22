@@ -11,6 +11,7 @@ import {uuid, namespace} from "../../../utils/uuid";
 
 export const entryUpsertId = uuid("Journal", namespace);
 
+
 const Journal = function() {
 
   const autoSizerChildren = useCallback(({width, height}:Size) => {

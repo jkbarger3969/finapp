@@ -92,6 +92,13 @@ export type JournalEntry = {
   reconciled: Scalars['Boolean'],
 };
 
+export type JournalEntryAddedRes = {
+   __typename?: 'JournalEntryAddedRes',
+  totalCount: Scalars['Int'],
+  index: Scalars['Int'],
+  entry: JournalEntry,
+};
+
 export type JournalEntryAddFields = {
   date: Scalars['String'],
   department: Scalars['ID'],
@@ -302,7 +309,7 @@ export type QueryDepartmentArgs = {
 
 export type QueryJournalEntriesArgs = {
   paginate: PaginateInput,
-  sortBy?: Maybe<Array<JournalEntriesSortByInput>>
+  sortBy: Array<JournalEntriesSortByInput>
 };
 
 
@@ -336,6 +343,11 @@ export enum SortDirection {
   Desc = 'DESC'
 }
 
+export type Subscription = {
+   __typename?: 'Subscription',
+  journalEntryAdded: JournalEntry,
+};
+
 
 export type User = {
    __typename?: 'User',
@@ -352,7 +364,7 @@ export type JournalEntry_1Fragment = { __typename: 'JournalEntry', id: string, d
 
 export type JournalEntries_1QueryVariables = {
   paginate: PaginateInput,
-  sortBy?: Maybe<Array<JournalEntriesSortByInput>>
+  sortBy: Array<JournalEntriesSortByInput>
 };
 
 
@@ -360,6 +372,14 @@ export type JournalEntries_1Query = { __typename?: 'Query', journalEntries: { __
       { __typename?: 'JournalEntry' }
       & JournalEntry_1Fragment
     )> } };
+
+export type JournalEntryAdded_1SubscriptionVariables = {};
+
+
+export type JournalEntryAdded_1Subscription = { __typename?: 'Subscription', journalEntryAdded: (
+    { __typename?: 'JournalEntry' }
+    & JournalEntry_1Fragment
+  ) };
 
 export type DeptInputOpts_1QueryVariables = {
   fromParent?: Maybe<Scalars['ID']>
@@ -559,8 +579,10 @@ export type ResolversTypes = {
   JournalEntrySourceInput: JournalEntrySourceInput,
   JournalEntryAddFields: JournalEntryAddFields,
   PersonAddFields: PersonAddFields,
+  Subscription: ResolverTypeWrapper<{}>,
   CacheControlScope: CacheControlScope,
   DepartmentAddFields: DepartmentAddFields,
+  JournalEntryAddedRes: ResolverTypeWrapper<JournalEntryAddedRes>,
   Upload: ResolverTypeWrapper<Scalars['Upload']>,
   User: ResolverTypeWrapper<User>,
 };
@@ -605,8 +627,10 @@ export type ResolversParentTypes = {
   JournalEntrySourceInput: JournalEntrySourceInput,
   JournalEntryAddFields: JournalEntryAddFields,
   PersonAddFields: PersonAddFields,
+  Subscription: {},
   CacheControlScope: CacheControlScope,
   DepartmentAddFields: DepartmentAddFields,
+  JournalEntryAddedRes: JournalEntryAddedRes,
   Upload: Scalars['Upload'],
   User: User,
 };
@@ -660,6 +684,12 @@ export type JournalEntryResolvers<ContextType = Context, ParentType extends Reso
   total?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>,
   source?: Resolver<ResolversTypes['JournalEntrySource'], ParentType, ContextType>,
   reconciled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>,
+};
+
+export type JournalEntryAddedResResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntryAddedRes'] = ResolversParentTypes['JournalEntryAddedRes']> = {
+  totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
+  index?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
+  entry?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType>,
 };
 
 export type JournalEntrySourceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntrySource'] = ResolversParentTypes['JournalEntrySource']> = {
@@ -748,7 +778,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>,
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, QueryDepartmentsArgs>,
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>,
-  journalEntries?: Resolver<ResolversTypes['JournalEntriesRes'], ParentType, ContextType, RequireFields<QueryJournalEntriesArgs, 'paginate'>>,
+  journalEntries?: Resolver<ResolversTypes['JournalEntriesRes'], ParentType, ContextType, RequireFields<QueryJournalEntriesArgs, 'paginate' | 'sortBy'>>,
   journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>,
   journalEntryTypes?: Resolver<Array<ResolversTypes['JournalEntryType']>, ParentType, ContextType, QueryJournalEntryTypesArgs>,
   paymentMethods?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType>,
@@ -758,6 +788,10 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
 export type RationalResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Rational'] = ResolversParentTypes['Rational']> = {
   num?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
   den?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
+};
+
+export type SubscriptionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription']> = {
+  journalEntryAdded?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryAdded", ParentType, ContextType>,
 };
 
 export interface UploadScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['Upload'], any> {
@@ -777,6 +811,7 @@ export type Resolvers<ContextType = Context> = {
   DepartmentAncestor?: DepartmentAncestorResolvers,
   JournalEntriesRes?: JournalEntriesResResolvers<ContextType>,
   JournalEntry?: JournalEntryResolvers<ContextType>,
+  JournalEntryAddedRes?: JournalEntryAddedResResolvers<ContextType>,
   JournalEntrySource?: JournalEntrySourceResolvers,
   JournalEntryType?: JournalEntryTypeResolvers<ContextType>,
   LC_JournalEntryUpsert?: Lc_JournalEntryUpsertResolvers<ContextType>,
@@ -790,6 +825,7 @@ export type Resolvers<ContextType = Context> = {
   PersonName?: PersonNameResolvers<ContextType>,
   Query?: QueryResolvers<ContextType>,
   Rational?: RationalResolvers<ContextType>,
+  Subscription?: SubscriptionResolvers<ContextType>,
   Upload?: GraphQLScalarType,
   User?: UserResolvers<ContextType>,
 };

@@ -141,3 +141,11 @@ export const getTotalError = (state:Root, upsertId:string)
 {
   return getEntry(state, upsertId)?.values.total.error || null;
 }
+
+export const getDscrptValue = (state:Root, upsertId:string):string | null => {
+  return getEntry(state, upsertId)?.values.description.value || null;
+}
+
+export const getReconciledValue = (state:Root, upsertId:string):boolean => {
+  return getEntry(state, upsertId)?.values.reconciled.value || false;
+}

@@ -3,9 +3,11 @@ import * as moment from "moment";
 
 import {SortDirection} from "./shared";
 import {MutationResolvers, QueryResolvers, JournalEntryResolvers,
-JournalEntrySourceType} from "../graphTypes";
+JournalEntrySourceType, SubscriptionResolvers} from "../graphTypes";
 import {nodeFieldResolver} from "./utils/nodeResolver";
 import {NodeValue} from "../types";
+
+const JOURNAL_ENTRY_ADDED = "JOURNAL_ENTRY_ADDED";
 
 const userNodeType = new ObjectID("5dca0427bccd5c6f26b0cde2");
 
@@ -65,7 +67,7 @@ export const journalEntries:QueryResolvers["journalEntries"] =
   ];
   
 
-  if(sortBy === null) {
+  if(sortBy.length === 0) {
 
     pipeline.push(defaultSort, ...skipAndLimit, addFields);
     
@@ -383,10 +385,11 @@ export const addJournalEntry:
     description = null,
     paymentMethod:paymentMethodId,
     total,
-    reconciled = false
   } = args.fields;
 
-  const {db, user, nodeMap} = context;
+  const reconciled = args.fields.reconciled ?? false;
+
+  const {db, user, nodeMap, pubSub} = context;
 
   const createdOn = new Date();
   const lastUpdate = createdOn;
@@ -576,6 +579,9 @@ export const addJournalEntry:
     project
   ]).toArray();
 
+  pubSub.publish(JOURNAL_ENTRY_ADDED, { journalEntryAdded: newEntry[0] })
+    .catch((error)=> console.error(error));
+
   return newEntry[0];
 
 }
@@ -589,3 +595,8 @@ export const JournalEntry:JournalEntryResolvers = {
     return (parent.date as any as Date).toISOString();
   }
 };
+
+export const journalEntryAdded:SubscriptionResolvers["journalEntryAdded"] = 
+{
+  subscribe:(_,__,{pubSub}) => pubSub.asyncIterator(JOURNAL_ENTRY_ADDED)
+}

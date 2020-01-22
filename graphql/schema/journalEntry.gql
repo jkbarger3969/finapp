@@ -63,8 +63,14 @@ type JournalEntriesRes {
   entries:[JournalEntry!]!
 }
 
+type JournalEntryAddedRes {
+   totalCount:Int!
+   index:Int!
+   entry:JournalEntry!
+}
+
 type Query {
-  journalEntries(paginate:PaginateInput!, sortBy:[JournalEntriesSortByInput!]):
+  journalEntries(paginate:PaginateInput!, sortBy:[JournalEntriesSortByInput!]!):
     JournalEntriesRes!
 }
 
@@ -72,4 +78,8 @@ type Mutation {
   updateJournalEntry(id:ID!, fields:JournalEntryUpdateFields!):
     JournalEntry!
   addJournalEntry(fields:JournalEntryAddFields!):JournalEntry!
+}
+
+type Subscription {
+    journalEntryAdded:JournalEntry!
 }

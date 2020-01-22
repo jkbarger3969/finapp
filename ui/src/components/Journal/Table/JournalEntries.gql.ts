@@ -65,7 +65,7 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
 
 export const JOURNAL_ENTRIES = gql`
   query JournalEntries_1($paginate:PaginateInput!, 
-    $sortBy:[JournalEntriesSortByInput!]) 
+    $sortBy:[JournalEntriesSortByInput!]!) 
   {
     journalEntries(paginate:$paginate, sortBy:$sortBy) 
       @connection(key:"JournalEntries_1", filter:["sortBy"]) 
@@ -74,6 +74,15 @@ export const JOURNAL_ENTRIES = gql`
       entries {
         ...JournalEntry_1Fragment
       }
+    }
+  }
+  ${JOURNAL_ENTRY_FRAGMENT}
+`;
+
+export const JOURNAL_ENTRY_ADDED_SUB = gql`
+  subscription JournalEntryAdded_1 {
+    journalEntryAdded {
+      ...JournalEntry_1Fragment
     }
   }
   ${JOURNAL_ENTRY_FRAGMENT}

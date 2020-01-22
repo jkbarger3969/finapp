@@ -1,16 +1,23 @@
-import React, {useCallback, useMemo} from 'react';
-import {useQuery} from '@apollo/react-hooks';
+import React, {useCallback, useMemo, useEffect} from 'react';
+import {useSelector, shallowEqual} from "react-redux";
+import {useQuery, useSubscription} from '@apollo/react-hooks';
 import TableBody from '@material-ui/core/TableBody';
 import Box from '@material-ui/core/Box';
 import {VariableSizeList as List} from 'react-window';
-import AutoSizer from 'react-virtualized-auto-sizer';
 import InfiniteLoader from 'react-window-infinite-loader';
 
 import Entry from './Entry';
-import {JOURNAL_ENTRIES} from './JournalEntries.gql';
+import {JOURNAL_ENTRIES, JOURNAL_ENTRY_ADDED_SUB} from './JournalEntries.gql';
+import {ROW_ID} from "./Cells/cellsReduxIni";
+import {Root} from "../../../redux/reducers/root";
+import {TableCell as CellFormat} from "../../../redux/reducers/tableRows";
+import {getIndexedCells} from "../../../redux/selectors/tableRows";
+import {JournalEntries_1Query as JournalEntriesQuery,
+  JournalEntries_1QueryVariables as JournalEntriesQueryVars,
+  JournalEntriesColumn, SortDirection,
+  JournalEntryAdded_1Subscription as JournalEntryAdded
+} from "../../../apollo/graphTypes"
 
-type JournalEntriesQuery = any;
-type JournalEntriesQueryVars = any;
 type InfiniteLoaderProps = InfiniteLoader['props'];
 
 export interface BodyProps {
@@ -18,21 +25,53 @@ export interface BodyProps {
   width:number;
 }
 
+let notSubscribed = true; 
+
 const Body = function(props:BodyProps) {
 
-  const {width, height} = props;
+  const {height} = props;
 
-  const {error, data, fetchMore} = useQuery<JournalEntriesQuery, 
-    JournalEntriesQueryVars>(JOURNAL_ENTRIES,
+  const cellFormats = useSelector<Root, CellFormat[]>((state) => 
+    getIndexedCells(state, ROW_ID), shallowEqual);
+
+  const minWidth = useMemo(() => cellFormats.reduce((minWidth, cellFormat) => {
+    return minWidth + cellFormat.width;
+  },0),[cellFormats]);
+
+  const width = Math.max(minWidth, props.width);
+
+  const {error, data, fetchMore, subscribeToMore} = useQuery<
+    JournalEntriesQuery, JournalEntriesQueryVars>(JOURNAL_ENTRIES,
   {
     variables:{
      paginate:{
        skip:0,
        limit:50 // Load entries in 50 block increments
-     }
+     },
+     sortBy:[
+       {column:JournalEntriesColumn.Date, direction:SortDirection.Desc}
+     ]
     }
   });
-  
+
+  if(notSubscribed) {
+    notSubscribed = false;
+    subscribeToMore<JournalEntryAdded>({
+      document:JOURNAL_ENTRY_ADDED_SUB,
+      updateQuery:(prev, {subscriptionData:data = null}) => {
+        
+        return {
+          ...(prev || {}),
+          journalEntries:{
+            ...(prev.journalEntries || {}),
+            totalCount:prev.journalEntries.totalCount + 1,
+            entries:[data?.data.journalEntryAdded as any, ...prev.journalEntries.entries]
+          }
+        };
+      }
+    });
+  }
+
   const entries = data?.journalEntries?.entries || [];
   const totalCount = data?.journalEntries?.totalCount ?? 500;
   
@@ -85,7 +124,7 @@ const Body = function(props:BodyProps) {
   },[entries]);
 
   const infiniteLoaderChildren = useCallback<InfiniteLoaderProps["children"]>( 
-    ({onItemsRendered, ref}) => <List
+    ({onItemsRendered, ref}) => <Box display="flex" clone><List
       onItemsRendered={onItemsRendered}
       ref={ref}
       height={height}
@@ -93,7 +132,7 @@ const Body = function(props:BodyProps) {
       itemCount={totalCount}
       itemSize={()=>53}
       overscanCount={10}
-    >{entryRow}</List>,[height, width, entryRow, totalCount]);
+    >{entryRow}</List></Box>,[height, width, entryRow, totalCount]);
 
   if(error) {
     return <div>{error.message}</div>;

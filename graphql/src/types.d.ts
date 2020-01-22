@@ -1,4 +1,5 @@
 import {Db, ObjectID} from "mongodb";
+import {PubSub} from "apollo-server";
 
 export interface NodeValue {
   node:ObjectID;
@@ -21,4 +22,5 @@ export interface Context {
   user?:{
     id:ObjectID;
   };
+  pubSub:PubSub;
 }

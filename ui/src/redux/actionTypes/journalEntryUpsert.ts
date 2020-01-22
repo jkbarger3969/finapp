@@ -130,6 +130,14 @@ export const CLEAR_PAY_METHOD_ERROR
   = "journalEntryUpsert/CLEAR_PAY_METHOD_ERROR";
 export type ClearPayMethodError = ClearAction<typeof CLEAR_PAY_METHOD_ERROR>;
 
+// Description
+export const SET_DSCRPT_VALUE = "journalEntryUpsert/SET_DSCRPT_VALUE";
+export type SetDscrptValue = SetValueAction<typeof SET_DSCRPT_VALUE, 
+  string>;
+
+export const CLEAR_DSCRPT_VALUE = "journalEntryUpsert/CLEAR_DSCRPT_VALUE";
+export type ClearDscrptValue = ClearAction<typeof CLEAR_DSCRPT_VALUE>;
+
 // Total
 export const SET_TOTAL_INPUT = "journalEntryUpsert/SET_TOTAL_INPUT";
 export type SetTotalInput = SetInputAction<typeof SET_TOTAL_INPUT>;
@@ -149,3 +157,12 @@ export type SetTotalError = SetErrorAction<typeof SET_TOTAL_ERROR>;
 
 export const CLEAR_TOTAL_ERROR = "journalEntryUpsert/CLEAR_TOTAL_ERROR";
 export type ClearTotalError = ClearAction<typeof CLEAR_TOTAL_ERROR>;
+
+// Reconciled
+export const SET_RECONCILED_VALUE = "journalEntryUpsert/SET_RECONCILED_VALUE";
+export type SetReconciledValue =
+  SetValueAction<typeof SET_RECONCILED_VALUE, boolean>;
+
+export const CLEAR_RECONCILED_VALUE = 
+  "journalEntryUpsert/CLEAR_RECONCILED_VALUE";
+export type ClearReconciledValue = ClearAction<typeof CLEAR_RECONCILED_VALUE>;

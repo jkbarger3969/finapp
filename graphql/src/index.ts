@@ -1,7 +1,9 @@
 if(process.env.NODE_ENV === "development") { require('dotenv').config(); }
 
 import {ApolloServer} from 'apollo-server-koa';
+import { PubSub } from "apollo-server";
 import * as Koa from 'koa';
+import * as http from "http";
 
 import resolvers from './resolvers';
 import {NodeInfo, Context} from "./types";
@@ -9,6 +11,8 @@ import secrets from './secrets';
 import mongoDb from './mongoDb';
 import typeDefs from './schema';
 import { ObjectID } from 'mongodb';
+
+const PORT = 4000;
 
 (async ()=> {
 
@@ -50,18 +54,23 @@ import { ObjectID } from 'mongodb';
       nodeMap,
       user:{
         id:new ObjectID("5de16db089c4360df927a3db")
-      }
+      },
+      pubSub:new PubSub()
     };
 
     const gqlServer = new ApolloServer({ typeDefs, resolvers, context});
 
     const gqlApp = new Koa();
-    gqlApp.use(gqlServer.getMiddleware());
+    gqlServer.applyMiddleware({app:gqlApp})
 
+    const httpGQLServer = http.createServer(gqlApp.callback());
 
-    gqlApp.listen({ port: 4000 }, () =>
-      console.log(`Graphql server ready at http://localhost:4000${gqlServer.graphqlPath}`),
-    );
+    gqlServer.installSubscriptionHandlers(httpGQLServer);
+
+    httpGQLServer.listen(PORT, () => {
+      console.log(`Graphql server ready at http://localhost:${PORT}${gqlServer.graphqlPath}`);
+      console.log(`Subscriptions ready at ws://localhost:${PORT}${gqlServer.graphqlPath}`);
+    });
 
 
   } catch(e) {

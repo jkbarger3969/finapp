@@ -84,6 +84,13 @@ export type JournalEntry = {
   reconciled: Scalars['Boolean'],
 };
 
+export type JournalEntryAddedRes = {
+   __typename?: 'JournalEntryAddedRes',
+  totalCount: Scalars['Int'],
+  index: Scalars['Int'],
+  entry: JournalEntry,
+};
+
 export type JournalEntryAddFields = {
   date: Scalars['String'],
   department: Scalars['ID'],
@@ -235,7 +242,7 @@ export type QueryDepartmentArgs = {
 
 export type QueryJournalEntriesArgs = {
   paginate: PaginateInput,
-  sortBy?: Maybe<Array<JournalEntriesSortByInput>>
+  sortBy: Array<JournalEntriesSortByInput>
 };
 
 
@@ -268,6 +275,11 @@ export enum SortDirection {
   Asc = 'ASC',
   Desc = 'DESC'
 }
+
+export type Subscription = {
+   __typename?: 'Subscription',
+  journalEntryAdded: JournalEntry,
+};
 
 export type User = {
    __typename?: 'User',
@@ -369,7 +381,9 @@ export type ResolversTypes = {
   JournalEntrySourceType: JournalEntrySourceType,
   JournalEntryAddFields: JournalEntryAddFields,
   PersonAddFields: PersonAddFields,
+  Subscription: ResolverTypeWrapper<{}>,
   DepartmentAddFields: DepartmentAddFields,
+  JournalEntryAddedRes: ResolverTypeWrapper<JournalEntryAddedRes>,
   User: ResolverTypeWrapper<User>,
 };
 
@@ -406,7 +420,9 @@ export type ResolversParentTypes = {
   JournalEntrySourceType: JournalEntrySourceType,
   JournalEntryAddFields: JournalEntryAddFields,
   PersonAddFields: PersonAddFields,
+  Subscription: {},
   DepartmentAddFields: DepartmentAddFields,
+  JournalEntryAddedRes: JournalEntryAddedRes,
   User: User,
 };
 
@@ -458,6 +474,12 @@ export type JournalEntryResolvers<ContextType = Context, ParentType extends Reso
   reconciled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>,
 };
 
+export type JournalEntryAddedResResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntryAddedRes'] = ResolversParentTypes['JournalEntryAddedRes']> = {
+  totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
+  index?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
+  entry?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType>,
+};
+
 export type JournalEntrySourceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntrySource'] = ResolversParentTypes['JournalEntrySource']> = {
   __resolveType: TypeResolveFn<'Person' | 'Business' | 'Department', ParentType, ContextType>
 };
@@ -501,7 +523,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>,
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, QueryDepartmentsArgs>,
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>,
-  journalEntries?: Resolver<ResolversTypes['JournalEntriesRes'], ParentType, ContextType, RequireFields<QueryJournalEntriesArgs, 'paginate'>>,
+  journalEntries?: Resolver<ResolversTypes['JournalEntriesRes'], ParentType, ContextType, RequireFields<QueryJournalEntriesArgs, 'paginate' | 'sortBy'>>,
   journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>,
   journalEntryTypes?: Resolver<Array<ResolversTypes['JournalEntryType']>, ParentType, ContextType, QueryJournalEntryTypesArgs>,
   paymentMethods?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType>,
@@ -511,6 +533,10 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
 export type RationalResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Rational'] = ResolversParentTypes['Rational']> = {
   num?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
   den?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
+};
+
+export type SubscriptionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription']> = {
+  journalEntryAdded?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryAdded", ParentType, ContextType>,
 };
 
 export type UserResolvers<ContextType = Context, ParentType extends ResolversParentTypes['User'] = ResolversParentTypes['User']> = {
@@ -526,6 +552,7 @@ export type Resolvers<ContextType = Context> = {
   DepartmentAncestor?: DepartmentAncestorResolvers,
   JournalEntriesRes?: JournalEntriesResResolvers<ContextType>,
   JournalEntry?: JournalEntryResolvers<ContextType>,
+  JournalEntryAddedRes?: JournalEntryAddedResResolvers<ContextType>,
   JournalEntrySource?: JournalEntrySourceResolvers,
   JournalEntryType?: JournalEntryTypeResolvers<ContextType>,
   Mutation?: MutationResolvers<ContextType>,
@@ -534,6 +561,7 @@ export type Resolvers<ContextType = Context> = {
   PersonName?: PersonNameResolvers<ContextType>,
   Query?: QueryResolvers<ContextType>,
   Rational?: RationalResolvers<ContextType>,
+  Subscription?: SubscriptionResolvers<ContextType>,
   User?: UserResolvers<ContextType>,
 };
 

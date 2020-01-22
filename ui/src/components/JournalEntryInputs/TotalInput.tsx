@@ -13,7 +13,7 @@ import { useSelector, shallowEqual } from 'react-redux';
 
 const inputProps = {
   min:"0",
-  inputMode:"decimal",
+  // inputMode:"decimal",
 } as const;
 
 interface SelectorResult {
@@ -84,7 +84,7 @@ const TotalInput = function(props:TotalInputProps) {
       autoFocus,
       onBlur:validate as any,
       startAdornment: <InputAdornment position="start">$</InputAdornment>,
-    }),[autoFocus, validate, errorMsg]),
+    }),[autoFocus, validate]),
   }
 
   return <TextField {...textFieldProps} />;
