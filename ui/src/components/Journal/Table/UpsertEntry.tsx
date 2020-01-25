@@ -8,12 +8,12 @@ import Box from '@material-ui/core/Box';
 import DateInput from '../../JournalEntryInputs/DateInput';
 import TotalInput from '../../JournalEntryInputs/TotalInput';
 import DepartmentInput from '../../JournalEntryInputs/DepartmentInput';
-import TypeInput from '../../JournalEntryInputs/TypeInput';
+import CategoryInput from '../../JournalEntryInputs/CategoryInput';
 import SourceInput from '../../JournalEntryInputs/SourceInput';
 import PaymentMethodInput from '../../JournalEntryInputs/PaymentMethodInput';
 import DescriptionInput from '../../JournalEntryInputs/DescriptionInput';
 import ReconciledInput from '../../JournalEntryInputs/ReconciledInput';
-import {ROW_ID, DATE_ID, DEPT_ID, TYPE_ID, SRC_ID, PAY_METHOD_ID, DSCRPT_ID,
+import {ROW_ID, DATE_ID, DEPT_ID, CATEGORY_ID, SRC_ID, PAY_METHOD_ID, DSCRPT_ID,
   TOTAL_ID, RECONCILED_ID
 } from "./Cells/cellsReduxIni";
 import {Root} from "../../../redux/reducers/root";
@@ -23,7 +23,7 @@ import {getCell} from "../../../redux/selectors/tableRows";
 interface SelectorResult {
   date:CellFormat;
   dept:CellFormat;
-  type:CellFormat;
+  cat:CellFormat;
   src:CellFormat;
   payMethod:CellFormat;
   dscrpt:CellFormat;
@@ -40,11 +40,11 @@ const UpsertEntry = function(props:UpsertEntryProps) {
   const {entryUpsertId} = props;
 
   const {
-    date, dept, type, src, payMethod, dscrpt, total, reconciled
+    date, dept, cat, src, payMethod, dscrpt, total, reconciled
   } = useSelector<Root,SelectorResult>((state) => ({
     date:getCell(state, ROW_ID, DATE_ID) as CellFormat,
     dept:getCell(state, ROW_ID, DEPT_ID) as CellFormat,
-    type:getCell(state, ROW_ID, TYPE_ID) as CellFormat,
+    cat:getCell(state, ROW_ID, CATEGORY_ID) as CellFormat,
     src:getCell(state, ROW_ID, SRC_ID) as CellFormat,
     payMethod:getCell(state, ROW_ID, PAY_METHOD_ID) as CellFormat,
     dscrpt:getCell(state, ROW_ID, DSCRPT_ID) as CellFormat,
@@ -87,14 +87,14 @@ const UpsertEntry = function(props:UpsertEntryProps) {
       <Box
         borderBottom="0px !important"
         pr="0px !important"
-        minWidth={type.width}
-        flexBasis={type.width}
-        flexGrow={type.width}
-        order={type.index}
+        minWidth={cat.width}
+        flexBasis={cat.width}
+        flexGrow={cat.width}
+        order={cat.index}
         clone
       >
         <TableCell component="div">
-          <TypeInput entryUpsertId={entryUpsertId} />
+          <CategoryInput entryUpsertId={entryUpsertId} />
         </TableCell>
       </Box>
       <Box

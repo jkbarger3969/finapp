@@ -2,7 +2,8 @@ import {combineReducers} from "redux";
 import * as _ from  "lodash"; 
 import isEqual from "lodash.isequal";
 
-import {JournalEntrySourceType, JournalEntrySourceInput, RationalInput
+import {JournalEntrySourceType, JournalEntrySourceInput, RationalInput,
+  JournalEntryCategoryType
 } from "../../apollo/graphTypes";
 import {
   
@@ -19,9 +20,11 @@ import {
   SetDeptValue, SET_DEPT_VALUE, ClearDeptValue, CLEAR_DEPT_VALUE,
   SetDeptError, SET_DEPT_ERROR, ClearDeptError, CLEAR_DEPT_ERROR,
   SetDeptOpen , SET_DEPT_OPEN,
-  
-  SetTypeValue, SET_TYPE_VALUE, ClearTypeValue, CLEAR_TYPE_VALUE,
-  SET_TYPE_ERROR, SetTypeError, CLEAR_TYPE_ERROR, ClearTypeError,
+
+  SET_CAT_TYPE, SetCatType,  CLEAR_CAT_TYPE, ClearCatType,
+  SET_CAT_INPUT, SetCatInput, CLEAR_CAT_INPUT, ClearCatInput, SET_CAT_VALUE,
+  SetCatValue, CLEAR_CAT_VALUE, ClearCatValue, SET_CAT_ERROR, SetCatError,
+  CLEAR_CAT_ERROR, ClearCatError, SET_CAT_OPEN, SetCatOpen,
   
   SetSrcType, SET_SRC_TYPE,
   SetSrcInput, SET_SRC_INPUT, ClearSrcInput, CLEAR_SRC_INPUT,
@@ -46,17 +49,18 @@ import {
 import {InputValue, reduceOneById} from "./utils";
 
 type Actions = Create | Cancel | Clear |
-  SetSrcInput | SetDateInput | SetTypeValue | ClearTypeValue |
-  ClearDateInput | SetDateValue | ClearDateValue | SetDateError |
-  ClearDateError | SetSrcInput | ClearSrcInput | SetSrcValue |
+  SetSrcInput | SetDateInput |  ClearDateInput | SetDateValue | ClearDateValue |
+  SetDateError | ClearDateError | SetSrcInput | ClearSrcInput | SetSrcValue |
   ClearSrcValue | SetSrcError | ClearSrcError | SetSrcOpen | SetDeptInput |
   ClearDeptInput | SetDeptValue | ClearDeptValue | SetDeptError |
   ClearDeptError | SetDeptOpen | SetPayMethodValue | ClearPayMethodValue |
   SetTotalInput | ClearTotalInput | SetTotalValue | ClearTotalValue |
   SetTotalError | ClearTotalError | SetSubmitStatus | SetSubmitError | 
-  ClearSubmitError | SetSrcType | SetTypeError | ClearTypeError |
-  SetPayMethodError | ClearPayMethodError | SetDscrptValue | ClearDscrptValue |
-  SetReconciledValue | ClearReconciledValue;
+  ClearSubmitError | SetSrcType | SetPayMethodError | ClearPayMethodError |
+  SetDscrptValue | ClearDscrptValue | SetReconciledValue |
+  ClearReconciledValue | SetCatInput | ClearCatInput | SetCatValue |
+  ClearCatValue | SetCatError | ClearCatError | SetCatOpen | SetCatType |
+  ClearCatType;
 
 
 const date = (state = new InputValue<Date, null>(null), action:Actions)
@@ -117,27 +121,36 @@ const department = (state = Object.assign(new InputValue<string[], []>([]),
       
 }
 
-const type = (state = Object.assign(new InputValue<string, null>(null),
+const category = (state = Object.assign(new InputValue<string, null>(null),
   {open:false}), action:Actions):InputValue<string, null> & {open:boolean} =>
 {
 
   switch(action.type) {
-    case SET_TYPE_VALUE:
-      return action.payload.value && state.value !== action.payload.value ?
-        {...state, value:action.payload.value} : state;
-    case CLEAR_TYPE_VALUE:
-      return state.value === null ? state : {...state, value:null};
-    case SET_TYPE_ERROR:
+    case SET_CAT_INPUT:{
+      const input = action.payload.input.trimStart();
+      return state.input === input ? state : {...state, input};
+    }
+    case CLEAR_CAT_INPUT:
+      return state.input === "" ? state : {...state, input:""};
+    case SET_CAT_VALUE:
+      return state.value === action.payload.value ?
+        state : {...state, value:action.payload.value};
+    case CLEAR_CAT_VALUE:
+      return state.value ? {...state, value:null} : state;
+    case SET_CAT_ERROR:
       return state.error?.message === action.payload.error.message ?
         state : {...state, error:action.payload.error};
-    case CLEAR_TYPE_ERROR:
-        return state.error === null ? state : {...state, error:null};
+    case CLEAR_CAT_ERROR:
+      return state.error ? {...state, error:null} : state;
+    case SET_CAT_OPEN:{
+      const open = action.payload.open;
+      return open === state.open ? state : {...state, open};
+    }
     default:
       return state;
   }
-  
+      
 }
-
 const source = (state = Object.assign(
   new InputValue<JournalEntrySourceInput[], []>([]),{open:false}),
   action:Actions):InputValue<JournalEntrySourceInput[], []> & {open:boolean} => 
@@ -250,12 +263,26 @@ const reconciled = (state = new InputValue<boolean, false>(false),
   
 }
 
+const catType = (state:JournalEntryCategoryType | null = null,
+  action:Actions) =>
+{
+  switch(action.type) {
+    case SET_CAT_TYPE:
+      return action.payload.catType;
+    case CLEAR_CAT_TYPE:
+      return null;
+    default:
+      return state;
+  }
+}
+
 const values = combineReducers({
   id:(state:string | null = null, action:Actions) => action.type === CREATE ?
     (action.payload.entryId || null) : state,
   date,
   department,
-  type,
+  catType,
+  category,
   srcType:(state:JournalEntrySourceType | null = null, action:Actions) => 
     action.type === SET_SRC_TYPE ? action.payload.srcType : state,
   source,
@@ -337,8 +364,15 @@ export const journalEntryUpserts = (state:JournalEntryUpsert[] = [],
     case CLEAR_DEPT_INPUT:
     case CLEAR_DEPT_VALUE:
     case CLEAR_DEPT_ERROR:
-    case SET_TYPE_VALUE:
-    case CLEAR_TYPE_VALUE:
+    case SET_CAT_TYPE:
+    case CLEAR_CAT_TYPE:
+    case SET_CAT_INPUT:
+    case CLEAR_CAT_INPUT:
+    case SET_CAT_VALUE:
+    case CLEAR_CAT_VALUE:
+    case SET_CAT_ERROR:
+    case CLEAR_CAT_ERROR:
+    case SET_CAT_OPEN:
     case SET_SRC_TYPE:
     case SET_SRC_INPUT:
     case CLEAR_SRC_INPUT:
@@ -360,8 +394,6 @@ export const journalEntryUpserts = (state:JournalEntryUpsert[] = [],
     case SET_SUBMIT_STATUS:
     case SET_SUBMIT_ERROR:
     case CLEAR_SUBMIT_ERROR:
-    case SET_TYPE_ERROR:
-    case CLEAR_TYPE_ERROR:
     case SET_PAY_METHOD_ERROR:
     case CLEAR_PAY_METHOD_ERROR:
     case SET_RECONCILED_VALUE:

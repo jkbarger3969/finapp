@@ -21,15 +21,12 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
         }
       }
     }
-    type {
+    category {
       __typename
       id
       type
-      ancestors {
-        __typename
-        id
-        type
-      }
+      name
+
     }
     description
     paymentMethod {
@@ -65,10 +62,10 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
 
 export const JOURNAL_ENTRIES = gql`
   query JournalEntries_1($paginate:PaginateInput!, 
-    $sortBy:[JournalEntriesSortByInput!]!) 
+    $sortBy:[JournalEntriesSortByInput!]!, $filterBy:JournalEntiresFilterInput) 
   {
-    journalEntries(paginate:$paginate, sortBy:$sortBy) 
-      @connection(key:"JournalEntries_1", filter:["sortBy"]) 
+    journalEntries(paginate:$paginate, sortBy:$sortBy, filterBy:$filterBy)
+      @connection(key:"JournalEntries_1", filter:["sortBy", "filterBy"]) 
     {
       totalCount
       entries {

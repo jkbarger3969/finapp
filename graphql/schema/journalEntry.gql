@@ -2,7 +2,6 @@ type JournalEntry {
   id:ID!
   date:String!
   department:Department!
-  type:JournalEntryType!
   category:JournalEntryCategory!
   paymentMethod:PaymentMethod!
   description:String
@@ -25,7 +24,6 @@ input JournalEntrySourceInput {
 input JournalEntryUpdateFields {
   date:String
   department:ID
-  type:ID
   category:ID
   paymentMethod:ID
   description:String
@@ -37,7 +35,6 @@ input JournalEntryUpdateFields {
 input JournalEntryAddFields {
   date:String!
   department:ID!
-  type:ID!
   category:ID!
   paymentMethod:ID!
   description:String
@@ -62,6 +59,10 @@ input JournalEntriesSortByInput {
   direction:SortDirection = ASC
 }
 
+input JournalEntiresFilterInput {
+  department:ByIdFilter
+}
+
 type JournalEntriesRes {
   totalCount:Int!
   entries:[JournalEntry!]!
@@ -74,8 +75,8 @@ type JournalEntryAddedRes {
 }
 
 type Query {
-  journalEntries(paginate:PaginateInput!, sortBy:[JournalEntriesSortByInput!]!):
-    JournalEntriesRes!
+  journalEntries(paginate:PaginateInput!, sortBy:[JournalEntriesSortByInput!]!,
+    filterBy:JournalEntiresFilterInput):JournalEntriesRes!
 }
 
 type Mutation {

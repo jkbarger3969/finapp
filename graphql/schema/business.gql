@@ -1,8 +1,14 @@
+type Vendor {
+  approved:Boolean!
+  vendorId:ID
+}
+
 type Business {
   id:ID!
   name:String!
   budget:Budget
   departments:[Department!]
+  vendor:Vendor
 }
 
 input BusinessAddFields {

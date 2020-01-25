@@ -33,6 +33,24 @@ export const businesses:QueryResolvers["businesses"] =
 
 }
 
+export const business:QueryResolvers["business"] =
+  async (parent, args, context, info) =>
+{
+
+  const {id} = args;
+
+  const {db} = context;
+
+  const result = await db.collection("businesses").aggregate([
+    {$match:{_id:new ObjectID(id)}},
+    {$limit:1},
+    addId
+  ]).toArray();
+
+  return result[0];
+
+}
+
 export const departments:BusinessResolvers["departments"] = 
   async (parent, args, context, info) => 
 {

@@ -6,12 +6,16 @@ import gql from "graphql-tag";
 
 import {Thunk} from "./types";
 import {JournalEntrySourceInput, JournalEntrySourceType,
+  JournalEntryCategoryType,
   AddPerson_1Mutation as AddPerson,
   AddPerson_1MutationVariables as AddPersonVars,
   AddJournalEntry_2Mutation as AddJournalEntry,
   AddJournalEntry_2MutationVariables as AddJournalEntryVars,
   AddBusiness_1Mutation as AddBusiness,
-  AddBusiness_1MutationVariables as AddBusinessVars
+  AddBusiness_1MutationVariables as AddBusinessVars,
+  CheckValidVendor_1Query as CheckValidVendor,
+  CheckValidVendor_1QueryVariables as CheckValidVendorVars
+
 } from "../../apollo/graphTypes";
 import {SubmitStatus} from "../reducers/journalEntryUpserts";
 import * as upsertActions from "../actionTypes/journalEntryUpsert";
@@ -77,7 +81,7 @@ export const validateAll = (upsertId:string):Thunk<any> => (dispatch) => {
   batch(()=>{
     dispatch(validateDate(upsertId));
     dispatch(validateDept(upsertId));
-    dispatch(validateType(upsertId));
+    dispatch(validateCat(upsertId));
     dispatch(validateSrc(upsertId));
     dispatch(validatePayMethod(upsertId));
     dispatch(validateTotal(upsertId));
@@ -155,12 +159,12 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
       
       const dateError = selectors.getDateError(state, upsertId);
       const deptError = selectors.getDeptError(state, upsertId);
-      const typeError = selectors.getTypeError(state, upsertId);
+      const catError = selectors.getCatError(state, upsertId);
       const srcError = selectors.getSrcError(state, upsertId);
       const payMethodError = selectors.getPayMethodError(state, upsertId);
       const totalError = selectors.getTotalError(state, upsertId);
 
-      if(dateError || deptError || typeError || srcError || payMethodError
+      if(dateError || deptError || catError || srcError || payMethodError
         || totalError)
       {
         batch(()=>{
@@ -268,7 +272,7 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
 
       const date = selectors.getDate(state, upsertId);
       const department = selectors.getDept(state, upsertId);
-      const type = selectors.getType(state, upsertId);
+      const category = selectors.getCat(state, upsertId);
       const paymentMethod = selectors.getPayMethod(state, upsertId);
       const description = 
         selectors.getDscrptValue(state, upsertId) ?? undefined;
@@ -276,14 +280,14 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
       const reconciled = 
         selectors.getReconciledValue(state, upsertId) ?? undefined;
 
-      if(!(date && department && type && paymentMethod && total)) {
+      if(!(date && department && category && paymentMethod && total)) {
         batch(()=>{
           dispatch(setSubmitError(upsertId,
             new Error(`Something went wrong, field values:
               date:${date}
               department:${department}
               source:${source}
-              type:${type}
+              category:${category}
               paymentMethod:${paymentMethod}
               total:${total}
             `)));
@@ -302,7 +306,7 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
                 date:date.toISOString(),
                 department,
                 source,
-                type,
+                category,
                 paymentMethod,
                 description,
                 total,
@@ -429,52 +433,7 @@ export const validateDate = (upsertId:string)
     }
 
 }
-//Type
-export const setTypeValue = (upsertId:string, value:string)
-  :upsertActions.SetTypeValue => ({
-    type:upsertActions.SET_TYPE_VALUE,
-    payload:{upsertId, value}
-  });
-export const clearTypeValue = (upsertId:string):upsertActions.ClearTypeValue => 
-({
-  type:upsertActions.CLEAR_TYPE_VALUE,
-  payload:{upsertId}
-});
-export const setTypeError = (upsertId:string, error:Error):
-  upsertActions.SetTypeError => ({
-    type:upsertActions.SET_TYPE_ERROR,
-    payload:{upsertId, error}
-  });
 
-export const clearTypeError = (upsertId:string):upsertActions.ClearTypeError =>
-  ({
-    type:upsertActions.CLEAR_TYPE_ERROR,
-    payload:{upsertId}
-  });
-export const validateType = (upsertId:string)
-  :Thunk<upsertActions.SetTypeError | upsertActions.ClearTypeError> => 
-  (dispatch, getState) => 
-{
-
-    const state = getState();
-
-    const type = selectors.getType(state, upsertId);
-    const typeError = selectors.getTypeError(state, upsertId);
-    const upsertType = selectors.getUpsertType(state, upsertId);
-
-    // Required
-    if(upsertType === selectors.UpsertType.Add && !type) {
-      
-      dispatch(setTypeError(upsertId, new Error("Type is required.")));
-    
-    // Clear errors
-    } else if(typeError) {
-      
-      dispatch(clearTypeError(upsertId));
-
-    }
-
-}
 // Department
 export const setDeptInput = (upsertId:string, input:string)
   :upsertActions.SetDeptInput => ({
@@ -542,6 +501,145 @@ export const validateDept = (upsertId:string)
     }
 
 }
+
+const BUSINESS_VENDOR_CHECK = gql`
+  query CheckValidVendor_1($id:ID!) {
+    business(id: $id) {
+      __typename
+      id
+      vendor {
+        approved
+      }
+    }
+  }
+`
+
+// Category
+export const setCatType = (upsertId:string,
+  catType:JournalEntryCategoryType, client:ApolloClient<any>):
+    Thunk<upsertActions.SetCatType | upsertActions.ClearSrcValue> => 
+    async (dispatch, getState) => 
+{
+  const state = getState();
+
+  const src = selectors.getSrc(state, upsertId);
+
+  if(src && catType === JournalEntryCategoryType.Debit) {
+
+    const {id, sourceType} = src;
+
+    let approvedVendor = false;
+
+    if(sourceType === JournalEntrySourceType.Business) {
+      
+      try {
+
+        const {data} = await client.query<CheckValidVendor,
+          CheckValidVendorVars>({
+            query:BUSINESS_VENDOR_CHECK,
+            variables:{
+              id
+            }
+          });
+        
+        approvedVendor = !!data.business?.vendor?.approved;
+
+      } catch(error) {
+
+        // TODO: write generic error handler
+
+      }
+
+    }
+
+    if(!approvedVendor) {
+
+      dispatch(clearSrcValue(upsertId));
+
+    }
+
+  }
+
+
+  dispatch({
+    type:upsertActions.SET_CAT_TYPE,
+    payload:{upsertId, catType}
+  });
+
+}
+
+export const clearCatType = (upsertId:string):upsertActions.ClearCatType => ({
+  type:upsertActions.CLEAR_CAT_TYPE,
+  payload:{upsertId}
+});
+
+export const setCatInput = (upsertId:string, input:string)
+  :upsertActions.SetCatInput => ({
+      type:upsertActions.SET_CAT_INPUT,
+      payload:{ upsertId, input}
+  });
+
+export const clearCatInput = (upsertId:string)
+  :upsertActions.ClearCatInput => ({
+    type:upsertActions.CLEAR_CAT_INPUT,
+    payload:{upsertId}
+  });
+
+export const setCatValue = (upsertId:string, value:string)
+  :upsertActions.SetCatValue => ({
+      type:upsertActions.SET_CAT_VALUE,
+      payload:{ upsertId, value}
+  });
+
+export const clearCatValue = (upsertId:string)
+  :upsertActions.ClearCatValue => ({
+    type:upsertActions.CLEAR_CAT_VALUE,
+    payload:{upsertId}
+  });
+
+export const setCatError = (upsertId:string, error:Error):
+  upsertActions.SetCatError => ({
+    type:upsertActions.SET_CAT_ERROR,
+    payload:{upsertId, error}
+  });
+
+export const clearCatError = (upsertId:string)
+  :upsertActions.ClearCatError => ({
+    type:upsertActions.CLEAR_CAT_ERROR,
+    payload:{upsertId}
+  });
+
+export const setCatOpen = (upsertId:string, open:boolean)
+  :upsertActions.SetCatOpen => ({
+    type:upsertActions.SET_CAT_OPEN,
+    payload:{upsertId, open}
+  });
+
+export const validateCat = (upsertId:string)
+  :Thunk<upsertActions.SetCatError | upsertActions.ClearCatError> => 
+  (dispatch, getState) => 
+{
+
+    const state = getState();
+
+    const cat = selectors.getCat(state, upsertId);
+    const catError = selectors.getCatError(state, upsertId);
+    const upsertType = selectors.getUpsertType(state, upsertId);
+
+    // Required
+    if(upsertType === selectors.UpsertType.Add && !cat) {
+      
+      dispatch(setCatError(upsertId, new Error("Category is required.")));
+    
+    // Clear errors
+    } else if(catError) {
+      
+      dispatch(clearCatError(upsertId));
+
+    }
+
+}
+
 // Source
 export const setSrcType = (upsertId:string, srcType:JournalEntrySourceType)
   :upsertActions.SetSrcType => ({

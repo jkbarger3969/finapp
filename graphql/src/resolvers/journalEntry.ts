@@ -7,6 +7,7 @@ import {MutationResolvers, QueryResolvers, JournalEntryResolvers,
 } from "../graphTypes";
 import {nodeFieldResolver} from "./utils/nodeResolver";
 import {NodeValue} from "../types";
+import {getDescendants as deptDescendants} from "./departments";
 
 const JOURNAL_ENTRY_ADDED = "JOURNAL_ENTRY_ADDED";
 
@@ -15,8 +16,7 @@ const userNodeType = new ObjectID("5dca0427bccd5c6f26b0cde2");
 const addFields = {$addFields:{
   id:{$toString: "$_id"},
   department:{$arrayElemAt: ["$department.value",0]},
-  type:{$arrayElemAt: ["$type.value",0]},
-  category:{$arrayElemAt: ["$type.value",0]},
+  category:{$arrayElemAt: ["$category.value",0]},
   paymentMethod:{$arrayElemAt: ["$paymentMethod.value",0]},
   total:{$arrayElemAt: ["$total.value",0]},
   source:{$arrayElemAt: ["$source.value",0]},
@@ -36,7 +36,6 @@ const project = {$project: {
 
 enum SortBy {
   "DEPARTMENT" = "department",
-  "TYPE" = "type",
   "CATEGORY" = "category",
   // "ROOT_TYPE" = "_rootType",
   "PAYMENT_METHOD" = "paymentMethod",
@@ -53,21 +52,35 @@ export const journalEntries:QueryResolvers["journalEntries"] =
   async (parent, args, context, info) => 
 {
 
+  const {db} = context;
+
   const {
     paginate:{
       skip,
       limit
     },
-    sortBy = null,
+    sortBy,
+    filterBy = null
   } = args;
   
-  const skipAndLimit = [{$skip: skip}, {$limit: limit}];
+  const match = {"deleted.0.value":false} as object;
+
+  if(filterBy) {
     
-  const {db} = context;
+    if(filterBy?.department?.eq) {
+
+      const deptIds = await deptDescendants(db, 
+        new ObjectID(filterBy.department.eq),{_id:true});
+
+      match["department.0.value.id"] = {$in:deptIds.map(v => v._id)};
+
+    }
+
+  }
+
+  const skipAndLimit = [{$skip: skip}, {$limit: limit}];
   
-  const pipeline:object[] = [
-    {$match: {"deleted.0.value":false}}
-  ];
+  const pipeline:object[] = [{$match:match}];
   
 
   if(sortBy.length === 0) {
@@ -97,12 +110,12 @@ export const journalEntries:QueryResolvers["journalEntries"] =
   pipeline.push(project);
 
   const totalCount = await db.collection("journalEntries")
-    .countDocuments({"deleted.0.value":false});
+    .countDocuments(match);
   
   const entries = await db.collection("journalEntries")
     .aggregate(pipeline).toArray();
 
-    return {
+  return {
     totalCount,
     entries
   };
@@ -136,9 +149,8 @@ export const updateJournalEntry:
   };
 
   const {date:dateString = null, source = null, 
-    department:departmentId = null, total = null, type:typeId = null, 
-    category:categoryId = null, paymentMethod:paymentMethodId = null,
-    description = null, reconciled = null
+    department:departmentId = null, total = null, category:categoryId = null,
+    paymentMethod:paymentMethodId = null, description = null, reconciled = null
   } = fields;
 
   let numFieldsToUpdate = 0;
@@ -261,35 +273,6 @@ export const updateJournalEntry:
 
   }
   
-  if(typeId !== null) {
-
-    numFieldsToUpdate++;
-    
-    const {collection, id:node} = 
-      nodeMap.typename.get("JournalEntryType");
-
-    const id = new ObjectID(typeId);
-
-    if(0 === (await db.collection(collection).find({_id:id})
-      .limit(1).count())) 
-    {
-      throw new Error(`Mutation "updateJournalEntry" type "JournalEntryType" with id ${typeId} does not exist.`);
-    }
-
-    $push["type"] = {
-      $each:[{
-        value:{
-          node:new ObjectID(node),
-          id
-        },
-        createdBy,
-        createdOn,
-      }],
-      $position:0
-    };
-    
-  }
-  
   if(categoryId !== null) {
 
     numFieldsToUpdate++;
@@ -302,7 +285,7 @@ export const updateJournalEntry:
     if(0 === (await db.collection(collection).find({_id:id})
       .limit(1).count()))
     {
-      throw new Error(`Mutation "updateJournalEntry" type "JournalEntryCategory" with id ${typeId} does not exist.`);
+      throw new Error(`Mutation "updateJournalEntry" type "JournalEntryCategory" with id ${categoryId} does not exist.`);
     }
 
     $push["category"] = {
@@ -410,7 +393,6 @@ export const addJournalEntry:
   const {
     date:dateString,
     department:departmentId,
-    type:typeId,
     category:categoryId,
     source:{
       id:sourceId,
@@ -500,31 +482,6 @@ export const addJournalEntry:
     }];
 
   }
-  
-  // JournalEntryType
-  {
-
-    const {collection, id:node} = 
-      nodeMap.typename.get("JournalEntryType");
-
-    const id = new ObjectID(typeId);
-
-    if(0 === (await db.collection(collection).find({_id:id})
-      .limit(1).count())) 
-    {
-      throw new Error(`Mutation "addJournalEntry" type "JournalEntryType" with id ${typeId} does not exist.`);
-    }
-
-    insertDoc["type"] = [{
-      value:{
-        node:new ObjectID(node),
-        id
-      },
-      createdBy,
-      createdOn,
-    }];
-
-  }
 
   // JournalEntryCategory
   {
@@ -532,12 +489,12 @@ export const addJournalEntry:
     const {collection, id:node} = 
       nodeMap.typename.get("JournalEntryCategory");
 
-    const id = new ObjectID(typeId);
+    const id = new ObjectID(categoryId);
 
     if(0 === (await db.collection(collection).find({_id:id})
       .limit(1).count())) 
     {
-      throw new Error(`Mutation "addJournalEntry" type "JournalEntryCategory" with id ${typeId} does not exist.`);
+      throw new Error(`Mutation "addJournalEntry" type "JournalEntryCategory" with id ${categoryId} does not exist.`);
     }
 
     insertDoc["category"] = [{
@@ -647,7 +604,6 @@ export const addJournalEntry:
 
 export const JournalEntry:JournalEntryResolvers = {
   department:nodeFieldResolver,
-  type:nodeFieldResolver,
   category:nodeFieldResolver,
   paymentMethod:nodeFieldResolver,
   source:nodeFieldResolver,

@@ -17,18 +17,18 @@ export const DEPT_ID = uuid("journal/department", namespace);
 store.dispatch(create({
   rowId:ROW_ID,
   id:DEPT_ID,
-  index:1,
+  index:6,
   name:"Department",
   width:380
 }));
 
-export const TYPE_ID = uuid("journal/type", namespace);
+export const CATEGORY_ID = uuid("journal/category", namespace);
 store.dispatch(create({
   rowId:ROW_ID,
-  id:TYPE_ID,
+  id:CATEGORY_ID,
   index:2,
-  name:"Type",
-  width:175
+  name:"Category",
+  width:380
 }));
 
 export const SRC_ID = uuid("journal/source", namespace);
@@ -62,7 +62,7 @@ export const TOTAL_ID = uuid("journal/total", namespace);
 store.dispatch(create({
   rowId:ROW_ID,
   id:TOTAL_ID,
-  index:6,
+  index:1,
   name:"Total",
   width:130
 }));

@@ -3,7 +3,16 @@ enum SortDirection {
   DESC
 }
 
+enum FilterType {
+  INCLUDE
+  EXCLUDE
+}
+
 input PaginateInput {
   skip:Int!
   limit:Int!
+}
+
+input ByIdFilter {
+  eq:ID
 }

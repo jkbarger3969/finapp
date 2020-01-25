@@ -1,7 +1,8 @@
 import {Root} from "../reducers/root";
 import {JournalEntryUpsert, SubmitStatus
 } from "../reducers/journalEntryUpserts";
-import {JournalEntrySourceInput, JournalEntrySourceType, RationalInput
+import {JournalEntrySourceInput, JournalEntrySourceType, RationalInput,
+  JournalEntryCategoryType
 } from "../../apollo/graphTypes";
 
 const getEntry = (state:Root, upsertId:string):JournalEntryUpsert | null => {
@@ -70,20 +71,36 @@ export const isDeptOpen = (state:Root, upsertId:string):boolean => {
   return getEntry(state, upsertId)?.values.department.open || false;
 }
 
+export const getCatType = (state:Root, upsertId:string)
+  :JournalEntryCategoryType | null => 
+{
+  return getEntry(state, upsertId)?.values.catType || null;
+}
+
+export const getCatInput = (state:Root, upsertId:string):string => {
+  return getEntry(state, upsertId)?.values.category.input || "";
+}
+
+export const getCat = (state:Root, upsertId:string)
+  :string | null => 
+{
+  return getEntry(state, upsertId)?.values.category.value || null;
+}
+
+export const getCatError = (state:Root, upsertId:string):Error | null => {
+  return getEntry(state, upsertId)?.values.category.error || null;
+}
+
+export const isCatOpen = (state:Root, upsertId:string):boolean => {
+  return getEntry(state, upsertId)?.values.category.open || false;
+}
+
 export const getDate = (state:Root, upsertId:string):Date | null => {
   return getEntry(state, upsertId)?.values.date.value || null;
 }
 
 export const getDateError = (state:Root, upsertId:string):Error | null => {
   return getEntry(state, upsertId)?.values.date.error || null;
-}
-
-export const getType = (state:Root, upsertId:string):string => {
-  return getEntry(state, upsertId)?.values.type.value || "";
-}
-
-export const getTypeError = (state:Root, upsertId:string):Error | null => {
-  return getEntry(state, upsertId)?.values.type.error || null;
 }
 
 export const getPayMethod = (state:Root, upsertId:string):string => {

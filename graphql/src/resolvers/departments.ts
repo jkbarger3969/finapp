@@ -1,4 +1,4 @@
-import {ObjectID} from "mongodb";
+import {ObjectID, Db} from "mongodb";
 
 import {Department as IDepartment, QueryResolvers, DepartmentResolvers
 } from "../graphTypes";
@@ -166,8 +166,54 @@ const ancestors:DepartmentResolvers['ancestors'] =
 
 }
 
+export const getDescendants = async (db:Db, id:ObjectID,
+  projection:object | null = null) =>
+{
+
+  const decedentIds = [id];
+  const descendants = [];
+
+  while(decedentIds.length > 0) {
+    
+    const pipeline = [
+      {$match:{"parent.id":{$in:decedentIds}}},
+      addId
+    ] as any[];
+
+    if(projection !== null) {
+      pipeline.push({$project:projection});
+    }
+
+    const results =
+      await db.collection("departments").aggregate(pipeline).toArray();
+
+    decedentIds.splice(0);
+
+    for(const decedent of results){
+      descendants.push(decedent);
+      decedentIds.push(new ObjectID(decedent.id));
+    }
+
+  }
+
+  return descendants;
+
+}
+
+const descendants:DepartmentResolvers['descendants'] = 
+  (parent, args, context, info) => 
+{
+  
+  const {db} = context;
+  const {id} = parent;
+
+  return getDescendants(db, new ObjectID(id));
+
+}
+
 export const Department:DepartmentResolvers = {
   budget:nodeFieldResolver,
   parent:nodeFieldResolver,
-  ancestors
+  ancestors,
+  descendants
 };

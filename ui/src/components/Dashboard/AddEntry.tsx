@@ -16,7 +16,7 @@ import FormControlLabel from '@material-ui/core/FormControlLabel';
 import DateInput from '../JournalEntryInputs/DateInput';
 import TotalInput from '../JournalEntryInputs/TotalInput';
 import DepartmentInput from '../JournalEntryInputs/DepartmentInput';
-import TypeInput from '../JournalEntryInputs/TypeInput';
+import CategoryInput from '../JournalEntryInputs/CategoryInput';
 import SourceInput from '../JournalEntryInputs/SourceInput';
 import PaymentMethodInput from '../JournalEntryInputs/PaymentMethodInput';
 import DescriptionInput from '../JournalEntryInputs/DescriptionInput';
@@ -71,8 +71,8 @@ const AddEntry = function(props:AddEntryProps) {
             <Box padding={2} minWidth={380}>
               <DepartmentInput entryUpsertId={entryUpsertId} />
             </Box>
-            <Box padding={2} minWidth={175}>
-              <TypeInput entryUpsertId={entryUpsertId} />
+            <Box padding={2} minWidth={380}>
+              <CategoryInput entryUpsertId={entryUpsertId} />
             </Box>
             <Box padding={2} minWidth={380}>
               <SourceInput entryUpsertId={entryUpsertId} />

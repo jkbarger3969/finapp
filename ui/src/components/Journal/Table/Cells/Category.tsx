@@ -7,22 +7,22 @@ import {capitalCase} from 'change-case';
 
 import {JournalEntry_1Fragment as JournalEntryFragment
 } from '../../../../apollo/graphTypes';
-import {ROW_ID, TYPE_ID} from "./cellsReduxIni";
+import {ROW_ID, CATEGORY_ID} from "./cellsReduxIni";
 import {Root} from "../../../../redux/reducers/root";
 import {TableCell as CellFormat} from "../../../../redux/reducers/tableRows";
 import {getCell} from "../../../../redux/selectors/tableRows";
 
-export interface TypeProps {
-  type:JournalEntryFragment['type'];
+export interface CategoryProps {
+  category:JournalEntryFragment['category'];
   textColor:string;
 }
 
-const Type = function(props:TypeProps) {
+const Category = function(props:CategoryProps) {
 
-  const {type, textColor} = props;
+  const {category, textColor} = props;
   
   const cellFormat = useSelector<Root, CellFormat>((state)=> 
-    getCell(state, ROW_ID, TYPE_ID) as CellFormat);
+    getCell(state, ROW_ID, CATEGORY_ID) as CellFormat);
   
   return <Box
     className={textColor}
@@ -37,9 +37,9 @@ const Type = function(props:TypeProps) {
     order={cellFormat.index > -1 ? cellFormat.index : undefined}
     clone
   >
-    <TableCell component='div'>{capitalCase(type.type)}</TableCell>
+    <TableCell component='div'>{capitalCase(category.name)}</TableCell>
   </Box>;
 
 }
 
-export default Type;
+export default Category;

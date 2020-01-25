@@ -12,11 +12,13 @@ import {uuid, namespace} from "../../../utils/uuid";
 export const entryUpsertId = uuid("Journal", namespace);
 
 
-const Journal = function() {
+const Journal = function(props:{deptId?:string}) {
+
+  const {deptId} = props;
 
   const autoSizerChildren = useCallback(({width, height}:Size) => {
-    return <Body width={width} height={height} />;
-  },[]);
+    return <Body deptId={deptId} width={width} height={height} />;
+  },[deptId]);
 
   return <Box
     style={{overflowX:"auto"}}

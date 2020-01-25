@@ -6,8 +6,6 @@ import {journalEntries, addJournalEntry, updateJournalEntry, JournalEntry,
   journalEntryAdded
 } from "./resolvers/journalEntry";
 import {journalEntrySources} from "./resolvers/journalEntrySource";
-import {JournalEntryType, journalEntryTypes
-} from "./resolvers/journalEntryType";
 import {JournalEntryCategory, journalEntryCategories, journalEntryCategory
 } from "./resolvers/journalEntryCategory";
 import {PaymentMethod, paymentMethods} from "./resolvers/paymentMethod";
@@ -20,21 +18,19 @@ const resolvers:Resolvers = {
   Department,
   JournalEntry,
   PaymentMethod,
-  JournalEntryType,
   JournalEntryCategory,
   User,
   Query: {
     businesses,
     budgets,
     journalEntries,
-    journalEntryTypes,
     journalEntrySources,
     journalEntryCategories,
     journalEntryCategory,
     departments,
     department,
     paymentMethods,
-    people
+    people,
   },
   Mutation:{
     addJournalEntry,

@@ -1,5 +1,6 @@
 import {Action} from "./types";
-import {JournalEntrySourceInput, JournalEntrySourceType, RationalInput
+import {JournalEntrySourceInput, JournalEntrySourceType, RationalInput,
+  JournalEntryCategoryType
 } from "../../apollo/graphTypes";
 import {SubmitStatus} from "../reducers/journalEntryUpserts";
 
@@ -73,18 +74,34 @@ export const SET_DEPT_OPEN = "journalEntryUpsert/SET_DEPT_OPEN";
 export type SetDeptOpen = 
   Action<typeof SET_DEPT_OPEN, {upsertId:string, open:boolean}>;
 
-// Type
-export const SET_TYPE_VALUE = "journalEntryUpsert/SET_TYPE_VALUE";
-export type SetTypeValue = SetValueAction<typeof SET_TYPE_VALUE, string>;
-export const CLEAR_TYPE_VALUE = "journalEntryUpsert/CLEAR_TYPE_VALUE";
-export type ClearTypeValue = ClearAction<typeof CLEAR_TYPE_VALUE>;
+// Category
+export const SET_CAT_TYPE = "journalEntryUpsert/SET_CAT_TYPE";
+export type SetCatType = Action<typeof SET_CAT_TYPE,{upsertId:string,
+  catType:JournalEntryCategoryType}>;
+export const CLEAR_CAT_TYPE = "journalEntryUpsert/CLEAR_CAT_TYPE";
+export type ClearCatType = Action<typeof CLEAR_CAT_TYPE,{upsertId:string}>;
 
-export const SET_TYPE_ERROR = "journalEntryUpsert/SET_TYPE_ERROR";
-export type SetTypeError = SetErrorAction<typeof SET_TYPE_ERROR>;
-export const CLEAR_TYPE_ERROR = "journalEntryUpsert/CLEAR_TYPE_ERROR";
-export type ClearTypeError = ClearAction<typeof CLEAR_TYPE_ERROR>;
+export const SET_CAT_INPUT = "journalEntryUpsert/SET_CAT_INPUT";
+export type SetCatInput = SetInputAction<typeof SET_CAT_INPUT>;
 
-export const SET_TYPE_OPEN = "journalEntryUpsert/CLEAR_TYPE_VALUE";
+export const CLEAR_CAT_INPUT = "journalEntryUpsert/CLEAR_CAT_INPUT";
+export type ClearCatInput = ClearAction<typeof CLEAR_CAT_INPUT>;
+
+export const SET_CAT_VALUE = "journalEntryUpsert/SET_CAT_VALUE";
+export type SetCatValue = SetValueAction<typeof SET_CAT_VALUE, string>;
+
+export const CLEAR_CAT_VALUE = "journalEntryUpsert/CLEAR_CAT_VALUE";
+export type ClearCatValue = ClearAction<typeof CLEAR_CAT_VALUE>;
+
+export const SET_CAT_ERROR = "journalEntryUpsert/SET_CAT_ERROR";
+export type SetCatError = SetErrorAction<typeof SET_CAT_ERROR>;
+
+export const CLEAR_CAT_ERROR = "journalEntryUpsert/CLEAR_CAT_ERROR";
+export type ClearCatError = ClearAction<typeof CLEAR_CAT_ERROR>;
+
+export const SET_CAT_OPEN = "journalEntryUpsert/SET_CAT_OPEN";
+export type SetCatOpen = 
+  Action<typeof SET_CAT_OPEN, {upsertId:string, open:boolean}>;
 
 // Source
 export const SET_SRC_TYPE = "journalEntryUpsert/SET_SRC_TYPE";

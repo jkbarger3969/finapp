@@ -1,6 +1,6 @@
 import {ObjectID} from "mongodb";
 
-import {QueryResolvers, JournalEntryCategoryResolvers
+import {QueryResolvers, JournalEntryCategoryResolvers, JournalEntryCategoryType
 } from "../graphTypes";
 import {nodeFieldResolver} from "./utils/nodeResolver";
 import {NodeValue} from "../types";
@@ -75,7 +75,15 @@ export const ancestors:JournalEntryCategoryResolvers["ancestors"] =
 
 }
 
+export const type:JournalEntryCategoryResolvers["type"] =
+  (parent, args, context, info) =>
+{
+  return (parent as any).type === "credit" ? JournalEntryCategoryType.Credit :
+    JournalEntryCategoryType.Debit;
+}
+
 export const JournalEntryCategory:JournalEntryCategoryResolvers = {
   parent:nodeFieldResolver,
+  type,
   ancestors
 }

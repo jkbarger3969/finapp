@@ -12,12 +12,14 @@ import {red, green} from "@material-ui/core/colors"
 import {randUUID} from "../../../utils/uuid";
 import TransactionDate from "./Cells/TransactionDate";
 import Department from "./Cells/Department";
-import Type from "./Cells/Type";
+// import Type from "./Cells/Type";
+import Category from "./Cells/Category";
 import Source from "./Cells/Source";
 import PaymentMethod from "./Cells/PaymentMethod";
 import Description from "./Cells/Description";
 import Total from "./Cells/Total";
 import Reconciled from "./Cells/Reconciled";
+import {JournalEntryCategoryType} from "../../../apollo/graphTypes"
 
 
 const styles = makeStyles((theme:Theme)=>createStyles({
@@ -94,20 +96,9 @@ const Entry = function(props:EntryProps) {
   
   }
 
-  let textColor:string = '';
-  const {ancestors} = journalEntry.type;
-  switch(ancestors.length === 0 ? 
-    journalEntry.type.type : ancestors[ancestors.length - 1].type) 
-  {
-    case "income":
-    case "reimbursement":
-      textColor = classes.positive;
-      break;
-    case "expense":
-    case "refund":
-      textColor = classes.negative;
-      break;
-  }
+  const textColor = 
+    journalEntry.category.type === JournalEntryCategoryType.Credit ?
+      classes.positive : classes.negative;
 
   return <Box style={style} display="flex !important" clone>
     <TableRow onDoubleClick={onDoubleClick} component="div" hover>
@@ -116,7 +107,7 @@ const Entry = function(props:EntryProps) {
         entryDate={journalEntry.date}
       />
       <Department textColor={textColor} department={journalEntry.department} />
-      <Type textColor={textColor} type={journalEntry.type}/>
+      <Category textColor={textColor} category={journalEntry.category}/>
       <Source textColor={textColor} source={journalEntry.source}/>
       <PaymentMethod 
         textColor={textColor}
