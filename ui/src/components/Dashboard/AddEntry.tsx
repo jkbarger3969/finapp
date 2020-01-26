@@ -5,10 +5,9 @@ import {Add, Queue, Cancel} from "@material-ui/icons/";
 import Tooltip from '@material-ui/core/Tooltip';
 import Box from '@material-ui/core/Box';
 import Button from '@material-ui/core/Button';
-import Dialog, { DialogProps } from '@material-ui/core/Dialog';
+import Dialog from '@material-ui/core/Dialog';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
-import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 
@@ -21,19 +20,27 @@ import SourceInput from '../JournalEntryInputs/SourceInput';
 import PaymentMethodInput from '../JournalEntryInputs/PaymentMethodInput';
 import DescriptionInput from '../JournalEntryInputs/DescriptionInput';
 import ReconciledInput from '../JournalEntryInputs/ReconciledInput';
+import TypeToggle from '../JournalEntryInputs/TypeToggle';
 import {Root} from "../../redux/reducers/root";
-import {getUpsertType, UpsertType
+import {getUpsertType, UpsertType, getType
 } from "../../redux/selectors/journalEntryUpsert";
 import {useDebounceDispatch as useDispatch} from "../../redux/hooks";
 import {cancel, submit} from "../../redux/actions/journalEntryUpsert";
+import {JournalEntryType} from "../../apollo/graphTypes";
+
+interface SelectorResult {
+  open:boolean;
+  typeIsSet:boolean;
+}
 
 export interface AddEntryProps {
-  entryUpsertId: string;
+  entryUpsertId:string;
+  fromDept:string;
 }
 
 const AddEntry = function(props:AddEntryProps) {
 
-  const {entryUpsertId} = props;
+  const {entryUpsertId, fromDept} = props;
 
   const client = useApolloClient();
 
@@ -47,13 +54,11 @@ const AddEntry = function(props:AddEntryProps) {
     dispatch(submit(entryUpsertId, client));
   },[dispatch, entryUpsertId, client]);
 
-  // const onClickSubmitAndNew = useCallback((event?) => {
-  //   onClickSubmit();
 
-  // },[dispatch, entryUpsertId, onClickSubmit]);
-
-  const open = useSelector<Root, boolean>((state) =>
-    getUpsertType(state, entryUpsertId) === UpsertType.Add);
+  const {open, typeIsSet} = useSelector<Root, SelectorResult>((state) => ({
+    open:getUpsertType(state, entryUpsertId) === UpsertType.Add,
+    typeIsSet:getType(state, entryUpsertId) !== null
+  }));
 
   return <Dialog maxWidth="lg" open={open}>
     <form>
@@ -65,6 +70,9 @@ const AddEntry = function(props:AddEntryProps) {
           clone
         >
           <DialogContent dividers>
+            <Box padding={2}>
+              <TypeToggle entryUpsertId={entryUpsertId} />
+            </Box>
             <Box padding={2} minWidth={150}>
               <DateInput autoFocus entryUpsertId={entryUpsertId} />
             </Box>
@@ -95,32 +103,28 @@ const AddEntry = function(props:AddEntryProps) {
           </DialogContent>
         </Box>
       <DialogActions>
-        <Tooltip placement="top" title="Submit">
-          <Button
-            size="medium"
-            color="secondary"
-            variant="outlined"
-            startIcon={<Add />}
-            onClick={onClickSubmit}
-          >Submit</Button>
-        </Tooltip>
-        <Tooltip placement="top" title="Submit and New">
-          <Button
-            size="medium"
-            color="secondary"
-            variant="outlined"
-            startIcon={<Queue />}
-          >Submit/New</Button>
-        </Tooltip>
-        <Tooltip placement="top" title="Cancel">
-          <Button
-            size="medium"
-            color="default"
-            variant="outlined"
-            startIcon={<Cancel />}
-            onClick={onClickCancel}
-          >Cancel</Button>
-        </Tooltip>
+        <Button
+          disabled={!typeIsSet}
+          size="medium"
+          color="secondary"
+          variant="outlined"
+          startIcon={<Add />}
+          onClick={onClickSubmit}
+        >Submit</Button>
+        <Button
+          disabled={!typeIsSet}
+          size="medium"
+          color="secondary"
+          variant="outlined"
+          startIcon={<Queue />}
+        >Submit/New</Button>
+        <Button
+          size="medium"
+          color="default"
+          variant="outlined"
+          startIcon={<Cancel />}
+          onClick={onClickCancel}
+        >Cancel</Button>
       </DialogActions>
     </form>
   </Dialog>

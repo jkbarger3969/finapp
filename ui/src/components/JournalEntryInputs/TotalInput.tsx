@@ -7,7 +7,7 @@ import {useDebounceDispatch} from "../../redux/hooks";
 import {setTotalInput, clearTotalInput, setTotalValue, clearTotalValue,
   validateTotal
 } from "../../redux/actions/journalEntryUpsert";
-import { getTotalInput, isRequired, getTotalError
+import { getTotalInput, isRequired, getTotalError, getType
 } from "../../redux/selectors/journalEntryUpsert";
 import { useSelector, shallowEqual } from 'react-redux';
 
@@ -17,6 +17,7 @@ const inputProps = {
 } as const;
 
 interface SelectorResult {
+  disabled:boolean;
   totalInput:string;
   required:boolean;
   hasError:boolean;
@@ -35,12 +36,13 @@ const TotalInput = function(props:TotalInputProps) {
   
   const dispatch = useDebounceDispatch();
 
-  const {totalInput, required, hasError, errorMsg
+  const {disabled, totalInput, required, hasError, errorMsg
   } = useSelector<Root, SelectorResult>((state)=>{
     
     const error = getTotalError(state, entryUpsertId);
 
     return {
+      disabled:getType(state, entryUpsertId) === null,
       totalInput:getTotalInput(state, entryUpsertId),
       required:isRequired(state, entryUpsertId),
       hasError:!!error,
@@ -68,6 +70,7 @@ const TotalInput = function(props:TotalInputProps) {
   }, [dispatch, validate, hasError, entryUpsertId]);
 
   const textFieldProps:TextFieldProps = {
+    disabled,
     value: totalInput,
     variant,
     required,

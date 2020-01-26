@@ -1,4 +1,4 @@
-import React, {useCallback} from "react";
+import React, {useCallback, useEffect} from "react";
 import {useQuery} from "@apollo/react-hooks";
 import gql from "graphql-tag";
 import Typography from "@material-ui/core/Typography";
@@ -6,7 +6,7 @@ import Container from "@material-ui/core/Container";
 import Box from "@material-ui/core/Box";
 import {Link} from "react-router-dom";
 import InputLabel from '@material-ui/core/InputLabel';
-import MenuItem, {MenuItemProps} from '@material-ui/core/MenuItem';
+import MenuItem from '@material-ui/core/MenuItem';
 import FormControl from '@material-ui/core/FormControl';
 import Select from '@material-ui/core/Select';
 
@@ -28,6 +28,8 @@ const DEPTS_FOR_NAV = gql`
 const TopNav = function(props) {
 
   const {loading, error, data} = useQuery<DeptsForNavQuery>(DEPTS_FOR_NAV);
+
+  useEffect(() => { document.title = "Select Department"; });
 
   if(loading) {
     return <p>Loading...</p>;

@@ -3,7 +3,7 @@ import * as _ from  "lodash";
 import isEqual from "lodash.isequal";
 
 import {JournalEntrySourceType, JournalEntrySourceInput, RationalInput,
-  JournalEntryCategoryType
+  JournalEntryType
 } from "../../apollo/graphTypes";
 import {
   
@@ -11,6 +11,9 @@ import {
 
   SET_SUBMIT_STATUS, SetSubmitStatus, SET_SUBMIT_ERROR, SetSubmitError, 
   CLEAR_SUBMIT_ERROR, ClearSubmitError,
+
+  SET_TYPE_VALUE, SetTypeValue, SET_TYPE_ERROR,SetTypeError,
+  CLEAR_TYPE_ERROR, ClearTypeError,
   
   SetDateInput, SET_DATE_INPUT, ClearDateInput, CLEAR_DATE_INPUT,
   SetDateValue, SET_DATE_VALUE, ClearDateValue, CLEAR_DATE_VALUE,
@@ -21,7 +24,6 @@ import {
   SetDeptError, SET_DEPT_ERROR, ClearDeptError, CLEAR_DEPT_ERROR,
   SetDeptOpen , SET_DEPT_OPEN,
 
-  SET_CAT_TYPE, SetCatType,  CLEAR_CAT_TYPE, ClearCatType,
   SET_CAT_INPUT, SetCatInput, CLEAR_CAT_INPUT, ClearCatInput, SET_CAT_VALUE,
   SetCatValue, CLEAR_CAT_VALUE, ClearCatValue, SET_CAT_ERROR, SetCatError,
   CLEAR_CAT_ERROR, ClearCatError, SET_CAT_OPEN, SetCatOpen,
@@ -59,9 +61,28 @@ type Actions = Create | Cancel | Clear |
   ClearSubmitError | SetSrcType | SetPayMethodError | ClearPayMethodError |
   SetDscrptValue | ClearDscrptValue | SetReconciledValue |
   ClearReconciledValue | SetCatInput | ClearCatInput | SetCatValue |
-  ClearCatValue | SetCatError | ClearCatError | SetCatOpen | SetCatType |
-  ClearCatType;
+  ClearCatValue | SetCatError | ClearCatError | SetCatOpen | SetTypeValue |
+  SetTypeError | ClearTypeError;
 
+
+const type = (state = new InputValue<JournalEntryType, null>(null)
+  , action:Actions):InputValue<JournalEntryType, null>  =>
+{
+
+  switch(action.type) {
+    case SET_TYPE_VALUE:
+      return state.value === action.payload.type ?
+        state : {...state, value:action.payload.type};
+    case SET_TYPE_ERROR:
+      return state.error?.message === action.payload.error.message ?
+        state : {...state, error:action.payload.error};
+    case CLEAR_TYPE_ERROR:
+      return state.error === null ? state : {...state, error:null};
+    default:
+      return state;
+  }
+
+}
 
 const date = (state = new InputValue<Date, null>(null), action:Actions)
   :InputValue<Date, null> => 
@@ -95,6 +116,11 @@ const department = (state = Object.assign(new InputValue<string[], []>([]),
 {
 
   switch(action.type) {
+    case CREATE:
+      if(action.payload.fromDept) {
+        return {...state, value:[action.payload.fromDept]};
+      }
+      return state;
     case SET_DEPT_INPUT:{
       const input = action.payload.input.trimStart();
       return state.input === input ? state : {...state, input};
@@ -263,25 +289,12 @@ const reconciled = (state = new InputValue<boolean, false>(false),
   
 }
 
-const catType = (state:JournalEntryCategoryType | null = null,
-  action:Actions) =>
-{
-  switch(action.type) {
-    case SET_CAT_TYPE:
-      return action.payload.catType;
-    case CLEAR_CAT_TYPE:
-      return null;
-    default:
-      return state;
-  }
-}
-
 const values = combineReducers({
   id:(state:string | null = null, action:Actions) => action.type === CREATE ?
     (action.payload.entryId || null) : state,
+  type,
   date,
   department,
-  catType,
   category,
   srcType:(state:JournalEntrySourceType | null = null, action:Actions) => 
     action.type === SET_SRC_TYPE ? action.payload.srcType : state,
@@ -324,6 +337,12 @@ const journalEntryUpsert = combineReducers({
   id:(state:string = "", action:Actions) => 
     action.type === CREATE ? action.payload.upsertId : state,
   values,
+  fromDept:(state:string = "", action:Actions):string => {
+    if(action.type === CREATE && action.payload.fromDept) {
+      return action.payload.fromDept;
+    }
+    return state;
+  },
   submit
 });
 
@@ -351,6 +370,9 @@ export const journalEntryUpserts = (state:JournalEntryUpsert[] = [],
       return state;
     }
     
+    case SET_TYPE_VALUE:
+    case SET_TYPE_ERROR:
+    case CLEAR_TYPE_ERROR:
     case SET_DATE_INPUT:
     case CLEAR_DATE_INPUT:
     case SET_DATE_VALUE:
@@ -364,8 +386,6 @@ export const journalEntryUpserts = (state:JournalEntryUpsert[] = [],
     case CLEAR_DEPT_INPUT:
     case CLEAR_DEPT_VALUE:
     case CLEAR_DEPT_ERROR:
-    case SET_CAT_TYPE:
-    case CLEAR_CAT_TYPE:
     case SET_CAT_INPUT:
     case CLEAR_CAT_INPUT:
     case SET_CAT_VALUE:

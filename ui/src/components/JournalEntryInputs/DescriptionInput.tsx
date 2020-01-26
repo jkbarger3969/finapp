@@ -5,8 +5,14 @@ import {Root} from "../../redux/reducers/root";
 import {useDebounceDispatch} from "../../redux/hooks";
 import {setDscrptValue, clearDscrptValue
 } from "../../redux/actions/journalEntryUpsert";
-import { getDscrptValue } from "../../redux/selectors/journalEntryUpsert";
+import { getDscrptValue, getType
+} from "../../redux/selectors/journalEntryUpsert";
 import { useSelector } from 'react-redux';
+
+interface SelectorResult {
+  disabled:boolean;
+  description:string;
+}
 
 export interface DescriptionInputProps {
   entryUpsertId:string;
@@ -20,9 +26,10 @@ const DescriptionInput = function(props:DescriptionInputProps) {
   
   const dispatch = useDebounceDispatch();
 
-  const description = useSelector<Root, string>((state)=>{
-    return getDscrptValue(state, entryUpsertId) || "";
-  });
+  const {description, disabled} = useSelector<Root, SelectorResult>((state)=>({
+    disabled:getType(state, entryUpsertId) === null,
+    description:getDscrptValue(state, entryUpsertId) || ""
+  }));
   
   const onChange = useCallback((event)=> {
     const value = (event.target.value || "");
@@ -35,6 +42,7 @@ const DescriptionInput = function(props:DescriptionInputProps) {
   }, [dispatch, entryUpsertId]);
 
   const textFieldProps:TextFieldProps = {
+    disabled,
     fullWidth:true,
     value: description,
     variant,

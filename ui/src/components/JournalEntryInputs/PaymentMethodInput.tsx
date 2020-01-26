@@ -17,7 +17,7 @@ import {Root} from "../../redux/reducers/root";
 import {useDebounceDispatch} from "../../redux/hooks";
 import {setPayMethodValue, clearPayMethodValue, validatePayMethod
 } from "../../redux/actions/journalEntryUpsert";
-import { getPayMethod, isRequired, getPayMethodError
+import { getPayMethod, isRequired, getPayMethodError, getType
 } from "../../redux/selectors/journalEntryUpsert";
 
 const PAY_METHOD_INPUT_QUERY = gql`
@@ -31,6 +31,7 @@ const PAY_METHOD_INPUT_QUERY = gql`
 `;
 
 interface SelectorResult {
+  disabled:boolean;
   required:boolean;
   value:string;
   hasError:boolean;
@@ -49,10 +50,11 @@ const PaymentMethod = function(props:PaymentMethodInputProps) {
 
   const dispatch = useDebounceDispatch();
 
-  const {value, required, hasError, errorMsg} = 
+  const {disabled, value, required, hasError, errorMsg} = 
     useSelector<Root, SelectorResult>((state)=>{
       const error = getPayMethodError(state, entryUpsertId);
       return {
+        disabled:getType(state, entryUpsertId) === null,
         required:isRequired(state, entryUpsertId),
         value:getPayMethod(state, entryUpsertId),
         hasError:!!error,
@@ -70,11 +72,12 @@ const PaymentMethod = function(props:PaymentMethodInputProps) {
   const paymentMethods = useMemo(()=>data?.paymentMethods || [],[data]);
 
   const formControlProps:FormControlProps = useMemo(()=>({
+    disabled,
     required,
     fullWidth:true,
     variant,
     error:hasError
-  }),[required, variant, hasError]);
+  }),[required, variant, hasError, disabled]);
 
   const onChange = useCallback((event) => {
     const value = event?.target?.value as string || null;

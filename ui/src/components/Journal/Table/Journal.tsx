@@ -4,7 +4,7 @@ import Box from "@material-ui/core/Box";
 import AutoSizer, {Size} from 'react-virtualized-auto-sizer';
 
 import Header from "./Header";
-import Body from "./Body";
+import Body, {JournalMode} from "./Body";
 import Footer from "./Footer";
 import JournalPAB from "./JournalPAB";
 import {uuid, namespace} from "../../../utils/uuid";
@@ -12,13 +12,13 @@ import {uuid, namespace} from "../../../utils/uuid";
 export const entryUpsertId = uuid("Journal", namespace);
 
 
-const Journal = function(props:{deptId?:string}) {
+const Journal = function(props:{deptId?:string, mode:JournalMode}) {
 
-  const {deptId} = props;
+  const {deptId, mode} = props;
 
   const autoSizerChildren = useCallback(({width, height}:Size) => {
-    return <Body deptId={deptId} width={width} height={height} />;
-  },[deptId]);
+    return <Body mode={mode} deptId={deptId} width={width} height={height} />;
+  },[deptId, mode]);
 
   return <Box
     style={{overflowX:"auto"}}
@@ -45,7 +45,8 @@ const Journal = function(props:{deptId?:string}) {
             <AutoSizer children={autoSizerChildren}/>
           </Box>
           <Footer entryUpsertId={entryUpsertId} />
-          <JournalPAB entryUpsertId={entryUpsertId} />
+          {mode === JournalMode.View && 
+            <JournalPAB entryUpsertId={entryUpsertId} />}
         </Table>
       </Box>
     </form>

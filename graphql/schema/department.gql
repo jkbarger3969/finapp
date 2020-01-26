@@ -17,5 +17,5 @@ input DepartmentAddFields {
 
 type Query {
   departments(fromParent:ID, searchByName:String):[Department!]!
-  department(id:ID!):Department!
+  department(id:ID!):Department
 }

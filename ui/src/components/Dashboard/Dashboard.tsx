@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import {useQuery} from "@apollo/react-hooks";
 import {Link} from "react-router-dom";
 import Grid from "@material-ui/core/Grid";
@@ -24,7 +24,12 @@ import {GetReportDataQuery, GetReportDataQueryVariables,
 } from "../../apollo/graphTypes";
 
 const GET_REPORT_DATA = gql`
-  query GetReportData($filterBy:JournalEntiresFilterInput) {
+  query GetReportData($deptId:ID!, $filterBy:JournalEntiresFilterInput) {
+    department(id:$deptId) {
+      __typename
+      id
+      name
+    }
     journalEntries(paginate:{skip:0,limit:5000} ,
       sortBy:[{column:DATE, direction:ASC}], filterBy:$filterBy )
     {
@@ -56,6 +61,7 @@ const Dashboard = function(props:{deptId:string}) {
   const {loading, error, data} = useQuery<GetReportDataQuery,
     GetReportDataQueryVariables>(GET_REPORT_DATA,{
     variables:{
+      deptId,
       filterBy:{
         department:{
           eq:deptId
@@ -65,7 +71,12 @@ const Dashboard = function(props:{deptId:string}) {
   });
 
   const entries = data?.journalEntries.entries || [];
+  const deptName = data?.department?.name || "";
   const categoryReport = new Map<string, [string, number]>();
+
+  useEffect(()=>{
+    document.title = deptName;
+  }, [deptName]);
 
   let total = 0 ;
 
@@ -86,8 +97,8 @@ const Dashboard = function(props:{deptId:string}) {
   const dispatch = useDispatch();
 
   const onClickNewEntry = useCallback((event?)=>{
-    dispatch(create(ADD_ENTRY_ID));
-  }, [dispatch])
+    dispatch(create(ADD_ENTRY_ID,{fromDept:deptId}));
+  }, [dispatch, deptId])
 
   const genBudget = total + total * Math.random();
 
@@ -111,6 +122,8 @@ const Dashboard = function(props:{deptId:string}) {
           </Grid>
           <Grid item>
             <Button
+              component={Link}
+              to={`/journal/${deptId}/reconcile`}
               variant="contained"
               startIcon={<DoneAllIcon />}
               children={"Reconcile"}
@@ -137,7 +150,7 @@ const Dashboard = function(props:{deptId:string}) {
       <Box flexGrow={1} overflow="auto">
         <Grid justify="center" container spacing={2}>
           <Grid item xs={12}>
-            <Typography align="center" variant="h3">Budgets</Typography>
+            <Typography align="center" variant="h3">{deptName}</Typography>
             <Typography align="center" variant="h5">{
               `$ ${total.toFixed(2)} / $${genBudget.toFixed(2)}`
             }</Typography>
@@ -164,7 +177,7 @@ const Dashboard = function(props:{deptId:string}) {
           })}
         </Grid>
       </Box>
-      <AddEntry entryUpsertId={ADD_ENTRY_ID}/>;
+      <AddEntry entryUpsertId={ADD_ENTRY_ID} fromDept={deptId} />;
     </Container>
   </Box>;
 

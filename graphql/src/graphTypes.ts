@@ -63,7 +63,13 @@ export enum FilterType {
 
 export type JournalEntiresFilterInput = {
   department?: Maybe<ByIdFilter>,
+  reconciled?: Maybe<JournalEntiresReconciledFilter>,
 };
+
+export enum JournalEntiresReconciledFilter {
+  Reconciled = 'RECONCILED',
+  NotReconciled = 'NOT_RECONCILED'
+}
 
 export enum JournalEntriesColumn {
   Department = 'DEPARTMENT',
@@ -90,6 +96,7 @@ export type JournalEntriesSortByInput = {
 export type JournalEntry = {
    __typename?: 'JournalEntry',
   id: Scalars['ID'],
+  type: JournalEntryType,
   date: Scalars['String'],
   department: Department,
   category: JournalEntryCategory,
@@ -122,15 +129,10 @@ export type JournalEntryCategory = {
    __typename?: 'JournalEntryCategory',
   id: Scalars['ID'],
   name: Scalars['String'],
-  type: JournalEntryCategoryType,
+  type: JournalEntryType,
   parent?: Maybe<JournalEntryCategory>,
   ancestors: Array<JournalEntryCategory>,
 };
-
-export enum JournalEntryCategoryType {
-  Credit = 'CREDIT',
-  Debit = 'DEBIT'
-}
 
 export type JournalEntrySource = Person | Business | Department | Vendor;
 
@@ -143,6 +145,11 @@ export enum JournalEntrySourceType {
   Business = 'BUSINESS',
   Department = 'DEPARTMENT',
   Person = 'PERSON'
+}
+
+export enum JournalEntryType {
+  Credit = 'CREDIT',
+  Debit = 'DEBIT'
 }
 
 export type JournalEntryUpdateFields = {
@@ -227,7 +234,7 @@ export type Query = {
   businesses: Array<Business>,
   business: Business,
   departments: Array<Department>,
-  department: Department,
+  department?: Maybe<Department>,
   journalEntries: JournalEntriesRes,
   journalEntryCategories: Array<JournalEntryCategory>,
   journalEntryCategory: JournalEntryCategory,
@@ -398,10 +405,11 @@ export type ResolversTypes = {
   SortDirection: SortDirection,
   JournalEntiresFilterInput: JournalEntiresFilterInput,
   ByIdFilter: ByIdFilter,
+  JournalEntiresReconciledFilter: JournalEntiresReconciledFilter,
   JournalEntriesRes: ResolverTypeWrapper<JournalEntriesRes>,
   JournalEntry: ResolverTypeWrapper<Omit<JournalEntry, 'source'> & { source: ResolversTypes['JournalEntrySource'] }>,
+  JournalEntryType: JournalEntryType,
   JournalEntryCategory: ResolverTypeWrapper<JournalEntryCategory>,
-  JournalEntryCategoryType: JournalEntryCategoryType,
   PaymentMethod: ResolverTypeWrapper<PaymentMethod>,
   JournalEntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'] | ResolversTypes['Vendor'],
   Person: ResolverTypeWrapper<Person>,
@@ -442,10 +450,11 @@ export type ResolversParentTypes = {
   SortDirection: SortDirection,
   JournalEntiresFilterInput: JournalEntiresFilterInput,
   ByIdFilter: ByIdFilter,
+  JournalEntiresReconciledFilter: JournalEntiresReconciledFilter,
   JournalEntriesRes: JournalEntriesRes,
   JournalEntry: Omit<JournalEntry, 'source'> & { source: ResolversParentTypes['JournalEntrySource'] },
+  JournalEntryType: JournalEntryType,
   JournalEntryCategory: JournalEntryCategory,
-  JournalEntryCategoryType: JournalEntryCategoryType,
   PaymentMethod: PaymentMethod,
   JournalEntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'] | ResolversParentTypes['Vendor'],
   Person: Person,
@@ -506,6 +515,7 @@ export type JournalEntriesResResolvers<ContextType = Context, ParentType extends
 
 export type JournalEntryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntry'] = ResolversParentTypes['JournalEntry']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>,
+  type?: Resolver<ResolversTypes['JournalEntryType'], ParentType, ContextType>,
   date?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType>,
   category?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType>,
@@ -525,7 +535,7 @@ export type JournalEntryAddedResResolvers<ContextType = Context, ParentType exte
 export type JournalEntryCategoryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntryCategory'] = ResolversParentTypes['JournalEntryCategory']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>,
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
-  type?: Resolver<ResolversTypes['JournalEntryCategoryType'], ParentType, ContextType>,
+  type?: Resolver<ResolversTypes['JournalEntryType'], ParentType, ContextType>,
   parent?: Resolver<Maybe<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   ancestors?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
 };
@@ -565,7 +575,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   businesses?: Resolver<Array<ResolversTypes['Business']>, ParentType, ContextType, QueryBusinessesArgs>,
   business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>,
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, QueryDepartmentsArgs>,
-  department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>,
+  department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>,
   journalEntries?: Resolver<ResolversTypes['JournalEntriesRes'], ParentType, ContextType, RequireFields<QueryJournalEntriesArgs, 'paginate' | 'sortBy'>>,
   journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   journalEntryCategory?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType, RequireFields<QueryJournalEntryCategoryArgs, 'id'>>,

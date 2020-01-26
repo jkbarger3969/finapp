@@ -2,7 +2,7 @@ import {Root} from "../reducers/root";
 import {JournalEntryUpsert, SubmitStatus
 } from "../reducers/journalEntryUpserts";
 import {JournalEntrySourceInput, JournalEntrySourceType, RationalInput,
-  JournalEntryCategoryType
+  JournalEntryType
 } from "../../apollo/graphTypes";
 
 const getEntry = (state:Root, upsertId:string):JournalEntryUpsert | null => {
@@ -41,6 +41,16 @@ export const getSubmitError = (state:Root, upsertId:string):Error | null => {
   return getEntry(state, upsertId)?.submit.error || null;
 }
 
+export const getType = (state:Root, upsertId:string):JournalEntryType | null =>
+{
+  return getEntry(state, upsertId)?.values.type.value || null;
+}
+
+export const getTypeError = (state:Root, upsertId:string):Error | null =>
+{
+  return getEntry(state, upsertId)?.values.type.error || null;
+}
+
 export const isRequired = (state:Root, upsertId:string):boolean => {
   return !(getEntry(state, upsertId)?.values.id);
 }
@@ -53,6 +63,10 @@ export const getDeptChain = (state:Root, upsertId:string)
   :string[] => 
 {
   return getEntry(state, upsertId)?.values.department.value || [];
+}
+
+export const getFromDept = (state:Root, upsertId:string):string | null => {
+  return getEntry(state, upsertId)?.fromDept || null;
 }
 
 export const getDept = (state:Root, upsertId:string)
@@ -71,17 +85,17 @@ export const isDeptOpen = (state:Root, upsertId:string):boolean => {
   return getEntry(state, upsertId)?.values.department.open || false;
 }
 
-export const getCatType = (state:Root, upsertId:string)
-  :JournalEntryCategoryType | null => 
-{
-  return getEntry(state, upsertId)?.values.catType || null;
-}
+// export const getCatType = (state:Root, upsertId:string)
+//   :JournalEntryType | null => 
+// {
+//   return getEntry(state, upsertId)?.values.catType || null;
+// }
 
 export const getCatInput = (state:Root, upsertId:string):string => {
   return getEntry(state, upsertId)?.values.category.input || "";
 }
 
-export const getCat = (state:Root, upsertId:string)
+export const getCatValue = (state:Root, upsertId:string)
   :string | null => 
 {
   return getEntry(state, upsertId)?.values.category.value || null;

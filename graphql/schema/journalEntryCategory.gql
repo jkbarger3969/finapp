@@ -1,11 +1,7 @@
-enum JournalEntryCategoryType {
-  CREDIT
-  DEBIT
-}
 type JournalEntryCategory {
   id:ID!
   name:String!
-  type:JournalEntryCategoryType!
+  type:JournalEntryType!
   parent:JournalEntryCategory
   ancestors:[JournalEntryCategory!]!
 }

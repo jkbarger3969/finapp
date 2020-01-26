@@ -15,7 +15,7 @@ import {BusinessSrcOptsInput_1Query as BusinessSrcOptsInputQuery,
   BusinessSrcBizOpts_1Fragment as BusinessSrcBizOptsFragment,
   BusinessSrcDeptOpts_1Fragment as BusinessSrcDeptOptsFragment,
   JournalEntrySourceType, JournalEntrySourceInput,
-  JournalEntryCategoryType
+  JournalEntryType
 } from "../../../apollo/graphTypes";
 import {Root} from "../../../redux/reducers/root";
 import {useDebounceDispatch} from "../../../redux/hooks";
@@ -23,7 +23,7 @@ import {setSrcInput, clearSrcInput, clearSrcValue, setSrcOpen, setSrcValue,
   validateSrc
 } from "../../../redux/actions/journalEntryUpsert";
 import {getSrcInput, getSrc, isRequired, isSrcOpen, getSrcChain, getSrcError,
-  getCatType
+  getType
 } from "../../../redux/selectors/journalEntryUpsert";
 
 const BIZ_SRC_DEPT_OPTS_FRAGMENT = gql`
@@ -97,8 +97,9 @@ const renderTags:AutocompleteProps["renderTags"] = (
 }
 
 interface SelectorResult  {
+  disabled:boolean;
   srcInput:string;
-  catType:JournalEntryCategoryType | null;
+  type:JournalEntryType | null;
   src:JournalEntrySourceInput | null;
   bizSrc:JournalEntrySourceInput | null;
   srcChain:JournalEntrySourceInput[];
@@ -123,8 +124,8 @@ const BusinessSrc = function(props:BusinessSrcProps) {
 
   const dispatch = useDebounceDispatch();
   
-  const {srcInput, catType, src, bizSrc, srcChain, isSrcSet, required, open,
-    hasError, errorMsg
+  const {disabled, srcInput, type, src, bizSrc, srcChain, isSrcSet, required,
+    open, hasError, errorMsg
   } = useSelector<Root, SelectorResult>((state) => {
 
     const src = getSrc(state, entryUpsertId);
@@ -134,8 +135,9 @@ const BusinessSrc = function(props:BusinessSrcProps) {
     const srcChain = getSrcChain(state, entryUpsertId);
 
     return {
+      disabled:getType(state, entryUpsertId) === null,
       srcInput:getSrcInput(state, entryUpsertId),
-      catType:getCatType(state, entryUpsertId),
+      type:getType(state, entryUpsertId),
       src,
       bizSrc:srcChain[0] || null,
       srcChain,
@@ -191,13 +193,13 @@ const BusinessSrc = function(props:BusinessSrcProps) {
     
     const bizOpts = data?.bizOpts || [];
 
-    if(catType !== JournalEntryCategoryType.Credit) {
+    if(type !== JournalEntryType.Credit) {
       return bizOpts.filter(bizOpt => !!(bizOpt?.vendor?.approved));
     }
 
     return bizOpts;
 
-  }, [data, catType]);
+  }, [data, type]);
   
   const bizVal = useMemo(() => {
     if(bizSrc) {
@@ -304,8 +306,8 @@ const BusinessSrc = function(props:BusinessSrcProps) {
     variant,
     label:multiple ? "Business > Departments..." : "Business",
     error:hasError,
-    helperText: catType === null ? "Select a Category to unlock." : errorMsg
-  }),[required, autoFocus, variant, multiple, hasError, errorMsg, catType]);
+    helperText: type === null ? "Select a Category to unlock." : errorMsg
+  }),[required, autoFocus, variant, multiple, hasError, errorMsg, type]);
   
   const renderInput = useCallback((params:RenderInputParams) => {
     return <TextField {...textFieldProps} {...params}/>
@@ -348,7 +350,7 @@ const BusinessSrc = function(props:BusinessSrcProps) {
 
   const autocompleteProps:AutocompleteProps = {
     loading,
-    disabled:!catType,
+    disabled:!type || disabled,
     multiple,
     open,
     options,

@@ -1,6 +1,6 @@
 import React, {useMemo, useCallback} from "react";
 import {useSelector} from "react-redux";
-import {useQuery} from '@apollo/react-hooks';
+import {useQuery, useApolloClient} from '@apollo/react-hooks';
 import TextField, {TextFieldProps} from '@material-ui/core/TextField';
 import Chip from '@material-ui/core/Chip';
 import Box from '@material-ui/core/Box';
@@ -20,7 +20,7 @@ import {setDeptInput, clearDeptInput, clearDeptValue, setDeptOpen, setDeptValue,
   validateDept
 } from "../../redux/actions/journalEntryUpsert";
 import {getDeptInput, getDept, isRequired, isDeptOpen, getDeptChain,
-  getDeptError
+  getDeptError, getType, getFromDept
 } from "../../redux/selectors/journalEntryUpsert";
 
 const DEPT_INPUT_OPTS_QUERY = gql`
@@ -46,7 +46,6 @@ const DEPT_INPUT_OPTS_QUERY = gql`
 `;
 
 const rootParentId = "5dc4b09bcf96e166daaa0090";
-const variables = {fromParent:rootParentId};
 
 // Static cbs for AutocompleteProps
 const filterOptions = (opts) => opts;
@@ -89,6 +88,7 @@ const getDeptValue = (deptId:string | null,
 }
 
 interface SelectorResult {
+  disabled:boolean;
   deptInput:string;
   dept:string | null;
   deptChain:string[];
@@ -109,11 +109,13 @@ const DepartmentInput = function(props:DepartmentInputProps)
   
   const {entryUpsertId, autoFocus = false, variant = 'filled'} = props;
   
+  const client = useApolloClient();
+
   const dispatch = useDebounceDispatch();
 
   const validate  = useCallback(() => {
-    dispatch(validateDept(entryUpsertId))
-  },[dispatch, entryUpsertId]);
+    dispatch(validateDept(entryUpsertId, client));
+  },[dispatch, entryUpsertId, client]);
 
   const onBlur = useCallback(() => {
     dispatch(setDeptOpen(entryUpsertId, false));
@@ -141,7 +143,7 @@ const DepartmentInput = function(props:DepartmentInputProps)
   ]);
 
   const {
-    deptInput, dept, deptChain, required, open, hasError, errorMsg
+    disabled, deptInput, dept, deptChain, required, open, hasError, errorMsg,
   } = useSelector<Root, SelectorResult>((state)=>{
 
     const dept = getDept(state, entryUpsertId);
@@ -151,6 +153,7 @@ const DepartmentInput = function(props:DepartmentInputProps)
     const deptChain = getDeptChain(state, entryUpsertId);
 
     return {
+      disabled:getType(state, entryUpsertId) === null,
       deptInput:getDeptInput(state, entryUpsertId),
       dept,
       deptChain,
@@ -162,10 +165,16 @@ const DepartmentInput = function(props:DepartmentInputProps)
 
   },isEqual);
 
+  const fromDept = 
+    useSelector((state:Root) => getFromDept(state, entryUpsertId));
+
+  
   const {loading, error, data} = 
     useQuery<DeptInputOptsQuery, DeptInputOptsQueryVariables>(
       DEPT_INPUT_OPTS_QUERY,{
-      variables
+      variables:{
+        fromParent:rootParentId
+      }
     });
   
   const deptOpts = data?.deptOpts || [];
@@ -263,6 +272,7 @@ const DepartmentInput = function(props:DepartmentInputProps)
   },[textFieldProps]);
 
   const autocompleteProps:AutocompleteProps = {
+    disabled,
     loading,
     multiple,
     autoComplete:true,

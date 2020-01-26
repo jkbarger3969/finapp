@@ -3,7 +3,8 @@ import * as moment from "moment";
 
 import {SortDirection} from "./shared";
 import {MutationResolvers, QueryResolvers, JournalEntryResolvers,
-  JournalEntrySourceType, SubscriptionResolvers
+  JournalEntrySourceType, SubscriptionResolvers, JournalEntryType,
+  JournalEntiresReconciledFilter
 } from "../graphTypes";
 import {nodeFieldResolver} from "./utils/nodeResolver";
 import {NodeValue} from "../types";
@@ -15,6 +16,7 @@ const userNodeType = new ObjectID("5dca0427bccd5c6f26b0cde2");
 
 const addFields = {$addFields:{
   id:{$toString: "$_id"},
+  type:{$arrayElemAt: ["$type.value",0]},
   department:{$arrayElemAt: ["$department.value",0]},
   category:{$arrayElemAt: ["$category.value",0]},
   paymentMethod:{$arrayElemAt: ["$paymentMethod.value",0]},
@@ -73,6 +75,18 @@ export const journalEntries:QueryResolvers["journalEntries"] =
         new ObjectID(filterBy.department.eq),{_id:true});
 
       match["department.0.value.id"] = {$in:deptIds.map(v => v._id)};
+
+    }
+
+    if(filterBy?.reconciled === JournalEntiresReconciledFilter.NotReconciled) {
+
+      match["reconciled.0.value"] = false;
+
+    } else if(filterBy?.reconciled 
+      === JournalEntiresReconciledFilter.Reconciled)
+    {
+
+      match["reconciled.0.value"] = true;
 
     }
 
@@ -603,6 +617,8 @@ export const addJournalEntry:
 }
 
 export const JournalEntry:JournalEntryResolvers = {
+  type:(parent) => (parent.type as any) === "credit" ? 
+    JournalEntryType.Credit : JournalEntryType.Debit,
   department:nodeFieldResolver,
   category:nodeFieldResolver,
   paymentMethod:nodeFieldResolver,

@@ -19,7 +19,7 @@ import PaymentMethod from "./Cells/PaymentMethod";
 import Description from "./Cells/Description";
 import Total from "./Cells/Total";
 import Reconciled from "./Cells/Reconciled";
-import {JournalEntryCategoryType} from "../../../apollo/graphTypes"
+import {JournalEntryType} from "../../../apollo/graphTypes"
 
 
 const styles = makeStyles((theme:Theme)=>createStyles({
@@ -97,7 +97,7 @@ const Entry = function(props:EntryProps) {
   }
 
   const textColor = 
-    journalEntry.category.type === JournalEntryCategoryType.Credit ?
+    journalEntry.category.type === JournalEntryType.Credit ?
       classes.positive : classes.negative;
 
   return <Box style={style} display="flex !important" clone>

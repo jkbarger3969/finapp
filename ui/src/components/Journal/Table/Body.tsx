@@ -15,13 +15,20 @@ import {getIndexedCells} from "../../../redux/selectors/tableRows";
 import {JournalEntries_1Query as JournalEntriesQuery,
   JournalEntries_1QueryVariables as JournalEntriesQueryVars,
   JournalEntriesColumn, SortDirection,
-  JournalEntryAdded_1Subscription as JournalEntryAdded
+  JournalEntryAdded_1Subscription as JournalEntryAdded,
+  JournalEntiresReconciledFilter
 } from "../../../apollo/graphTypes";
 
 type InfiniteLoaderProps = InfiniteLoader['props'];
 
+export enum JournalMode {
+  View,
+  Reconcile
+}
+
 export interface BodyProps {
   deptId?:string;
+  mode:JournalMode;
   height:number;
   width:number;
 }
@@ -56,20 +63,24 @@ const defaultVars:JournalEntriesQueryVars = {
 
 const Body = function(props:BodyProps) {
 
-  const {height, deptId} = props;
+  const {height, deptId, mode} = props;
 
   const variables = useMemo<JournalEntriesQueryVars>(()=>{
+
+    const reconciled = mode === JournalMode.Reconcile ?
+      JournalEntiresReconciledFilter.NotReconciled : undefined;
 
     return deptId ? {
       ...defaultVars,
       filterBy:{
         department:{
           eq:deptId
-        }
+        },
+        reconciled
       }
     } : {...defaultVars};
 
-  },[deptId]);
+  },[deptId, mode]);
 
   const cellFormats = useSelector<Root, CellFormat[]>((state) => 
     getIndexedCells(state, ROW_ID), shallowEqual);

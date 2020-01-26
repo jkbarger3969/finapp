@@ -5,8 +5,14 @@ import {Root} from "../../redux/reducers/root";
 import {useDebounceDispatch} from "../../redux/hooks";
 import {setReconciledValue, clearReconciledValue
 } from "../../redux/actions/journalEntryUpsert";
-import { getReconciledValue } from "../../redux/selectors/journalEntryUpsert";
+import { getReconciledValue, getType
+} from "../../redux/selectors/journalEntryUpsert";
 import { useSelector } from 'react-redux';
+
+interface SelectorResult {
+  checked:boolean;
+  disabled:boolean;
+}
 
 export interface DescriptionInputProps {
   entryUpsertId:string;
@@ -19,9 +25,10 @@ const DescriptionInput = function(props:DescriptionInputProps) {
   
   const dispatch = useDebounceDispatch();
 
-  const checked = useSelector<Root, boolean>((state)=>{
-    return getReconciledValue(state, entryUpsertId);
-  });
+  const {checked, disabled} = useSelector<Root, SelectorResult>((state)=>({
+    checked:getReconciledValue(state, entryUpsertId),
+    disabled:getType(state, entryUpsertId) === null
+  }));
   
   const onChange = useCallback((event)=> {
     const value = event.target.checked;
@@ -34,6 +41,7 @@ const DescriptionInput = function(props:DescriptionInputProps) {
   }, [dispatch, entryUpsertId]);
 
   const checkboxProps:CheckboxProps = {
+    disabled,
     checked,
     required:false,
     name:"reconciled",

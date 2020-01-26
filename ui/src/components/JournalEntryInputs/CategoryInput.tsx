@@ -1,6 +1,6 @@
 import React, {useMemo, useCallback} from "react";
 import {useSelector} from "react-redux";
-import {useQuery, useApolloClient} from '@apollo/react-hooks';
+import {useQuery} from '@apollo/react-hooks';
 import TextField, {TextFieldProps} from '@material-ui/core/TextField';
 import Chip from '@material-ui/core/Chip';
 import Box from '@material-ui/core/Box';
@@ -11,16 +11,15 @@ import gql from 'graphql-tag';
 import isEqual from "lodash.isequal";
 
 import {CatInputOpts_1Query as CatInputOptsQuery, 
-  CatInputOptsCat_1Fragment as CatInputOptsCatFragment,
-  JournalEntryCategoryType, JournalEntrySourceInput
+  CatInputOptsCat_1Fragment as CatInputOptsCatFragment, JournalEntryType
 } from '../../apollo/graphTypes';
 import {Root} from "../../redux/reducers/root";
 import {useDebounceDispatch} from "../../redux/hooks";
 import {setCatInput, clearCatInput, clearCatValue, setCatOpen, setCatValue,
-  validateCat, setCatType, clearCatType
+  validateCat
 } from "../../redux/actions/journalEntryUpsert";
 import {getCatInput, isRequired, isCatOpen,
-  getCatError, getCatType, getCat
+  getCatError, getType, getCatValue
 } from "../../redux/selectors/journalEntryUpsert";
 
 const CAT_INPUT_OPTS_QUERY = gql`
@@ -40,19 +39,19 @@ const CAT_INPUT_OPTS_QUERY = gql`
   }
 `;
 
-type Values = (JournalEntryCategoryType | CatInputOptsCatFragment)[];
+type Values = (JournalEntryType | CatInputOptsCatFragment)[];
 
 // Static cbs for AutocompleteProps
 const getOptionLabel = (
-  opt:JournalEntryCategoryType | CatInputOptsCatFragment) => 
+  opt:JournalEntryType | CatInputOptsCatFragment) => 
 {
   if(typeof opt === "string") {
-    return opt === JournalEntryCategoryType.Credit ? "Credit" : "Debit";
+    return opt === JournalEntryType.Credit ? "Credit" : "Debit";
   }
   return opt.name;
 }
 const renderTags:AutocompleteProps["renderTags"] = (
-  values:(CatInputOptsCatFragment | JournalEntryCategoryType)[], getTagProps) => 
+  values:(CatInputOptsCatFragment | JournalEntryType)[], getTagProps) => 
 {
   const lastIndex = values.length - 1;
   return values.map((cat:any, index: number) => {
@@ -76,7 +75,8 @@ const renderTags:AutocompleteProps["renderTags"] = (
 }
 
 interface SelectorResult {
-  catType:JournalEntryCategoryType | null;
+  disabled:boolean;
+  type:JournalEntryType | null;
   catId:string | null;
   catInput:string;
   required:boolean;
@@ -97,8 +97,6 @@ const CategoryInput = function(props:CategoryInputProps)
   const {entryUpsertId, autoFocus = false, variant = 'filled'} = props;
   
   const dispatch = useDebounceDispatch();
-
-  const client = useApolloClient();
 
   const validate  = useCallback(() => {
     dispatch(validateCat(entryUpsertId))
@@ -130,14 +128,15 @@ const CategoryInput = function(props:CategoryInputProps)
   ]);
 
   const {
-    catType, catId, catInput, required, open, hasError, errorMsg
-  } = useSelector<Root, SelectorResult>((state)=>{
+    disabled, type, catId, catInput, required, open, hasError, errorMsg
+  } = useSelector<Root, SelectorResult>((state) => {
 
     const error = getCatError(state, entryUpsertId);
 
     return {
-      catType:getCatType(state, entryUpsertId),
-      catId:getCat(state, entryUpsertId),
+      disabled:getType(state, entryUpsertId) === null,
+      type:getType(state, entryUpsertId),
+      catId:getCatValue(state, entryUpsertId),
       catInput:getCatInput(state, entryUpsertId),
       required:isRequired(state, entryUpsertId),
       open:isCatOpen(state, entryUpsertId),
@@ -145,7 +144,7 @@ const CategoryInput = function(props:CategoryInputProps)
       errorMsg:error?.message || null
     };
 
-  },isEqual);
+  }, isEqual);
 
   const {loading, error, data} = useQuery<CatInputOptsQuery>(
       CAT_INPUT_OPTS_QUERY);
@@ -154,11 +153,11 @@ const CategoryInput = function(props:CategoryInputProps)
 
   const values = useMemo<Values | []>(()=> {
 
-    if(catType === null) {
+    if(type === null) {
       return [];
     }
     
-    const values = [catType] as Values;
+    const values:CatInputOptsCatFragment[] = [];
 
     if(catId) {
 
@@ -170,7 +169,7 @@ const CategoryInput = function(props:CategoryInputProps)
   
         if(catOpt.id === findId) {
           
-          values.splice(1, 0, catOpt);
+          values.unshift(catOpt);
           
           findId = catOpt.parent?.id || null;
           
@@ -179,7 +178,7 @@ const CategoryInput = function(props:CategoryInputProps)
             const catchedOpt = 
               searchCache.get(findId) as CatInputOptsCatFragment;
 
-            values.splice(1, 0, catchedOpt);
+            values.unshift(catchedOpt);
 
             findId = catchedOpt.parent?.id || null;
 
@@ -199,26 +198,25 @@ const CategoryInput = function(props:CategoryInputProps)
 
     }
 
-    console.log(values);
     return values;
 
-  },[catType, catOpts, catId]);
+  },[type, catOpts, catId]);
 
   const options = useMemo<Values>(()=>
   {
-
-    if(catType === null) {
-      return [JournalEntryCategoryType.Credit, JournalEntryCategoryType.Debit];
+    if(type === null) {
+      return [];
     } else if(catId === null) {
-      return catOpts.filter( opt => !opt.parent);
+      return catOpts.filter( opt => !opt.parent && opt.type === type);
     } else {
-      return catOpts.filter( opt => opt.parent?.id === catId);
+      return catOpts.filter( opt => opt.parent?.id === catId &&
+        opt.type === type);
     }
 
-  }, [catOpts, catId, catType]);
+  }, [catOpts, catId, type]);
 
   const filterOptions = useCallback((
-    opts:(JournalEntryCategoryType | CatInputOptsCatFragment)[]) =>
+    opts:(JournalEntryType | CatInputOptsCatFragment)[]) =>
   {
 
     const searchStr = catInput.trimStart()
@@ -250,7 +248,6 @@ const CategoryInput = function(props:CategoryInputProps)
     
     if(!value || value?.length === 0) {
 
-      dispatch(clearCatType(entryUpsertId));
       dispatch(clearCatValue(entryUpsertId));
 
       return;
@@ -259,21 +256,10 @@ const CategoryInput = function(props:CategoryInputProps)
 
     const val = Array.isArray(value) ? value[value.length -1] : value;
 
-    if(typeof val === "string") {
+    dispatch(setCatValue(entryUpsertId, val.id));
+    validate();
 
-      dispatch(setCatType(entryUpsertId, val as JournalEntryCategoryType,
-        client));
-      dispatch(clearCatValue(entryUpsertId));
-
-    } else {
-
-      dispatch(setCatValue(entryUpsertId, val.id));
-
-      validate();
-
-    }
-
-  },[dispatch, entryUpsertId, validate, client]);
+  },[dispatch, entryUpsertId, validate]);
 
   const onInputChange = useCallback((event:any, value:string) => {
     if(value) {
@@ -298,6 +284,7 @@ const CategoryInput = function(props:CategoryInputProps)
   },[textFieldProps]);
 
   const autocompleteProps:AutocompleteProps = {
+    disabled,
     loading,
     multiple:true,
     autoComplete:true,
@@ -336,65 +323,6 @@ const CategoryInput = function(props:CategoryInputProps)
     autocompleteProps.open = false;
 
   }
-/* 
-  // No selected values
-  if(!catVal) {
-    
-    autocompleteProps.autoHighlight = true;
-    autocompleteProps.autoSelect = true;
-    autocompleteProps.onBlur = onBlur;
-    autocompleteProps.onFocus = onFocus;
-    autocompleteProps.onClose = onClose;
-    autocompleteProps.onOpen = onOpen;
-  
-  // Only ROOT department is selected
-  } else if(catChain.length === 1) {
-
-    // Has sub-cats
-    if(hasOptions) {
-      
-      autocompleteProps.autoHighlight = true;
-      autocompleteProps.onBlur = onBlur;
-      autocompleteProps.onFocus = onFocus;
-      autocompleteProps.onClose = onClose;
-      autocompleteProps.onOpen = onOpen;
-      autocompleteProps.options = options;
-      autocompleteProps.renderTags = renderTags;
-
-    // Has NO sub-cats
-    } else {
-
-      autocompleteProps.onBlur = validate as any;
-      autocompleteProps.inputValue = catVal.name;
-      autocompleteProps.open = false;
-
-    }
-
-  } else {
-
-    // Has NO sub-cats
-    if(hasOptions) {
-      
-      autocompleteProps.autoHighlight = true;
-      autocompleteProps.onBlur = onBlur;
-      autocompleteProps.onFocus = onFocus;
-      autocompleteProps.onClose = onClose;
-      autocompleteProps.onOpen = onOpen;
-      autocompleteProps.options = options
-      autocompleteProps.renderTags = renderTags;
-    
-    // Has sub-cats
-    } else {
-      
-      autocompleteProps.onBlur = validate as any;
-      autocompleteProps.disabled = true;
-      autocompleteProps.inputValue = "";
-      autocompleteProps.open = false;
-      autocompleteProps.renderTags = renderTags;
-
-    }
-
-  } */
 
   return <Autocomplete {...autocompleteProps} />;
 

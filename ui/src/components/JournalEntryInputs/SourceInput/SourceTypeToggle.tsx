@@ -11,7 +11,7 @@ import { makeStyles, createStyles, Theme } from "@material-ui/core";
 import {JournalEntrySourceType} from '../../../apollo/graphTypes';
 import {Root} from "../../../redux/reducers/root";
 import {setSrcType} from "../../../redux/actions/journalEntryUpsert";
-import {getSrcType, getSrcInput, getSrc, getSrcError
+import {getSrcType, getSrcInput, getSrc, getSrcError, getType
 } from "../../../redux/selectors/journalEntryUpsert";
 
 const styles = makeStyles((theme:Theme) => createStyles({
@@ -40,6 +40,7 @@ export interface SourceTypeToggleProps {
 }
 
 interface SelectorResult {
+  disabled:boolean;
   value:JournalEntrySourceType | null;
   srcInput:string;
   isSrcSet:boolean;
@@ -52,9 +53,10 @@ const SourceTypeToggle = function(props:SourceTypeToggleProps) {
 
   const classes = styles();
 
-  const {value, srcInput, isSrcSet, hasError} = 
+  const {disabled, value, srcInput, isSrcSet, hasError} = 
     useSelector<Root, SelectorResult>((state) => 
       ({
+        disabled:getType(state, entryUpsertId) === null,
         value:getSrcType(state, entryUpsertId),
         srcInput:getSrcInput(state, entryUpsertId),
         isSrcSet:!!getSrc(state, entryUpsertId),
@@ -87,10 +89,10 @@ const SourceTypeToggle = function(props:SourceTypeToggleProps) {
 
   return <Box py={1} clone>
     <ToggleButtonGroup {...toggleButtonGroupProps}>
-      <ToggleButton {...bizToggleButtonProps}>
+      <ToggleButton disabled={disabled} {...bizToggleButtonProps}>
         <BusinessIcon color={color} />
       </ToggleButton>
-      <ToggleButton {...personToggleButtonProps}>
+      <ToggleButton disabled={disabled} {...personToggleButtonProps}>
         <PersonIcon color={color} />
       </ToggleButton>
     </ToggleButtonGroup>

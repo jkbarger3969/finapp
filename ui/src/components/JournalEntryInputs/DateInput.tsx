@@ -8,7 +8,7 @@ import MomentUtils from '@date-io/moment';
 import {Root} from "../../redux/reducers/root";
 import {setDateValue, clearDateValue, validateDate
 } from "../../redux/actions/journalEntryUpsert";
-import {getDate, isRequired, getDateError
+import {getDate, isRequired, getDateError, getType
 } from "../../redux/selectors/journalEntryUpsert";
 
 const inputProps = {
@@ -16,6 +16,7 @@ const inputProps = {
 } as const;
 
 interface SelectorResult {
+  disabled:boolean;
   date:Date | null;
   required:boolean;
   hasError:boolean;
@@ -35,12 +36,13 @@ const DateInput = function(props:DateInputProps) {
   
   const dispatch = useDispatch();
   
-  const {date, required, hasError, errorMsg
+  const {disabled, date, required, hasError, errorMsg
   } = useSelector<Root,SelectorResult>((state) => {
     
     const error = getDateError(state, entryUpsertId);
     
     return {
+      disabled:getType(state, entryUpsertId) === null,
       date:getDate(state, entryUpsertId),
       required:isRequired(state, entryUpsertId),
       hasError:!!error,
@@ -67,6 +69,7 @@ const DateInput = function(props:DateInputProps) {
   }, [entryUpsertId, dispatch, hasError, validate]);
 
   const dataPickerProps:KeyboardDatePickerProps = {
+    disabled,
     error:hasError,
     helperText:errorMsg,
     required,

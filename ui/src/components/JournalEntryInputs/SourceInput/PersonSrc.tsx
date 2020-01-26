@@ -16,7 +16,7 @@ import {Root} from "../../../redux/reducers/root";
 import {useDebounceDispatch} from "../../../redux/hooks";
 import {setSrcInput, clearSrcInput, setSrcValue, clearSrcValue, validateSrc
 } from "../../../redux/actions/journalEntryUpsert";
-import {getSrcInput, getSrc, isRequired, getSrcError,
+import {getSrcInput, getSrc, isRequired, getSrcError, getType
 } from "../../../redux/selectors/journalEntryUpsert";
 
 const PERSON_SRC_OPT_FRAGMENT = gql`
@@ -48,6 +48,7 @@ const styles = makeStyles((theme:Theme) => createStyles({
 type PersonValue = PersonSrcOptFragment | null
 
 interface SelectorResult {
+  disabled:boolean;
   src:JournalEntrySourceInput | null;
   srcInput:string;
   isSrcSet:boolean;
@@ -79,23 +80,24 @@ const PersonSrc = function(props:PersonSrcProps) {
 
   const {entryUpsertId, autoFocus, variant} = props;
   
-  const {src, srcInput, isSrcSet, required, freeSolo, hasError, errorMsg} = 
-    useSelector<Root, SelectorResult>((state) => {
-    
-      const src = getSrc(state, entryUpsertId);
-      const error = getSrcError(state, entryUpsertId);
+  const {disabled, src, srcInput, isSrcSet, required, freeSolo, hasError,
+    errorMsg
+  } = useSelector<Root, SelectorResult>((state) => {
+    const src = getSrc(state, entryUpsertId);
+    const error = getSrcError(state, entryUpsertId);
 
-      return {
-        src,
-        srcInput:getSrcInput(state, entryUpsertId),
-        isSrcSet:!!src,
-        freeSolo:!src,
-        required:isRequired(state, entryUpsertId),
-        hasError:!!error,
-        errorMsg:error?.message || null
-      };
+    return {
+      disabled:getType(state, entryUpsertId) === null,
+      src,
+      srcInput:getSrcInput(state, entryUpsertId),
+      isSrcSet:!!src,
+      freeSolo:!src,
+      required:isRequired(state, entryUpsertId),
+      hasError:!!error,
+      errorMsg:error?.message || null
+    };
 
-    }, shallowEqual);
+  }, shallowEqual);
 
   const searchCharRef = useRef("");
   if(!isSrcSet) {
@@ -191,6 +193,7 @@ const PersonSrc = function(props:PersonSrcProps) {
   }
 
   const autoCompleteProps:AutocompleteProps = {
+    disabled,
     loading,
     autoHighlight:true,
     autoSelect:false,

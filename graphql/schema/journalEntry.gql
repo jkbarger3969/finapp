@@ -1,5 +1,11 @@
+enum JournalEntryType {
+  CREDIT
+  DEBIT
+}
+
 type JournalEntry {
   id:ID!
+  type:JournalEntryType!
   date:String!
   department:Department!
   category:JournalEntryCategory!
@@ -59,8 +65,14 @@ input JournalEntriesSortByInput {
   direction:SortDirection = ASC
 }
 
+enum JournalEntiresReconciledFilter {
+  RECONCILED
+  NOT_RECONCILED
+}
+
 input JournalEntiresFilterInput {
   department:ByIdFilter
+  reconciled:JournalEntiresReconciledFilter
 }
 
 type JournalEntriesRes {

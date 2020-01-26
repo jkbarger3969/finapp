@@ -1,6 +1,6 @@
 import {Action} from "./types";
 import {JournalEntrySourceInput, JournalEntrySourceType, RationalInput,
-  JournalEntryCategoryType
+  JournalEntryType
 } from "../../apollo/graphTypes";
 import {SubmitStatus} from "../reducers/journalEntryUpserts";
 
@@ -11,7 +11,8 @@ type ClearAction<A> = Action<A, {upsertId:string}>;
 
 // Upsert Life cycle
 export const CREATE = "journalEntryUpsert/CREATE";
-export type Create = Action<typeof CREATE, {upsertId:string, entryId?:string}>;
+export type Create = Action<typeof CREATE, {upsertId:string, entryId?:string,
+  fromDept?:string}>;
 
 export const CANCEL = "journalEntryUpsert/CANCEL";
 export type Cancel = Action<typeof CANCEL, {upsertId:string}>;
@@ -74,13 +75,18 @@ export const SET_DEPT_OPEN = "journalEntryUpsert/SET_DEPT_OPEN";
 export type SetDeptOpen = 
   Action<typeof SET_DEPT_OPEN, {upsertId:string, open:boolean}>;
 
-// Category
-export const SET_CAT_TYPE = "journalEntryUpsert/SET_CAT_TYPE";
-export type SetCatType = Action<typeof SET_CAT_TYPE,{upsertId:string,
-  catType:JournalEntryCategoryType}>;
-export const CLEAR_CAT_TYPE = "journalEntryUpsert/CLEAR_CAT_TYPE";
-export type ClearCatType = Action<typeof CLEAR_CAT_TYPE,{upsertId:string}>;
+// Type
+export const SET_TYPE_VALUE = "journalEntryUpsert/SET_TYPE_VALUE";
+export type SetTypeValue = Action<typeof SET_TYPE_VALUE,{upsertId:string,
+  type:JournalEntryType}>;
 
+export const SET_TYPE_ERROR = "journalEntryUpsert/SET_TYPE_ERROR";
+export type SetTypeError = SetErrorAction<typeof SET_TYPE_ERROR>;
+
+export const CLEAR_TYPE_ERROR = "journalEntryUpsert/CLEAR_TYPE_ERROR";
+export type ClearTypeError = ClearAction<typeof CLEAR_TYPE_ERROR>;
+
+// Category
 export const SET_CAT_INPUT = "journalEntryUpsert/SET_CAT_INPUT";
 export type SetCatInput = SetInputAction<typeof SET_CAT_INPUT>;
 
