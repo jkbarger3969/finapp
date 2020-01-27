@@ -20,6 +20,10 @@ export const nodeDocResolver =
     }}
   ]).toArray();
 
+  if(docLookUp[0] === undefined) {
+    return null;
+  }
+
   docLookUp[0]["__typename"] = typename;
 
   return docLookUp[0];

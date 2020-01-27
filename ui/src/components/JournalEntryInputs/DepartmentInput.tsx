@@ -235,21 +235,26 @@ const DepartmentInput = function(props:DepartmentInputProps)
   const onChange = useCallback((event, value:Value) => {
 
     if(value) {
-      
+
       value = Array.isArray(value) ? value[value.length -1] : value;
 
-      dispatch(setDeptValue(entryUpsertId, value.id));
-      dispatch(clearDeptInput(entryUpsertId));
+      if(value) {
 
-      if(hasError) {
-        validate();
+        dispatch(setDeptValue(entryUpsertId, value.id));
+        dispatch(clearDeptInput(entryUpsertId));
+  
+        if(hasError) {
+          validate();
+        }
+        
+        return;
+
       }
-      
-    } else {
-      
-      dispatch(clearDeptValue(entryUpsertId));
 
+      
     }
+    
+    dispatch(clearDeptValue(entryUpsertId));
 
   },[entryUpsertId, dispatch, hasError, validate]);
 

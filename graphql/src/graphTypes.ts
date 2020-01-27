@@ -15,7 +15,7 @@ export type Scalars = {
 export type Budget = {
    __typename?: 'Budget',
   id: Scalars['ID'],
-  budget: Rational,
+  amount: Rational,
   owner: BudgetOwner,
 };
 
@@ -480,7 +480,7 @@ export type ResolversParentTypes = {
 
 export type BudgetResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Budget'] = ResolversParentTypes['Budget']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>,
-  budget?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>,
+  amount?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>,
   owner?: Resolver<ResolversTypes['BudgetOwner'], ParentType, ContextType>,
 };
 

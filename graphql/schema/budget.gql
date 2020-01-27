@@ -2,7 +2,7 @@ union BudgetOwner = Department | Business
 
 type Budget {
   id:ID!
-  budget:Rational!
+  amount:Rational!
   owner: BudgetOwner!
 }
 

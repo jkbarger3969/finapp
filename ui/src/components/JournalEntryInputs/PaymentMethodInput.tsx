@@ -95,7 +95,7 @@ const PaymentMethod = function(props:PaymentMethodInputProps) {
     <MenuItem {...{
       value:id,
       key:id,
-      children:capitalCase(method)
+      children:`${method[0].toUpperCase()}${method.substr(1)}`
     } as MenuItemProps as any }/>)),[paymentMethods]);
 
   if(loading){
