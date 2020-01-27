@@ -22,8 +22,8 @@ import {useDebounceDispatch} from "../../../redux/hooks";
 import {setSrcInput, clearSrcInput, clearSrcValue, setSrcOpen, setSrcValue,
   validateSrc
 } from "../../../redux/actions/journalEntryUpsert";
-import {getSrcInput, getSrc, isRequired, isSrcOpen, getSrcChain, getSrcError,
-  getType
+import {getSrcInput, getSrc, isRequired, isSrcOpen, getSrcError,
+  getType, getUpsertType, UpsertType
 } from "../../../redux/selectors/journalEntryUpsert";
 
 const BIZ_SRC_DEPT_OPTS_FRAGMENT = gql`
@@ -60,8 +60,21 @@ const BIZ_SRC_BIZ_OPTS_FRAGMENT = gql`
 `;
 
 const BUSINESS_SRC_OPTS_INPUT_QUERY = gql`
-  query BusinessSrcOptsInput_1($searchByName:String!) {
-    bizOpts: businesses(searchByName:$searchByName) {
+  query BusinessSrcOptsInput_1($searchByName:String!, $deptId:ID!, $bizId:ID!,
+    $withBizOpt:Boolean!, $withDeptAncestors:Boolean!, $withBizOpts:Boolean!)
+  {
+    bizOpt: business(id: $bizId) @include(if:$withBizOpt) {
+      ...BusinessSrcBizOpts_1Fragment
+    }
+    deptAncestors: department(id: $deptId) @include(if:$withDeptAncestors) {
+      __typename
+      id
+      ancestors {
+        ...BusinessSrcBizOpts_1Fragment
+        ...BusinessSrcDeptOpts_1Fragment
+      }
+    }
+    bizOpts: businesses(searchByName:$searchByName) @include(if:$withBizOpts) {
       ...BusinessSrcBizOpts_1Fragment
     }
   }
@@ -69,7 +82,6 @@ const BUSINESS_SRC_OPTS_INPUT_QUERY = gql`
 `;
 
 // Static cbs for AutocompleteProps
-const filterOptions = (opts) => opts;
 const getOptionLabel = (opt) => opt.name;
 const renderTags:AutocompleteProps["renderTags"] = (
   srcOpts:(BusinessSrcBizOptsFragment | BusinessSrcDeptOptsFragment)[],
@@ -97,12 +109,11 @@ const renderTags:AutocompleteProps["renderTags"] = (
 }
 
 interface SelectorResult  {
+  upsertType:UpsertType | null;
   disabled:boolean;
   srcInput:string;
   type:JournalEntryType | null;
   src:JournalEntrySourceInput | null;
-  bizSrc:JournalEntrySourceInput | null;
-  srcChain:JournalEntrySourceInput[];
   isSrcSet:boolean;
   required:boolean;
   open:boolean;
@@ -124,23 +135,20 @@ const BusinessSrc = function(props:BusinessSrcProps) {
 
   const dispatch = useDebounceDispatch();
   
-  const {disabled, srcInput, type, src, bizSrc, srcChain, isSrcSet, required,
-    open, hasError, errorMsg
+  const {disabled, srcInput, type, src, isSrcSet, required,
+    open, hasError, errorMsg, upsertType
   } = useSelector<Root, SelectorResult>((state) => {
 
     const src = getSrc(state, entryUpsertId);
 
     const error = getSrcError(state, entryUpsertId);
 
-    const srcChain = getSrcChain(state, entryUpsertId);
-
     return {
+      upsertType:getUpsertType(state, entryUpsertId),
       disabled:getType(state, entryUpsertId) === null,
       srcInput:getSrcInput(state, entryUpsertId),
       type:getType(state, entryUpsertId),
       src,
-      bizSrc:srcChain[0] || null,
-      srcChain,
       isSrcSet:!!src,
       required:isRequired(state, entryUpsertId),
       open:isSrcOpen(state, entryUpsertId),
@@ -183,119 +191,109 @@ const BusinessSrc = function(props:BusinessSrcProps) {
   const {loading, error, data} = 
     useQuery<BusinessSrcOptsInputQuery, BusinessSrcOptsInputQueryVariables>(
     BUSINESS_SRC_OPTS_INPUT_QUERY,{
-      skip:!searchCharRef.current,
+      skip:!searchCharRef.current && upsertType !== UpsertType.Update,
       variables:{
-        searchByName:searchCharRef.current
+        searchByName:searchCharRef.current,
+        deptId:src?.id || "",
+        bizId:src?.id || "",
+        withBizOpts:upsertType === UpsertType.Add || !isSrcSet,
+        withBizOpt:upsertType === UpsertType.Update &&
+          src?.sourceType === JournalEntrySourceType.Business,
+        withDeptAncestors:upsertType === UpsertType.Update &&
+        src?.sourceType === JournalEntrySourceType.Department
       }
     });
-  
-  const bizOpts = useMemo(() => {
-    
-    const bizOpts = data?.bizOpts || [];
-
-    if(type !== JournalEntryType.Credit) {
-      return bizOpts.filter(bizOpt => !!(bizOpt?.vendor?.approved));
-    }
-
-    return bizOpts;
-
-  }, [data, type]);
-  
-  const bizVal = useMemo(() => {
-    if(bizSrc) {
-      // Read fragment, so that when submitting a new business, the new business 
-      // is pulled from the cache
-      return client.readFragment<BusinessSrcBizOptsFragment>({
-        id:`Business:${bizSrc.id}`,
-        fragment:BIZ_SRC_BIZ_OPTS_FRAGMENT,
-        fragmentName: "BusinessSrcBizOpts_1Fragment",
-      }) || null;
-    }
-    return null;
-  },[client, bizSrc]);
-
-  const deptOpts = useMemo(() => bizVal?.deptOpts || [], [bizVal]);
 
   const srcVal = useMemo(() => {
-    if(isEqual(src, bizSrc)) {
-  
-      return bizVal;
-  
-    } else if(src) {
+    if(!src || !data) {
+    
+      return null;
+    
+    } else if(src.sourceType === JournalEntrySourceType.Business) {
       
       return client.readFragment<BusinessSrcDeptOptsFragment>({
-        id:`Department:${src.id}`,
-        fragment:BIZ_SRC_DEPT_OPTS_FRAGMENT
+        id:`Business:${src.id}`,
+        fragment:BIZ_SRC_BIZ_OPTS_FRAGMENT,
+        fragmentName:"BusinessSrcBizOpts_1Fragment"
       }) || null;
-    
-    }
-    return null;
-  },[src, bizSrc, client, bizVal]);
-
-  const options = useMemo(()=>{
-
-    // Shape addresses TS weirdness. BE CAREFUL when modifying,
-    // Both types of options biz and dept MUST be filtered separately.
-    if(!srcInput) {
       
-      return srcVal ? 
-        deptOpts.filter((opt) => opt.parent.id === srcVal.id) : bizOpts;
-
     }
 
-    const test = new RegExp(`(^|\\s)${srcInput}`,'i');
-
-    if(srcVal) {
-      return deptOpts.filter((opt:any) => 
-        opt.parent.id === srcVal.id && test.test(opt.name));
-    }
-    
-    // No src ALWAYS bizOpts
-    return bizOpts.filter((opt:any) => test.test(opt.name));
+    return client.readFragment<BusinessSrcDeptOptsFragment>({
+      id:`Department:${src.id}`,
+      fragment:BIZ_SRC_DEPT_OPTS_FRAGMENT
+    }) || null;
   
-  },[srcInput, srcVal, bizOpts, deptOpts]);
+  },[src, client, data]);
 
-  const hasOptions = options.length > 0;
+  const valueChain = useMemo(() => {
 
-  const value = useMemo(() => {
+    if(!srcVal) {
+      return [];
+    }
 
     const value:(BusinessSrcBizOptsFragment | BusinessSrcDeptOptsFragment)[] = 
-      [];
+      [srcVal];
 
-    // If there is NO bizVal there is NO value.
-    if(!bizVal) {
-      return null;
-    }
+    const getParent = (srcVal:BusinessSrcBizOptsFragment |
+      BusinessSrcDeptOptsFragment):BusinessSrcBizOptsFragment |
+        BusinessSrcDeptOptsFragment | null =>
+    {
 
-    value.push(bizVal);
+      if(srcVal.__typename === "Business") {
+        return null;
+      
+      } else if(srcVal.parent.__typename === "Business") {
 
-    // bizVal is always the first and srcVal the last value
-    for(let i = 1, stop = srcChain.length - 1; i < stop; i++) {
-      const src = srcChain[i];
-      const deptOpt = client.readFragment<BusinessSrcDeptOptsFragment>({
-        id:`Department:${src.id}`,
+        return client.readFragment({
+          id:`Business:${srcVal.parent.id}`,
+          fragment:BIZ_SRC_BIZ_OPTS_FRAGMENT,
+          fragmentName:"BusinessSrcBizOpts_1Fragment"
+        }) || null;
+
+      }
+
+      return client.readFragment({
+        id:`Department:${srcVal.parent.id}`,
         fragment:BIZ_SRC_DEPT_OPTS_FRAGMENT
       }) || null;
-      
-      if(deptOpt) {
-        value.push(deptOpt);
-      }
-    
+
+
     }
 
-    if(srcVal && srcVal !== bizVal) {
-      value.push(srcVal);
-    }
-
-    const numValues = value.length;
-
-    if(numValues === 1) {
-      return hasOptions ? value : value[0] as BusinessSrcBizOptsFragment;
+    let parent = getParent(srcVal);
+    while(parent) {
+      value.unshift(parent);
+      parent = getParent(parent);
     }
     
     return value;
 
-  }, [bizVal, srcVal, srcChain, hasOptions, client]);
+  }, [srcVal, client]);
+
+  const options = useMemo(() => {
+
+    if(!valueChain || !srcVal) {
+      return data?.bizOpts || [];
+    }
+
+    const bizVal = valueChain[0] as BusinessSrcBizOptsFragment;
+
+    return (bizVal?.deptOpts || [])
+      .filter((deptOpt) => deptOpt.parent.id === srcVal.id);
+
+  },[srcVal, valueChain, data]);
+
+  const hasOptions = options.length > 0;
+
+  const value = useMemo(() => {
+    if(valueChain.length > 1) {
+      return valueChain;
+    } else if(valueChain.length === 1 && !hasOptions) {
+      return valueChain[0] as BusinessSrcBizOptsFragment;
+    } 
+    return null;
+  },[valueChain, hasOptions]);
 
   const multiple = Array.isArray(value);
   
@@ -319,13 +317,13 @@ const BusinessSrc = function(props:BusinessSrcProps) {
 
     if(value) {
       
-      value = Array.isArray(value) ? value : [value];
+      const newValue = Array.isArray(value) ? value[value.length - 1] : value;
 
-      dispatch(setSrcValue(entryUpsertId, value.map((src, i) =>({
-        sourceType:i === 0 ? 
-          JournalEntrySourceType.Business : JournalEntrySourceType.Department,
-        id:src.id
-      }))));
+      dispatch(setSrcValue(entryUpsertId, {
+        sourceType:newValue.__typename === "Business" ? 
+        JournalEntrySourceType.Business : JournalEntrySourceType.Department,
+        id:newValue.id
+      }));
       dispatch(clearSrcInput(entryUpsertId));
 
       if(hasError) {
@@ -347,6 +345,22 @@ const BusinessSrc = function(props:BusinessSrcProps) {
       dispatch(clearSrcInput(entryUpsertId));
     }
   },[dispatch, entryUpsertId]);
+
+  const filterOptions = useCallback((opts:(BusinessSrcBizOptsFragment |
+    BusinessSrcDeptOptsFragment)[]) => 
+  {
+
+    const searchText = srcInput.trimStart().split(" ").join("\\s");
+
+    if(searchText === "") {
+      return opts;
+    }
+
+    const test = new RegExp(`\\s*${searchText}`,"i");
+
+    return opts.filter((opt) => test.test(opt.name));
+
+  },[srcInput]);
 
   const autocompleteProps:AutocompleteProps = {
     loading,
@@ -382,7 +396,7 @@ const BusinessSrc = function(props:BusinessSrcProps) {
     autocompleteProps.onOpen = onOpen;
   
   // Selected a business
-  } else if(srcChain.length === 1) {
+  } else if(!Array.isArray(value) || value.length === 1) {
 
     // Has NO depts
     if(options.length === 0) {

@@ -140,9 +140,75 @@ export const tableRow = (state:TableRow = {}, action:Actions):TableRow =>
     case CREATE:
       return action.payload.id in state 
         ? state : {...state, [action.payload.id]:new TableCell(action.payload)};
-    case SET_INDEX:
-      return state;
-    case SET_DEFAULT_INDEX:
+    case SET_INDEX:{
+      
+      const curIndex = state[action.payload.id].index;
+      const newIndex = action.payload.index;
+      
+      if(curIndex === newIndex) {
+      
+        return state;
+      
+      } else if(curIndex < newIndex) {
+        
+        const newState = {} as TableRow;
+        
+        for(const row of iterateCellByIndex(state)) {
+
+          if(row.index > newIndex) {
+            break;
+          } else if(row.index < curIndex) {
+            continue;
+          } else if(row.index === curIndex) {
+            newState[row.id] =  tableCell(row, {...action, payload:{
+              ...action.payload, index:newIndex}});
+          } else {
+            newState[row.id] =  tableCell(row, {...action, payload:{
+              ...action.payload, index:row.index - 1}});
+          }
+
+        }
+
+        return {...state, ...newState};
+
+      } else {
+        
+        const newState = {} as TableRow;
+        
+        for(const row of iterateCellByIndex(state)) {
+
+          if(row.index > curIndex) {
+            break;
+          } else if(row.index < newIndex) {
+            continue;
+          } else if(row.index === curIndex) {
+            newState[row.id] =  tableCell(row, {...action, payload:{
+              ...action.payload, index:newIndex}});
+          } else {
+            newState[row.id] = tableCell(row, {...action, payload:{
+              ...action.payload, index:row.index + 1}});
+          }
+
+        }
+
+        return {...state, ...newState};
+
+      }
+
+    }
+    case SET_DEFAULT_INDEX:{
+
+      const newState = {} as TableRow;
+
+      for(const row of iterateCellByIndex(state)) {
+
+        newState[row.id] = tableCell(row, action);
+
+      }
+
+      return {...state, ...newState};
+
+    }
     case SET_NAME:
     case SET_DEFAULT_NAME:
     case SET_WIDTH:

@@ -60,7 +60,7 @@ export const CLEAR_DEPT_INPUT = "journalEntryUpsert/CLEAR_DEPT_INPUT";
 export type ClearDeptInput = ClearAction<typeof CLEAR_DEPT_INPUT>;
 
 export const SET_DEPT_VALUE = "journalEntryUpsert/SET_DEPT_VALUE";
-export type SetDeptValue = SetValueAction<typeof SET_DEPT_VALUE, string[]>;
+export type SetDeptValue = SetValueAction<typeof SET_DEPT_VALUE, string>;
 
 export const CLEAR_DEPT_VALUE = "journalEntryUpsert/CLEAR_DEPT_VALUE";
 export type ClearDeptValue = ClearAction<typeof CLEAR_DEPT_VALUE>;
@@ -124,7 +124,7 @@ export type ClearSrcInput = ClearAction<typeof CLEAR_SRC_INPUT>;
 
 export const SET_SRC_VALUE = "journalEntryUpsert/SET_SRC_VALUE";
 export type SetSrcValue = SetValueAction<typeof SET_SRC_VALUE, 
-  JournalEntrySourceInput[]>;
+  JournalEntrySourceInput>;
 
 export const CLEAR_SRC_VALUE = "journalEntryUpsert/CLEAR_SRC_VALUE";
 export type ClearSrcValue = ClearAction<typeof CLEAR_SRC_VALUE>;

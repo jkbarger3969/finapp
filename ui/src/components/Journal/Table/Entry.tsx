@@ -1,5 +1,5 @@
 import React, {useCallback} from "react";
-import {useSelector, useDispatch} from "react-redux";
+import {useApolloClient} from "@apollo/react-hooks";
 import TableRow from "@material-ui/core/TableRow";
 import Skeleton from "@material-ui/lab/Skeleton";
 import Box from "@material-ui/core/Box";
@@ -7,7 +7,8 @@ import { TableCell } from "@material-ui/core";
 import Grid from "@material-ui/core/Grid";
 import { makeStyles, createStyles } from "@material-ui/core/styles";
 import { Theme } from "@material-ui/core/styles";
-import {red, green} from "@material-ui/core/colors"
+import {red, green} from "@material-ui/core/colors";
+
 
 import {randUUID} from "../../../utils/uuid";
 import TransactionDate from "./Cells/TransactionDate";
@@ -19,7 +20,12 @@ import PaymentMethod from "./Cells/PaymentMethod";
 import Description from "./Cells/Description";
 import Total from "./Cells/Total";
 import Reconciled from "./Cells/Reconciled";
-import {JournalEntryType} from "../../../apollo/graphTypes"
+import {JournalEntryType} from "../../../apollo/graphTypes";
+import {create} from "../../../redux/actions/journalEntryUpsert";
+import {useDebounceDispatch as useDispatch} from "../../../redux/hooks";
+import {entryUpsertId} from "./Journal";
+import {JournalMode} from "./Body";
+
 
 
 const styles = makeStyles((theme:Theme)=>createStyles({
@@ -35,7 +41,10 @@ type JournalEntryFragment = any;
 
 export interface EntryProps {
   journalEntry?:JournalEntryFragment | null;
-  style:React.CSSProperties
+  deptId?:string;
+  mode:JournalMode;
+  style:React.CSSProperties;
+  removeReconciled:(id:string)=>void;
 }
 
 export const EntrySkeleton = function() {
@@ -57,15 +66,21 @@ const Entry = function(props:EntryProps) {
 
   const classes = styles();
 
-  // const 
+  const dispatch = useDispatch();
+
+  const client = useApolloClient();
   
-  const {journalEntry = null, style} = props;
+  const {journalEntry = null, style, deptId, mode, removeReconciled} = props;
 
   const onDoubleClick = useCallback((event) => {
     if(journalEntry) {
-      console.log(journalEntry.id);
+      dispatch(create(entryUpsertId, {
+        entryId:journalEntry.id, 
+        fromDept:deptId,
+        client
+      }));
     }
-  },[journalEntry]);
+  },[journalEntry, dispatch, deptId, client]);
 
   if(journalEntry === null) {
     
@@ -118,7 +133,13 @@ const Entry = function(props:EntryProps) {
         description={journalEntry.description}
       />
       <Total textColor={textColor} total={journalEntry.total} />
-      <Reconciled textColor={textColor} reconciled={journalEntry.reconciled}/>
+      <Reconciled
+        removeReconciled={removeReconciled}
+        entryId={journalEntry.id}
+        mode={mode}
+        textColor={textColor}
+        reconciled={journalEntry.reconciled}
+      />
     </TableRow>
   </Box>;
 

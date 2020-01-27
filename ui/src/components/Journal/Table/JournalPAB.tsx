@@ -36,11 +36,12 @@ interface SelectorResult {
 
 export interface JournalPABProps {
   entryUpsertId: string;
+  fromDept?:string;
 }
 
-const JournalPAB = function(props) {
+const JournalPAB = function(props:JournalPABProps) {
 
-  const {entryUpsertId} = props;
+  const {entryUpsertId, fromDept} = props;
 
   const client = useApolloClient();
 
@@ -80,8 +81,22 @@ const JournalPAB = function(props) {
   
   } else if(submitStatus === SubmitStatus.NotSubmitted && upsertType !== null) {
 
-    const isAdd = upsertType === UpsertType.Add;
-    // return <Tooltip title={isAdd ? "Submit" : "Update"} placement="left">
+    return <Box
+        position="fixed !important"
+        bottom={theme.spacing(2)}
+        right={theme.spacing(2)}
+        clone
+      >
+        <Fab 
+          disabled
+          size="large"
+          color="secondary"
+          aria-label="add entry"
+          children={<Add />}
+        />
+      </Box>;
+
+    /* const isAdd = upsertType === UpsertType.Add;
       return <Box
         position="fixed !important"
         bottom={theme.spacing(2)}
@@ -110,9 +125,9 @@ const JournalPAB = function(props) {
             }}
           />
         </SpeedDial>
-      </Box>;
-    {/* </Tooltip>; */}
-
+      </Box>; */
+    
+    
     /* return <Tooltip title={isAdd ? "Submit" : "Update"} placement="top">
       <Box
         position="fixed !important"
@@ -144,7 +159,7 @@ const JournalPAB = function(props) {
           color="secondary"
           aria-label="add entry"
           children={<Add />}
-          onClick={() => dispatch(create(entryUpsertId)) }
+          onClick={() => dispatch(create(entryUpsertId,{fromDept})) }
         />
       </Box>;
     // </Tooltip>;

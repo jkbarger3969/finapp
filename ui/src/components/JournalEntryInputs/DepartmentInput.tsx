@@ -19,7 +19,7 @@ import {useDebounceDispatch} from "../../redux/hooks";
 import {setDeptInput, clearDeptInput, clearDeptValue, setDeptOpen, setDeptValue,
   validateDept
 } from "../../redux/actions/journalEntryUpsert";
-import {getDeptInput, getDept, isRequired, isDeptOpen, getDeptChain,
+import {getDeptInput, getDept, isRequired, isDeptOpen,
   getDeptError, getType, getFromDept
 } from "../../redux/selectors/journalEntryUpsert";
 
@@ -78,8 +78,8 @@ const getDeptValue = (deptId:string | null,
     deptOpts:DeptInputOptsQuery['deptOpts']) =>
 {
   if(deptId) {
-    for(const dept of deptOpts){
-      if(dept.id === deptId){
+    for(const dept of deptOpts) {
+      if(dept.id === deptId) {
         return dept;
       }
     }
@@ -91,7 +91,6 @@ interface SelectorResult {
   disabled:boolean;
   deptInput:string;
   dept:string | null;
-  deptChain:string[];
   required:boolean;
   open:boolean;
   hasError:boolean;
@@ -143,20 +142,17 @@ const DepartmentInput = function(props:DepartmentInputProps)
   ]);
 
   const {
-    disabled, deptInput, dept, deptChain, required, open, hasError, errorMsg,
+    disabled, deptInput, dept, required, open, hasError, errorMsg,
   } = useSelector<Root, SelectorResult>((state)=>{
 
     const dept = getDept(state, entryUpsertId);
 
     const error = getDeptError(state, entryUpsertId);
 
-    const deptChain = getDeptChain(state, entryUpsertId);
-
     return {
       disabled:getType(state, entryUpsertId) === null,
       deptInput:getDeptInput(state, entryUpsertId),
       dept,
-      deptChain,
       required:isRequired(state, entryUpsertId),
       open:isDeptOpen(state, entryUpsertId),
       hasError:!!error,
@@ -206,15 +202,23 @@ const DepartmentInput = function(props:DepartmentInputProps)
       return null;
     }
 
-    const value:typeof deptOpts = [];
+    const value:typeof deptOpts = [deptVal];
 
-    // deptVal is ALWAYS the last dept in the chain
-    for(let i = 0, len = deptChain.length -1; i < len; i++) {
-      value.push(
-        getDeptValue(deptChain[i], deptOpts) as DeptInputOptsDeptFragment);
+
+    const getParentDept = (dept:DeptInputOptsDeptFragment) => {
+      for(const deptOpt of deptOpts) {
+        if(dept.parent.id === deptOpt.id) {
+          return deptOpt;
+        }
+      }
+      return null;
     }
 
-    value.push(deptVal);
+    let parent = getParentDept(deptVal);
+    while(parent) {
+      value.unshift(parent);
+      parent = getParentDept(parent);
+    }
 
     if(value.length === 1) {
       return hasOptions ? value : value[0];
@@ -222,7 +226,7 @@ const DepartmentInput = function(props:DepartmentInputProps)
 
     return value;
 
-  },[deptOpts, deptChain, deptVal, hasOptions]);
+  },[deptOpts, deptVal, hasOptions]);
 
   const multiple = Array.isArray(value);
   
@@ -232,9 +236,9 @@ const DepartmentInput = function(props:DepartmentInputProps)
 
     if(value) {
       
-      value = Array.isArray(value) ? value : [value];
+      value = Array.isArray(value) ? value[value.length -1] : value;
 
-      dispatch(setDeptValue(entryUpsertId, value.map((dept, i) => dept.id)));
+      dispatch(setDeptValue(entryUpsertId, value.id));
       dispatch(clearDeptInput(entryUpsertId));
 
       if(hasError) {
@@ -304,7 +308,7 @@ const DepartmentInput = function(props:DepartmentInputProps)
     autocompleteProps.onOpen = onOpen;
   
   // Only ROOT department is selected
-  } else if(deptChain.length === 1) {
+  } else if(!Array.isArray(value) || value.length === 1) {
 
     // Has sub-depts
     if(hasOptions) {

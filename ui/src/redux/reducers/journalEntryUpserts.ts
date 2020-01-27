@@ -111,14 +111,14 @@ const date = (state = new InputValue<Date, null>(null), action:Actions)
 
 }
 
-const department = (state = Object.assign(new InputValue<string[], []>([]),
-  {open:false}), action:Actions):InputValue<string[], []> & {open:boolean} =>
+const department = (state = Object.assign(new InputValue<string, null>(null),
+  {open:false}), action:Actions):InputValue<string, null> & {open:boolean} =>
 {
 
   switch(action.type) {
     case CREATE:
       if(action.payload.fromDept) {
-        return {...state, value:[action.payload.fromDept]};
+        return {...state, value:action.payload.fromDept};
       }
       return state;
     case SET_DEPT_INPUT:{
@@ -128,10 +128,10 @@ const department = (state = Object.assign(new InputValue<string[], []>([]),
     case CLEAR_DEPT_INPUT:
       return state.input === "" ? state : {...state, input:""};
     case SET_DEPT_VALUE:
-      return _.isEqual(state.value, action.payload.value) ?
-        state : {...state, value:[...action.payload.value]};
+      return state.value === action.payload.value ?
+        state : {...state, value:action.payload.value};
     case CLEAR_DEPT_VALUE:
-      return state.value ? {...state, value:[]} : state;
+      return state.value ? {...state, value:null} : state;
     case SET_DEPT_ERROR:
       return state.error?.message === action.payload.error.message ?
         state : {...state, error:action.payload.error};
@@ -178,8 +178,8 @@ const category = (state = Object.assign(new InputValue<string, null>(null),
       
 }
 const source = (state = Object.assign(
-  new InputValue<JournalEntrySourceInput[], []>([]),{open:false}),
-  action:Actions):InputValue<JournalEntrySourceInput[], []> & {open:boolean} => 
+  new InputValue<JournalEntrySourceInput, null>(null),{open:false}),
+  action:Actions):InputValue<JournalEntrySourceInput, null> & {open:boolean} => 
 {
 
   switch(action.type) {
@@ -191,9 +191,9 @@ const source = (state = Object.assign(
       return state.input === "" ? state : {...state, input:""};
     case SET_SRC_VALUE:
       return isEqual(state.value, action.payload.value) ?
-        state : {...state, value:[...action.payload.value]};
+        state : {...state, value:action.payload.value};
     case CLEAR_SRC_VALUE:
-      return state.value ? {...state, value:[]} : state;
+      return state.value ? {...state, value:null} : state;
     case SET_SRC_ERROR:
       return state.error?.message === action.payload.error.message ?
         state : {...state, error:action.payload.error};

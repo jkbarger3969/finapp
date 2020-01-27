@@ -7,7 +7,9 @@ import {VariableSizeList as List} from 'react-window';
 import InfiniteLoader from 'react-window-infinite-loader';
 
 import Entry from './Entry';
-import {JOURNAL_ENTRIES, JOURNAL_ENTRY_ADDED_SUB} from './JournalEntries.gql';
+import {JOURNAL_ENTRIES, JOURNAL_ENTRY_ADDED_SUB, JOURNAL_ENTRY_UPDATED_SUB,
+  JOURNAL_ENTRY_FRAGMENT
+} from './JournalEntries.gql';
 import {ROW_ID} from "./Cells/cellsReduxIni";
 import {Root} from "../../../redux/reducers/root";
 import {TableCell as CellFormat} from "../../../redux/reducers/tableRows";
@@ -16,7 +18,9 @@ import {JournalEntries_1Query as JournalEntriesQuery,
   JournalEntries_1QueryVariables as JournalEntriesQueryVars,
   JournalEntriesColumn, SortDirection,
   JournalEntryAdded_1Subscription as JournalEntryAdded,
-  JournalEntiresReconciledFilter
+  JournalEntryUpdated_1Subscription as JournalEntryUpdated,
+  JournalEntiresReconciledFilter,
+  JournalEntry_1Fragment as JournalEntryFragment
 } from "../../../apollo/graphTypes";
 
 type InfiniteLoaderProps = InfiniteLoader['props'];
@@ -33,23 +37,9 @@ export interface BodyProps {
   width:number;
 }
 
-const subscribed = new Set<string>();
+const subscribedToAdd = new Set<string>();
 
-const subscribeNew = (vars:JournalEntriesQueryVars) => {
-
-  const sortBy = [...vars.sortBy];
-  const filterBy = vars?.filterBy ? {...vars?.filterBy} : {};
-  const serializedVars = JSON.stringify({sortBy, filterBy});
-
-  if(!subscribed.has(serializedVars)) {
-    subscribed.add(serializedVars);
-    return true;
-  }
-  return false;
-
-}
-
-// let subscribed = false; 
+let subscribedToUpdate = false;
 
 const defaultVars:JournalEntriesQueryVars = {
     paginate:{
@@ -65,6 +55,8 @@ const Body = function(props:BodyProps) {
 
   const {height, deptId, mode} = props;
 
+  const subKey = `${deptId}_${mode}`;
+
   const variables = useMemo<JournalEntriesQueryVars>(()=>{
 
     const reconciled = mode === JournalMode.Reconcile ?
@@ -77,7 +69,7 @@ const Body = function(props:BodyProps) {
           eq:deptId
         },
         reconciled
-      }
+      },
     } : {...defaultVars};
 
   },[deptId, mode]);
@@ -91,22 +83,63 @@ const Body = function(props:BodyProps) {
 
   const width = Math.max(minWidth, props.width);
 
-  const {error, data, fetchMore} = useQuery<
+  const {error, data, fetchMore, updateQuery} = useQuery<
     JournalEntriesQuery, JournalEntriesQueryVars>(JOURNAL_ENTRIES,
   {
     variables
   });
 
+  const removeReconciled = useCallback((id:string) => {
+
+    if(mode === JournalMode.View) {
+      return;
+    }
+
+    updateQuery((prev)=>{
+
+      const entries = prev.journalEntries.entries;
+
+      for(let i = 0, len = entries.length; i < len; i++) {
+
+        if(entries[i].id === id) {
+
+          return {
+            ...prev,
+            journalEntries: {
+              ...prev.journalEntries,
+              totalCount:prev.journalEntries.totalCount - 1,
+              entries:[
+                ...entries.slice(0, i),
+                ...entries.slice(i + 1)
+              ]
+            }
+          }
+
+        }
+
+      }
+
+      return prev;
+
+    });
+
+  },[mode, updateQuery]);
+
   const client = useApolloClient();
 
   // Lazy add persistent subscription.
-  if(subscribeNew(variables)) {
+  if(!subscribedToAdd.has(subKey)) {
+
+    subscribedToAdd.add(subKey);
 
     client.subscribe<JournalEntryAdded>({
       query:JOURNAL_ENTRY_ADDED_SUB
     }).subscribe({next:({data})=>{
       
-      if(!data?.journalEntryAdded) {
+      if(!data?.journalEntryAdded || (mode === JournalMode.Reconcile 
+        && data.journalEntryAdded.reconciled) 
+        || (deptId && data.journalEntryAdded.department.id !== deptId))
+      {
         return;
       }
 
@@ -120,6 +153,7 @@ const Body = function(props:BodyProps) {
         ...(prev || {}),
         journalEntries:{
           ...(prev?.journalEntries || {}),
+          totalCount:(prev?.journalEntries.totalCount || 0) + 1,
           entries:[
             data.journalEntryAdded,
             ...(prev?.journalEntries.entries || [])
@@ -135,6 +169,29 @@ const Body = function(props:BodyProps) {
 
     }});
 
+  }
+
+  if(!subscribedToUpdate) {
+    
+    subscribedToUpdate = true;
+    client.subscribe<JournalEntryUpdated>({
+      query:JOURNAL_ENTRY_UPDATED_SUB
+    }).subscribe({next:({data})=>{
+
+      console.log(data);
+
+      if(!data) {
+        return;
+      }
+      
+      client.writeFragment<JournalEntryFragment>({
+        id:`JournalEntry:${data.journalEntryUpdated.id}`,
+        fragment:JOURNAL_ENTRY_FRAGMENT,
+        data:data.journalEntryUpdated
+      });
+
+    }});
+  
   }
 
   const entries = data?.journalEntries?.entries || [];
@@ -184,9 +241,15 @@ const Body = function(props:BodyProps) {
   {
     const entry = entries[index];
     const key = entry ? entry.id: index;
-    return <Entry style={style} key={key} journalEntry={entry} />
+    return <Entry
+      mode={mode}
+      style={style}
+      key={key}
+      journalEntry={entry}
+      removeReconciled={removeReconciled}
+    />
   
-  },[entries]);
+  },[entries, mode, removeReconciled]);
 
   const infiniteLoaderChildren = useCallback<InfiniteLoaderProps["children"]>( 
     ({onItemsRendered, ref}) => <Box display="flex" clone><List

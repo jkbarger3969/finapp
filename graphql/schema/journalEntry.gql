@@ -30,6 +30,7 @@ input JournalEntrySourceInput {
 input JournalEntryUpdateFields {
   date:String
   department:ID
+  type:JournalEntryType
   category:ID
   paymentMethod:ID
   description:String
@@ -41,6 +42,7 @@ input JournalEntryUpdateFields {
 input JournalEntryAddFields {
   date:String!
   department:ID!
+  type:JournalEntryType!
   category:ID!
   paymentMethod:ID!
   description:String
@@ -99,4 +101,5 @@ type Mutation {
 
 type Subscription {
     journalEntryAdded:JournalEntry!
+    journalEntryUpdated:JournalEntry!
 }

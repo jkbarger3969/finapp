@@ -21,7 +21,7 @@ import {useDebounceDispatch as useDispatch} from "../../redux/hooks";
 import {setSrcInput, clearSrcInput, clearSrcValue, setSrcOpen, setSrcValue,
   validateSrc, setType
 } from "../../redux/actions/journalEntryUpsert";
-import {getSrc, isSrcOpen, getSrcChain, getSrcError,
+import {getSrc, isSrcOpen, getSrcError,
   getType, getTypeError
 } from "../../redux/selectors/journalEntryUpsert";
 

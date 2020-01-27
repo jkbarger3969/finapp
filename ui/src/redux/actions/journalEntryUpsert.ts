@@ -11,6 +11,8 @@ import {JournalEntrySourceInput, JournalEntrySourceType,
   AddPerson_1MutationVariables as AddPersonVars,
   AddJournalEntry_2Mutation as AddJournalEntry,
   AddJournalEntry_2MutationVariables as AddJournalEntryVars,
+  UpdateJournalEntry_2Mutation as UpdateJournalEntry,
+  UpdateJournalEntry_2MutationVariables as UpdateJournalEntryVars,
   AddBusiness_1Mutation as AddBusiness,
   AddBusiness_1MutationVariables as AddBusinessVars,
   CheckValidVendor_1Query as CheckValidVendor,
@@ -19,28 +21,115 @@ import {JournalEntrySourceInput, JournalEntrySourceType,
   CategoryTypeValidation_1QueryVariables as CategoryTypeValidationQueryVars,
   ValidateDeptIsLeaf_1Query as ValidateDeptIsLeafQuery,
   ValidateDeptIsLeaf_1QueryVariables as ValidateDeptIsLeafQueryVars,
+  JournalEntry_1Fragment as JournalEntryFragment
 } from "../../apollo/graphTypes";
 import {SubmitStatus} from "../reducers/journalEntryUpserts";
 import * as upsertActions from "../actionTypes/journalEntryUpsert";
 import * as selectors from "../selectors/journalEntryUpsert";
+import {JOURNAL_ENTRY_FRAGMENT
+} from "../../components/Journal/Table/JournalEntries.gql"
 
 // Upsert Life cycle
 export const create = (upsertId:string,
-  args:{entryId?:string, fromDept?:string} = {})
-  :Thunk<upsertActions.Create> => (dispatch, getState) => 
+  args:{entryId?:string, fromDept?:string, client?:ApolloClient<any>} = {})
+  :Thunk<upsertActions.Create | upsertActions.SetDateValue |
+      upsertActions.SetDeptValue | upsertActions.SetCatValue |
+      upsertActions.SetDscrptValue | upsertActions.SetSrcValue |
+      upsertActions.SetPayMethodValue | upsertActions.SetTotalValue |
+      upsertActions.SetReconciledValue | upsertActions.SetTypeValue |
+      upsertActions.SetTotalInput | upsertActions.SetTotalError |
+      upsertActions.SetSrcType
+    > => (dispatch, getState) => 
 {
 
   const state = getState();
   const submitStatus = selectors.getSubmitStatus(state, upsertId);
 
+  const {entryId, fromDept, client} = args;
+
   if(submitStatus !== null) {
     return;
+  } else if(entryId) {
+
+    if(!client) {
+      // TODO: update types to handle this dep
+      throw Error("client required for update");
+    }
+    
+    const entry = client.readFragment<JournalEntryFragment>({
+      id:`JournalEntry:${entryId}`,
+      fragment:JOURNAL_ENTRY_FRAGMENT
+    });
+
+    if(!entry) {
+      // TODO: implement generic error handler.
+      return;
+    }
+
+    const {
+      date,
+      type,
+      department:{id:deptId},
+      category:{id:catId},
+      description,
+      paymentMethod:{id:payMethodId},
+      source:{
+        __typename:srcTypeName,
+        id:srcId
+      },
+      total:{num, den},
+      reconciled
+    } = entry;
+
+
+    const srcType = srcTypeName === "Person" ? JournalEntrySourceType.Person :
+      JournalEntrySourceType.Business;
+    
+    const src:JournalEntrySourceInput = {
+      sourceType:(()=>{
+        if(srcTypeName === "Person") {
+          return JournalEntrySourceType.Person;
+        } else if(srcTypeName === "Business") {
+          return JournalEntrySourceType.Business;
+        } else {
+          return JournalEntrySourceType.Department;
+        }
+      })(),
+      id:srcId
+    }
+
+    dispatch({
+      type:upsertActions.CREATE,
+      payload:{upsertId, entryId, fromDept:args.fromDept}
+    });
+
+    batch(()=>{
+      dispatch(setDateValue(upsertId, new Date(date as string)));
+      dispatch(setType(upsertId, type, client));
+      dispatch(setSrcType(upsertId,srcType))
+      dispatch(setDeptValue(upsertId, deptId));
+      dispatch(setCatValue(upsertId, catId));
+      if(description) {
+        dispatch(setDscrptValue(upsertId, description as string));
+      }
+      dispatch(setPayMethodValue(upsertId, payMethodId));
+      dispatch(setSrcValue(upsertId, src));
+      dispatch(setTotalValue(upsertId, num/den));
+      dispatch(setTotalInput(upsertId, (num/den).toString()));
+      dispatch(setReconciledValue(upsertId, reconciled));
+
+    });
+
+
+  } else {
+    
+    dispatch({
+      type:upsertActions.CREATE,
+      payload:{upsertId, fromDept:args.fromDept}
+    });
+
   }
 
-  dispatch({
-    type:upsertActions.CREATE,
-    payload:{upsertId, ...args}
-  });
 
 }
 
@@ -124,6 +213,15 @@ const ADD_JOURNAL_ENTRY = gql`
   }
 `;
 
+const UPDATE_JOURNAL_ENTRY = gql`
+  mutation UpdateJournalEntry_2($id:ID!, $fields:JournalEntryUpdateFields!) {
+    updateJournalEntry(id:$id, fields:$fields) {
+      ...JournalEntry_1Fragment
+    }
+  }
+  ${JOURNAL_ENTRY_FRAGMENT}
+`;
+
 export const submit = (upsertId:string, client:ApolloClient<any>)
   :Thunk<upsertActions.SetSubmitStatus> => (dispatch, getState) =>
 {
@@ -141,6 +239,108 @@ export const submit = (upsertId:string, client:ApolloClient<any>)
 
 }
 
+const creatNewSrc = (upsertId:string, client:ApolloClient<any>)
+  :Thunk<upsertActions.SetSrcValue | upsertActions.SetSubmitError |
+     upsertActions.SetSubmitStatus | upsertActions.ClearSrcInput,
+     Promise<void>> =>  async (dispatch, getState) =>
+{
+
+  const state = getState();
+
+  const srcType = selectors.getSrcType(state, upsertId);
+  const srcInput = selectors.getSrcInput(state, upsertId);
+
+  if(srcType === JournalEntrySourceType.Person) {
+
+    const parsedName = parseFullName(srcInput);
+
+    try {
+
+      const result = await client.mutate<AddPerson, AddPersonVars>({
+        mutation:ADD_PERSON,
+        variables:{
+          fields:{
+            name:{
+              first:parsedName.first,
+              last:parsedName.last
+            }
+          }
+        }
+      });
+
+      if(!result.data?.addPerson.id) {
+        
+        throw new Error("Something went wrong. Server did not respond with new person id.");
+
+      }
+      
+      batch(()=>{
+        
+        dispatch(clearSrcInput(upsertId));
+        dispatch(setSrcValue(upsertId, {
+          sourceType:JournalEntrySourceType.Person,
+          id:(result.data as AddPerson).addPerson.id
+        }));
+
+      });
+      
+      await Promise.resolve();
+
+      dispatch(_submit_(upsertId, client));
+      
+    } catch(error) {
+      
+      batch(()=>{
+        dispatch(setSubmitError(upsertId,
+          new Error(error?.message || `${error}`)));
+        dispatch(setSubmitStatus(upsertId, SubmitStatus.NotSubmitted));
+      });
+
+    }
+
+  } else {
+    
+    try {
+
+      const result = await client.mutate<AddBusiness, AddBusinessVars>({
+        mutation:ADD_BUSINESS,
+        variables:{
+          fields:{
+            name:srcInput
+          }
+        }
+      });
+
+      if(!result.data?.addBusiness.id) {
+        
+        throw new Error("Something went wrong. Server did not respond with new business id.");
+
+      }
+
+      dispatch(setSrcValue(upsertId, {
+        sourceType:JournalEntrySourceType.Business,
+        id:result.data.addBusiness.id
+      }));
+      
+      await Promise.resolve();
+
+      dispatch(_submit_(upsertId, client));
+
+    } catch(error) {
+
+      batch(()=>{
+        dispatch(setSubmitError(upsertId,
+          new Error(error?.message || `${error}`)));
+        dispatch(setSubmitStatus(upsertId, SubmitStatus.NotSubmitted));
+      });
+
+    }
+
+  }
+
+  return;
+
+}
 
 export const _submit_ = (upsertId:string, client:ApolloClient<any>)
   :Thunk<upsertActions.SetSubmitStatus | upsertActions.SetSubmitError |
@@ -159,6 +359,24 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
     await Promise.resolve();
     
     const upsertType = selectors.getUpsertType(state, upsertId);
+
+    const dateError = selectors.getDateError(state, upsertId);
+    const deptError = selectors.getDeptError(state, upsertId);
+    const catError = selectors.getCatError(state, upsertId);
+    const srcError = selectors.getSrcError(state, upsertId);
+    const payMethodError = selectors.getPayMethodError(state, upsertId);
+    const totalError = selectors.getTotalError(state, upsertId);
+
+    if(dateError || deptError || catError || srcError || payMethodError
+      || totalError)
+    {
+      batch(()=>{
+        dispatch(setSubmitError(upsertId,
+          new Error("Invalid submission, please check fields")));
+        dispatch(setSubmitStatus(upsertId, SubmitStatus.NotSubmitted));
+      });
+      return;
+    }
 
     if(upsertType === selectors.UpsertType.Add) {
       
@@ -184,98 +402,14 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
       
       if(!source) {
         
+        dispatch(creatNewSrc(upsertId, client));
         
-        const srcType = selectors.getSrcType(state, upsertId);
-        const srcInput = selectors.getSrcInput(state, upsertId);
-
-        if(srcType === JournalEntrySourceType.Person) {
-
-          const parsedName = parseFullName(srcInput);
-
-          try {
-
-            const result = await client.mutate<AddPerson, AddPersonVars>({
-              mutation:ADD_PERSON,
-              variables:{
-                fields:{
-                  name:{
-                    first:parsedName.first,
-                    last:parsedName.last
-                  }
-                }
-              }
-            });
-
-            if(!result.data?.addPerson.id) {
-              
-              throw new Error("Something went wrong. Server did not respond with new person id.");
-
-            }
-
-            dispatch(setSrcValue(upsertId, [{
-              sourceType:JournalEntrySourceType.Person,
-              id:result.data.addPerson.id
-            }]));
-            
-            await Promise.resolve();
-
-            dispatch(_submit_(upsertId, client));
-            
-          } catch(error) {
-            
-            batch(()=>{
-              dispatch(setSubmitError(upsertId,
-                new Error(error?.message || `${error}`)));
-              dispatch(setSubmitStatus(upsertId, SubmitStatus.NotSubmitted));
-            });
-
-          }
-
-        } else {
-          
-          try {
-
-            const result = await client.mutate<AddBusiness, AddBusinessVars>({
-              mutation:ADD_BUSINESS,
-              variables:{
-                fields:{
-                  name:srcInput
-                }
-              }
-            });
-
-            if(!result.data?.addBusiness.id) {
-              
-              throw new Error("Something went wrong. Server did not respond with new business id.");
-
-            }
-
-            dispatch(setSrcValue(upsertId, [{
-              sourceType:JournalEntrySourceType.Business,
-              id:result.data.addBusiness.id
-            }]));
-            
-            await Promise.resolve();
-
-            dispatch(_submit_(upsertId, client));
-
-          } catch(error) {
-
-            batch(()=>{
-              dispatch(setSubmitError(upsertId,
-                new Error(error?.message || `${error}`)));
-              dispatch(setSubmitStatus(upsertId, SubmitStatus.NotSubmitted));
-            });
-
-          }
-
-        }
-
         return;
       
       }
 
       const date = selectors.getDate(state, upsertId);
+      const type = selectors.getType(state, upsertId) as JournalEntryType;
       const department = selectors.getDept(state, upsertId);
       const category = selectors.getCatValue(state, upsertId);
       const paymentMethod = selectors.getPayMethod(state, upsertId);
@@ -285,10 +419,13 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
       const reconciled = 
         selectors.getReconciledValue(state, upsertId) ?? undefined;
 
-      if(!(date && department && category && paymentMethod && total)) {
+      if(!(date && department && category && paymentMethod && total
+        && type !== null)) 
+      {
         batch(()=>{
           dispatch(setSubmitError(upsertId,
             new Error(`Something went wrong, field values:
+              type:${type}
               date:${date}
               department:${department}
               source:${source}
@@ -309,6 +446,7 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
             variables:{
               fields:{
                 date:date.toISOString(),
+                type,
                 department,
                 source,
                 category,
@@ -346,6 +484,135 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
 
     } else {
 
+
+      const srcInput = selectors.getSrcInput(state, upsertId);
+
+      if(srcInput.trim()) {
+
+        dispatch(creatNewSrc(upsertId, client));
+        
+        return;
+
+      }
+
+      const id = selectors.getUpdateId(state, upsertId);
+      const date = selectors.getDate(state, upsertId);
+      const source = selectors.getSrc(state, upsertId);
+      const type = selectors.getType(state, upsertId) as JournalEntryType;
+      const department = selectors.getDept(state, upsertId);
+      const category = selectors.getCatValue(state, upsertId);
+      const paymentMethod = selectors.getPayMethod(state, upsertId);
+      const description = 
+        selectors.getDscrptValue(state, upsertId) ?? undefined;
+      const total = selectors.getTotalValue(state, upsertId);
+      const reconciled = 
+        selectors.getReconciledValue(state, upsertId) ?? undefined;
+
+      const entry = client.readFragment<JournalEntryFragment>({
+        id:`JournalEntry:${id}`,
+        fragment:JOURNAL_ENTRY_FRAGMENT
+      });
+
+      if(!entry) {
+
+        batch(()=>{
+          dispatch(setSubmitError(upsertId,
+            new Error("Something went wrong.")));
+          dispatch(setSubmitStatus(upsertId, SubmitStatus.NotSubmitted));
+        });
+        return;
+
+      }
+
+      const fields = {} as UpdateJournalEntryVars["fields"];
+      const variables = {id, fields} as UpdateJournalEntryVars;
+
+      let updates = 0;
+
+      if(date && date.toISOString() !== entry.date) {
+        updates++;
+        fields.date = date.toISOString();
+      }
+
+      if(type && type !== entry.type) {
+        updates++;
+        fields.type = type;
+      }
+
+      if(department && department !== entry.department.id) {
+        updates++;
+        fields.department = department;
+      }
+      
+      if(source && source.id !== entry.source.id) {
+        updates++;
+        fields.source = source;
+      }
+
+      if(category && category !== entry.category.id) {
+        updates++;
+        fields.category = category;
+      }
+
+      if(paymentMethod && paymentMethod !== entry.paymentMethod.id) {
+        updates++;
+        fields.paymentMethod = paymentMethod;
+      }
+
+      if(description !== entry.description) {
+        updates++;
+        fields.description = description;
+      }
+
+      if(total && (total.num/total.den) !== (entry.total.num/entry.total.den)) {
+        updates++;
+        fields.total = total;
+      }
+
+      if(reconciled !== undefined && reconciled !== entry.reconciled) {
+        updates++;
+        fields.reconciled = reconciled;
+      }
+
+      // NO updates
+      if(updates === 0) {
+        dispatch(setSubmitStatus(upsertId, SubmitStatus.NotSubmitted));
+        await Promise.resolve();
+        dispatch(cancel(upsertId));
+        return;
+      }
+
+      try {
+
+        const result = await client
+          .mutate<UpdateJournalEntry, UpdateJournalEntryVars>({
+            mutation:UPDATE_JOURNAL_ENTRY,
+            variables
+          });
+
+          if(!result.data?.updateJournalEntry.id) {
+            throw new Error("Something went wrong.");
+          }
+
+          dispatch(setSubmitStatus(upsertId, SubmitStatus.Submitted));
+
+          // Allow for any animation triggers for status submitted
+          await new Promise((r)=>setTimeout(r, 300));
+
+          // Clear upsert on success
+          dispatch(clear(upsertId));
+
+      } catch(error) {
+
+        batch(()=>{
+          dispatch(setSubmitError(upsertId,
+            new Error(error?.message || `${error}`)));
+          dispatch(setSubmitStatus(upsertId, SubmitStatus.NotSubmitted));
+        });
+
+        return;
+
+      }
 
     }
 
@@ -529,7 +796,7 @@ export const clearDeptInput = (upsertId:string)
     payload:{upsertId}
   });
 
-export const setDeptValue = (upsertId:string, value:string[])
+export const setDeptValue = (upsertId:string, value:string)
   :upsertActions.SetDeptValue => ({
       type:upsertActions.SET_DEPT_VALUE,
       payload:{ upsertId, value}
@@ -706,7 +973,7 @@ export const clearSrcInput = (upsertId:string)
     payload:{upsertId}
   });
 
-export const setSrcValue = (upsertId:string, value:JournalEntrySourceInput[])
+export const setSrcValue = (upsertId:string, value:JournalEntrySourceInput)
   :upsertActions.SetSrcValue => ({
       type:upsertActions.SET_SRC_VALUE,
       payload:{ upsertId, value}

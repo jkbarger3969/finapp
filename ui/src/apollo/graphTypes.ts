@@ -125,6 +125,7 @@ export type JournalEntryAddedRes = {
 export type JournalEntryAddFields = {
   date: Scalars['String'],
   department: Scalars['ID'],
+  type: JournalEntryType,
   category: Scalars['ID'],
   paymentMethod: Scalars['ID'],
   description?: Maybe<Scalars['String']>,
@@ -142,7 +143,7 @@ export type JournalEntryCategory = {
   ancestors: Array<JournalEntryCategory>,
 };
 
-export type JournalEntrySource = Person | Business | Department | Vendor;
+export type JournalEntrySource = Person | Business | Department;
 
 export type JournalEntrySourceInput = {
   sourceType: JournalEntrySourceType,
@@ -163,6 +164,7 @@ export enum JournalEntryType {
 export type JournalEntryUpdateFields = {
   date?: Maybe<Scalars['String']>,
   department?: Maybe<Scalars['ID']>,
+  type?: Maybe<JournalEntryType>,
   category?: Maybe<Scalars['ID']>,
   paymentMethod?: Maybe<Scalars['ID']>,
   description?: Maybe<Scalars['String']>,
@@ -377,6 +379,7 @@ export enum SortDirection {
 export type Subscription = {
    __typename?: 'Subscription',
   journalEntryAdded: JournalEntry,
+  journalEntryUpdated: JournalEntry,
 };
 
 
@@ -405,12 +408,17 @@ export type GetReportDataQuery = { __typename?: 'Query', department: Maybe<{ __t
 
 export type GetReportDataEntryFragment = { __typename: 'JournalEntry', category: { __typename: 'JournalEntryCategory', id: string, name: string }, total: { __typename?: 'Rational', num: number, den: number } };
 
-export type AddEntryInputsQueryVariables = {};
+export type Reconcile_1MutationVariables = {
+  id: Scalars['ID']
+};
 
 
-export type AddEntryInputsQuery = { __typename?: 'Query', lc_journalEntryUpserts: Array<{ __typename?: 'LC_JournalEntryUpsert', fields: { __typename?: 'LC_JournalEntryUpsertFields', id: Maybe<string> } }> };
+export type Reconcile_1Mutation = { __typename?: 'Mutation', updateJournalEntry: (
+    { __typename?: 'JournalEntry' }
+    & JournalEntry_1Fragment
+  ) };
 
-export type JournalEntry_1Fragment = { __typename: 'JournalEntry', id: string, date: string, description: Maybe<string>, reconciled: boolean, department: { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Department', id: string, deptName: string } | { __typename: 'Business', id: string, bizName: string }> }, category: { __typename: 'JournalEntryCategory', id: string, type: JournalEntryType, name: string }, paymentMethod: { __typename: 'PaymentMethod', id: string, method: string }, source: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } | { __typename: 'Business', id: string, bizName: string } | { __typename: 'Department', id: string, deptName: string } | { __typename: 'Vendor' }, total: { __typename?: 'Rational', num: number, den: number } };
+export type JournalEntry_1Fragment = { __typename: 'JournalEntry', id: string, date: string, type: JournalEntryType, description: Maybe<string>, reconciled: boolean, department: { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Department', id: string, deptName: string } | { __typename: 'Business', id: string, bizName: string }> }, category: { __typename: 'JournalEntryCategory', id: string, type: JournalEntryType, name: string }, paymentMethod: { __typename: 'PaymentMethod', id: string, method: string }, source: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } | { __typename: 'Business', id: string, bizName: string } | { __typename: 'Department', id: string, deptName: string }, total: { __typename?: 'Rational', num: number, den: number } };
 
 export type JournalEntries_1QueryVariables = {
   paginate: PaginateInput,
@@ -428,6 +436,14 @@ export type JournalEntryAdded_1SubscriptionVariables = {};
 
 
 export type JournalEntryAdded_1Subscription = { __typename?: 'Subscription', journalEntryAdded: (
+    { __typename?: 'JournalEntry' }
+    & JournalEntry_1Fragment
+  ) };
+
+export type JournalEntryUpdated_1SubscriptionVariables = {};
+
+
+export type JournalEntryUpdated_1Subscription = { __typename?: 'Subscription', journalEntryUpdated: (
     { __typename?: 'JournalEntry' }
     & JournalEntry_1Fragment
   ) };
@@ -492,11 +508,25 @@ export type BusinessSrcBizOpts_1Fragment = { __typename: 'Business', id: string,
   )>> };
 
 export type BusinessSrcOptsInput_1QueryVariables = {
-  searchByName: Scalars['String']
+  searchByName: Scalars['String'],
+  deptId: Scalars['ID'],
+  bizId: Scalars['ID'],
+  withBizOpt: Scalars['Boolean'],
+  withDeptAncestors: Scalars['Boolean'],
+  withBizOpts: Scalars['Boolean']
 };
 
 
-export type BusinessSrcOptsInput_1Query = { __typename?: 'Query', bizOpts: Array<(
+export type BusinessSrcOptsInput_1Query = { __typename?: 'Query', bizOpt: (
+    { __typename?: 'Business' }
+    & BusinessSrcBizOpts_1Fragment
+  ), deptAncestors: Maybe<{ __typename: 'Department', id: string, ancestors: Array<(
+      { __typename?: 'Department' }
+      & BusinessSrcDeptOpts_1Fragment
+    ) | (
+      { __typename?: 'Business' }
+      & BusinessSrcBizOpts_1Fragment
+    )> }>, bizOpts: Array<(
     { __typename?: 'Business' }
     & BusinessSrcBizOpts_1Fragment
   )> };
@@ -538,6 +568,17 @@ export type AddJournalEntry_2MutationVariables = {
 
 
 export type AddJournalEntry_2Mutation = { __typename?: 'Mutation', addJournalEntry: { __typename: 'JournalEntry', id: string } };
+
+export type UpdateJournalEntry_2MutationVariables = {
+  id: Scalars['ID'],
+  fields: JournalEntryUpdateFields
+};
+
+
+export type UpdateJournalEntry_2Mutation = { __typename?: 'Mutation', updateJournalEntry: (
+    { __typename?: 'JournalEntry' }
+    & JournalEntry_1Fragment
+  ) };
 
 export type CategoryTypeValidation_1QueryVariables = {
   id: Scalars['ID']
@@ -655,7 +696,7 @@ export type ResolversTypes = {
   JournalEntryType: JournalEntryType,
   JournalEntryCategory: ResolverTypeWrapper<JournalEntryCategory>,
   PaymentMethod: ResolverTypeWrapper<PaymentMethod>,
-  JournalEntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'] | ResolversTypes['Vendor'],
+  JournalEntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'],
   Person: ResolverTypeWrapper<Person>,
   PersonName: ResolverTypeWrapper<PersonName>,
   PersonNameInput: PersonNameInput,
@@ -709,7 +750,7 @@ export type ResolversParentTypes = {
   JournalEntryType: JournalEntryType,
   JournalEntryCategory: JournalEntryCategory,
   PaymentMethod: PaymentMethod,
-  JournalEntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'] | ResolversParentTypes['Vendor'],
+  JournalEntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'],
   Person: Person,
   PersonName: PersonName,
   PersonNameInput: PersonNameInput,
@@ -798,7 +839,7 @@ export type JournalEntryCategoryResolvers<ContextType = Context, ParentType exte
 };
 
 export type JournalEntrySourceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntrySource'] = ResolversParentTypes['JournalEntrySource']> = {
-  __resolveType: TypeResolveFn<'Person' | 'Business' | 'Department' | 'Vendor', ParentType, ContextType>
+  __resolveType: TypeResolveFn<'Person' | 'Business' | 'Department', ParentType, ContextType>
 };
 
 export type Lc_JournalEntryUpsertResolvers<ContextType = Context, ParentType extends ResolversParentTypes['LC_JournalEntryUpsert'] = ResolversParentTypes['LC_JournalEntryUpsert']> = {
@@ -891,6 +932,7 @@ export type RationalResolvers<ContextType = Context, ParentType extends Resolver
 
 export type SubscriptionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription']> = {
   journalEntryAdded?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryAdded", ParentType, ContextType>,
+  journalEntryUpdated?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryUpdated", ParentType, ContextType>,
 };
 
 export interface UploadScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['Upload'], any> {

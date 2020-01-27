@@ -21,6 +21,7 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
         }
       }
     }
+    type
     category {
       __typename
       id
@@ -79,6 +80,15 @@ export const JOURNAL_ENTRIES = gql`
 export const JOURNAL_ENTRY_ADDED_SUB = gql`
   subscription JournalEntryAdded_1 {
     journalEntryAdded {
+      ...JournalEntry_1Fragment
+    }
+  }
+  ${JOURNAL_ENTRY_FRAGMENT}
+`;
+
+export const JOURNAL_ENTRY_UPDATED_SUB = gql`
+  subscription JournalEntryUpdated_1 {
+    journalEntryUpdated {
       ...JournalEntry_1Fragment
     }
   }

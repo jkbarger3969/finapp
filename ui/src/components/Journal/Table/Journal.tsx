@@ -5,7 +5,9 @@ import AutoSizer, {Size} from 'react-virtualized-auto-sizer';
 
 import Header from "./Header";
 import Body, {JournalMode} from "./Body";
-import Footer from "./Footer";
+import AddEntry from "../../Dashboard/AddEntry";
+import UpdateEntry from "./UpdateEntry";
+// import Footer from "./Footer";
 import JournalPAB from "./JournalPAB";
 import {uuid, namespace} from "../../../utils/uuid";
 
@@ -44,11 +46,13 @@ const Journal = function(props:{deptId?:string, mode:JournalMode}) {
           <Box flexGrow={1} >
             <AutoSizer children={autoSizerChildren}/>
           </Box>
-          <Footer entryUpsertId={entryUpsertId} />
+          {/* <Footer entryUpsertId={entryUpsertId} /> */}
           {mode === JournalMode.View && 
-            <JournalPAB entryUpsertId={entryUpsertId} />}
+            <JournalPAB fromDept={deptId} entryUpsertId={entryUpsertId} />}
         </Table>
       </Box>
+      <UpdateEntry fromDept={deptId} entryUpsertId={entryUpsertId}/>
+      <AddEntry fromDept={deptId} entryUpsertId={entryUpsertId} />
     </form>
   </Box>;
 

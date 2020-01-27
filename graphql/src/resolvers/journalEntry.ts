@@ -11,6 +11,7 @@ import {NodeValue} from "../types";
 import {getDescendants as deptDescendants} from "./departments";
 
 const JOURNAL_ENTRY_ADDED = "JOURNAL_ENTRY_ADDED";
+const JOURNAL_ENTRY_UPDATED = "JOURNAL_ENTRY_UPDATED";
 
 const userNodeType = new ObjectID("5dca0427bccd5c6f26b0cde2");
 
@@ -143,7 +144,7 @@ export const updateJournalEntry:
 {
   
   const {id, fields} = args;
-  const {db, nodeMap, user} = context;
+  const {db, nodeMap, user, pubSub} = context;
 
   const createdBy = {
     node: userNodeType,
@@ -164,7 +165,8 @@ export const updateJournalEntry:
 
   const {date:dateString = null, source = null, 
     department:departmentId = null, total = null, category:categoryId = null,
-    paymentMethod:paymentMethodId = null, description = null, reconciled = null
+    paymentMethod:paymentMethodId = null, description = null, reconciled = null,
+    type = null
   } = fields;
 
   let numFieldsToUpdate = 0;
@@ -287,6 +289,44 @@ export const updateJournalEntry:
 
   }
   
+  if(type !== null) {
+
+    numFieldsToUpdate++;
+
+    const value = type === JournalEntryType.Credit ? "credit" : "debit";
+
+    $push["type"] = {
+      $each:[{
+        value,
+        createdBy,
+        createdOn,
+      }],
+      $position:0
+    };
+
+    if(categoryId === null) {
+      
+      const cats = await db.collection("journalEntries").aggregate([
+        {$match:{_id:new ObjectID(id)}},
+        {$addFields: {catId:{$arrayElemAt: ["$category.value.id",0]}}},
+        {$lookup: {
+               from: "journalEntryCategories",
+               localField: "catId",
+               foreignField: "_id",
+               as: "cats"
+             }
+        },
+        {$project: {cats:true}}
+      ]).next();
+
+      if(value !== cats.cats[0].type) {
+        throw new Error(`Mutation "updateJournalEntry" "JournalEntryType" must match "JournalEntryCategory" type.`);
+      }
+
+    }
+    
+  }
+
   if(categoryId !== null) {
 
     numFieldsToUpdate++;
@@ -296,9 +336,11 @@ export const updateJournalEntry:
 
     const id = new ObjectID(categoryId);
 
-    if(0 === (await db.collection(collection).find({_id:id})
-      .limit(1).count()))
-    {
+    const category = await db.collection(collection).findOne({_id:id},{
+      projection:{type:true}
+    });
+
+    if(!category) {
       throw new Error(`Mutation "updateJournalEntry" type "JournalEntryCategory" with id ${categoryId} does not exist.`);
     }
 
@@ -313,6 +355,27 @@ export const updateJournalEntry:
       }],
       $position:0
     };
+
+    let typeValue:"credit" | "debit";
+    if(type === null) {
+
+      const entry = await db.collection("journalEntries").aggregate([
+          {$match:{_id:new ObjectID(id)}},
+          {$addFields: {type:{$arrayElemAt: ["$type.value",0]}}},
+          {$project: {type:true}}
+      ]).next();
+
+      typeValue = entry.type;
+
+    } else {
+    
+      typeValue = type === JournalEntryType.Credit ? "credit" : "debit";
+    
+    }
+
+    if(category.type !== typeValue) {
+      throw new Error(`Mutation "updateJournalEntry" "JournalEntryType" must match "JournalEntryCategory" type.`);
+    }
 
   }
 
@@ -376,7 +439,7 @@ export const updateJournalEntry:
   }
 
   if(numFieldsToUpdate === 0) {
-    throw new Error(`Mutation "updateJournalEntry" requires at least one of the following fields: "date", "source", "department", "total", "type", or "paymentMethod"`)
+    throw new Error(`Mutation "updateJournalEntry" requires at least one of the following fields: "date", "source", "category", "department", "total", "type", or "paymentMethod"`)
   }
 
   const {modifiedCount} = await 
@@ -393,6 +456,9 @@ export const updateJournalEntry:
       addFields,
       project
     ]).toArray();
+  
+  pubSub.publish(JOURNAL_ENTRY_UPDATED, { journalEntryUpdated: doc[0] })
+    .catch((error)=> console.error(error));
 
   return doc[0];
 
@@ -407,6 +473,7 @@ export const addJournalEntry:
   const {
     date:dateString,
     department:departmentId,
+    type,
     category:categoryId,
     source:{
       id:sourceId,
@@ -433,7 +500,12 @@ export const addJournalEntry:
     total:[{
       value:total,
       createdBy,
-      createdOn,
+      createdOn
+    }],
+    type:[{
+      value:type === JournalEntryType.Credit ? "credit" : "debit",
+      createdBy,
+      createdOn
     }],
     lastUpdate,
     createdOn,
@@ -631,4 +703,9 @@ export const JournalEntry:JournalEntryResolvers = {
 export const journalEntryAdded:SubscriptionResolvers["journalEntryAdded"] = 
 {
   subscribe:(_,__,{pubSub}) => pubSub.asyncIterator(JOURNAL_ENTRY_ADDED)
+}
+
+export const journalEntryUpdated:SubscriptionResolvers["journalEntryUpdated"] = 
+{
+  subscribe:(_,__,{pubSub}) => pubSub.asyncIterator(JOURNAL_ENTRY_UPDATED)
 }

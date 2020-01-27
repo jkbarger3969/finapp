@@ -31,6 +31,10 @@ export const getUpsertType = (state:Root, upsertId:string):UpsertType | null =>
   }
 }
 
+export const getUpdateId = (state:Root, upsertId:string):string | null => {
+  return getEntry(state, upsertId)?.values.id || null;
+}
+
 export const getSubmitStatus = (state:Root, upsertId:string)
   :SubmitStatus | null => 
 {
@@ -59,12 +63,6 @@ export const getDeptInput = (state:Root, upsertId:string):string => {
   return getEntry(state, upsertId)?.values.department.input || "";
 }
 
-export const getDeptChain = (state:Root, upsertId:string)
-  :string[] => 
-{
-  return getEntry(state, upsertId)?.values.department.value || [];
-}
-
 export const getFromDept = (state:Root, upsertId:string):string | null => {
   return getEntry(state, upsertId)?.fromDept || null;
 }
@@ -72,9 +70,7 @@ export const getFromDept = (state:Root, upsertId:string):string | null => {
 export const getDept = (state:Root, upsertId:string)
   :string | null => 
 {
-  const deptChain = getDeptChain(state, upsertId);
-  const len = deptChain.length;
-  return len > 0 ? deptChain[len - 1] : null;
+  return getEntry(state, upsertId)?.values.department.value || null;
 }
 
 export const getDeptError = (state:Root, upsertId:string):Error | null => {
@@ -135,18 +131,10 @@ export const getSrcInput = (state:Root, upsertId:string):string => {
   return getEntry(state, upsertId)?.values.source.input || "";
 }
 
-export const getSrcChain = (state:Root, upsertId:string)
-  :JournalEntrySourceInput[] => 
-{
-  return getEntry(state, upsertId)?.values.source.value || [];
-}
-
 export const getSrc = (state:Root, upsertId:string)
   :JournalEntrySourceInput | null => 
 {
-  const srcChain = getSrcChain(state, upsertId);
-  const len = srcChain.length;
-  return len > 0 ? srcChain[len - 1] : null;
+  return getEntry(state, upsertId)?.values.source.value || null;
 }
 
 export const isSrcOpen = (state:Root, upsertId:string):boolean => {

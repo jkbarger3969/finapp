@@ -98,7 +98,7 @@ const Dashboard = function(props:{deptId:string}) {
 
   const onClickNewEntry = useCallback((event?)=>{
     dispatch(create(ADD_ENTRY_ID,{fromDept:deptId}));
-  }, [dispatch, deptId])
+  }, [dispatch, deptId]);
 
   const genBudget = total + total * Math.random();
 

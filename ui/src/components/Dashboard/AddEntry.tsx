@@ -35,7 +35,7 @@ interface SelectorResult {
 
 export interface AddEntryProps {
   entryUpsertId:string;
-  fromDept:string;
+  fromDept?:string;
 }
 
 const AddEntry = function(props:AddEntryProps) {

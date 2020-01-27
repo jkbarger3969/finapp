@@ -1,9 +1,9 @@
 import {Resolvers} from "./graphTypes";
 import {Budget, budgets} from "./resolvers/budget";
-import {Business, businesses, addBusiness} from "./resolvers/business";
+import {Business, business, businesses, addBusiness} from "./resolvers/business";
 import {Department, departments, department} from "./resolvers/departments";
 import {journalEntries, addJournalEntry, updateJournalEntry, JournalEntry,
-  journalEntryAdded
+  journalEntryAdded, journalEntryUpdated
 } from "./resolvers/journalEntry";
 import {journalEntrySources} from "./resolvers/journalEntrySource";
 import {JournalEntryCategory, journalEntryCategories, journalEntryCategory
@@ -22,6 +22,7 @@ const resolvers:Resolvers = {
   User,
   Query: {
     businesses,
+    business,
     budgets,
     journalEntries,
     journalEntrySources,
@@ -39,7 +40,8 @@ const resolvers:Resolvers = {
     addBusiness
   },
   Subscription:{
-    journalEntryAdded
+    journalEntryAdded,
+    journalEntryUpdated
   }
 };
 

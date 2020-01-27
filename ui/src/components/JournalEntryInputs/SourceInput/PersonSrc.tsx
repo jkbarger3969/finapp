@@ -143,10 +143,10 @@ const PersonSrc = function(props:PersonSrcProps) {
   const onChange = useCallback((event, newSrc:PersonValue)=> {
     newSrc = newSrc || null;
     if(newSrc) {
-      dispatch(setSrcValue(entryUpsertId, [{
+      dispatch(setSrcValue(entryUpsertId, {
         sourceType:JournalEntrySourceType.Person,
         id:newSrc.id
-      }]));
+      }));
       if(hasError) {
         validate();
       }

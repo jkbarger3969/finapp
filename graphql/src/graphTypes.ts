@@ -117,6 +117,7 @@ export type JournalEntryAddedRes = {
 export type JournalEntryAddFields = {
   date: Scalars['String'],
   department: Scalars['ID'],
+  type: JournalEntryType,
   category: Scalars['ID'],
   paymentMethod: Scalars['ID'],
   description?: Maybe<Scalars['String']>,
@@ -134,7 +135,7 @@ export type JournalEntryCategory = {
   ancestors: Array<JournalEntryCategory>,
 };
 
-export type JournalEntrySource = Person | Business | Department | Vendor;
+export type JournalEntrySource = Person | Business | Department;
 
 export type JournalEntrySourceInput = {
   sourceType: JournalEntrySourceType,
@@ -155,6 +156,7 @@ export enum JournalEntryType {
 export type JournalEntryUpdateFields = {
   date?: Maybe<Scalars['String']>,
   department?: Maybe<Scalars['ID']>,
+  type?: Maybe<JournalEntryType>,
   category?: Maybe<Scalars['ID']>,
   paymentMethod?: Maybe<Scalars['ID']>,
   description?: Maybe<Scalars['String']>,
@@ -310,6 +312,7 @@ export enum SortDirection {
 export type Subscription = {
    __typename?: 'Subscription',
   journalEntryAdded: JournalEntry,
+  journalEntryUpdated: JournalEntry,
 };
 
 export type User = {
@@ -411,7 +414,7 @@ export type ResolversTypes = {
   JournalEntryType: JournalEntryType,
   JournalEntryCategory: ResolverTypeWrapper<JournalEntryCategory>,
   PaymentMethod: ResolverTypeWrapper<PaymentMethod>,
-  JournalEntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'] | ResolversTypes['Vendor'],
+  JournalEntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'],
   Person: ResolverTypeWrapper<Person>,
   PersonName: ResolverTypeWrapper<PersonName>,
   PersonNameInput: PersonNameInput,
@@ -456,7 +459,7 @@ export type ResolversParentTypes = {
   JournalEntryType: JournalEntryType,
   JournalEntryCategory: JournalEntryCategory,
   PaymentMethod: PaymentMethod,
-  JournalEntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'] | ResolversParentTypes['Vendor'],
+  JournalEntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'],
   Person: Person,
   PersonName: PersonName,
   PersonNameInput: PersonNameInput,
@@ -541,7 +544,7 @@ export type JournalEntryCategoryResolvers<ContextType = Context, ParentType exte
 };
 
 export type JournalEntrySourceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntrySource'] = ResolversParentTypes['JournalEntrySource']> = {
-  __resolveType: TypeResolveFn<'Person' | 'Business' | 'Department' | 'Vendor', ParentType, ContextType>
+  __resolveType: TypeResolveFn<'Person' | 'Business' | 'Department', ParentType, ContextType>
 };
 
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
@@ -591,6 +594,7 @@ export type RationalResolvers<ContextType = Context, ParentType extends Resolver
 
 export type SubscriptionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription']> = {
   journalEntryAdded?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryAdded", ParentType, ContextType>,
+  journalEntryUpdated?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryUpdated", ParentType, ContextType>,
 };
 
 export type UserResolvers<ContextType = Context, ParentType extends ResolversParentTypes['User'] = ResolversParentTypes['User']> = {
