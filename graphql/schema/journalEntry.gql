@@ -89,7 +89,7 @@ type JournalEntryAddedRes {
 }
 
 type Query {
-  journalEntries(paginate:PaginateInput!, sortBy:[JournalEntriesSortByInput!]!,
+  journalEntries(paginate:PaginateInput, sortBy:[JournalEntriesSortByInput!],
     filterBy:JournalEntiresFilterInput):JournalEntriesRes!
 }
 

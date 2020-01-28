@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect} from "react";
+import React, {useCallback, useEffect, useState, useMemo} from "react";
 import {useQuery} from "@apollo/react-hooks";
 import gql from "graphql-tag";
 import Typography from "@material-ui/core/Typography";
@@ -20,7 +20,14 @@ const DEPTS_FOR_NAV = gql`
       name
       parent {
         __typename
+        ...on Business {
+          id
+        }
+        ...on Department {
+          id
+        }
       }
+      virtualRoot
     }
   }
 `;
@@ -29,16 +36,69 @@ const TopNav = function(props) {
 
   const {loading, error, data} = useQuery<DeptsForNavQuery>(DEPTS_FOR_NAV);
 
+  const [value, setValue] = useState<string | null>(null);
+
+  const depts = (data?.departments || []);
+
+  type Department = typeof depts[0];
+
+  const {rootDepts, virtualRoots} = useMemo(() => {
+    
+    const rootDepts:Department[] = [];
+    const virtualRoots = new Set<string>();
+
+    for(const dept of depts) {
+      
+      if(dept.parent.__typename === "Business") {
+        rootDepts.push(dept);
+      }
+
+      if(dept.virtualRoot) {
+        virtualRoots.add(dept.id);
+      }
+
+    }
+
+    return {rootDepts, virtualRoots};
+
+  },[depts]);
+
+  const subDepts =  useMemo(() => {
+
+    const subDepts:Department[] = [];
+
+    if(value && virtualRoots.has(value)) {
+      
+      for(const dept of depts) {
+  
+        if(dept.parent.id === value) {
+  
+          subDepts.push(dept);
+  
+        }
+  
+      }
+
+    }
+
+    return subDepts;
+
+  }, [virtualRoots, value, depts]);
+
   useEffect(() => { document.title = "Select Department"; });
 
+  const onChange = useCallback((event?) => {
+    setValue(event?.target?.value || null);
+  },[setValue]);
+  
   if(loading) {
     return <p>Loading...</p>;
   } else if(error) {
     return <p>{error.message}</p>;
   }
 
-  const depts = (data?.departments || []).filter((dept)=> 
-    dept?.parent.__typename === "Business");
+
+  const showSubDepts = subDepts.length > 0;
 
   return <Box
     flexGrow={1}
@@ -57,19 +117,50 @@ const TopNav = function(props) {
       <Box minWidth="250px !important" clone>
         <FormControl variant="filled">
           <InputLabel>Department</InputLabel>
-          <Select autoWidth>{depts.map((dept)=>{
+          <Select
+            value={value} 
+            onChange={onChange}
+            autoWidth
+          >{rootDepts.map((dept) => {
+            
             const props = {
               component:Link,
               to:`/department/${dept.id}`,
               key:dept.id,
               value:dept.id,
-              selected:false,
               children:dept.name
             }  as any;
-            return <MenuItem {...props}/>
+
+            if(dept.virtualRoot) {
+              delete props.component;
+              delete props.to;
+            }
+
+            return <MenuItem {...props}/>;
+          
           })}</Select>
         </FormControl>
       </Box>
+      {showSubDepts &&
+        <Box pt={2}>
+          <Box pt={2} minWidth="250px !important" clone>
+            <FormControl variant="filled">
+              <InputLabel>Sub Department</InputLabel>
+              <Select autoWidth>{subDepts.map((dept) => {
+                  const props = {
+                    component:Link,
+                    to:`/department/${dept.id}`,
+                    key:dept.id,
+                    value:dept.id,
+                    children:dept.name
+                  }  as any;
+      
+                  return <MenuItem {...props}/>;
+              })}</Select>
+            </FormControl>
+        </Box>
+      </Box>}
+        
     </Container>
    </Box>;
 

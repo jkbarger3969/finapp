@@ -26,6 +26,7 @@ const PAY_METHOD_INPUT_QUERY = gql`
       __typename
       id
       method
+      active
     }
   }
 `;
@@ -69,7 +70,9 @@ const PaymentMethod = function(props:PaymentMethodInputProps) {
   const {loading, error, data} 
     = useQuery<PayMethodInputQuery>(PAY_METHOD_INPUT_QUERY);
   
-  const paymentMethods = useMemo(()=>data?.paymentMethods || [],[data]);
+  const paymentMethods = useMemo(() => {
+    return (data?.paymentMethods || []).filter( p => p.active );
+  },[data]);
 
   const formControlProps:FormControlProps = useMemo(()=>({
     disabled,

@@ -57,25 +57,23 @@ export const journalEntries:QueryResolvers["journalEntries"] =
 
   const {db} = context;
 
-  const {
-    paginate:{
-      skip,
-      limit
-    },
-    sortBy,
-    filterBy = null
-  } = args;
-  
+  const sortBy = args?.sortBy ?? null;
+  const filterBy = args?.filterBy ?? null;
+
   const match = {"deleted.0.value":false} as object;
 
   if(filterBy) {
     
     if(filterBy?.department?.eq) {
 
-      const deptIds = await deptDescendants(db, 
-        new ObjectID(filterBy.department.eq),{_id:true});
+      const rootDeptId = new ObjectID(filterBy.department.eq);
 
-      match["department.0.value.id"] = {$in:deptIds.map(v => v._id)};
+      const deptIds = await deptDescendants(db, rootDeptId,{_id:true});
+      
+      match["department.0.value.id"] = {$in:[
+        rootDeptId,
+        ...deptIds.map(v => v._id)
+      ]};
 
     }
 
@@ -93,12 +91,13 @@ export const journalEntries:QueryResolvers["journalEntries"] =
 
   }
 
-  const skipAndLimit = [{$skip: skip}, {$limit: limit}];
+  const skipAndLimit = (args?.paginate?.limit ?? null) === null ?
+    [] : [{$limit:args.paginate.limit}, {$skip:args?.paginate.skip ?? 0}];
   
   const pipeline:object[] = [{$match:match}];
   
 
-  if(sortBy.length === 0) {
+  if(!sortBy || sortBy.length === 0) {
 
     pipeline.push(defaultSort, ...skipAndLimit, addFields);
     
@@ -126,15 +125,14 @@ export const journalEntries:QueryResolvers["journalEntries"] =
 
   const totalCount = await db.collection("journalEntries")
     .countDocuments(match);
-  
+
   const entries = await db.collection("journalEntries")
     .aggregate(pipeline).toArray();
-
+  // console.log(pipeline, entries, filterBy?.department?.eq);
   return {
     totalCount,
     entries
   };
-
 
 }
 

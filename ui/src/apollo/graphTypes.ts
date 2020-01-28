@@ -18,7 +18,7 @@ export type Scalars = {
 export type Budget = {
    __typename?: 'Budget',
   id: Scalars['ID'],
-  budget: Rational,
+  amount: Rational,
   owner: BudgetOwner,
 };
 
@@ -56,6 +56,7 @@ export type Department = {
   parent: DepartmentAncestor,
   ancestors: Array<DepartmentAncestor>,
   descendants: Array<Department>,
+  virtualRoot?: Maybe<Scalars['Boolean']>,
 };
 
 export type DepartmentAddFields = {
@@ -340,8 +341,8 @@ export type QueryDepartmentArgs = {
 
 
 export type QueryJournalEntriesArgs = {
-  paginate: PaginateInput,
-  sortBy: Array<JournalEntriesSortByInput>,
+  paginate?: Maybe<PaginateInput>,
+  sortBy?: Maybe<Array<JournalEntriesSortByInput>>,
   filterBy?: Maybe<JournalEntiresFilterInput>
 };
 
@@ -396,17 +397,16 @@ export type Vendor = {
 };
 
 export type GetReportDataQueryVariables = {
-  deptId: Scalars['ID'],
-  filterBy?: Maybe<JournalEntiresFilterInput>
+  deptId: Scalars['ID']
 };
 
 
-export type GetReportDataQuery = { __typename?: 'Query', department: Maybe<{ __typename: 'Department', id: string, name: string }>, journalEntries: { __typename?: 'JournalEntriesRes', entries: Array<(
+export type GetReportDataQuery = { __typename?: 'Query', department: Maybe<{ __typename: 'Department', id: string, name: string, budget: Maybe<{ __typename: 'Budget', id: string, amount: { __typename?: 'Rational', num: number, den: number } }> }>, journalEntries: { __typename?: 'JournalEntriesRes', entries: Array<(
       { __typename?: 'JournalEntry' }
       & GetReportDataEntryFragment
     )> } };
 
-export type GetReportDataEntryFragment = { __typename: 'JournalEntry', category: { __typename: 'JournalEntryCategory', id: string, name: string }, total: { __typename?: 'Rational', num: number, den: number } };
+export type GetReportDataEntryFragment = { __typename: 'JournalEntry', type: JournalEntryType, category: { __typename: 'JournalEntryCategory', id: string, name: string }, total: { __typename?: 'Rational', num: number, den: number }, department: { __typename: 'Department', id: string, name: string, budget: Maybe<{ __typename: 'Budget', id: string, amount: { __typename?: 'Rational', num: number, den: number } }> } };
 
 export type Reconcile_1MutationVariables = {
   id: Scalars['ID']
@@ -498,7 +498,7 @@ export type UpdateJournalEntry_1Mutation = { __typename?: 'Mutation', updateJour
 export type PayMethodInput_1QueryVariables = {};
 
 
-export type PayMethodInput_1Query = { __typename?: 'Query', paymentMethods: Array<{ __typename: 'PaymentMethod', id: string, method: string }> };
+export type PayMethodInput_1Query = { __typename?: 'Query', paymentMethods: Array<{ __typename: 'PaymentMethod', id: string, method: string, active: boolean }> };
 
 export type BusinessSrcDeptOpts_1Fragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
 
@@ -546,7 +546,7 @@ export type PeopleSrcOpts_1Query = { __typename?: 'Query', people: Array<(
 export type DeptsForNav_1QueryVariables = {};
 
 
-export type DeptsForNav_1Query = { __typename?: 'Query', departments: Array<{ __typename: 'Department', id: string, name: string, parent: { __typename: 'Department' } | { __typename: 'Business' } }> };
+export type DeptsForNav_1Query = { __typename?: 'Query', departments: Array<{ __typename: 'Department', id: string, name: string, virtualRoot: Maybe<boolean>, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } }> };
 
 export type AddPerson_1MutationVariables = {
   fields: PersonAddFields
@@ -775,7 +775,7 @@ export type CacheControlDirectiveResolver<Result, Parent, ContextType = Context,
 
 export type BudgetResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Budget'] = ResolversParentTypes['Budget']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>,
-  budget?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>,
+  amount?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>,
   owner?: Resolver<ResolversTypes['BudgetOwner'], ParentType, ContextType>,
 };
 
@@ -800,6 +800,7 @@ export type DepartmentResolvers<ContextType = Context, ParentType extends Resolv
   parent?: Resolver<ResolversTypes['DepartmentAncestor'], ParentType, ContextType>,
   ancestors?: Resolver<Array<ResolversTypes['DepartmentAncestor']>, ParentType, ContextType>,
   descendants?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>,
+  virtualRoot?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>,
 };
 
 export type DepartmentAncestorResolvers<ContextType = Context, ParentType extends ResolversParentTypes['DepartmentAncestor'] = ResolversParentTypes['DepartmentAncestor']> = {
@@ -917,7 +918,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>,
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, QueryDepartmentsArgs>,
   department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>,
-  journalEntries?: Resolver<ResolversTypes['JournalEntriesRes'], ParentType, ContextType, RequireFields<QueryJournalEntriesArgs, 'paginate' | 'sortBy'>>,
+  journalEntries?: Resolver<ResolversTypes['JournalEntriesRes'], ParentType, ContextType, QueryJournalEntriesArgs>,
   journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   journalEntryCategory?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType, RequireFields<QueryJournalEntryCategoryArgs, 'id'>>,
   journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>,

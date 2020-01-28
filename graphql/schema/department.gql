@@ -9,6 +9,7 @@ type Department {
   parent:DepartmentAncestor!
   ancestors:[DepartmentAncestor!]!
   descendants:[Department!]!
+  virtualRoot:Boolean
 }
 
 input DepartmentAddFields {
