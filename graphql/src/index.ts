@@ -12,7 +12,7 @@ import mongoDb from './mongoDb';
 import typeDefs from './schema';
 import { ObjectID } from 'mongodb';
 
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 
 (async ()=> {
 
@@ -61,7 +61,7 @@ const PORT = 4000;
     const gqlServer = new ApolloServer({ typeDefs, resolvers, context});
 
     const gqlApp = new Koa();
-    gqlServer.applyMiddleware({app:gqlApp})
+    gqlServer.applyMiddleware({app:gqlApp});
 
     const httpGQLServer = http.createServer(gqlApp.callback());
 
