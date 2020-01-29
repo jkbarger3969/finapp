@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 const app = new express();
 
-app.use(serveStatic('../ui/build',{
+app.use(serveStatic(path.join(__dirname,'../ui/build'),{
   index:["index.html"]
 }));
 
