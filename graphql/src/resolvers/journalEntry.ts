@@ -92,8 +92,8 @@ export const journalEntries:QueryResolvers["journalEntries"] =
   }
 
   const skipAndLimit = (args?.paginate?.limit ?? null) === null ?
-    [] : [{$limit:args.paginate.limit}, {$skip:args?.paginate.skip ?? 0}];
-  
+    [] : [{$skip:args?.paginate.skip ?? 0}, {$limit:args.paginate.limit}];
+ 
   const pipeline:object[] = [{$match:match}];
   
 
@@ -128,7 +128,7 @@ export const journalEntries:QueryResolvers["journalEntries"] =
 
   const entries = await db.collection("journalEntries")
     .aggregate(pipeline).toArray();
-  // console.log(pipeline, entries, filterBy?.department?.eq);
+  
   return {
     totalCount,
     entries

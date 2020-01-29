@@ -7,15 +7,18 @@ const PORT = process.env.PORT || 3000;
 
 const app = new express();
 
-app.use(serveStatic(path.join(__dirname,'../ui/build'),{
-  index:["index.html"]
-}));
-
 app.use('^/graphql',proxy({
   target: 'http://localhost:4000',
   ws: true
 }));
 
+app.use(serveStatic(path.join(__dirname,'../ui/build'),{
+  index:["index.html"]
+}));
+
+app.get("/*", function(req, res) {
+  res.sendFile(path.join(__dirname,'../ui/build/index.html'));
+});
 
 const server = app.listen(PORT);
 
