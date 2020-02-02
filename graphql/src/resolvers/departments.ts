@@ -119,7 +119,7 @@ export const department:QueryResolvers["department"] =
 
 }
 
-const ancestors:DepartmentResolvers['ancestors'] = 
+const ancestors:DepartmentResolvers["ancestors"] = 
   async (parent, args, context, info) => 
 {
   
@@ -132,7 +132,7 @@ const ancestors:DepartmentResolvers['ancestors'] =
 
   if(parentNodeType.typename === "Department") {
 
-    const results =  await db.collection('departments').aggregate([
+    const results =  await db.collection("departments").aggregate([
       {$match:{_id:new ObjectID(id)}},
       {$graphLookup: {
         from: "departments",
@@ -200,7 +200,7 @@ export const getDescendants = async (db:Db, id:ObjectID,
 
 }
 
-const descendants:DepartmentResolvers['descendants'] = 
+const descendants:DepartmentResolvers["descendants"] = 
   (parent, args, context, info) => 
 {
   
@@ -211,8 +211,32 @@ const descendants:DepartmentResolvers['descendants'] =
 
 }
 
+const departmentNode = new ObjectID("5dc4addacf96e166daaa008f");
+
+const budget:DepartmentResolvers["budget"] = 
+  async (parent, args, context, info) =>
+{
+
+  const {db} = context;
+
+  const {id} = parent;
+
+  const result = await db.collection("budgets").aggregate([
+    {$match:{
+      owner:{
+        node:departmentNode,
+        id:new ObjectID(id)
+      }
+    }},
+    addId
+  ]).toArray();
+
+  return result[0] || null;
+
+}
+
 export const Department:DepartmentResolvers = {
-  budget:nodeFieldResolver,
+  budget,
   parent:nodeFieldResolver,
   ancestors,
   descendants

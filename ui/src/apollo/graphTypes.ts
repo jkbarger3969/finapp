@@ -401,12 +401,20 @@ export type GetReportDataQueryVariables = {
 };
 
 
-export type GetReportDataQuery = { __typename?: 'Query', department: Maybe<{ __typename: 'Department', id: string, name: string, budget: Maybe<{ __typename: 'Budget', id: string, amount: { __typename?: 'Rational', num: number, den: number } }> }>, journalEntries: { __typename?: 'JournalEntriesRes', entries: Array<(
+export type GetReportDataQuery = { __typename?: 'Query', department: Maybe<(
+    { __typename?: 'Department', descendants: Array<(
+      { __typename?: 'Department' }
+      & GetReportDataDeptFragment
+    )> }
+    & GetReportDataDeptFragment
+  )>, journalEntries: { __typename?: 'JournalEntriesRes', entries: Array<(
       { __typename?: 'JournalEntry' }
       & GetReportDataEntryFragment
     )> } };
 
-export type GetReportDataEntryFragment = { __typename: 'JournalEntry', type: JournalEntryType, category: { __typename: 'JournalEntryCategory', id: string, name: string }, total: { __typename?: 'Rational', num: number, den: number }, department: { __typename: 'Department', id: string, name: string, budget: Maybe<{ __typename: 'Budget', id: string, amount: { __typename?: 'Rational', num: number, den: number } }> } };
+export type GetReportDataDeptFragment = { __typename: 'Department', id: string, name: string, budget: Maybe<{ __typename: 'Budget', id: string, amount: { __typename?: 'Rational', num: number, den: number } }> };
+
+export type GetReportDataEntryFragment = { __typename: 'JournalEntry', type: JournalEntryType, category: { __typename: 'JournalEntryCategory', id: string, name: string }, total: { __typename?: 'Rational', num: number, den: number }, department: { __typename: 'Department', id: string } };
 
 export type Reconcile_1MutationVariables = {
   id: Scalars['ID']

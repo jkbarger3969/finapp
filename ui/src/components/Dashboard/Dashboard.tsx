@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import {useQuery} from "@apollo/react-hooks";
 import {Link} from "react-router-dom";
 import Grid from "@material-ui/core/Grid";
@@ -22,27 +22,34 @@ import {uuid, namespace} from "../../utils/uuid";
 import {useDebounceDispatch as useDispatch} from "../../redux/hooks";
 import {create} from "../../redux/actions/journalEntryUpsert";
 import {GetReportDataQuery, GetReportDataQueryVariables,
-  GetReportDataEntryFragment as ReportDataEntry, JournalEntryType
+  GetReportDataEntryFragment as ReportDataEntry, JournalEntryType,
+  GetReportDataDeptFragment
 } from "../../apollo/graphTypes";
 
 const GET_REPORT_DATA = gql`
   query GetReportData($deptId:ID!) {
     department(id:$deptId) {
-      __typename
-      id
-      name
-      budget {
-        id
-        __typename
-        amount {
-          num
-          den
-        }
+      ...GetReportDataDeptFragment
+      descendants {
+        ...GetReportDataDeptFragment
       }
     }
     journalEntries(filterBy:{department:{eq:$deptId}}) {
       entries {
         ...GetReportDataEntryFragment
+      }
+    }
+  }
+  fragment GetReportDataDeptFragment on Department {
+    __typename
+    id
+    name
+    budget {
+      id
+      __typename
+      amount {
+        num
+        den
       }
     }
   }
@@ -61,15 +68,6 @@ const GET_REPORT_DATA = gql`
     department {
       __typename
       id
-      name
-      budget {
-        id
-        __typename
-        amount {
-          num
-          den
-        }
-      }
     }
   }
 `;
@@ -135,50 +133,156 @@ const Dashboard = function(props:{deptId:string}) {
     dispatch(create(ADD_ENTRY_ID,{fromDept:deptId}));
   }, [dispatch, deptId]);
 
-  let total = 0 ;
+  const department = data?.department || null;
 
-  for(const entry of entries) {
+  const {deptReport, subDeptBudgetAg} = useMemo(()=> {
+    
+    const deptReport = new Map<string, DeptReportObj>();
+    let subDeptBudgetAg = 0;
 
-    if(!sudDeptReport.has(entry.department.id)) {
+    if(department) {
 
-      sudDeptReport.set(entry.department.id, {
-        name:entry.department.name,
+      const budget = (()=>{
+        if(department.budget) {
+          const {num, den} = department.budget.amount;
+          return num / den;
+        }
+        return null;
+      })();
+
+      deptReport.set(department.id, {
+        name:department.name,
         spent:0,
-        budget:(()=>{
-          if(entry.department?.budget?.amount) {
-            const {num, den} = entry.department.budget.amount;
-            return num/den;
-          }
-          return null;
-        })()
+        budget
       });
-    
+      
+      for(const subDept of department.descendants) {
+        
+        let budget:null | number  = null;
+
+        if(subDept.budget) {
+          const {num, den} = subDept.budget.amount;
+          const subBudgetDec = num/den;
+          subDeptBudgetAg += subBudgetDec;
+          budget = subBudgetDec;
+        }
+
+        deptReport.set(subDept.id, {
+          name:subDept.name,
+          spent:0,
+          budget
+        });
+      
+      }
+
     }
-    
-    const nameTotal = sudDeptReport.get(entry.department.id) as DeptReportObj;
 
-    const entryTotal = entry.total.num / entry.total.den;
-    
-    if(entry.type === JournalEntryType.Credit) {
-    
-      total -= entryTotal;
-      nameTotal.spent -= entryTotal;
-    
-    } else {
-    
-      total += entryTotal;
-    
-      nameTotal.spent += entryTotal;
-    
+    return {deptReport, subDeptBudgetAg};
+
+  }, [department]);
+
+  const {totalRemaining, budget, spentToBudgetRatio} =  useMemo(() => {
+
+    let spent = 0;
+    for(const entry of entries) {
+      
+      const deptReportObj =
+        deptReport.get(entry.department.id) as DeptReportObj;
+
+      const entryTotal = entry.total.num / entry.total.den;
+      
+      if(entry.type === JournalEntryType.Credit) {
+      
+        spent -= entryTotal;
+        deptReportObj.spent -= entryTotal;
+      
+      } else {
+      
+        spent += entryTotal;
+      
+        deptReportObj.spent += entryTotal;
+      
+      }
+
     }
 
-  }
+    const budgetDec = (()=>{
 
-  const {num:bNum, den:bDen} = 
-    data?.department?.budget?.amount || {num:0, den:1};
-  const budgetDec = bNum/bDen;
-  const totalRemaining = numeral(budgetDec - total).format('$0,0.00');
-  const budget = numeral(budgetDec).format('$0,0.00');
+      if(department?.budget) {
+        const {num, den} = department?.budget?.amount || {num:0, den:1};
+        return num/den;
+      }
+
+      return subDeptBudgetAg;
+
+    })();
+
+    const totalRemaining = numeral(budgetDec - spent).format('$0,0.00');
+    const budget = numeral(budgetDec).format('$0,0.00');
+    const spentToBudgetRatio = spent/budgetDec
+    
+    return {
+      totalRemaining,
+      budget,
+      spentToBudgetRatio
+    };
+
+  },[entries, deptReport, subDeptBudgetAg, department]);
+
+  const subDeptCards = useMemo(()=>{
+
+    const subDeptCards:JSX.Element[] = [];
+
+    for(const [id, {budget, spent, name}] of deptReport) {
+
+      // Do not include root department
+      if(id === department?.id) {
+        continue;
+      }
+
+      const card = <Grid key={id} item xs={12} md={4} lg={3}>
+        <Card>
+          <CardHeader titleTypographyProps={{
+            noWrap:true
+          }} title={name} />
+          <CardContent>{(()=>{
+
+            if(budget === null) {
+
+              return <Box color={spent > 0 ? red[900] : green[900]} clone>
+                <Typography variant="h6">
+                {`Spent: ${numeral(Math.abs(spent)).format('$0,0.00')}`} 
+                </Typography>
+              </Box>;
+
+            }
+            
+            const totalRemaining = budget - spent;
+
+            return <React.Fragment>
+              <Box color={colorMeter(spent/budget, 900)} clone>
+                <Typography variant="h6">{
+                  `${numeral(totalRemaining).format('$0,0.00')} Remaining`
+                }</ Typography>
+              </Box>
+              <Typography variant="body1" >{
+                `of ${numeral(budget).format('$0,0.00')}`
+              }</Typography>
+              <BudgetMeter spentPercentage={spent/budget} height={5}/>
+            </React.Fragment>;
+
+
+          })()}</CardContent>
+        </Card>
+      </Grid>;
+
+      subDeptCards.push(card);
+
+    }
+
+    return subDeptCards;
+
+  },[deptReport, department])
 
   if(loading) {
     return <p>Loading...</p>;
@@ -236,7 +340,7 @@ const Dashboard = function(props:{deptId:string}) {
         <Grid justify="center" container spacing={2}>
           <Grid item xs={12}>
             <Typography align="center" variant="h3">{deptName}</Typography>
-            <Box color={colorMeter(total/budgetDec)}>
+            <Box color={colorMeter(spentToBudgetRatio)}>
               <Typography align="center" variant="h4">
                   {`${totalRemaining} Remaining`}
               </Typography>
@@ -244,51 +348,9 @@ const Dashboard = function(props:{deptId:string}) {
             <Typography align="center" variant="subtitle1">
               {`of ${budget}`}
             </Typography>
-            <BudgetMeter spentPercentage={total/budgetDec} height={10} />
+            <BudgetMeter spentPercentage={spentToBudgetRatio} height={10} />
           </Grid>
-          {Array.from(sudDeptReport).filter(d => d[0] !== deptId)
-            .map(([id, deptReportObj])=>
-          {
-
-            const {budget, spent, name} = deptReportObj as DeptReportObj;
-
-            return <Grid key={id} item xs={12} md={4} lg={3}>
-              <Card>
-                <CardHeader titleTypographyProps={{
-                  noWrap:true
-                }} title={name} />
-                <CardContent>{(()=>{
-
-                  if(budget === null) {
-
-                    return <Box color={spent > 0 ? red[900] : green[900]} clone>
-                      <Typography variant="h6">
-                      {`Spent: ${numeral(Math.abs(spent)).format('$0,0.00')}`} 
-                      </Typography>
-                    </Box>;
-
-                  }
-                  
-                  const totalRemaining = budget - spent;
-
-                  return <React.Fragment>
-                    <Box color={colorMeter(spent/budget, 900)} clone>
-                      <Typography variant="h6">{
-                        `${numeral(totalRemaining).format('$0,0.00')} Remaining`
-                      }</ Typography>
-                    </Box>
-                    <Typography variant="body1" >{
-                      `of ${numeral(budget).format('$0,0.00')}`
-                    }</Typography>
-                    <BudgetMeter spentPercentage={spent/budget} height={5}/>
-                  </React.Fragment>;
-
-
-                })()}</CardContent>
-              </Card>
-            </Grid>;
-
-          })}
+          {subDeptCards}
         </Grid>
       </Box>
       <AddEntry entryUpsertId={ADD_ENTRY_ID} fromDept={deptId} />;
