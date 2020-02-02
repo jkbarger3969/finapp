@@ -246,7 +246,9 @@ const Dashboard = function(props:{deptId:string}) {
             </Typography>
             <BudgetMeter spentPercentage={total/budgetDec} height={10} />
           </Grid>
-          {Array.from(sudDeptReport).filter(d => d[0] !== deptId).map(([id, deptReportObj])=>{
+          {Array.from(sudDeptReport).filter(d => d[0] !== deptId)
+            .map(([id, deptReportObj])=>
+          {
 
             const {budget, spent, name} = deptReportObj as DeptReportObj;
 
@@ -262,7 +264,7 @@ const Dashboard = function(props:{deptId:string}) {
                     return <Box color={spent > 0 ? red[900] : green[900]} clone>
                       <Typography variant="h6">
                       {`Spent: ${numeral(Math.abs(spent)).format('$0,0.00')}`} 
-                      </Typography>;
+                      </Typography>
                     </Box>;
 
                   }
