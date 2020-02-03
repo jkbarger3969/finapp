@@ -353,7 +353,7 @@ const Dashboard = function(props:{deptId:string}) {
           {subDeptCards}
         </Grid>
       </Box>
-      <AddEntry entryUpsertId={ADD_ENTRY_ID} fromDept={deptId} />;
+      <AddEntry entryUpsertId={ADD_ENTRY_ID} fromDept={deptId} />
     </Container>
   </Box>;
 
