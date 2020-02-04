@@ -14,6 +14,8 @@ type JournalEntry {
   total:Rational!
   source:JournalEntrySource!
   reconciled:Boolean!
+  lastUpdate:String!
+  deleted:Boolean!
 }
 
 enum JournalEntrySourceType {
@@ -51,30 +53,44 @@ input JournalEntryAddFields {
   reconciled:Boolean
 }
 
-enum JournalEntriesColumn {
-  DEPARTMENT
-  TYPE
-  CATEGORY
-  # ROOT_TYPE
-  PAYMENT_METHOD
-  TOTAL
-  DATE
-  SOURCE
+# enum JournalEntriesColumn {
+#   DEPARTMENT
+#   TYPE
+#   CATEGORY
+#   # ROOT_TYPE
+#   PAYMENT_METHOD
+#   TOTAL
+#   DATE
+#   SOURCE
+# }
+
+# input JournalEntriesSortByInput {
+#   column:JournalEntriesColumn!
+#   direction:SortDirection = ASC
+# }
+
+input JournalEntriesWhereDepartment {
+  eq:ID
+  ne:ID
+  in:[ID]
+  nin:[ID]
+  includeDescendants:Boolean = true
 }
 
-input JournalEntriesSortByInput {
-  column:JournalEntriesColumn!
-  direction:SortDirection = ASC
+input JournalEntriesWhereLastUpdate {
+  gt:String
+  lt:String
+  gte:String
+  lte:String
 }
 
-enum JournalEntiresReconciledFilter {
-  RECONCILED
-  NOT_RECONCILED
-}
-
-input JournalEntiresFilterInput {
-  department:ByIdFilter
-  reconciled:JournalEntiresReconciledFilter
+input JournalEntiresWhereInput {
+  department:JournalEntriesWhereDepartment
+  reconciled:Boolean
+  deleted:Boolean
+  lastUpdate:JournalEntriesWhereLastUpdate
+  or:[JournalEntiresWhereInput]
+  and:[JournalEntiresWhereInput]
 }
 
 type JournalEntriesRes {
@@ -89,14 +105,13 @@ type JournalEntryAddedRes {
 }
 
 type Query {
-  journalEntries(paginate:PaginateInput, sortBy:[JournalEntriesSortByInput!],
-    filterBy:JournalEntiresFilterInput):JournalEntriesRes!
+  journalEntries(where:JournalEntiresWhereInput):[JournalEntry!]!
 }
 
 type Mutation {
-  updateJournalEntry(id:ID!, fields:JournalEntryUpdateFields!):
+  journalEntryUpdate(id:ID!, fields:JournalEntryUpdateFields!):
     JournalEntry!
-  addJournalEntry(fields:JournalEntryAddFields!):JournalEntry!
+  journalEntryAdd(fields:JournalEntryAddFields!):JournalEntry!
 }
 
 type Subscription {

@@ -57,21 +57,19 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
       num
       den
     }
+    deleted
+    lastUpdate
     reconciled
   }
 `;
 
 export const JOURNAL_ENTRIES = gql`
-  query JournalEntries_1($paginate:PaginateInput!, 
-    $sortBy:[JournalEntriesSortByInput!]!, $filterBy:JournalEntiresFilterInput) 
+  query JournalEntries_1($where:JournalEntiresWhereInput!) 
   {
-    journalEntries(paginate:$paginate, sortBy:$sortBy, filterBy:$filterBy)
-      @connection(key:"JournalEntries_1", filter:["sortBy", "filterBy"]) 
+    journalEntries(where:$where)
+      @connection(key:"JournalEntries_1", filter:["where"]) 
     {
-      totalCount
-      entries {
-        ...JournalEntry_1Fragment
-      }
+      ...JournalEntry_1Fragment
     }
   }
   ${JOURNAL_ENTRY_FRAGMENT}

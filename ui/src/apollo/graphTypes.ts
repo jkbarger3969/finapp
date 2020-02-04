@@ -70,26 +70,14 @@ export enum FilterType {
   Exclude = 'EXCLUDE'
 }
 
-export type JournalEntiresFilterInput = {
-  department?: Maybe<ByIdFilter>,
-  reconciled?: Maybe<JournalEntiresReconciledFilter>,
+export type JournalEntiresWhereInput = {
+  department?: Maybe<JournalEntriesWhereDepartment>,
+  reconciled?: Maybe<Scalars['Boolean']>,
+  deleted?: Maybe<Scalars['Boolean']>,
+  lastUpdate?: Maybe<JournalEntriesWhereLastUpdate>,
+  or?: Maybe<Array<Maybe<JournalEntiresWhereInput>>>,
+  and?: Maybe<Array<Maybe<JournalEntiresWhereInput>>>,
 };
-
-export enum JournalEntiresReconciledFilter {
-  Reconciled = 'RECONCILED',
-  NotReconciled = 'NOT_RECONCILED'
-}
-
-export enum JournalEntriesColumn {
-  Department = 'DEPARTMENT',
-  Type = 'TYPE',
-  Category = 'CATEGORY',
-  /** ROOT_TYPE */
-  PaymentMethod = 'PAYMENT_METHOD',
-  Total = 'TOTAL',
-  Date = 'DATE',
-  Source = 'SOURCE'
-}
 
 export type JournalEntriesRes = {
    __typename?: 'JournalEntriesRes',
@@ -97,9 +85,19 @@ export type JournalEntriesRes = {
   entries: Array<JournalEntry>,
 };
 
-export type JournalEntriesSortByInput = {
-  column: JournalEntriesColumn,
-  direction?: Maybe<SortDirection>,
+export type JournalEntriesWhereDepartment = {
+  eq?: Maybe<Scalars['ID']>,
+  ne?: Maybe<Scalars['ID']>,
+  in?: Maybe<Array<Maybe<Scalars['ID']>>>,
+  nin?: Maybe<Array<Maybe<Scalars['ID']>>>,
+  includeDescendants?: Maybe<Scalars['Boolean']>,
+};
+
+export type JournalEntriesWhereLastUpdate = {
+  gt?: Maybe<Scalars['String']>,
+  lt?: Maybe<Scalars['String']>,
+  gte?: Maybe<Scalars['String']>,
+  lte?: Maybe<Scalars['String']>,
 };
 
 export type JournalEntry = {
@@ -114,6 +112,8 @@ export type JournalEntry = {
   total: Rational,
   source: JournalEntrySource,
   reconciled: Scalars['Boolean'],
+  lastUpdate: Scalars['String'],
+  deleted: Scalars['Boolean'],
 };
 
 export type JournalEntryAddedRes = {
@@ -235,8 +235,8 @@ export enum Lc_JournalEntryUpsertType {
 export type Mutation = {
    __typename?: 'Mutation',
   addBusiness: Business,
-  updateJournalEntry: JournalEntry,
-  addJournalEntry: JournalEntry,
+  journalEntryUpdate: JournalEntry,
+  journalEntryAdd: JournalEntry,
   addPerson: Person,
 };
 
@@ -246,13 +246,13 @@ export type MutationAddBusinessArgs = {
 };
 
 
-export type MutationUpdateJournalEntryArgs = {
+export type MutationJournalEntryUpdateArgs = {
   id: Scalars['ID'],
   fields: JournalEntryUpdateFields
 };
 
 
-export type MutationAddJournalEntryArgs = {
+export type MutationJournalEntryAddArgs = {
   fields: JournalEntryAddFields
 };
 
@@ -305,7 +305,7 @@ export type Query = {
   business: Business,
   departments: Array<Department>,
   department?: Maybe<Department>,
-  journalEntries: JournalEntriesRes,
+  journalEntries: Array<JournalEntry>,
   journalEntryCategories: Array<JournalEntryCategory>,
   journalEntryCategory: JournalEntryCategory,
   journalEntrySources: Array<JournalEntrySource>,
@@ -341,9 +341,7 @@ export type QueryDepartmentArgs = {
 
 
 export type QueryJournalEntriesArgs = {
-  paginate?: Maybe<PaginateInput>,
-  sortBy?: Maybe<Array<JournalEntriesSortByInput>>,
-  filterBy?: Maybe<JournalEntiresFilterInput>
+  where?: Maybe<JournalEntiresWhereInput>
 };
 
 
@@ -396,49 +394,64 @@ export type Vendor = {
   vendorId?: Maybe<Scalars['ID']>,
 };
 
+export type GetReportDataDept_1Fragment = { __typename: 'Department', id: string, name: string, budget: Maybe<{ __typename: 'Budget', id: string, amount: { __typename?: 'Rational', num: number, den: number } }> };
+
+export type GetReportDataEntry_1Fragment = { __typename: 'JournalEntry', id: string, type: JournalEntryType, lastUpdate: string, deleted: boolean, category: { __typename: 'JournalEntryCategory', id: string, name: string }, total: { __typename?: 'Rational', num: number, den: number }, department: { __typename: 'Department', id: string, ancestors: Array<{ __typename: 'Department', id: string } | { __typename: 'Business', id: string }> } };
+
 export type GetReportDataQueryVariables = {
-  deptId: Scalars['ID']
+  deptId: Scalars['ID'],
+  where: JournalEntiresWhereInput
 };
 
 
 export type GetReportDataQuery = { __typename?: 'Query', department: Maybe<(
     { __typename?: 'Department', descendants: Array<(
       { __typename?: 'Department' }
-      & GetReportDataDeptFragment
+      & GetReportDataDept_1Fragment
     )> }
-    & GetReportDataDeptFragment
-  )>, journalEntries: { __typename?: 'JournalEntriesRes', entries: Array<(
-      { __typename?: 'JournalEntry' }
-      & GetReportDataEntryFragment
-    )> } };
+    & GetReportDataDept_1Fragment
+  )>, journalEntries: Array<(
+    { __typename?: 'JournalEntry' }
+    & GetReportDataEntry_1Fragment
+  )> };
 
-export type GetReportDataDeptFragment = { __typename: 'Department', id: string, name: string, budget: Maybe<{ __typename: 'Budget', id: string, amount: { __typename?: 'Rational', num: number, den: number } }> };
+export type JournalEntryAdded_2SubscriptionVariables = {};
 
-export type GetReportDataEntryFragment = { __typename: 'JournalEntry', type: JournalEntryType, category: { __typename: 'JournalEntryCategory', id: string, name: string }, total: { __typename?: 'Rational', num: number, den: number }, department: { __typename: 'Department', id: string } };
+
+export type JournalEntryAdded_2Subscription = { __typename?: 'Subscription', journalEntryAdded: (
+    { __typename?: 'JournalEntry' }
+    & GetReportDataEntry_1Fragment
+  ) };
+
+export type JournalEntryUpdated_2SubscriptionVariables = {};
+
+
+export type JournalEntryUpdated_2Subscription = { __typename?: 'Subscription', journalEntryUpdated: (
+    { __typename?: 'JournalEntry' }
+    & GetReportDataEntry_1Fragment
+  ) };
 
 export type Reconcile_1MutationVariables = {
   id: Scalars['ID']
 };
 
 
-export type Reconcile_1Mutation = { __typename?: 'Mutation', updateJournalEntry: (
+export type Reconcile_1Mutation = { __typename?: 'Mutation', journalEntryUpdate: (
     { __typename?: 'JournalEntry' }
     & JournalEntry_1Fragment
   ) };
 
-export type JournalEntry_1Fragment = { __typename: 'JournalEntry', id: string, date: string, type: JournalEntryType, description: Maybe<string>, reconciled: boolean, department: { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Department', id: string, deptName: string } | { __typename: 'Business', id: string, bizName: string }> }, category: { __typename: 'JournalEntryCategory', id: string, type: JournalEntryType, name: string }, paymentMethod: { __typename: 'PaymentMethod', id: string, method: string }, source: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } | { __typename: 'Business', id: string, bizName: string } | { __typename: 'Department', id: string, deptName: string }, total: { __typename?: 'Rational', num: number, den: number } };
+export type JournalEntry_1Fragment = { __typename: 'JournalEntry', id: string, date: string, type: JournalEntryType, description: Maybe<string>, deleted: boolean, lastUpdate: string, reconciled: boolean, department: { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Department', id: string, deptName: string } | { __typename: 'Business', id: string, bizName: string }> }, category: { __typename: 'JournalEntryCategory', id: string, type: JournalEntryType, name: string }, paymentMethod: { __typename: 'PaymentMethod', id: string, method: string }, source: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } | { __typename: 'Business', id: string, bizName: string } | { __typename: 'Department', id: string, deptName: string }, total: { __typename?: 'Rational', num: number, den: number } };
 
 export type JournalEntries_1QueryVariables = {
-  paginate: PaginateInput,
-  sortBy: Array<JournalEntriesSortByInput>,
-  filterBy?: Maybe<JournalEntiresFilterInput>
+  where: JournalEntiresWhereInput
 };
 
 
-export type JournalEntries_1Query = { __typename?: 'Query', journalEntries: { __typename?: 'JournalEntriesRes', totalCount: number, entries: Array<(
-      { __typename?: 'JournalEntry' }
-      & JournalEntry_1Fragment
-    )> } };
+export type JournalEntries_1Query = { __typename?: 'Query', journalEntries: Array<(
+    { __typename?: 'JournalEntry' }
+    & JournalEntry_1Fragment
+  )> };
 
 export type JournalEntryAdded_1SubscriptionVariables = {};
 
@@ -493,7 +506,7 @@ export type AddJournalEntry_1MutationVariables = {
 };
 
 
-export type AddJournalEntry_1Mutation = { __typename?: 'Mutation', addJournalEntry: { __typename: 'JournalEntry', id: string } };
+export type AddJournalEntry_1Mutation = { __typename?: 'Mutation', journalEntryAdd: { __typename: 'JournalEntry', id: string } };
 
 export type UpdateJournalEntry_1MutationVariables = {
   id: Scalars['ID'],
@@ -501,7 +514,7 @@ export type UpdateJournalEntry_1MutationVariables = {
 };
 
 
-export type UpdateJournalEntry_1Mutation = { __typename?: 'Mutation', updateJournalEntry: { __typename: 'JournalEntry', id: string } };
+export type UpdateJournalEntry_1Mutation = { __typename?: 'Mutation', journalEntryUpdate: { __typename: 'JournalEntry', id: string } };
 
 export type PayMethodInput_1QueryVariables = {};
 
@@ -575,7 +588,7 @@ export type AddJournalEntry_2MutationVariables = {
 };
 
 
-export type AddJournalEntry_2Mutation = { __typename?: 'Mutation', addJournalEntry: { __typename: 'JournalEntry', id: string } };
+export type AddJournalEntry_2Mutation = { __typename?: 'Mutation', journalEntryAdd: { __typename: 'JournalEntry', id: string } };
 
 export type UpdateJournalEntry_2MutationVariables = {
   id: Scalars['ID'],
@@ -583,7 +596,7 @@ export type UpdateJournalEntry_2MutationVariables = {
 };
 
 
-export type UpdateJournalEntry_2Mutation = { __typename?: 'Mutation', updateJournalEntry: (
+export type UpdateJournalEntry_2Mutation = { __typename?: 'Mutation', journalEntryUpdate: (
     { __typename?: 'JournalEntry' }
     & JournalEntry_1Fragment
   ) };
@@ -692,14 +705,9 @@ export type ResolversTypes = {
   Business: ResolverTypeWrapper<Business>,
   Vendor: ResolverTypeWrapper<Vendor>,
   DepartmentAncestor: ResolversTypes['Department'] | ResolversTypes['Business'],
-  PaginateInput: PaginateInput,
-  JournalEntriesSortByInput: JournalEntriesSortByInput,
-  JournalEntriesColumn: JournalEntriesColumn,
-  SortDirection: SortDirection,
-  JournalEntiresFilterInput: JournalEntiresFilterInput,
-  ByIdFilter: ByIdFilter,
-  JournalEntiresReconciledFilter: JournalEntiresReconciledFilter,
-  JournalEntriesRes: ResolverTypeWrapper<JournalEntriesRes>,
+  JournalEntiresWhereInput: JournalEntiresWhereInput,
+  JournalEntriesWhereDepartment: JournalEntriesWhereDepartment,
+  JournalEntriesWhereLastUpdate: JournalEntriesWhereLastUpdate,
   JournalEntry: ResolverTypeWrapper<Omit<JournalEntry, 'source'> & { source: ResolversTypes['JournalEntrySource'] }>,
   JournalEntryType: JournalEntryType,
   JournalEntryCategory: ResolverTypeWrapper<JournalEntryCategory>,
@@ -716,10 +724,14 @@ export type ResolversTypes = {
   JournalEntryAddFields: JournalEntryAddFields,
   PersonAddFields: PersonAddFields,
   Subscription: ResolverTypeWrapper<{}>,
+  ByIdFilter: ByIdFilter,
   CacheControlScope: CacheControlScope,
   DepartmentAddFields: DepartmentAddFields,
   FilterType: FilterType,
+  JournalEntriesRes: ResolverTypeWrapper<JournalEntriesRes>,
   JournalEntryAddedRes: ResolverTypeWrapper<JournalEntryAddedRes>,
+  PaginateInput: PaginateInput,
+  SortDirection: SortDirection,
   Upload: ResolverTypeWrapper<Scalars['Upload']>,
   User: ResolverTypeWrapper<User>,
 };
@@ -746,14 +758,9 @@ export type ResolversParentTypes = {
   Business: Business,
   Vendor: Vendor,
   DepartmentAncestor: ResolversParentTypes['Department'] | ResolversParentTypes['Business'],
-  PaginateInput: PaginateInput,
-  JournalEntriesSortByInput: JournalEntriesSortByInput,
-  JournalEntriesColumn: JournalEntriesColumn,
-  SortDirection: SortDirection,
-  JournalEntiresFilterInput: JournalEntiresFilterInput,
-  ByIdFilter: ByIdFilter,
-  JournalEntiresReconciledFilter: JournalEntiresReconciledFilter,
-  JournalEntriesRes: JournalEntriesRes,
+  JournalEntiresWhereInput: JournalEntiresWhereInput,
+  JournalEntriesWhereDepartment: JournalEntriesWhereDepartment,
+  JournalEntriesWhereLastUpdate: JournalEntriesWhereLastUpdate,
   JournalEntry: Omit<JournalEntry, 'source'> & { source: ResolversParentTypes['JournalEntrySource'] },
   JournalEntryType: JournalEntryType,
   JournalEntryCategory: JournalEntryCategory,
@@ -770,10 +777,14 @@ export type ResolversParentTypes = {
   JournalEntryAddFields: JournalEntryAddFields,
   PersonAddFields: PersonAddFields,
   Subscription: {},
+  ByIdFilter: ByIdFilter,
   CacheControlScope: CacheControlScope,
   DepartmentAddFields: DepartmentAddFields,
   FilterType: FilterType,
+  JournalEntriesRes: JournalEntriesRes,
   JournalEntryAddedRes: JournalEntryAddedRes,
+  PaginateInput: PaginateInput,
+  SortDirection: SortDirection,
   Upload: Scalars['Upload'],
   User: User,
 };
@@ -831,6 +842,8 @@ export type JournalEntryResolvers<ContextType = Context, ParentType extends Reso
   total?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>,
   source?: Resolver<ResolversTypes['JournalEntrySource'], ParentType, ContextType>,
   reconciled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>,
+  lastUpdate?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
+  deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>,
 };
 
 export type JournalEntryAddedResResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntryAddedRes'] = ResolversParentTypes['JournalEntryAddedRes']> = {
@@ -895,8 +908,8 @@ export type Lc_JournalEntryUpsertSourceResolvers<ContextType = Context, ParentTy
 
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   addBusiness?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<MutationAddBusinessArgs, 'fields'>>,
-  updateJournalEntry?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationUpdateJournalEntryArgs, 'id' | 'fields'>>,
-  addJournalEntry?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationAddJournalEntryArgs, 'fields'>>,
+  journalEntryUpdate?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryUpdateArgs, 'id' | 'fields'>>,
+  journalEntryAdd?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryAddArgs, 'fields'>>,
   addPerson?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<MutationAddPersonArgs, 'fields'>>,
 };
 
@@ -926,7 +939,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>,
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, QueryDepartmentsArgs>,
   department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>,
-  journalEntries?: Resolver<ResolversTypes['JournalEntriesRes'], ParentType, ContextType, QueryJournalEntriesArgs>,
+  journalEntries?: Resolver<Array<ResolversTypes['JournalEntry']>, ParentType, ContextType, QueryJournalEntriesArgs>,
   journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   journalEntryCategory?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType, RequireFields<QueryJournalEntryCategoryArgs, 'id'>>,
   journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>,

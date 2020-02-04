@@ -206,7 +206,7 @@ const ADD_BUSINESS = gql`
 
 const ADD_JOURNAL_ENTRY = gql`
   mutation AddJournalEntry_2($fields:JournalEntryAddFields!) {
-    addJournalEntry(fields:$fields) {
+    journalEntryAdd(fields:$fields) {
       __typename
       id
     }
@@ -215,7 +215,7 @@ const ADD_JOURNAL_ENTRY = gql`
 
 const UPDATE_JOURNAL_ENTRY = gql`
   mutation UpdateJournalEntry_2($id:ID!, $fields:JournalEntryUpdateFields!) {
-    updateJournalEntry(id:$id, fields:$fields) {
+    journalEntryUpdate(id:$id, fields:$fields) {
       ...JournalEntry_1Fragment
     }
   }
@@ -458,7 +458,7 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
             }
           });
 
-          if(!result.data?.addJournalEntry.id) {
+          if(!result.data?.journalEntryAdd.id) {
             throw new Error("Something went wrong. Server did not respond with journal entry id.");
           }
 
@@ -590,7 +590,7 @@ export const _submit_ = (upsertId:string, client:ApolloClient<any>)
             variables
           });
 
-          if(!result.data?.updateJournalEntry.id) {
+          if(!result.data?.journalEntryUpdate.id) {
             throw new Error("Something went wrong.");
           }
 

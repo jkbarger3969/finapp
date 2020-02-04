@@ -88,26 +88,11 @@ const Entry = function(props:EntryProps) {
     
     return <Box style={style} display="flex !important" clone>
       <TableRow component="div">
-        <Grid item container direction="column" xs={1} >
+        <Box flexGrow={1} clone>
           <TableCell component="div" children={skeleton} />
-        </Grid>
-        <Grid item container direction="column" xs={3} >
-          <TableCell component="div" children={skeleton} />
-        </Grid>
-        <Grid item container direction="column" xs={2} >
-          <TableCell component="div" children={skeleton} />
-        </Grid>
-        <Grid item container direction="column" xs={3} >
-          <TableCell component="div" children={skeleton} />
-        </Grid>
-        <Grid item container direction="column" xs={2} >
-          <TableCell component="div" children={skeleton} />
-        </Grid>
-        <Grid item container direction="column" xs={1} >
-          <TableCell component="div" children={skeleton} />
-        </Grid>
+        </Box>
       </TableRow>
-    </Box>; 
+    </Box>;
   
   }
 
