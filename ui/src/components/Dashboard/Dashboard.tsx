@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo } from "react";
-import {useQuery} from "@apollo/react-hooks";
+import {useQuery, useApolloClient} from "@apollo/react-hooks";
 import {Link} from "react-router-dom";
 import Grid from "@material-ui/core/Grid";
 import Container from "@material-ui/core/Container";
@@ -13,7 +13,6 @@ import AssessmentIcon from '@material-ui/icons/Assessment';
 import Card from '@material-ui/core/Card';
 import CardHeader from '@material-ui/core/CardHeader';
 import CardContent from '@material-ui/core/CardContent';
-import gql from "graphql-tag";
 import numeral from 'numeral';
 import {red, green, orange, grey} from '@material-ui/core/colors';
 
@@ -21,56 +20,15 @@ import AddEntry from "./AddEntry";
 import {uuid, namespace} from "../../utils/uuid";
 import {useDebounceDispatch as useDispatch} from "../../redux/hooks";
 import {create} from "../../redux/actions/journalEntryUpsert";
-import {GetReportDataQuery, GetReportDataQueryVariables,
-  GetReportDataEntryFragment as ReportDataEntry, JournalEntryType,
-  GetReportDataDeptFragment
+import {GetReportDataQuery, GetReportDataQueryVariables, JournalEntryType,
+  JournalEntryAdded_2Subscription as JournalEntryAdded,
+  JournalEntryUpdated_2Subscription as JournalEntryUpdated,
+  GetReportDataEntry_1Fragment as JournalEntryFragment,
 } from "../../apollo/graphTypes";
+import {GET_REPORT_DATA, JOURNAL_ENTRY_ADDED_SUB,
+  JOURNAL_ENTRY_UPDATED_SUB, GET_REPORT_DATA_ENTRY_FRAGMENT
+} from "./ReportData.gql";
 
-const GET_REPORT_DATA = gql`
-  query GetReportData($deptId:ID!) {
-    department(id:$deptId) {
-      ...GetReportDataDeptFragment
-      descendants {
-        ...GetReportDataDeptFragment
-      }
-    }
-    journalEntries(filterBy:{department:{eq:$deptId}}) {
-      entries {
-        ...GetReportDataEntryFragment
-      }
-    }
-  }
-  fragment GetReportDataDeptFragment on Department {
-    __typename
-    id
-    name
-    budget {
-      id
-      __typename
-      amount {
-        num
-        den
-      }
-    }
-  }
-  fragment GetReportDataEntryFragment on JournalEntry {
-    __typename
-    category {
-      __typename
-      id
-      name
-    }
-    type
-    total {
-      num
-      den
-    }
-    department {
-      __typename
-      id
-    }
-  }
-`;
 
 const ADD_ENTRY_ID = uuid("DashboardJournalEntry", namespace);
 
@@ -112,16 +70,133 @@ const Dashboard = function(props:{deptId:string}) {
 
   const {deptId} = props;
 
-  const {loading, error, data} = useQuery<GetReportDataQuery,
-    GetReportDataQueryVariables>(GET_REPORT_DATA,{
-    variables:{
-      deptId
+  const variables = useMemo(() => ({
+    deptId,
+    where:{
+      department:{eq:deptId},
+      deleted:false
     }
-  });
+  }),[deptId]);
 
-  const entries = data?.journalEntries.entries || [];
+  const {loading,error, data, subscribeToMore, fetchMore} = 
+    useQuery<GetReportDataQuery, GetReportDataQueryVariables>(GET_REPORT_DATA,{
+      variables
+    });
+
+  const client = useApolloClient();
+
+  useEffect(() => {
+    
+    // Check if query has been cache already
+    const cacheResults = (()=>{
+
+      try {
+
+        return client.readQuery<GetReportDataQuery,
+          GetReportDataQueryVariables>({
+            query:GET_REPORT_DATA,
+            variables
+          });
+
+      } catch(error) {
+      
+        return null;
+      
+      } 
+
+    })();
+    
+    // Request updated for any changes since last cache
+    if(cacheResults?.journalEntries) {
+
+      const gt = cacheResults.journalEntries.reduce((date,
+          entry) => 
+      {
+
+        const entryDate = new Date(entry.lastUpdate);
+        return entryDate > date ? entryDate:  date;
+
+      }, new Date(0)).toISOString();
+
+      fetchMore<keyof typeof variables>({
+        variables:{
+          ...variables,
+          where:{
+            ...(variables?.where || {}),
+            lastUpdate:{gt}
+          }
+        },
+        updateQuery:(prev, {fetchMoreResult}) => ({
+          ...(prev || {}),
+          ...(fetchMoreResult || {}),
+          journalEntries:[
+            ...(prev?.journalEntries || []),
+            ...(fetchMoreResult?.journalEntries || [])
+          ]
+        }),
+      });
+
+    }
+
+    // Subscribe to entry additions
+    const addUnSub = subscribeToMore<JournalEntryAdded>({
+      document:JOURNAL_ENTRY_ADDED_SUB,
+      updateQuery:(prev, {subscriptionData}) => {
+
+        const journalEntryAdded = subscriptionData?.data?.journalEntryAdded;
+
+        if(!journalEntryAdded || (journalEntryAdded.id !== deptId &&
+          journalEntryAdded.department.ancestors.every((dept) => 
+            dept.__typename === "Business" || dept.id !== deptId)))
+        {
+          return prev;
+        }
+
+        return {
+          ...(prev || {}),
+          journalEntries:[
+            ...(prev?.journalEntries || []),
+            ...([subscriptionData?.data?.journalEntryAdded] || [])
+          ]
+        
+        };
+
+      }
+    
+    });
+    // Subscribe to updates
+    const updateUnSub = subscribeToMore<JournalEntryUpdated>({
+      document:JOURNAL_ENTRY_UPDATED_SUB,
+      updateQuery:(prev, {subscriptionData}) => {
+
+        const journalEntryUpdated = subscriptionData?.data?.journalEntryUpdated;
+
+        if(journalEntryUpdated) {
+          
+          client.writeFragment<JournalEntryFragment>({
+            id:`JournalEntry:${journalEntryUpdated.id}`,
+            fragment:GET_REPORT_DATA_ENTRY_FRAGMENT,
+            data:journalEntryUpdated
+          });
+
+        }
+
+        return prev;
+      
+      }
+    });
+
+    return () => {
+      addUnSub();
+      updateUnSub();
+    }
+  
+  }, [variables, fetchMore, client, subscribeToMore, deptId]);
+
+  const entries = useMemo(()=> {
+    return (data?.journalEntries || []).filter((entry) => !entry.deleted);
+  },[data]);
   const deptName = data?.department?.name || "";
-  const sudDeptReport = new Map<string, DeptReportObj>();
 
   useEffect(()=>{
     document.title = deptName;
@@ -135,8 +210,11 @@ const Dashboard = function(props:{deptId:string}) {
 
   const department = data?.department || null;
 
-  const {deptReport, subDeptBudgetAg} = useMemo(()=> {
-    
+  const {totalRemaining, budget, spentToBudgetRatio,
+    deptReport
+  } =  useMemo(() => {
+
+    // Generate department report objects
     const deptReport = new Map<string, DeptReportObj>();
     let subDeptBudgetAg = 0;
 
@@ -177,12 +255,8 @@ const Dashboard = function(props:{deptId:string}) {
 
     }
 
-    return {deptReport, subDeptBudgetAg};
 
-  }, [department]);
-
-  const {totalRemaining, budget, spentToBudgetRatio} =  useMemo(() => {
-
+    // Calculating aggregate depts and credits
     let spent = 0;
     for(const entry of entries) {
       
@@ -205,7 +279,8 @@ const Dashboard = function(props:{deptId:string}) {
       }
 
     }
-
+    
+    // Format values
     const budgetDec = (()=>{
 
       if(department?.budget) {
@@ -224,10 +299,11 @@ const Dashboard = function(props:{deptId:string}) {
     return {
       totalRemaining,
       budget,
-      spentToBudgetRatio
+      spentToBudgetRatio,
+      deptReport
     };
 
-  },[entries, deptReport, subDeptBudgetAg, department]);
+  },[entries, department]);
 
   const subDeptCards = useMemo(()=>{
 

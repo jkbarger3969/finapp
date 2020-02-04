@@ -2,9 +2,10 @@ import {Resolvers} from "./graphTypes";
 import {Budget, budgets} from "./resolvers/budget";
 import {Business, business, businesses, addBusiness} from "./resolvers/business";
 import {Department, departments, department} from "./resolvers/departments";
-import {journalEntries, addJournalEntry, updateJournalEntry, JournalEntry,
+import {journalEntryAdd, journalEntryUpdate, JournalEntry,
   journalEntryAdded, journalEntryUpdated
 } from "./resolvers/journalEntry";
+import journalEntries from "./resolvers/journalEntry/journalEntries";
 import {journalEntrySources} from "./resolvers/journalEntrySource";
 import {JournalEntryCategory, journalEntryCategories, journalEntryCategory
 } from "./resolvers/journalEntryCategory";
@@ -34,8 +35,8 @@ const resolvers:Resolvers = {
     people,
   },
   Mutation:{
-    addJournalEntry,
-    updateJournalEntry,
+    journalEntryAdd,
+    journalEntryUpdate,
     addPerson,
     addBusiness
   },

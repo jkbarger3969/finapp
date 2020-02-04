@@ -3,8 +3,7 @@ import {useSelector, shallowEqual} from "react-redux";
 import {useQuery, useApolloClient} from '@apollo/react-hooks';
 import TableBody from '@material-ui/core/TableBody';
 import Box from '@material-ui/core/Box';
-import {VariableSizeList as List} from 'react-window';
-import InfiniteLoader from 'react-window-infinite-loader';
+import {FixedSizeList as List, FixedSizeListProps} from 'react-window';
 
 import Entry from './Entry';
 import {JOURNAL_ENTRIES, JOURNAL_ENTRY_ADDED_SUB, JOURNAL_ENTRY_UPDATED_SUB,
@@ -16,14 +15,10 @@ import {TableCell as CellFormat} from "../../../redux/reducers/tableRows";
 import {getIndexedCells} from "../../../redux/selectors/tableRows";
 import {JournalEntries_1Query as JournalEntriesQuery,
   JournalEntries_1QueryVariables as JournalEntriesQueryVars,
-  JournalEntriesColumn, SortDirection,
   JournalEntryAdded_1Subscription as JournalEntryAdded,
   JournalEntryUpdated_1Subscription as JournalEntryUpdated,
-  JournalEntiresReconciledFilter,
   JournalEntry_1Fragment as JournalEntryFragment
 } from "../../../apollo/graphTypes";
-
-type InfiniteLoaderProps = InfiniteLoader['props'];
 
 export enum JournalMode {
   View,
@@ -37,57 +32,151 @@ export interface BodyProps {
   width:number;
 }
 
-const subscribedToAdd = new Set<string>();
-
-let subscribedToUpdate = false;
-
-const defaultVars:JournalEntriesQueryVars = {
-    paginate:{
-      skip:0,
-      limit:50 // Load entries in 50 block increments
-    },
-    sortBy:[
-      {column:JournalEntriesColumn.Date, direction:SortDirection.Desc}
-    ]
- }
 
 const Body = function(props:BodyProps) {
 
-  const {height, deptId, mode} = props;
+  const {height, deptId, mode, width:parentWidth} = props;
 
-  const subKey = `${deptId}_${mode}`;
-
-  const variables = useMemo<JournalEntriesQueryVars>(()=>{
-
-    const reconciled = mode === JournalMode.Reconcile ?
-      JournalEntiresReconciledFilter.NotReconciled : undefined;
-
+  const variables = useMemo<JournalEntriesQueryVars | undefined>(()=> {
+    
     return deptId ? {
-      ...defaultVars,
-      filterBy:{
-        department:{
-          eq:deptId
-        },
-        reconciled
-      },
-    } : {...defaultVars};
+      where:{department:{eq:deptId}}
+    } : undefined;
 
-  },[deptId, mode]);
+  },[deptId]);
 
   const cellFormats = useSelector<Root, CellFormat[]>((state) => 
     getIndexedCells(state, ROW_ID), shallowEqual);
 
-  const minWidth = useMemo(() => cellFormats.reduce((minWidth, cellFormat) => {
-    return minWidth + cellFormat.width;
-  },0),[cellFormats]);
+  const width = useMemo(()=>{
+  
+    const minWidth = cellFormats.reduce((minWidth, cellFormat) => {
+      return minWidth + cellFormat.width;
+    },0);
+    
+    return Math.max(minWidth, parentWidth);
+  
+  },[cellFormats, parentWidth]);
 
-  const width = Math.max(minWidth, props.width);
-
-  const {error, data, fetchMore, updateQuery} = useQuery<
+  const {error, data, updateQuery, fetchMore, subscribeToMore} = useQuery<
     JournalEntriesQuery, JournalEntriesQueryVars>(JOURNAL_ENTRIES,
   {
     variables
   });
+
+  const client = useApolloClient();
+
+  useEffect(() => {
+    
+    // Check if query has been cache already
+    const cacheResults = (()=>{
+
+      try {
+
+        return client.readQuery<JournalEntriesQuery,JournalEntriesQueryVars>({
+          query:JOURNAL_ENTRIES,
+          variables
+        });
+
+      } catch(error) {
+      
+        return null;
+      
+      } 
+
+    })();
+    
+    // Request updated for any changes since last cache
+    if(cacheResults?.journalEntries) {
+
+      const gt = cacheResults.journalEntries.reduce((date,
+          entry) => 
+      {
+
+        const entryDate = new Date(entry.lastUpdate);
+        return entryDate > date ? entryDate:  date;
+
+      }, new Date(0)).toISOString();
+
+      fetchMore({
+        variables: variables ? {
+          ...variables,
+          where:{
+            ...(variables?.where || {}),
+            lastUpdate:{gt}
+          }
+        } : {
+          where:{
+            lastUpdate:{gt}
+          }
+        },
+        updateQuery:(prev, {fetchMoreResult}) => ({
+          ...(prev || {}),
+          ...(fetchMoreResult || {}),
+          journalEntries:[
+            ...(prev?.journalEntries || []),
+            ...(fetchMoreResult?.journalEntries || [])
+          ]
+        })
+      });
+
+    }
+
+    // Subscribe to entry additions
+    const addUnSub = subscribeToMore<JournalEntryAdded>({
+      document:JOURNAL_ENTRY_ADDED_SUB,
+      updateQuery:(prev, {subscriptionData}) => {
+
+        const journalEntryAdded = subscriptionData?.data?.journalEntryAdded;
+
+        if(!journalEntryAdded || (journalEntryAdded.id !== deptId &&
+          journalEntryAdded.department.ancestors.every((dept) => 
+            dept.__typename === "Business" || dept.id !== deptId)))
+        {
+          return prev;
+        }
+
+        return {
+          ...(prev || {}),
+          journalEntries:[
+            ...(prev?.journalEntries || []),
+            ...([subscriptionData?.data?.journalEntryAdded] || [])
+          ]
+        
+        };
+
+      }
+    
+    });
+
+    // Subscribe to updates
+    const updateUnSub = subscribeToMore<JournalEntryUpdated>({
+      document:JOURNAL_ENTRY_UPDATED_SUB,
+      updateQuery:(prev, {subscriptionData}) => {
+
+        const journalEntryUpdated = subscriptionData?.data?.journalEntryUpdated;
+
+        if(journalEntryUpdated) {
+          
+          client.writeFragment<JournalEntryFragment>({
+            id:`JournalEntry:${journalEntryUpdated.id}`,
+            fragment:JOURNAL_ENTRY_FRAGMENT,
+            data:journalEntryUpdated
+          });
+
+        }
+
+        return prev;
+      
+      }
+    });
+
+    return () => {
+      addUnSub();
+      updateUnSub();
+    }
+  
+  }, [variables, fetchMore, client, subscribeToMore, deptId]);
 
   const removeReconciled = useCallback((id:string) => {
 
@@ -97,7 +186,7 @@ const Body = function(props:BodyProps) {
 
     updateQuery((prev)=>{
 
-      const entries = prev.journalEntries.entries;
+      const entries = prev.journalEntries || [];
 
       for(let i = 0, len = entries.length; i < len; i++) {
 
@@ -105,14 +194,10 @@ const Body = function(props:BodyProps) {
 
           return {
             ...prev,
-            journalEntries: {
-              ...prev.journalEntries,
-              totalCount:prev.journalEntries.totalCount - 1,
-              entries:[
-                ...entries.slice(0, i),
-                ...entries.slice(i + 1)
-              ]
-            }
+            journalEntries: [
+              ...entries.slice(0, i),
+              ...entries.slice(i + 1)
+            ]
           }
 
         }
@@ -125,142 +210,42 @@ const Body = function(props:BodyProps) {
 
   },[mode, updateQuery]);
 
-  const client = useApolloClient();
+  const entries = useMemo(()=>{
 
-  // Lazy add persistent subscription.
-  if(!subscribedToAdd.has(subKey)) {
+    const entries = data?.journalEntries || [];
 
-    subscribedToAdd.add(subKey);
+    if(mode === JournalMode.Reconcile) {
 
-    client.subscribe<JournalEntryAdded>({
-      query:JOURNAL_ENTRY_ADDED_SUB
-    }).subscribe({next:({data})=>{
-      
-      if(!data?.journalEntryAdded || (mode === JournalMode.Reconcile 
-        && data.journalEntryAdded.reconciled) 
-        || (deptId && data.journalEntryAdded.department.id !== deptId))
-      {
-        return;
-      }
+      return entries
+        .filter((entry) => !entry.reconciled && !entry.deleted)
+        .sort((a, b) => 
+          (new Date(b.date)).getTime() - (new Date(a.date)).getTime());
 
-      const prev = client.readQuery<JournalEntriesQuery,
-        JournalEntriesQueryVars>({
-          query:JOURNAL_ENTRIES,
-          variables
-        });
-      
-      const update = {
-        ...(prev || {}),
-        journalEntries:{
-          ...(prev?.journalEntries || {}),
-          totalCount:(prev?.journalEntries.totalCount || 0) + 1,
-          entries:[
-            data.journalEntryAdded,
-            ...(prev?.journalEntries.entries || [])
-          ]
-        }
-      };
+    }
 
-      client.writeQuery({
-        query:JOURNAL_ENTRIES,
-        variables,
-        data:update
-      });
-
-    }});
-
-  }
-
-  if(!subscribedToUpdate) {
-    
-    subscribedToUpdate = true;
-    client.subscribe<JournalEntryUpdated>({
-      query:JOURNAL_ENTRY_UPDATED_SUB
-    }).subscribe({next:({data})=>{
-
-      console.log(data);
-
-      if(!data) {
-        return;
-      }
-      
-      client.writeFragment<JournalEntryFragment>({
-        id:`JournalEntry:${data.journalEntryUpdated.id}`,
-        fragment:JOURNAL_ENTRY_FRAGMENT,
-        data:data.journalEntryUpdated
-      });
-
-    }});
+    return entries.filter((entry) => !entry.deleted)
+      .sort((a, b) => 
+        (new Date(b.date)).getTime() - (new Date(a.date)).getTime());
   
-  }
-
-  const entries = data?.journalEntries?.entries || [];
-  const totalCount = data?.journalEntries?.totalCount ?? 500;
+  },[data, mode]);
   
-  const isLoaded = useCallback<InfiniteLoaderProps['isItemLoaded']>((index)=>{
-    return index in entries;
-  },[entries]);
-
-  const loadMoreItems = 
-    useCallback<InfiniteLoaderProps['loadMoreItems']>(async (start, end) =>
-  {
-
-    await fetchMore({
-      variables:{
-        paginate:{
-          skip:start,
-          limit:end - start + 1 //End is inclusive
-        }
-      },
-      updateQuery:(prev, {fetchMoreResult = null}) => {
-        
-        // new entries
-        const newResults = fetchMoreResult?.journalEntries?.entries || [];
-        
-        const entries = [...(prev?.journalEntries?.entries || [])];
-        entries.splice(start, newResults.length, ...newResults);
-        
-
-        return {
-          ...(prev || {}),
-          ...(fetchMoreResult || {}),
-          journalEntries:{
-            ...(prev?.journalEntries || {}),
-            ...(fetchMoreResult?.journalEntries || {}),
-            entries
-          }
-        } as JournalEntriesQuery;
-      
-      }
-    });
-
-  },[fetchMore]);
+  const iteCount = entries.length ?? 500;
   
   const entryRow = 
     useCallback(({index, style}:{index:number, style:React.CSSProperties}) => 
   {
     const entry = entries[index];
-    const key = entry ? entry.id: index;
     return <Entry
       mode={mode}
       style={style}
-      key={key}
       journalEntry={entry}
       removeReconciled={removeReconciled}
     />
   
   },[entries, mode, removeReconciled]);
 
-  const infiniteLoaderChildren = useCallback<InfiniteLoaderProps["children"]>( 
-    ({onItemsRendered, ref}) => <Box display="flex" clone><List
-      onItemsRendered={onItemsRendered}
-      ref={ref}
-      height={height}
-      width={width}
-      itemCount={totalCount}
-      itemSize={()=>53}
-      overscanCount={10}
-    >{entryRow}</List></Box>,[height, width, entryRow, totalCount]);
+  const itemKey = useCallback<NonNullable<FixedSizeListProps["itemKey"]>>(
+    (index) => entries[index]?.id ?? index, [entries]);
 
   if(error) {
     return <div>{error.message}</div>;
@@ -268,13 +253,15 @@ const Body = function(props:BodyProps) {
 
   return <Box height={height} display="block" clone>
     <TableBody component='div'>
-      <InfiniteLoader
-        isItemLoaded={isLoaded}
-        itemCount={totalCount}
-        minimumBatchSize={50}
-        loadMoreItems={loadMoreItems}
-        children={infiniteLoaderChildren}
-      />
+      <Box display="flex" clone><List
+        itemKey={itemKey}
+        height={height}
+        width={width}
+        itemCount={iteCount}
+        itemSize={53}
+        overscanCount={10}
+      >{entryRow}</List>
+    </Box>
     </TableBody>
   </Box>;
 

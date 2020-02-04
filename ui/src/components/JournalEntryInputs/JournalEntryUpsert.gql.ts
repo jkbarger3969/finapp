@@ -57,7 +57,7 @@ export const LC_JOURNAL_ENTRY_UPSERTS = gql`
 
 export const ADD_JOURNAL_ENTRY = gql`
   mutation AddJournalEntry_1($fields:JournalEntryAddFields!) {
-    addJournalEntry(fields:$fields) {
+    journalEntryAdd(fields:$fields) {
       __typename
       id
     }
@@ -66,7 +66,7 @@ export const ADD_JOURNAL_ENTRY = gql`
 
 export const UPDATE_JOURNAL_ENTRY = gql`
   mutation UpdateJournalEntry_1($id:ID!, $fields:JournalEntryUpdateFields!) {
-    updateJournalEntry(id:$id, fields:$fields) {
+    journalEntryUpdate(id:$id, fields:$fields) {
       __typename
       id
     }

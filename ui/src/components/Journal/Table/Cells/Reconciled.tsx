@@ -21,7 +21,7 @@ import {JOURNAL_ENTRY_FRAGMENT} from "../JournalEntries.gql";
 
 const RECONCILE = gql`
   mutation Reconcile_1($id:ID!) {
-    updateJournalEntry(id: $id, fields:{reconciled:true}) {
+    journalEntryUpdate(id: $id, fields:{reconciled:true}) {
       ...JournalEntry_1Fragment
     }
   }
