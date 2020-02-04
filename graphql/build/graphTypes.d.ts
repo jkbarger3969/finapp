@@ -1,0 +1,530 @@
+import { GraphQLResolveInfo } from 'graphql';
+import { Context } from './types';
+export declare type Maybe<T> = T | null;
+export declare type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
+export declare type RequireFields<T, K extends keyof T> = {
+    [X in Exclude<keyof T, K>]?: T[X];
+} & {
+    [P in K]-?: NonNullable<T[P]>;
+};
+/** All built-in and custom scalars, mapped to their actual values */
+export declare type Scalars = {
+    ID: string;
+    String: string;
+    Boolean: boolean;
+    Int: number;
+    Float: number;
+};
+export declare type Budget = {
+    __typename?: 'Budget';
+    id: Scalars['ID'];
+    amount: Rational;
+    owner: BudgetOwner;
+};
+export declare type BudgetOwner = Department | Business;
+export declare type Business = {
+    __typename?: 'Business';
+    id: Scalars['ID'];
+    name: Scalars['String'];
+    budget?: Maybe<Budget>;
+    departments?: Maybe<Array<Department>>;
+    vendor?: Maybe<Vendor>;
+};
+export declare type BusinessAddFields = {
+    name: Scalars['String'];
+};
+export declare type ByIdFilter = {
+    eq?: Maybe<Scalars['ID']>;
+};
+export declare type Department = {
+    __typename?: 'Department';
+    id: Scalars['ID'];
+    name: Scalars['String'];
+    code?: Maybe<Scalars['String']>;
+    budget?: Maybe<Budget>;
+    business: Business;
+    parent: DepartmentAncestor;
+    ancestors: Array<DepartmentAncestor>;
+    descendants: Array<Department>;
+    virtualRoot?: Maybe<Scalars['Boolean']>;
+};
+export declare type DepartmentAddFields = {
+    name: Scalars['String'];
+};
+export declare type DepartmentAncestor = Department | Business;
+export declare enum FilterType {
+    Include = "INCLUDE",
+    Exclude = "EXCLUDE"
+}
+export declare type JournalEntiresWhereInput = {
+    department?: Maybe<JournalEntriesWhereDepartment>;
+    reconciled?: Maybe<Scalars['Boolean']>;
+    deleted?: Maybe<Scalars['Boolean']>;
+    lastUpdate?: Maybe<JournalEntriesWhereLastUpdate>;
+    or?: Maybe<Array<Maybe<JournalEntiresWhereInput>>>;
+    and?: Maybe<Array<Maybe<JournalEntiresWhereInput>>>;
+};
+export declare type JournalEntriesRes = {
+    __typename?: 'JournalEntriesRes';
+    totalCount: Scalars['Int'];
+    entries: Array<JournalEntry>;
+};
+export declare type JournalEntriesWhereDepartment = {
+    eq?: Maybe<Scalars['ID']>;
+    ne?: Maybe<Scalars['ID']>;
+    in?: Maybe<Array<Maybe<Scalars['ID']>>>;
+    nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
+    includeDescendants?: Maybe<Scalars['Boolean']>;
+};
+export declare type JournalEntriesWhereLastUpdate = {
+    gt?: Maybe<Scalars['String']>;
+    lt?: Maybe<Scalars['String']>;
+    gte?: Maybe<Scalars['String']>;
+    lte?: Maybe<Scalars['String']>;
+};
+export declare type JournalEntry = {
+    __typename?: 'JournalEntry';
+    id: Scalars['ID'];
+    type: JournalEntryType;
+    date: Scalars['String'];
+    department: Department;
+    category: JournalEntryCategory;
+    paymentMethod: PaymentMethod;
+    description?: Maybe<Scalars['String']>;
+    total: Rational;
+    source: JournalEntrySource;
+    reconciled: Scalars['Boolean'];
+    lastUpdate: Scalars['String'];
+    deleted: Scalars['Boolean'];
+};
+export declare type JournalEntryAddedRes = {
+    __typename?: 'JournalEntryAddedRes';
+    totalCount: Scalars['Int'];
+    index: Scalars['Int'];
+    entry: JournalEntry;
+};
+export declare type JournalEntryAddFields = {
+    date: Scalars['String'];
+    department: Scalars['ID'];
+    type: JournalEntryType;
+    category: Scalars['ID'];
+    paymentMethod: Scalars['ID'];
+    description?: Maybe<Scalars['String']>;
+    total: RationalInput;
+    source: JournalEntrySourceInput;
+    reconciled?: Maybe<Scalars['Boolean']>;
+};
+export declare type JournalEntryCategory = {
+    __typename?: 'JournalEntryCategory';
+    id: Scalars['ID'];
+    name: Scalars['String'];
+    type: JournalEntryType;
+    parent?: Maybe<JournalEntryCategory>;
+    ancestors: Array<JournalEntryCategory>;
+};
+export declare type JournalEntrySource = Person | Business | Department;
+export declare type JournalEntrySourceInput = {
+    sourceType: JournalEntrySourceType;
+    id: Scalars['ID'];
+};
+export declare enum JournalEntrySourceType {
+    Business = "BUSINESS",
+    Department = "DEPARTMENT",
+    Person = "PERSON"
+}
+export declare enum JournalEntryType {
+    Credit = "CREDIT",
+    Debit = "DEBIT"
+}
+export declare type JournalEntryUpdateFields = {
+    date?: Maybe<Scalars['String']>;
+    department?: Maybe<Scalars['ID']>;
+    type?: Maybe<JournalEntryType>;
+    category?: Maybe<Scalars['ID']>;
+    paymentMethod?: Maybe<Scalars['ID']>;
+    description?: Maybe<Scalars['String']>;
+    total?: Maybe<RationalInput>;
+    source?: Maybe<JournalEntrySourceInput>;
+    reconciled?: Maybe<Scalars['Boolean']>;
+};
+export declare type Mutation = {
+    __typename?: 'Mutation';
+    addBusiness: Business;
+    journalEntryUpdate: JournalEntry;
+    journalEntryAdd: JournalEntry;
+    addPerson: Person;
+};
+export declare type MutationAddBusinessArgs = {
+    fields: BusinessAddFields;
+};
+export declare type MutationJournalEntryUpdateArgs = {
+    id: Scalars['ID'];
+    fields: JournalEntryUpdateFields;
+};
+export declare type MutationJournalEntryAddArgs = {
+    fields: JournalEntryAddFields;
+};
+export declare type MutationAddPersonArgs = {
+    fields: PersonAddFields;
+};
+export declare type PaginateInput = {
+    skip: Scalars['Int'];
+    limit: Scalars['Int'];
+};
+export declare type PaymentMethod = {
+    __typename?: 'PaymentMethod';
+    id: Scalars['ID'];
+    active: Scalars['Boolean'];
+    method: Scalars['String'];
+    parent?: Maybe<PaymentMethod>;
+    ancestors: Array<PaymentMethod>;
+};
+export declare type Person = {
+    __typename?: 'Person';
+    id: Scalars['ID'];
+    name: PersonName;
+};
+export declare type PersonAddFields = {
+    name: PersonNameInput;
+};
+export declare type PersonName = {
+    __typename?: 'PersonName';
+    first: Scalars['String'];
+    last: Scalars['String'];
+};
+export declare type PersonNameInput = {
+    first: Scalars['String'];
+    last: Scalars['String'];
+};
+export declare type Query = {
+    __typename?: 'Query';
+    budgets: Array<Budget>;
+    budget: Budget;
+    businesses: Array<Business>;
+    business: Business;
+    departments: Array<Department>;
+    department?: Maybe<Department>;
+    journalEntries: Array<JournalEntry>;
+    journalEntryCategories: Array<JournalEntryCategory>;
+    journalEntryCategory: JournalEntryCategory;
+    journalEntrySources: Array<JournalEntrySource>;
+    paymentMethods: Array<PaymentMethod>;
+    people: Array<Person>;
+};
+export declare type QueryBudgetArgs = {
+    id: Scalars['ID'];
+};
+export declare type QueryBusinessesArgs = {
+    searchByName?: Maybe<Scalars['String']>;
+};
+export declare type QueryBusinessArgs = {
+    id: Scalars['ID'];
+};
+export declare type QueryDepartmentsArgs = {
+    fromParent?: Maybe<Scalars['ID']>;
+    searchByName?: Maybe<Scalars['String']>;
+};
+export declare type QueryDepartmentArgs = {
+    id: Scalars['ID'];
+};
+export declare type QueryJournalEntriesArgs = {
+    where?: Maybe<JournalEntiresWhereInput>;
+};
+export declare type QueryJournalEntryCategoryArgs = {
+    id: Scalars['ID'];
+};
+export declare type QueryJournalEntrySourcesArgs = {
+    searchByName: Scalars['String'];
+};
+export declare type QueryPeopleArgs = {
+    searchByName?: Maybe<PersonNameInput>;
+};
+export declare type Rational = {
+    __typename?: 'Rational';
+    num: Scalars['Int'];
+    den: Scalars['Int'];
+};
+export declare type RationalInput = {
+    num: Scalars['Int'];
+    den: Scalars['Int'];
+};
+export declare enum SortDirection {
+    Asc = "ASC",
+    Desc = "DESC"
+}
+export declare type Subscription = {
+    __typename?: 'Subscription';
+    journalEntryAdded: JournalEntry;
+    journalEntryUpdated: JournalEntry;
+};
+export declare type User = {
+    __typename?: 'User';
+    id: Scalars['ID'];
+    user: Person;
+};
+export declare type Vendor = {
+    __typename?: 'Vendor';
+    approved: Scalars['Boolean'];
+    vendorId?: Maybe<Scalars['ID']>;
+};
+export declare type ResolverTypeWrapper<T> = Promise<T> | T;
+export declare type ResolverFn<TResult, TParent, TContext, TArgs> = (parent: TParent, args: TArgs, context: TContext, info: GraphQLResolveInfo) => Promise<TResult> | TResult;
+export declare type Resolver<TResult, TParent = {}, TContext = {}, TArgs = {}> = ResolverFn<TResult, TParent, TContext, TArgs>;
+export declare type SubscriptionSubscribeFn<TResult, TParent, TContext, TArgs> = (parent: TParent, args: TArgs, context: TContext, info: GraphQLResolveInfo) => AsyncIterator<TResult> | Promise<AsyncIterator<TResult>>;
+export declare type SubscriptionResolveFn<TResult, TParent, TContext, TArgs> = (parent: TParent, args: TArgs, context: TContext, info: GraphQLResolveInfo) => TResult | Promise<TResult>;
+export interface SubscriptionSubscriberObject<TResult, TKey extends string, TParent, TContext, TArgs> {
+    subscribe: SubscriptionSubscribeFn<{
+        [key in TKey]: TResult;
+    }, TParent, TContext, TArgs>;
+    resolve?: SubscriptionResolveFn<TResult, {
+        [key in TKey]: TResult;
+    }, TContext, TArgs>;
+}
+export interface SubscriptionResolverObject<TResult, TParent, TContext, TArgs> {
+    subscribe: SubscriptionSubscribeFn<any, TParent, TContext, TArgs>;
+    resolve: SubscriptionResolveFn<TResult, any, TContext, TArgs>;
+}
+export declare type SubscriptionObject<TResult, TKey extends string, TParent, TContext, TArgs> = SubscriptionSubscriberObject<TResult, TKey, TParent, TContext, TArgs> | SubscriptionResolverObject<TResult, TParent, TContext, TArgs>;
+export declare type SubscriptionResolver<TResult, TKey extends string, TParent = {}, TContext = {}, TArgs = {}> = ((...args: any[]) => SubscriptionObject<TResult, TKey, TParent, TContext, TArgs>) | SubscriptionObject<TResult, TKey, TParent, TContext, TArgs>;
+export declare type TypeResolveFn<TTypes, TParent = {}, TContext = {}> = (parent: TParent, context: TContext, info: GraphQLResolveInfo) => Maybe<TTypes>;
+export declare type NextResolverFn<T> = () => Promise<T>;
+export declare type DirectiveResolverFn<TResult = {}, TParent = {}, TContext = {}, TArgs = {}> = (next: NextResolverFn<TResult>, parent: TParent, args: TArgs, context: TContext, info: GraphQLResolveInfo) => TResult | Promise<TResult>;
+/** Mapping between all available schema types and the resolvers types */
+export declare type ResolversTypes = {
+    Query: ResolverTypeWrapper<{}>;
+    Budget: ResolverTypeWrapper<Omit<Budget, 'owner'> & {
+        owner: ResolversTypes['BudgetOwner'];
+    }>;
+    ID: ResolverTypeWrapper<Scalars['ID']>;
+    Rational: ResolverTypeWrapper<Rational>;
+    Int: ResolverTypeWrapper<Scalars['Int']>;
+    BudgetOwner: ResolversTypes['Department'] | ResolversTypes['Business'];
+    Department: ResolverTypeWrapper<Omit<Department, 'parent' | 'ancestors'> & {
+        parent: ResolversTypes['DepartmentAncestor'];
+        ancestors: Array<ResolversTypes['DepartmentAncestor']>;
+    }>;
+    String: ResolverTypeWrapper<Scalars['String']>;
+    Business: ResolverTypeWrapper<Business>;
+    Vendor: ResolverTypeWrapper<Vendor>;
+    Boolean: ResolverTypeWrapper<Scalars['Boolean']>;
+    DepartmentAncestor: ResolversTypes['Department'] | ResolversTypes['Business'];
+    JournalEntiresWhereInput: JournalEntiresWhereInput;
+    JournalEntriesWhereDepartment: JournalEntriesWhereDepartment;
+    JournalEntriesWhereLastUpdate: JournalEntriesWhereLastUpdate;
+    JournalEntry: ResolverTypeWrapper<Omit<JournalEntry, 'source'> & {
+        source: ResolversTypes['JournalEntrySource'];
+    }>;
+    JournalEntryType: JournalEntryType;
+    JournalEntryCategory: ResolverTypeWrapper<JournalEntryCategory>;
+    PaymentMethod: ResolverTypeWrapper<PaymentMethod>;
+    JournalEntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'];
+    Person: ResolverTypeWrapper<Person>;
+    PersonName: ResolverTypeWrapper<PersonName>;
+    PersonNameInput: PersonNameInput;
+    Mutation: ResolverTypeWrapper<{}>;
+    BusinessAddFields: BusinessAddFields;
+    JournalEntryUpdateFields: JournalEntryUpdateFields;
+    RationalInput: RationalInput;
+    JournalEntrySourceInput: JournalEntrySourceInput;
+    JournalEntrySourceType: JournalEntrySourceType;
+    JournalEntryAddFields: JournalEntryAddFields;
+    PersonAddFields: PersonAddFields;
+    Subscription: ResolverTypeWrapper<{}>;
+    DepartmentAddFields: DepartmentAddFields;
+    JournalEntriesRes: ResolverTypeWrapper<JournalEntriesRes>;
+    JournalEntryAddedRes: ResolverTypeWrapper<JournalEntryAddedRes>;
+    SortDirection: SortDirection;
+    FilterType: FilterType;
+    PaginateInput: PaginateInput;
+    ByIdFilter: ByIdFilter;
+    User: ResolverTypeWrapper<User>;
+};
+/** Mapping between all available schema types and the resolvers parents */
+export declare type ResolversParentTypes = {
+    Query: {};
+    Budget: Omit<Budget, 'owner'> & {
+        owner: ResolversParentTypes['BudgetOwner'];
+    };
+    ID: Scalars['ID'];
+    Rational: Rational;
+    Int: Scalars['Int'];
+    BudgetOwner: ResolversParentTypes['Department'] | ResolversParentTypes['Business'];
+    Department: Omit<Department, 'parent' | 'ancestors'> & {
+        parent: ResolversParentTypes['DepartmentAncestor'];
+        ancestors: Array<ResolversParentTypes['DepartmentAncestor']>;
+    };
+    String: Scalars['String'];
+    Business: Business;
+    Vendor: Vendor;
+    Boolean: Scalars['Boolean'];
+    DepartmentAncestor: ResolversParentTypes['Department'] | ResolversParentTypes['Business'];
+    JournalEntiresWhereInput: JournalEntiresWhereInput;
+    JournalEntriesWhereDepartment: JournalEntriesWhereDepartment;
+    JournalEntriesWhereLastUpdate: JournalEntriesWhereLastUpdate;
+    JournalEntry: Omit<JournalEntry, 'source'> & {
+        source: ResolversParentTypes['JournalEntrySource'];
+    };
+    JournalEntryType: JournalEntryType;
+    JournalEntryCategory: JournalEntryCategory;
+    PaymentMethod: PaymentMethod;
+    JournalEntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'];
+    Person: Person;
+    PersonName: PersonName;
+    PersonNameInput: PersonNameInput;
+    Mutation: {};
+    BusinessAddFields: BusinessAddFields;
+    JournalEntryUpdateFields: JournalEntryUpdateFields;
+    RationalInput: RationalInput;
+    JournalEntrySourceInput: JournalEntrySourceInput;
+    JournalEntrySourceType: JournalEntrySourceType;
+    JournalEntryAddFields: JournalEntryAddFields;
+    PersonAddFields: PersonAddFields;
+    Subscription: {};
+    DepartmentAddFields: DepartmentAddFields;
+    JournalEntriesRes: JournalEntriesRes;
+    JournalEntryAddedRes: JournalEntryAddedRes;
+    SortDirection: SortDirection;
+    FilterType: FilterType;
+    PaginateInput: PaginateInput;
+    ByIdFilter: ByIdFilter;
+    User: User;
+};
+export declare type BudgetResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Budget'] = ResolversParentTypes['Budget']> = {
+    id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+    amount?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>;
+    owner?: Resolver<ResolversTypes['BudgetOwner'], ParentType, ContextType>;
+};
+export declare type BudgetOwnerResolvers<ContextType = Context, ParentType extends ResolversParentTypes['BudgetOwner'] = ResolversParentTypes['BudgetOwner']> = {
+    __resolveType: TypeResolveFn<'Department' | 'Business', ParentType, ContextType>;
+};
+export declare type BusinessResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Business'] = ResolversParentTypes['Business']> = {
+    id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+    name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    budget?: Resolver<Maybe<ResolversTypes['Budget']>, ParentType, ContextType>;
+    departments?: Resolver<Maybe<Array<ResolversTypes['Department']>>, ParentType, ContextType>;
+    vendor?: Resolver<Maybe<ResolversTypes['Vendor']>, ParentType, ContextType>;
+};
+export declare type DepartmentResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Department'] = ResolversParentTypes['Department']> = {
+    id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+    name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    code?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+    budget?: Resolver<Maybe<ResolversTypes['Budget']>, ParentType, ContextType>;
+    business?: Resolver<ResolversTypes['Business'], ParentType, ContextType>;
+    parent?: Resolver<ResolversTypes['DepartmentAncestor'], ParentType, ContextType>;
+    ancestors?: Resolver<Array<ResolversTypes['DepartmentAncestor']>, ParentType, ContextType>;
+    descendants?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>;
+    virtualRoot?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+};
+export declare type DepartmentAncestorResolvers<ContextType = Context, ParentType extends ResolversParentTypes['DepartmentAncestor'] = ResolversParentTypes['DepartmentAncestor']> = {
+    __resolveType: TypeResolveFn<'Department' | 'Business', ParentType, ContextType>;
+};
+export declare type JournalEntriesResResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntriesRes'] = ResolversParentTypes['JournalEntriesRes']> = {
+    totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+    entries?: Resolver<Array<ResolversTypes['JournalEntry']>, ParentType, ContextType>;
+};
+export declare type JournalEntryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntry'] = ResolversParentTypes['JournalEntry']> = {
+    id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+    type?: Resolver<ResolversTypes['JournalEntryType'], ParentType, ContextType>;
+    date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    department?: Resolver<ResolversTypes['Department'], ParentType, ContextType>;
+    category?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType>;
+    paymentMethod?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType>;
+    description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+    total?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>;
+    source?: Resolver<ResolversTypes['JournalEntrySource'], ParentType, ContextType>;
+    reconciled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+    lastUpdate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+export declare type JournalEntryAddedResResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntryAddedRes'] = ResolversParentTypes['JournalEntryAddedRes']> = {
+    totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+    index?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+    entry?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType>;
+};
+export declare type JournalEntryCategoryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntryCategory'] = ResolversParentTypes['JournalEntryCategory']> = {
+    id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+    name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    type?: Resolver<ResolversTypes['JournalEntryType'], ParentType, ContextType>;
+    parent?: Resolver<Maybe<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>;
+    ancestors?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>;
+};
+export declare type JournalEntrySourceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntrySource'] = ResolversParentTypes['JournalEntrySource']> = {
+    __resolveType: TypeResolveFn<'Person' | 'Business' | 'Department', ParentType, ContextType>;
+};
+export declare type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
+    addBusiness?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<MutationAddBusinessArgs, 'fields'>>;
+    journalEntryUpdate?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryUpdateArgs, 'id' | 'fields'>>;
+    journalEntryAdd?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryAddArgs, 'fields'>>;
+    addPerson?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<MutationAddPersonArgs, 'fields'>>;
+};
+export declare type PaymentMethodResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethod'] = ResolversParentTypes['PaymentMethod']> = {
+    id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+    active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+    method?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    parent?: Resolver<Maybe<ResolversTypes['PaymentMethod']>, ParentType, ContextType>;
+    ancestors?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType>;
+};
+export declare type PersonResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Person'] = ResolversParentTypes['Person']> = {
+    id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+    name?: Resolver<ResolversTypes['PersonName'], ParentType, ContextType>;
+};
+export declare type PersonNameResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PersonName'] = ResolversParentTypes['PersonName']> = {
+    first?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    last?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+export declare type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
+    budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType>;
+    budget?: Resolver<ResolversTypes['Budget'], ParentType, ContextType, RequireFields<QueryBudgetArgs, 'id'>>;
+    businesses?: Resolver<Array<ResolversTypes['Business']>, ParentType, ContextType, QueryBusinessesArgs>;
+    business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>;
+    departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, QueryDepartmentsArgs>;
+    department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
+    journalEntries?: Resolver<Array<ResolversTypes['JournalEntry']>, ParentType, ContextType, QueryJournalEntriesArgs>;
+    journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>;
+    journalEntryCategory?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType, RequireFields<QueryJournalEntryCategoryArgs, 'id'>>;
+    journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>;
+    paymentMethods?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType>;
+    people?: Resolver<Array<ResolversTypes['Person']>, ParentType, ContextType, QueryPeopleArgs>;
+};
+export declare type RationalResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Rational'] = ResolversParentTypes['Rational']> = {
+    num?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+    den?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+export declare type SubscriptionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription']> = {
+    journalEntryAdded?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryAdded", ParentType, ContextType>;
+    journalEntryUpdated?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryUpdated", ParentType, ContextType>;
+};
+export declare type UserResolvers<ContextType = Context, ParentType extends ResolversParentTypes['User'] = ResolversParentTypes['User']> = {
+    id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+    user?: Resolver<ResolversTypes['Person'], ParentType, ContextType>;
+};
+export declare type VendorResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Vendor'] = ResolversParentTypes['Vendor']> = {
+    approved?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+    vendorId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+};
+export declare type Resolvers<ContextType = Context> = {
+    Budget?: BudgetResolvers<ContextType>;
+    BudgetOwner?: BudgetOwnerResolvers;
+    Business?: BusinessResolvers<ContextType>;
+    Department?: DepartmentResolvers<ContextType>;
+    DepartmentAncestor?: DepartmentAncestorResolvers;
+    JournalEntriesRes?: JournalEntriesResResolvers<ContextType>;
+    JournalEntry?: JournalEntryResolvers<ContextType>;
+    JournalEntryAddedRes?: JournalEntryAddedResResolvers<ContextType>;
+    JournalEntryCategory?: JournalEntryCategoryResolvers<ContextType>;
+    JournalEntrySource?: JournalEntrySourceResolvers;
+    Mutation?: MutationResolvers<ContextType>;
+    PaymentMethod?: PaymentMethodResolvers<ContextType>;
+    Person?: PersonResolvers<ContextType>;
+    PersonName?: PersonNameResolvers<ContextType>;
+    Query?: QueryResolvers<ContextType>;
+    Rational?: RationalResolvers<ContextType>;
+    Subscription?: SubscriptionResolvers<ContextType>;
+    User?: UserResolvers<ContextType>;
+    Vendor?: VendorResolvers<ContextType>;
+};
+/**
+ * @deprecated
+ * Use "Resolvers" root object instead. If you wish to get "IResolvers", add "typesPrefix: I" to your config.
+*/
+export declare type IResolvers<ContextType = Context> = Resolvers<ContextType>;
