@@ -1,6 +1,6 @@
 import React, {useRef, useMemo, useCallback} from "react";
 import {useSelector} from "react-redux";
-import {useQuery, useApolloClient} from "@apollo/react-hooks";
+import {useQuery, useLazyQuery, useApolloClient} from "@apollo/react-hooks";
 import TextField, {TextFieldProps} from "@material-ui/core/TextField";
 import Chip from "@material-ui/core/Chip";
 import Box from '@material-ui/core/Box';
@@ -81,6 +81,15 @@ const BUSINESS_SRC_OPTS_INPUT_QUERY = gql`
   ${BIZ_SRC_BIZ_OPTS_FRAGMENT}
 `;
 
+const INSURE_BIZ_DATA = gql`
+  query BizSrcInsureBizData($id:ID!) {
+    business(id:$id) {
+      ...BusinessSrcBizOpts_1Fragment
+    }
+  }
+  ${BIZ_SRC_BIZ_OPTS_FRAGMENT}
+`
+
 // Static cbs for AutocompleteProps
 const getOptionLabel = (opt) => opt.name;
 const renderTags:AutocompleteProps["renderTags"] = (
@@ -134,6 +143,8 @@ const BusinessSrc = function(props:BusinessSrcProps) {
   const client = useApolloClient();
 
   const dispatch = useDebounceDispatch();
+
+  const [pullBizData, {loading:loadingNewBiz}] = useLazyQuery(INSURE_BIZ_DATA);
   
   const {disabled, srcInput, type, src, isSrcSet, required,
     open, hasError, errorMsg, upsertType
@@ -211,11 +222,23 @@ const BusinessSrc = function(props:BusinessSrcProps) {
     
     } else if(src.sourceType === JournalEntrySourceType.Business) {
       
-      return client.readFragment<BusinessSrcDeptOptsFragment>({
-        id:`Business:${src.id}`,
-        fragment:BIZ_SRC_BIZ_OPTS_FRAGMENT,
-        fragmentName:"BusinessSrcBizOpts_1Fragment"
-      }) || null;
+
+      try {
+
+        return client.readFragment<BusinessSrcDeptOptsFragment>({
+          id:`Business:${src.id}`,
+          fragment:BIZ_SRC_BIZ_OPTS_FRAGMENT,
+          fragmentName:"BusinessSrcBizOpts_1Fragment"
+        }, true) || null;
+          
+        
+      } catch(error) {
+
+        pullBizData({variables:{id:src.id}});
+
+        return null;
+
+      }
       
     }
 
@@ -224,7 +247,7 @@ const BusinessSrc = function(props:BusinessSrcProps) {
       fragment:BIZ_SRC_DEPT_OPTS_FRAGMENT
     }) || null;
   
-  },[src, client, data]);
+  },[src, client, data, pullBizData]);
 
   const valueChain = useMemo(() => {
 
@@ -363,8 +386,8 @@ const BusinessSrc = function(props:BusinessSrcProps) {
   },[srcInput]);
 
   const autocompleteProps:AutocompleteProps = {
-    loading,
-    disabled:!type || disabled,
+    loading:loading || loadingNewBiz,
+    disabled:!type || disabled || loadingNewBiz,
     multiple,
     open,
     options,

@@ -552,6 +552,16 @@ export type BusinessSrcOptsInput_1Query = { __typename?: 'Query', bizOpt: (
     & BusinessSrcBizOpts_1Fragment
   )> };
 
+export type BizSrcInsureBizDataQueryVariables = {
+  id: Scalars['ID']
+};
+
+
+export type BizSrcInsureBizDataQuery = { __typename?: 'Query', business: (
+    { __typename?: 'Business' }
+    & BusinessSrcBizOpts_1Fragment
+  ) };
+
 export type PersonSrcOpt_1Fragment = { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } };
 
 export type PeopleSrcOpts_1QueryVariables = {
