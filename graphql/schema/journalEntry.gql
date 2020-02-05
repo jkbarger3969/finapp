@@ -112,6 +112,7 @@ type Mutation {
   journalEntryUpdate(id:ID!, fields:JournalEntryUpdateFields!):
     JournalEntry!
   journalEntryAdd(fields:JournalEntryAddFields!):JournalEntry!
+  journalEntryDelete(id:ID!):JournalEntry!
 }
 
 type Subscription {

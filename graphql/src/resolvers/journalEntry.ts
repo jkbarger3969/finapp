@@ -565,6 +565,61 @@ export const journalEntryAdd:
 
 }
 
+export const journalEntryDelete:MutationResolvers["journalEntryDelete"] = 
+  async (parent, args, context, info) =>
+{
+
+  const {id} = args;
+  const {db, user, pubSub} = context;
+
+  const createdBy = {
+    node: userNodeType,
+    id: user.id
+  };
+
+  const createdOn  = new Date();
+  const lastUpdate = createdOn;
+
+  const updateQuery = {
+    $set:{
+      lastUpdate,
+    },
+    $push:{
+      deleted:{
+        $each:[{
+          value:true,
+          createdBy,
+          createdOn,
+        }],
+        $position:0
+      }
+    }
+  };
+
+  const _id = new ObjectID(id);
+
+  const {modifiedCount} = await 
+    db.collection("journalEntries")
+      .updateOne({_id}, updateQuery);
+
+  if(modifiedCount === 0) {
+    throw new Error(`Mutation "journalEntryDelete" arguments "${JSON.stringify(args)}" failed.`);    
+  }
+
+  const doc = await db.collection("journalEntries")
+    .aggregate([
+      {$match:{_id}},
+      addFields,
+      project
+    ]).toArray();
+  
+  pubSub.publish(JOURNAL_ENTRY_UPDATED, { journalEntryUpdated: doc[0] })
+    .catch((error)=> console.error(error));
+
+  return doc[0];
+
+}
+
 export const JournalEntry:JournalEntryResolvers = {
   type:(parent) => (parent.type as any) === "credit" ? 
     JournalEntryType.Credit : JournalEntryType.Debit,

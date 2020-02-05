@@ -3,7 +3,7 @@ import {Budget, budgets} from "./resolvers/budget";
 import {Business, business, businesses, addBusiness} from "./resolvers/business";
 import {Department, departments, department} from "./resolvers/departments";
 import {journalEntryAdd, journalEntryUpdate, JournalEntry,
-  journalEntryAdded, journalEntryUpdated
+  journalEntryAdded, journalEntryUpdated, journalEntryDelete
 } from "./resolvers/journalEntry";
 import journalEntries from "./resolvers/journalEntry/journalEntries";
 import {journalEntrySources} from "./resolvers/journalEntrySource";
@@ -37,6 +37,7 @@ const resolvers:Resolvers = {
   Mutation:{
     journalEntryAdd,
     journalEntryUpdate,
+    journalEntryDelete,
     addPerson,
     addBusiness
   },

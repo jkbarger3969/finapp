@@ -237,6 +237,7 @@ export type Mutation = {
   addBusiness: Business,
   journalEntryUpdate: JournalEntry,
   journalEntryAdd: JournalEntry,
+  journalEntryDelete: JournalEntry,
   addPerson: Person,
 };
 
@@ -254,6 +255,11 @@ export type MutationJournalEntryUpdateArgs = {
 
 export type MutationJournalEntryAddArgs = {
   fields: JournalEntryAddFields
+};
+
+
+export type MutationJournalEntryDeleteArgs = {
+  id: Scalars['ID']
 };
 
 
@@ -468,6 +474,13 @@ export type JournalEntryUpdated_1Subscription = { __typename?: 'Subscription', j
     { __typename?: 'JournalEntry' }
     & JournalEntry_1Fragment
   ) };
+
+export type DeleteEntry_1MutationVariables = {
+  id: Scalars['ID']
+};
+
+
+export type DeleteEntry_1Mutation = { __typename?: 'Mutation', journalEntryDelete: { __typename: 'JournalEntry', id: string, deleted: boolean } };
 
 export type CatInputOpts_1QueryVariables = {};
 
@@ -920,6 +933,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   addBusiness?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<MutationAddBusinessArgs, 'fields'>>,
   journalEntryUpdate?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryUpdateArgs, 'id' | 'fields'>>,
   journalEntryAdd?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryAddArgs, 'fields'>>,
+  journalEntryDelete?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryDeleteArgs, 'id'>>,
   addPerson?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<MutationAddPersonArgs, 'fields'>>,
 };
 
