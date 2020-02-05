@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 import {useSelector} from "react-redux";
 import {useApolloClient, useMutation} from "@apollo/react-hooks";
 import {Add, Cancel, Delete} from "@material-ui/icons/";
+import { useTheme } from '@material-ui/core/styles';
 import Box from "@material-ui/core/Box";
 import Button from "@material-ui/core/Button";
 import Dialog from "@material-ui/core/Dialog";
@@ -52,6 +53,8 @@ const DELETE_ENTRY = gql`
 const UpdateEntry = function(props:UpdateEntryProps) {
 
   const {entryUpsertId, fromDept} = props;
+
+  const theme = useTheme();
 
   const client = useApolloClient();
 
@@ -148,13 +151,15 @@ const UpdateEntry = function(props:UpdateEntryProps) {
               startIcon={<Add />}
               onClick={onClickUpdate}
             >Update</Button>
-            <Button
-              size="medium"
-              color="default"
-              variant="outlined"
-              startIcon={<Cancel />}
-              onClick={onClickCancel}
-            >Cancel</Button>
+            <Box ml={`${theme.spacing(1)}px !important`} clone>
+              <Button
+                size="medium"
+                color="default"
+                variant="outlined"
+                startIcon={<Cancel />}
+                onClick={onClickCancel}
+              >Cancel</Button>
+            </Box>
           </div>
         </Box>
       </DialogActions>

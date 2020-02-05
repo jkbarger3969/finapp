@@ -109,13 +109,13 @@ const AddEntry = function(props:AddEntryProps) {
           startIcon={<Add />}
           onClick={onClickSubmit}
         >Submit</Button>
-        <Button
+        {/* <Button
           disabled={!typeIsSet}
           size="medium"
           color="secondary"
           variant="outlined"
           startIcon={<Queue />}
-        >Submit/New</Button>
+        >Submit/New</Button> */}
         <Button
           size="medium"
           color="default"

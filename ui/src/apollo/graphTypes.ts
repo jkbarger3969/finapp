@@ -475,6 +475,13 @@ export type JournalEntryUpdated_1Subscription = { __typename?: 'Subscription', j
     & JournalEntry_1Fragment
   ) };
 
+export type DeleteEntry_1MutationVariables = {
+  id: Scalars['ID']
+};
+
+
+export type DeleteEntry_1Mutation = { __typename?: 'Mutation', journalEntryDelete: { __typename: 'JournalEntry', id: string, deleted: boolean } };
+
 export type CatInputOpts_1QueryVariables = {};
 
 
