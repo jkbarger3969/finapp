@@ -152,6 +152,7 @@ export declare type Mutation = {
     addBusiness: Business;
     journalEntryUpdate: JournalEntry;
     journalEntryAdd: JournalEntry;
+    journalEntryDelete: JournalEntry;
     addPerson: Person;
 };
 export declare type MutationAddBusinessArgs = {
@@ -163,6 +164,9 @@ export declare type MutationJournalEntryUpdateArgs = {
 };
 export declare type MutationJournalEntryAddArgs = {
     fields: JournalEntryAddFields;
+};
+export declare type MutationJournalEntryDeleteArgs = {
+    id: Scalars['ID'];
 };
 export declare type MutationAddPersonArgs = {
     fields: PersonAddFields;
@@ -455,6 +459,7 @@ export declare type MutationResolvers<ContextType = Context, ParentType extends 
     addBusiness?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<MutationAddBusinessArgs, 'fields'>>;
     journalEntryUpdate?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryUpdateArgs, 'id' | 'fields'>>;
     journalEntryAdd?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryAddArgs, 'fields'>>;
+    journalEntryDelete?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryDeleteArgs, 'id'>>;
     addPerson?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<MutationAddPersonArgs, 'fields'>>;
 };
 export declare type PaymentMethodResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethod'] = ResolversParentTypes['PaymentMethod']> = {
