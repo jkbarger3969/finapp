@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import {useSelector} from "react-redux";
-import {useApolloClient} from "@apollo/react-hooks";
+import {useApolloClient, useMutation} from "@apollo/react-hooks";
 import {Add, Cancel, Delete} from "@material-ui/icons/";
 import Box from "@material-ui/core/Box";
 import Button from "@material-ui/core/Button";
@@ -9,6 +9,7 @@ import DialogActions from "@material-ui/core/DialogActions";
 import DialogContent from "@material-ui/core/DialogContent";
 import DialogTitle from "@material-ui/core/DialogTitle";
 import FormControlLabel from "@material-ui/core/FormControlLabel";
+import gql from "graphql-tag";
 
 
 import DateInput from "../../JournalEntryInputs/DateInput";
@@ -21,10 +22,12 @@ import DescriptionInput from "../../JournalEntryInputs/DescriptionInput";
 import ReconciledInput from "../../JournalEntryInputs/ReconciledInput";
 import TypeToggle from "../../JournalEntryInputs/TypeToggle";
 import {Root} from "../../../redux/reducers/root";
-import {getUpsertType, UpsertType, getType
+import {getUpsertType, UpsertType, getType, getUpdateId
 } from "../../../redux/selectors/journalEntryUpsert";
 import {useDebounceDispatch as useDispatch} from "../../../redux/hooks";
-import {cancel, submit} from "../../../redux/actions/journalEntryUpsert";
+import {cancel, submit, setSubmitStatus, clear
+} from "../../../redux/actions/journalEntryUpsert";
+import {SubmitStatus} from "../../../redux/reducers/journalEntryUpserts";
 
 interface SelectorResult {
   open:boolean;
@@ -36,6 +39,16 @@ export interface UpdateEntryProps {
   fromDept?:string;
 }
 
+const DELETE_ENTRY = gql`
+  mutation DeleteEntry_1($id:ID!) {
+    journalEntryDelete(id:$id) {
+      __typename
+      id
+      deleted
+    }
+  }
+`;
+
 const UpdateEntry = function(props:UpdateEntryProps) {
 
   const {entryUpsertId, fromDept} = props;
@@ -43,6 +56,10 @@ const UpdateEntry = function(props:UpdateEntryProps) {
   const client = useApolloClient();
 
   const dispatch = useDispatch();
+
+  const entryId = useSelector((state:Root)=>getUpdateId(state, entryUpsertId));
+
+  const [deleteEntry] = useMutation(DELETE_ENTRY);
 
   const onClickCancel = useCallback((event?) => {
     dispatch(cancel(entryUpsertId));
@@ -53,9 +70,17 @@ const UpdateEntry = function(props:UpdateEntryProps) {
   },[dispatch, entryUpsertId, client]);
 
   const onClickDelete = useCallback((event?) => {
-    console.log("Delete ", entryUpsertId);
-    // dispatch(submit(entryUpsertId, client));
-  },[dispatch, entryUpsertId, client]);
+
+    deleteEntry({variables:{id:entryId}}).then(() => {
+      dispatch(setSubmitStatus(entryUpsertId, SubmitStatus.Submitted));
+      dispatch(clear(entryUpsertId));
+    }).catch((error) => {
+      dispatch(setSubmitStatus(entryUpsertId, SubmitStatus.NotSubmitted));
+    });
+
+    dispatch(setSubmitStatus(entryUpsertId, SubmitStatus.Submitting));
+
+  },[deleteEntry, entryId, dispatch, entryUpsertId]);
 
 
   const {open, typeIsSet} = useSelector<Root, SelectorResult>((state) => ({

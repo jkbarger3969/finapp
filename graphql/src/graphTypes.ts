@@ -171,6 +171,7 @@ export type Mutation = {
   addBusiness: Business,
   journalEntryUpdate: JournalEntry,
   journalEntryAdd: JournalEntry,
+  journalEntryDelete: JournalEntry,
   addPerson: Person,
 };
 
@@ -188,6 +189,11 @@ export type MutationJournalEntryUpdateArgs = {
 
 export type MutationJournalEntryAddArgs = {
   fields: JournalEntryAddFields
+};
+
+
+export type MutationJournalEntryDeleteArgs = {
+  id: Scalars['ID']
 };
 
 
@@ -551,6 +557,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   addBusiness?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<MutationAddBusinessArgs, 'fields'>>,
   journalEntryUpdate?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryUpdateArgs, 'id' | 'fields'>>,
   journalEntryAdd?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryAddArgs, 'fields'>>,
+  journalEntryDelete?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryDeleteArgs, 'id'>>,
   addPerson?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<MutationAddPersonArgs, 'fields'>>,
 };
 

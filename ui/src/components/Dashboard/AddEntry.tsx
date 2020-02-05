@@ -2,7 +2,6 @@ import React, { useCallback } from 'react';
 import {useSelector} from "react-redux";
 import {useApolloClient} from "@apollo/react-hooks";
 import {Add, Queue, Cancel} from "@material-ui/icons/";
-import Tooltip from '@material-ui/core/Tooltip';
 import Box from '@material-ui/core/Box';
 import Button from '@material-ui/core/Button';
 import Dialog from '@material-ui/core/Dialog';
@@ -26,7 +25,6 @@ import {getUpsertType, UpsertType, getType
 } from "../../redux/selectors/journalEntryUpsert";
 import {useDebounceDispatch as useDispatch} from "../../redux/hooks";
 import {cancel, submit} from "../../redux/actions/journalEntryUpsert";
-import {JournalEntryType} from "../../apollo/graphTypes";
 
 interface SelectorResult {
   open:boolean;
