@@ -25,6 +25,7 @@
   "license": "UNLICENSED",
   "dependencies": {
     "@intacct/intacct-sdk": "^1.1.4",
+    "@reduxjs/toolkit": "^1.2.3",
     "apollo-server": "^2.9.7",
     "apollo-server-koa": "^2.9.7",
     "async-exit-hook": "^2.0.1",

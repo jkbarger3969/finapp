@@ -482,6 +482,28 @@ export type DeleteEntry_1MutationVariables = {
 
 export type DeleteEntry_1Mutation = { __typename?: 'Mutation', journalEntryDelete: { __typename: 'JournalEntry', id: string, deleted: boolean } };
 
+export type CatEntryOptsQueryVariables = {};
+
+
+export type CatEntryOptsQuery = { __typename?: 'Query', catOpts: Array<(
+    { __typename?: 'JournalEntryCategory' }
+    & CatEntryOptFragment
+  )> };
+
+export type CatEntryOptFragment = { __typename: 'JournalEntryCategory', id: string, name: string, type: JournalEntryType, parent: Maybe<{ __typename?: 'JournalEntryCategory', id: string }> };
+
+export type DeptEntryOptsQueryVariables = {
+  fromParent?: Maybe<Scalars['ID']>
+};
+
+
+export type DeptEntryOptsQuery = { __typename?: 'Query', deptOpts: Array<(
+    { __typename?: 'Department' }
+    & DeptEntryOptFragment
+  )> };
+
+export type DeptEntryOptFragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
+
 export type CatInputOpts_1QueryVariables = {};
 
 
