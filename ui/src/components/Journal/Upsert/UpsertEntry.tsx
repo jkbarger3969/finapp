@@ -161,7 +161,7 @@ const UpsertEntry = function(props: UpsertEntryProps) {
         </Dialog>
       );
     },
-    [isUpdate, onCancel, open]
+    [isUpdate, theme, onCancel, open]
   );
 
   return (

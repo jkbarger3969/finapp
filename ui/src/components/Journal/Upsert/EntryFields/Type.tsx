@@ -13,6 +13,8 @@ import {
 } from "@material-ui/core";
 import { JournalEntryType } from "../../../../apollo/graphTypes";
 
+const NULLISH: unique symbol = Symbol();
+
 const Type = function(
   props: {
     label?: boolean | FormControlLabelProps["labelPlacement"];
@@ -22,11 +24,9 @@ const Type = function(
 
   const { isSubmitting } = useFormikContext();
 
-  const [field, meta, helpers] = useField<JournalEntryType | null>({
+  const [field, , helpers] = useField<JournalEntryType | null>({
     name: "type"
   });
-
-  const { error } = meta;
 
   const { setValue, setTouched } = helpers;
 
@@ -37,6 +37,9 @@ const Type = function(
       disabled: isSubmitting,
       ...field,
       onChange: (event, value: JournalEntryType) => {
+        if (((value ?? NULLISH) as any) === NULLISH) {
+          return;
+        }
         setValue(value);
         setTouched(true);
       }

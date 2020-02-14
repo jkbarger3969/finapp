@@ -47,8 +47,10 @@ const renderTags: AutocompleteProps["renderTags"] = (
   const lastIndex = values.length - 1;
   return values.map((dept: any, index: number) => {
     const isLastIndex = lastIndex === index;
+    const { key, ...props } = getTagProps({ index }) as any;
     return (
       <Box
+        key={key}
         display="flex"
         flexDirection="row"
         alignItems="center"
@@ -60,7 +62,7 @@ const renderTags: AutocompleteProps["renderTags"] = (
           variant={isLastIndex ? "default" : "outlined"}
           label={dept.name}
           size="medium"
-          {...getTagProps({ index })}
+          {...props}
         />{" "}
         {!isLastIndex && <ChevronRight fontSize="small" />}
       </Box>
