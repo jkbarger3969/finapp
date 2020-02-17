@@ -26,7 +26,7 @@ export type Business = {
   id: Scalars['ID'],
   name: Scalars['String'],
   budget?: Maybe<Budget>,
-  departments?: Maybe<Array<Department>>,
+  departments: Array<Department>,
   vendor?: Maybe<Vendor>,
 };
 
@@ -495,7 +495,7 @@ export type BusinessResolvers<ContextType = Context, ParentType extends Resolver
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>,
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
   budget?: Resolver<Maybe<ResolversTypes['Budget']>, ParentType, ContextType>,
-  departments?: Resolver<Maybe<Array<ResolversTypes['Department']>>, ParentType, ContextType>,
+  departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>,
   vendor?: Resolver<Maybe<ResolversTypes['Vendor']>, ParentType, ContextType>,
 };
 

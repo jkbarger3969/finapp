@@ -15,12 +15,17 @@ import { Moment } from "moment";
 import {
   DeptEntryOptFragment as DeptValue,
   JournalEntryType,
-  CatEntryOptFragment as CatValue
+  CatEntryOptFragment as CatValue,
+  JournalEntrySourceType,
+  SrcEntryBizOptFragment,
+  SrcEntryDeptOptFragment,
+  SrcEntryPersonOptFragment
 } from "../../../apollo/graphTypes";
 import Type from "./EntryFields/Type";
 import DateEntry from "./EntryFields/DateEntry";
 import Department from "./EntryFields/Department";
 import Category from "./EntryFields/Category";
+import Source, { Value as SrcValue } from "./EntryFields/Source";
 
 export interface UpsertEntryProps {
   entryId?: string;
@@ -33,6 +38,10 @@ export interface Values {
   date: Moment | null;
   department: DeptValue | null;
   category: CatValue | null;
+  source: {
+    inputValue: string;
+    value: SrcValue[];
+  };
 }
 
 const UpsertEntry = function(props: UpsertEntryProps) {
@@ -49,7 +58,11 @@ const UpsertEntry = function(props: UpsertEntryProps) {
       type: null,
       date: null,
       department: null,
-      category: null
+      category: null,
+      source: {
+        inputValue: "",
+        value: []
+      }
     };
   }, [entryId, isUpdate]);
 
@@ -116,6 +129,9 @@ const UpsertEntry = function(props: UpsertEntryProps) {
                   </Box>
                   <Box margin={entryMargin} width={350} clone>
                     <Category entryType={props.values.type} />
+                  </Box>
+                  <Box margin={entryMargin} width={350} clone>
+                    <Source />
                   </Box>
                 </React.Fragment>
               )}

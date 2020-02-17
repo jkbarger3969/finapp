@@ -1,8 +1,9 @@
 import React, { useCallback, useMemo, useState } from "react";
 import Autocomplete, {
-  AutocompleteProps,
+  AutocompleteProps as AutocompletePropsRaw,
   RenderInputParams
 } from "@material-ui/lab/Autocomplete";
+import { UseAutocompleteMultipleProps } from "@material-ui/lab/useAutocomplete";
 import { useField } from "formik";
 import gql from "graphql-tag";
 import { useQuery } from "@apollo/react-hooks";
@@ -38,6 +39,9 @@ const DEPT_OPTS_QUERY = gql`
 `;
 
 const businessId = "5dc4b09bcf96e166daaa0090";
+
+type AutocompleteProps = AutocompletePropsRaw<DeptValue> &
+  UseAutocompleteMultipleProps<DeptValue>;
 
 const getOptionLabel = (opt: DeptValue) => opt.name;
 const renderTags: AutocompleteProps["renderTags"] = (
@@ -83,6 +87,9 @@ const Department = function(props: DepartmentProps) {
   const depts = data?.deptOpts || [];
 
   const [hasFocus, setHasFocus] = useState(false);
+
+  // Input must be controlled to stop input when leaf option is selected.
+  const [inputValue, setInputValue] = useState("");
 
   const validate = useCallback(
     (value: DeptValue | null) => {
@@ -145,6 +152,10 @@ const Department = function(props: DepartmentProps) {
     );
   }, [depts, value]);
 
+  const disableTextInput = useMemo(() => {
+    return value.length > 0 && options.length === 0;
+  }, [value, options]);
+
   const renderInput = useCallback(
     (params: RenderInputParams) => {
       return (
@@ -156,11 +167,11 @@ const Department = function(props: DepartmentProps) {
           helperText={touched ? error : undefined}
           name="department"
           label="Department"
-          disabled={options.length === 0}
+          disabled={disableTextInput}
         />
       );
     },
-    [props, touched, error, options]
+    [props, touched, error, disableTextInput]
   );
 
   const onFocus = useCallback((event?) => setHasFocus(true), [setHasFocus]);
@@ -170,6 +181,29 @@ const Department = function(props: DepartmentProps) {
       onBlurField(event);
     },
     [setHasFocus, onBlurField]
+  );
+
+  const onChange = useCallback<NonNullable<AutocompleteProps["onChange"]>>(
+    (event, value) => {
+      if (!value) {
+        setValue(null);
+      } else if (Array.isArray(value)) {
+        const len = value.length;
+        setValue(len === 0 ? null : value[len - 1]);
+      } else {
+        setValue(value);
+      }
+    },
+    [setValue]
+  );
+
+  const onInputChange = useCallback<
+    NonNullable<AutocompleteProps["onInputChange"]>
+  >(
+    (event, value: string, reason) => {
+      setInputValue((value || "").trimStart());
+    },
+    [setInputValue]
   );
 
   const autoCompleteProps = useMemo<AutocompleteProps>(() => {
@@ -188,23 +222,19 @@ const Department = function(props: DepartmentProps) {
       autoSelect: true,
       multiple: true,
       getOptionLabel,
-      onChange: (event, value) => {
-        if (!value) {
-          setValue(null);
-        } else if (Array.isArray(value)) {
-          const len = value.length;
-          setValue(len === 0 ? null : value[len - 1]);
-        } else {
-          setValue(value);
-        }
-      },
+      onChange,
+      onInputChange,
+      inputValue: disableTextInput ? "" : inputValue,
       name: "department"
     };
   }, [
+    disableTextInput,
+    inputValue,
+    onInputChange,
+    onChange,
     value,
     loading,
     renderInput,
-    setValue,
     field,
     hasFocus,
     onFocus,

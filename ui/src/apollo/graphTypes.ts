@@ -29,7 +29,7 @@ export type Business = {
   id: Scalars['ID'],
   name: Scalars['String'],
   budget?: Maybe<Budget>,
-  departments?: Maybe<Array<Department>>,
+  departments: Array<Department>,
   vendor?: Maybe<Vendor>,
 };
 
@@ -504,6 +504,29 @@ export type DeptEntryOptsQuery = { __typename?: 'Query', deptOpts: Array<(
 
 export type DeptEntryOptFragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
 
+export type SrcEntryOptsQueryVariables = {
+  name: Scalars['String'],
+  isBiz: Scalars['Boolean']
+};
+
+
+export type SrcEntryOptsQuery = { __typename?: 'Query', businesses: Array<(
+    { __typename?: 'Business' }
+    & SrcEntryBizOptFragment
+  )>, people: Array<(
+    { __typename?: 'Person' }
+    & SrcEntryPersonOptFragment
+  )> };
+
+export type SrcEntryPersonOptFragment = { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } };
+
+export type SrcEntryBizOptFragment = { __typename: 'Business', id: string, name: string, vendor: Maybe<{ __typename?: 'Vendor', approved: boolean, vendorId: Maybe<string> }>, departments: Array<(
+    { __typename?: 'Department' }
+    & SrcEntryDeptOptFragment
+  )> };
+
+export type SrcEntryDeptOptFragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
+
 export type CatInputOpts_1QueryVariables = {};
 
 
@@ -558,10 +581,10 @@ export type PayMethodInput_1Query = { __typename?: 'Query', paymentMethods: Arra
 
 export type BusinessSrcDeptOpts_1Fragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
 
-export type BusinessSrcBizOpts_1Fragment = { __typename: 'Business', id: string, name: string, vendor: Maybe<{ __typename?: 'Vendor', approved: boolean, vendorId: Maybe<string> }>, deptOpts: Maybe<Array<(
+export type BusinessSrcBizOpts_1Fragment = { __typename: 'Business', id: string, name: string, vendor: Maybe<{ __typename?: 'Vendor', approved: boolean, vendorId: Maybe<string> }>, deptOpts: Array<(
     { __typename?: 'Department' }
     & BusinessSrcDeptOpts_1Fragment
-  )>> };
+  )> };
 
 export type BusinessSrcOptsInput_1QueryVariables = {
   searchByName: Scalars['String'],
@@ -851,7 +874,7 @@ export type BusinessResolvers<ContextType = Context, ParentType extends Resolver
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>,
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
   budget?: Resolver<Maybe<ResolversTypes['Budget']>, ParentType, ContextType>,
-  departments?: Resolver<Maybe<Array<ResolversTypes['Department']>>, ParentType, ContextType>,
+  departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>,
   vendor?: Resolver<Maybe<ResolversTypes['Vendor']>, ParentType, ContextType>,
 };
 

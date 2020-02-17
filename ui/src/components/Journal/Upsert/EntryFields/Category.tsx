@@ -1,8 +1,9 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import Autocomplete, {
-  AutocompleteProps,
+  AutocompleteProps as AutocompletePropsRaw,
   RenderInputParams
 } from "@material-ui/lab/Autocomplete";
+import { UseAutocompleteMultipleProps } from "@material-ui/lab/useAutocomplete";
 import { useField } from "formik";
 import gql from "graphql-tag";
 import { useQuery } from "@apollo/react-hooks";
@@ -31,6 +32,9 @@ const CAT_OPTS_QUERY = gql`
     }
   }
 `;
+
+type AutocompleteProps = AutocompletePropsRaw<CatValue> &
+  UseAutocompleteMultipleProps<CatValue>;
 
 const getOptionLabel = (opt: CatValue) => opt.name;
 const renderTags: AutocompleteProps["renderTags"] = (
@@ -80,6 +84,9 @@ const Category = function(props: CategoryProps) {
   const categories = data?.catOpts || [];
 
   const [hasFocus, setHasFocus] = useState(false);
+
+  // Input must be controlled to stop input when leaf option is selected.
+  const [inputValue, setInputValue] = useState("");
 
   const validate = useCallback(
     (value: CatValue | null) => {
@@ -154,6 +161,10 @@ const Category = function(props: CategoryProps) {
     }
   }, [categories, value, entryType]);
 
+  const disableTextInput = useMemo(() => {
+    return value.length > 0 && options.length === 0;
+  }, [value, options]);
+
   const renderInput = useCallback(
     (params: RenderInputParams) => {
       return (
@@ -165,11 +176,11 @@ const Category = function(props: CategoryProps) {
           helperText={touched ? error : undefined}
           name="category"
           label="Category"
-          disabled={options.length === 0}
+          disabled={disableTextInput}
         />
       );
     },
-    [props, fowardProps, touched, error, options]
+    [props, fowardProps, touched, error, disableTextInput]
   );
 
   const onFocus = useCallback((event?) => setHasFocus(true), [setHasFocus]);
@@ -179,6 +190,30 @@ const Category = function(props: CategoryProps) {
       onBlurField(event);
     },
     [setHasFocus, onBlurField]
+  );
+
+  const onChange = useCallback<NonNullable<AutocompleteProps["onChange"]>>(
+    (event, value) => {
+      if (!value) {
+        setValue(null);
+      } else if (Array.isArray(value)) {
+        const len = value.length;
+        setValue(len === 0 ? null : value[len - 1]);
+      } else {
+        setValue(value);
+      }
+    },
+    [setValue]
+  );
+
+  const onInputChange = useCallback<
+    NonNullable<AutocompleteProps["onInputChange"]>
+  >(
+    (event, value: string, reason) => {
+      value = (value || "").trimStart();
+      setInputValue(value);
+    },
+    [setInputValue]
   );
 
   const autoCompleteProps = useMemo<AutocompleteProps>(() => {
@@ -197,23 +232,19 @@ const Category = function(props: CategoryProps) {
       autoSelect: true,
       multiple: true,
       getOptionLabel,
-      onChange: (event, value) => {
-        if (!value) {
-          setValue(null);
-        } else if (Array.isArray(value)) {
-          const len = value.length;
-          setValue(len === 0 ? null : value[len - 1]);
-        } else {
-          setValue(value);
-        }
-      },
+      onInputChange,
+      inputValue: disableTextInput ? "" : inputValue,
+      onChange,
       name: "category"
     };
   }, [
+    disableTextInput,
+    onChange,
+    onInputChange,
+    inputValue,
     value,
     loading,
     renderInput,
-    setValue,
     field,
     hasFocus,
     onFocus,
