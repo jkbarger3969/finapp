@@ -27,12 +27,12 @@ const validate = (value: Moment | null): string | undefined => {
   }
 };
 
-const DateField = function(
+const DateField = (
   props: {
     variant?: "filled" | "outlined";
     autoFocus?: boolean;
   } & TextFieldProps
-) {
+) => {
   const { variant: inputVariant = "filled", autoFocus = false } = props;
 
   const calOpen = useRef(false);

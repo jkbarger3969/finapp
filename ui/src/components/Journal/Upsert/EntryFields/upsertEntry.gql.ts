@@ -43,16 +43,11 @@ export const SRC_ENTRY_DEPT_OPT_FRAGMENT = gql`
   }
 `;
 
-export const SRC_ENTRY_OPTS_QUERY = gql`
-  query SrcEntryOpts($name: String!, $isBiz: Boolean!) {
-    businesses(searchByName: $name) @include(if: $isBiz) {
-      ...SrcEntryBizOptFragment
-    }
-    people(searchByName: { first: $name, last: $name }) @skip(if: $isBiz) {
-      ...SrcEntryPersonOptFragment
-    }
+export const PAY_METHOD_ENTRY_OPT_FRAGMENT = gql`
+  fragment PayMethodEntryOptFragment on PaymentMethod {
+    __typename
+    id
+    method
+    active
   }
-  ${SRC_ENTRY_PERSON_OPT_FRAGMENT}
-  ${SRC_ENTRY_BIZ_OPT_FRAGMENT}
-  ${SRC_ENTRY_DEPT_OPT_FRAGMENT}
 `;

@@ -504,6 +504,14 @@ export type DeptEntryOptsQuery = { __typename?: 'Query', deptOpts: Array<(
 
 export type DeptEntryOptFragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
 
+export type PayMethodEntryOptsQueryVariables = {};
+
+
+export type PayMethodEntryOptsQuery = { __typename?: 'Query', paymentMethods: Array<(
+    { __typename?: 'PaymentMethod' }
+    & PayMethodEntryOptFragment
+  )> };
+
 export type SrcEntryOptsQueryVariables = {
   name: Scalars['String'],
   isBiz: Scalars['Boolean']
@@ -526,6 +534,8 @@ export type SrcEntryBizOptFragment = { __typename: 'Business', id: string, name:
   )> };
 
 export type SrcEntryDeptOptFragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
+
+export type PayMethodEntryOptFragment = { __typename: 'PaymentMethod', id: string, method: string, active: boolean };
 
 export type CatInputOpts_1QueryVariables = {};
 

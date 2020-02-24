@@ -10,6 +10,7 @@ import { TextFieldProps, TextField, Box, Chip } from "@material-ui/core";
 import { ChevronRight } from "@material-ui/icons";
 import { parseName } from "humanparser";
 import * as namecase from "namecase";
+import gql from "graphql-tag";
 
 import {
   JournalEntrySourceType,
@@ -20,7 +21,25 @@ import {
   SrcEntryPersonOptFragment as PersonOpt
 } from "../../../../apollo/graphTypes";
 import { Values } from "../UpsertEntry";
-import { SRC_ENTRY_OPTS_QUERY } from "./entryQueries.gql";
+import {
+  SRC_ENTRY_PERSON_OPT_FRAGMENT,
+  SRC_ENTRY_BIZ_OPT_FRAGMENT,
+  SRC_ENTRY_DEPT_OPT_FRAGMENT
+} from "./upsertEntry.gql";
+
+const SRC_ENTRY_OPTS_QUERY = gql`
+  query SrcEntryOpts($name: String!, $isBiz: Boolean!) {
+    businesses(searchByName: $name) @include(if: $isBiz) {
+      ...SrcEntryBizOptFragment
+    }
+    people(searchByName: { first: $name, last: $name }) @skip(if: $isBiz) {
+      ...SrcEntryPersonOptFragment
+    }
+  }
+  ${SRC_ENTRY_PERSON_OPT_FRAGMENT}
+  ${SRC_ENTRY_BIZ_OPT_FRAGMENT}
+  ${SRC_ENTRY_DEPT_OPT_FRAGMENT}
+`;
 
 export type SourceProps = {
   variant?: "filled" | "outlined";
@@ -53,7 +72,7 @@ const isFreeSoloOpt = (opt: Value) => {
 const getOptionLabel: AutocompleteProps["getOptionLabel"] = (opt): string => {
   switch (opt) {
     case JournalEntrySourceType.Business:
-      return "Business";
+      return "Vendor";
     case JournalEntrySourceType.Department:
       return "Department";
     case JournalEntrySourceType.Person:
