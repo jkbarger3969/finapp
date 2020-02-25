@@ -25,7 +25,7 @@ const PAY_METHOD_ENTRY_OPTS = gql`
   ${PAY_METHOD_ENTRY_OPT_FRAGMENT}
 `;
 
-const validate = (value: string | null) => {
+const validate = (value: string) => {
   if (!value) {
     return "Method Required";
   }
@@ -46,9 +46,9 @@ const PaymentMethod = (
     validate
   });
 
-  const { error } = meta;
+  const { error, touched } = meta;
 
-  const hasError = !!gqlError || !!error;
+  const hasError = !!gqlError || (touched && !!error);
 
   const children = useMemo(
     () =>

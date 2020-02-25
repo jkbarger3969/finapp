@@ -23,6 +23,9 @@ import Department from "./EntryFields/Department";
 import Category from "./EntryFields/Category";
 import Source, { Value as SrcValue } from "./EntryFields/Source";
 import PaymentMethod from "./EntryFields/PaymentMethod";
+import Description from "./EntryFields/Description";
+import Total from "./EntryFields/Total";
+import Reconcile from "./EntryFields/Reconcile";
 
 export interface UpsertEntryProps {
   entryId?: string;
@@ -39,7 +42,10 @@ export interface Values {
     inputValue: string;
     value: SrcValue[];
   };
-  paymentMethod: string | null;
+  paymentMethod: string;
+  description: string;
+  total: string;
+  reconciled: boolean;
 }
 
 const UpsertEntry = function(props: UpsertEntryProps) {
@@ -61,7 +67,10 @@ const UpsertEntry = function(props: UpsertEntryProps) {
         inputValue: "",
         value: []
       },
-      paymentMethod: null
+      paymentMethod: "",
+      description: "",
+      total: "",
+      reconciled: false
     };
   }, [entryId, isUpdate]);
 
@@ -134,6 +143,15 @@ const UpsertEntry = function(props: UpsertEntryProps) {
                   </Box>
                   <Box margin={entryMargin} width={175} clone>
                     <PaymentMethod />
+                  </Box>
+                  <Box margin={entryMargin} width={350} clone>
+                    <Description />
+                  </Box>
+                  <Box margin={entryMargin} width={175} clone>
+                    <Total />
+                  </Box>
+                  <Box padding={2}>
+                    <Reconcile label />
                   </Box>
                 </React.Fragment>
               )}
