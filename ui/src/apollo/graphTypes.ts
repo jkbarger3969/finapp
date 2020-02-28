@@ -599,12 +599,12 @@ export type CatEntryOptFragment = { __typename: 'JournalEntryCategory', id: stri
 
 export type SrcEntryPersonOptFragment = { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } };
 
+export type SrcEntryDeptOptFragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
+
 export type SrcEntryBizOptFragment = { __typename: 'Business', id: string, name: string, vendor: Maybe<{ __typename?: 'Vendor', approved: boolean, vendorId: Maybe<string> }>, departments: Array<(
     { __typename?: 'Department' }
     & SrcEntryDeptOptFragment
   )> };
-
-export type SrcEntryDeptOptFragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
 
 export type PayMethodEntryOptFragment = { __typename: 'PaymentMethod', id: string, method: string, active: boolean };
 

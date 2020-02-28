@@ -34,10 +34,11 @@ export interface BodyProps {
   mode: JournalMode;
   height: number;
   width: number;
+  updateEntry: (entryId: string) => void;
 }
 
 const Body = function(props: BodyProps) {
-  const { height, deptId, mode, width: parentWidth } = props;
+  const { height, deptId, mode, width: parentWidth, updateEntry } = props;
 
   const variables = useMemo<JournalEntriesQueryVars | undefined>(() => {
     return deptId
@@ -217,10 +218,11 @@ const Body = function(props: BodyProps) {
           style={style}
           journalEntry={entry}
           removeReconciled={removeReconciled}
+          updateEntry={updateEntry}
         />
       );
     },
-    [entries, mode, removeReconciled]
+    [entries, mode, removeReconciled, updateEntry]
   );
 
   const itemKey = useCallback<NonNullable<FixedSizeListProps["itemKey"]>>(

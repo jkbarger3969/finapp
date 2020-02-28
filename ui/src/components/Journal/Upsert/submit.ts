@@ -13,9 +13,12 @@ import {
   UpsertEntryAddBusinessMutation as AddBusiness,
   UpsertEntryAddBusinessMutationVariables as AddBusinessVars,
   UpsertEntryAddMutation as AddEntry,
-  UpsertEntryAddMutationVariables as AddEntryVars
+  UpsertEntryAddMutationVariables as AddEntryVars,
+  UpsertEntryUpdateMutation as UpdateEntry,
+  UpsertEntryUpdateMutationVariables as UpdateEntryVars,
+  JournalEntryUpdateFields
 } from "../../../apollo/graphTypes";
-import { SourceValue } from "./EntryFields/Source";
+import { SourceValue, SrcObjectValue } from "./EntryFields/Source";
 import {
   SRC_ENTRY_PERSON_OPT_FRAGMENT,
   SRC_ENTRY_BIZ_OPT_FRAGMENT
@@ -57,16 +60,27 @@ const UPDATE_JOURNAL_ENTRY = gql`
   }
 `;
 
+const getSourceType = (sourceValue: SrcObjectValue): JournalEntrySourceType => {
+  switch (sourceValue.__typename) {
+    case "Business":
+      return JournalEntrySourceType.Business;
+    case "Person":
+      return JournalEntrySourceType.Person;
+    case "Department":
+      return JournalEntrySourceType.Department;
+  }
+};
+
 const getSource = async (
   value: Values["source"]["value"],
   formikHelpers: FormikHelpers<Values>,
   client: ApolloClient<any>
 ): Promise<JournalEntrySourceInput> => {
-  const sourceType = value[0] as JournalEntrySourceType;
   const sourceValue = value[value.length - 1] as SourceValue;
 
   // Free Solo
   if (typeof sourceValue === "string") {
+    const sourceType = value[0] as JournalEntrySourceType;
     if (sourceType === JournalEntrySourceType.Person) {
       const parsedName = parseName(sourceValue);
 
@@ -130,7 +144,7 @@ const getSource = async (
   }
 
   return {
-    sourceType,
+    sourceType: getSourceType(sourceValue),
     id: sourceValue.id
   };
 };
@@ -168,6 +182,86 @@ export default async (args: {
 
     // Update
     if (entryId) {
+      const fields = {} as JournalEntryUpdateFields;
+
+      // Capture fields that have changed
+      if (initialValues.type !== type) {
+        fields.type = type;
+      }
+
+      if (
+        !dateField.isSame(
+          initialValues.date as NonNullable<typeof initialValues.date>
+        )
+      ) {
+        fields.date = dateField.toISOString();
+      }
+
+      if (department !== initialValues.department?.id) {
+        fields.department = department;
+      }
+
+      if (category !== initialValues.category?.id) {
+        fields.category = category;
+      }
+
+      if (
+        (() => {
+          const value = initialValues.source.value as SrcObjectValue[];
+
+          const sourceValue = value[value.length - 1];
+          const sourceType = getSourceType(sourceValue);
+
+          return (
+            sourceValue.id !== source.id || sourceType !== source.sourceType
+          );
+        })()
+      ) {
+        fields.source = source;
+      }
+
+      if (paymentMethod !== initialValues.paymentMethod) {
+        fields.paymentMethod = paymentMethod;
+      }
+
+      if (description && description !== initialValues.description) {
+        fields.description = description;
+      }
+
+      if (totalField !== initialValues.total) {
+        const { n: num, d: den } = new Fraction(
+          (typeof totalField === "string"
+            ? Number.parseFloat(totalField)
+            : totalField
+          ).toFixed(2)
+        );
+        fields.total = { num, den };
+      }
+
+      if (reconciled !== initialValues.reconciled) {
+        fields.reconciled = reconciled;
+      }
+
+      if (Object.keys(fields).length === 0) {
+        const status: Status = {
+          errors: {
+            submission: "No changes detected."
+          }
+        };
+
+        formikHelpers.setStatus(status);
+
+        return;
+      }
+
+      const result = await client.mutate<UpdateEntry, UpdateEntryVars>({
+        mutation: UPDATE_JOURNAL_ENTRY,
+        variables: {
+          id: entryId,
+          fields
+        }
+      });
+
       // Add
     } else {
       const { n: num, d: den } = new Fraction(
@@ -205,6 +299,7 @@ export default async (args: {
     formikHelpers.setStatus(status);
     await new Promise(resolve => setTimeout(resolve, 1000));
     close();
+    formikHelpers.resetForm();
   } catch (error) {
     const status: Status = {
       errors: {

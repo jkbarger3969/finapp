@@ -9,11 +9,20 @@ import {
   Tooltip,
   Box,
   FormControlLabel,
-  FormControlLabelProps
+  FormControlLabelProps,
+  FormControl,
+  FormHelperText
 } from "@material-ui/core";
 import { JournalEntryType } from "../../../../apollo/graphTypes";
+import { Values } from "../UpsertEntry";
 
 const NULLISH: unique symbol = Symbol();
+
+const validate = (value: Values["type"]) => {
+  if (((value ?? NULLISH) as any) === NULLISH) {
+    return "Type Required";
+  }
+};
 
 const Type = function(
   props: {
@@ -24,10 +33,12 @@ const Type = function(
 
   const { isSubmitting } = useFormikContext();
 
-  const [field, , helpers] = useField<JournalEntryType | null>({
-    name: "type"
+  const [field, meta, helpers] = useField<JournalEntryType | null>({
+    name: "type",
+    validate
   });
 
+  const { error, touched } = meta;
   const { setValue, setTouched } = helpers;
 
   const toggleButtonGroupProps: ToggleButtonGroupProps = useMemo(
@@ -36,11 +47,13 @@ const Type = function(
       exclusive: true,
       disabled: isSubmitting,
       ...field,
-      onChange: (event, value: JournalEntryType) => {
+      onChange: async (event, value: JournalEntryType) => {
         if (((value ?? NULLISH) as any) === NULLISH) {
           return;
         }
+
         setValue(value);
+        await new Promise(resolve => setTimeout(resolve, 0)); //Avoid pres
         setTouched(true);
       }
     }),
@@ -69,16 +82,24 @@ const Type = function(
 
   if (label) {
     return (
-      <FormControlLabel
-        {...(props as any)}
-        labelPlacement={typeof label === "boolean" ? undefined : label}
-        control={control}
-        label="Type"
-      />
+      <FormControl>
+        <FormControlLabel
+          {...(props as any)}
+          labelPlacement={typeof label === "boolean" ? undefined : label}
+          control={control}
+          label="Type"
+        />
+        {touched && !!error && <FormHelperText error>{error}</FormHelperText>}
+      </FormControl>
     );
   }
 
-  return control;
+  return (
+    <FormControl>
+      {control}
+      {!!error && <FormHelperText error>{error}</FormHelperText>}
+    </FormControl>
+  );
 };
 
 export default Type;

@@ -16,7 +16,6 @@ import CardContent from "@material-ui/core/CardContent";
 import numeral from "numeral";
 import { red, green, orange, grey } from "@material-ui/core/colors";
 
-import AddEntry from "./AddEntry";
 import { uuid, namespace } from "../../utils/uuid";
 import { useDebounceDispatch as useDispatch } from "../../redux/hooks";
 import { create } from "../../redux/actions/journalEntryUpsert";
@@ -76,7 +75,7 @@ interface DeptReportObj {
 const Dashboard = function(props: { deptId: string }) {
   const { deptId } = props;
 
-  const [addEntryOpen, setAddEntryOpen] = useState(true);
+  const [addEntryOpen, setAddEntryOpen] = useState(false);
 
   const variables = useMemo(
     () => ({
@@ -419,12 +418,7 @@ const Dashboard = function(props: { deptId: string }) {
             {subDeptCards}
           </Grid>
         </Box>
-        <UpsertEntry
-          // entryId="5e456ce19713156c649bbbd7"
-          open={addEntryOpen}
-          close={() => setAddEntryOpen(false)}
-        />
-        {/* <AddEntry entryUpsertId={ADD_ENTRY_ID} fromDept={deptId} /> */}
+        <UpsertEntry open={addEntryOpen} close={() => setAddEntryOpen(false)} />
       </Container>
     </Box>
   );

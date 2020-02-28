@@ -46,7 +46,8 @@ export type SourceProps = {
   autoFocus?: boolean;
 } & Omit<TextFieldProps, "value">;
 
-export type SourceValue = BizOpt | DeptOpt | PersonOpt | string;
+export type SrcObjectValue = BizOpt | DeptOpt | PersonOpt;
+export type SourceValue = SrcObjectValue | string;
 export type Value = SourceValue | JournalEntrySourceType;
 type Options = Value[];
 
