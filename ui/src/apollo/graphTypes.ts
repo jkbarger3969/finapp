@@ -312,6 +312,7 @@ export type Query = {
   departments: Array<Department>,
   department?: Maybe<Department>,
   journalEntries: Array<JournalEntry>,
+  journalEntry?: Maybe<JournalEntry>,
   journalEntryCategories: Array<JournalEntryCategory>,
   journalEntryCategory: JournalEntryCategory,
   journalEntrySources: Array<JournalEntrySource>,
@@ -348,6 +349,11 @@ export type QueryDepartmentArgs = {
 
 export type QueryJournalEntriesArgs = {
   where?: Maybe<JournalEntiresWhereInput>
+};
+
+
+export type QueryJournalEntryArgs = {
+  id: Scalars['ID']
 };
 
 
@@ -490,8 +496,6 @@ export type CatEntryOptsQuery = { __typename?: 'Query', catOpts: Array<(
     & CatEntryOptFragment
   )> };
 
-export type CatEntryOptFragment = { __typename: 'JournalEntryCategory', id: string, name: string, type: JournalEntryType, parent: Maybe<{ __typename?: 'JournalEntryCategory', id: string }> };
-
 export type DeptEntryOptsQueryVariables = {
   fromParent?: Maybe<Scalars['ID']>
 };
@@ -501,8 +505,6 @@ export type DeptEntryOptsQuery = { __typename?: 'Query', deptOpts: Array<(
     { __typename?: 'Department' }
     & DeptEntryOptFragment
   )> };
-
-export type DeptEntryOptFragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
 
 export type PayMethodEntryOptsQueryVariables = {};
 
@@ -526,7 +528,76 @@ export type SrcEntryOptsQuery = { __typename?: 'Query', businesses: Array<(
     & SrcEntryPersonOptFragment
   )> };
 
-export type SrcEntryPersonOptFragment = { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } };
+export type EntryUpdateValuesQueryVariables = {
+  id: Scalars['ID']
+};
+
+
+export type EntryUpdateValuesQuery = { __typename?: 'Query', journalEntry: Maybe<(
+    { __typename?: 'JournalEntry' }
+    & EntryUpdateValueFragment
+  )> };
+
+export type EntryUpdateValueFragment = { __typename: 'JournalEntry', id: string, type: JournalEntryType, date: string, description: Maybe<string>, reconciled: boolean, department: (
+    { __typename?: 'Department' }
+    & DeptEntryOptFragment
+  ), category: (
+    { __typename?: 'JournalEntryCategory' }
+    & CatEntryOptFragment
+  ), source: (
+    { __typename?: 'Person' }
+    & SrcEntryPersonOptFragment
+  ) | (
+    { __typename?: 'Business' }
+    & SrcEntryBizOptFragment
+  ) | { __typename?: 'Department', ancestors: Array<{ __typename: 'Department', id: string } | (
+      { __typename?: 'Business' }
+      & SrcEntryBizOptFragment
+    )> }, paymentMethod: (
+    { __typename?: 'PaymentMethod' }
+    & PayMethodEntryOptFragment
+  ), total: { __typename?: 'Rational', num: number, den: number } };
+
+export type UpsertEntryAddPersonMutationVariables = {
+  fields: PersonAddFields
+};
+
+
+export type UpsertEntryAddPersonMutation = { __typename?: 'Mutation', addPerson: (
+    { __typename?: 'Person' }
+    & SrcEntryPersonOptFragment
+  ) };
+
+export type UpsertEntryAddBusinessMutationVariables = {
+  fields: BusinessAddFields
+};
+
+
+export type UpsertEntryAddBusinessMutation = { __typename?: 'Mutation', addBusiness: (
+    { __typename?: 'Business' }
+    & SrcEntryBizOptFragment
+  ) };
+
+export type UpsertEntryAddMutationVariables = {
+  fields: JournalEntryAddFields
+};
+
+
+export type UpsertEntryAddMutation = { __typename?: 'Mutation', journalEntryAdd: { __typename: 'JournalEntry', id: string } };
+
+export type UpsertEntryUpdateMutationVariables = {
+  id: Scalars['ID'],
+  fields: JournalEntryUpdateFields
+};
+
+
+export type UpsertEntryUpdateMutation = { __typename?: 'Mutation', journalEntryUpdate: { __typename: 'JournalEntry', id: string } };
+
+export type DeptEntryOptFragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
+
+export type CatEntryOptFragment = { __typename: 'JournalEntryCategory', id: string, name: string, type: JournalEntryType, parent: Maybe<{ __typename?: 'JournalEntryCategory', id: string }> };
+
+export type SrcEntryPersonOptFragment = { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } };
 
 export type SrcEntryBizOptFragment = { __typename: 'Business', id: string, name: string, vendor: Maybe<{ __typename?: 'Vendor', approved: boolean, vendorId: Maybe<string> }>, departments: Array<(
     { __typename?: 'Department' }
@@ -1019,6 +1090,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, QueryDepartmentsArgs>,
   department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>,
   journalEntries?: Resolver<Array<ResolversTypes['JournalEntry']>, ParentType, ContextType, QueryJournalEntriesArgs>,
+  journalEntry?: Resolver<Maybe<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntryArgs, 'id'>>,
   journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   journalEntryCategory?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType, RequireFields<QueryJournalEntryCategoryArgs, 'id'>>,
   journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>,

@@ -10,6 +10,7 @@ import { useQuery } from "@apollo/react-hooks";
 import { TextFieldProps, TextField, Box, Chip } from "@material-ui/core";
 import { ChevronRight } from "@material-ui/icons";
 
+import { CAT_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";
 import {
   CatEntryOptsQuery,
   CatEntryOptFragment as CatValue,
@@ -22,15 +23,7 @@ const CAT_OPTS_QUERY = gql`
       ...CatEntryOptFragment
     }
   }
-  fragment CatEntryOptFragment on JournalEntryCategory {
-    __typename
-    id
-    name
-    type
-    parent {
-      id
-    }
-  }
+  ${CAT_ENTRY_OPT_FRAGMENT}
 `;
 
 type AutocompleteProps = AutocompletePropsRaw<CatValue> &

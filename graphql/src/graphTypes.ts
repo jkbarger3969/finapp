@@ -245,6 +245,7 @@ export type Query = {
   departments: Array<Department>,
   department?: Maybe<Department>,
   journalEntries: Array<JournalEntry>,
+  journalEntry?: Maybe<JournalEntry>,
   journalEntryCategories: Array<JournalEntryCategory>,
   journalEntryCategory: JournalEntryCategory,
   journalEntrySources: Array<JournalEntrySource>,
@@ -281,6 +282,11 @@ export type QueryDepartmentArgs = {
 
 export type QueryJournalEntriesArgs = {
   where?: Maybe<JournalEntiresWhereInput>
+};
+
+
+export type QueryJournalEntryArgs = {
+  id: Scalars['ID']
 };
 
 
@@ -587,6 +593,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, QueryDepartmentsArgs>,
   department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>,
   journalEntries?: Resolver<Array<ResolversTypes['JournalEntry']>, ParentType, ContextType, QueryJournalEntriesArgs>,
+  journalEntry?: Resolver<Maybe<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntryArgs, 'id'>>,
   journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   journalEntryCategory?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType, RequireFields<QueryJournalEntryCategoryArgs, 'id'>>,
   journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>,

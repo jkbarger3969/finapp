@@ -420,8 +420,9 @@ const Dashboard = function(props: { deptId: string }) {
           </Grid>
         </Box>
         <UpsertEntry
+          // entryId="5e456ce19713156c649bbbd7"
           open={addEntryOpen}
-          onCancel={() => setAddEntryOpen(!addEntryOpen)}
+          close={() => setAddEntryOpen(false)}
         />
         {/* <AddEntry entryUpsertId={ADD_ENTRY_ID} fromDept={deptId} /> */}
       </Container>

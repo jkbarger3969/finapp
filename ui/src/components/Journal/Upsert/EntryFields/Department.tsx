@@ -15,6 +15,7 @@ import {
   DeptEntryOptsQuery,
   DeptEntryOptsQueryVariables as DeptEntryOptsQueryVars
 } from "../../../../apollo/graphTypes";
+import { DEPT_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";
 
 const DEPT_OPTS_QUERY = gql`
   query DeptEntryOpts($fromParent: ID) {
@@ -22,20 +23,7 @@ const DEPT_OPTS_QUERY = gql`
       ...DeptEntryOptFragment
     }
   }
-  fragment DeptEntryOptFragment on Department {
-    __typename
-    id
-    name
-    parent {
-      __typename
-      ... on Business {
-        id
-      }
-      ... on Department {
-        id
-      }
-    }
-  }
+  ${DEPT_ENTRY_OPT_FRAGMENT}
 `;
 
 const businessId = "5dc4b09bcf96e166daaa0090";

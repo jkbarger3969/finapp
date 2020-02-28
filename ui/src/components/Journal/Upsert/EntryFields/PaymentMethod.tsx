@@ -13,7 +13,7 @@ import { useQuery } from "@apollo/react-hooks";
 import Skeleton from "@material-ui/lab/Skeleton";
 import { useField } from "formik";
 
-import { PAY_METHOD_ENTRY_OPT_FRAGMENT } from "./upsertEntry.gql";
+import { PAY_METHOD_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";
 import { Values } from "../UpsertEntry";
 
 const PAY_METHOD_ENTRY_OPTS = gql`

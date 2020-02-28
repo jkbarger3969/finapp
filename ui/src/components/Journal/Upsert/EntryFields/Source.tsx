@@ -25,7 +25,7 @@ import {
   SRC_ENTRY_PERSON_OPT_FRAGMENT,
   SRC_ENTRY_BIZ_OPT_FRAGMENT,
   SRC_ENTRY_DEPT_OPT_FRAGMENT
-} from "./upsertEntry.gql";
+} from "../upsertEntry.gql";
 
 const SRC_ENTRY_OPTS_QUERY = gql`
   query SrcEntryOpts($name: String!, $isBiz: Boolean!) {
@@ -46,18 +46,14 @@ export type SourceProps = {
   autoFocus?: boolean;
 } & Omit<TextFieldProps, "value">;
 
-export type Value =
-  | BizOpt
-  | DeptOpt
-  | PersonOpt
-  | string
-  | JournalEntrySourceType;
+export type SourceValue = BizOpt | DeptOpt | PersonOpt | string;
+export type Value = SourceValue | JournalEntrySourceType;
 type Options = Value[];
 
 type AutocompleteProps = AutocompletePropsRaw<Value> &
   UseAutocompleteMultipleProps<Value>;
 
-const isFreeSoloOpt = (opt: Value) => {
+export const isFreeSoloOpt = (opt: Value) => {
   switch (opt) {
     case JournalEntrySourceType.Business:
     case JournalEntrySourceType.Department:
@@ -84,7 +80,7 @@ const getOptionLabel: AutocompleteProps["getOptionLabel"] = (opt): string => {
   }
 
   if (opt.__typename === "Person") {
-    return `${opt.name.first} ${opt.name.last}`;
+    return `${opt.personName.first} ${opt.personName.last}`;
   }
 
   return opt.name;
