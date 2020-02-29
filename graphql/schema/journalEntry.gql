@@ -4,18 +4,18 @@ enum JournalEntryType {
 }
 
 type JournalEntry {
-  id:ID!
-  type:JournalEntryType!
-  date:String!
-  department:Department!
-  category:JournalEntryCategory!
-  paymentMethod:PaymentMethod!
-  description:String
-  total:Rational!
-  source:JournalEntrySource!
-  reconciled:Boolean!
-  lastUpdate:String!
-  deleted:Boolean!
+  id: ID!
+  type: JournalEntryType!
+  date: String!
+  department: Department!
+  category: JournalEntryCategory!
+  paymentMethod: PaymentMethod!
+  description: String
+  total: Rational!
+  source: JournalEntrySource!
+  reconciled: Boolean!
+  lastUpdate: String!
+  deleted: Boolean!
 }
 
 enum JournalEntrySourceType {
@@ -25,32 +25,32 @@ enum JournalEntrySourceType {
 }
 
 input JournalEntrySourceInput {
-  sourceType:JournalEntrySourceType!
-  id:ID!
+  sourceType: JournalEntrySourceType!
+  id: ID!
 }
 
 input JournalEntryUpdateFields {
-  date:String
-  department:ID
-  type:JournalEntryType
-  category:ID
-  paymentMethod:ID
-  description:String
-  total:RationalInput
-  source:JournalEntrySourceInput
-  reconciled:Boolean
+  date: String
+  department: ID
+  type: JournalEntryType
+  category: ID
+  paymentMethod: ID
+  description: String
+  total: RationalInput
+  source: JournalEntrySourceInput
+  reconciled: Boolean
 }
 
 input JournalEntryAddFields {
-  date:String!
-  department:ID!
-  type:JournalEntryType!
-  category:ID!
-  paymentMethod:ID!
-  description:String
-  total:RationalInput!
-  source:JournalEntrySourceInput!
-  reconciled:Boolean
+  date: String!
+  department: ID!
+  type: JournalEntryType!
+  category: ID!
+  paymentMethod: ID!
+  description: String
+  total: RationalInput!
+  source: JournalEntrySourceInput!
+  reconciled: Boolean
 }
 
 # enum JournalEntriesColumn {
@@ -70,52 +70,52 @@ input JournalEntryAddFields {
 # }
 
 input JournalEntriesWhereDepartment {
-  eq:ID
-  ne:ID
-  in:[ID]
-  nin:[ID]
-  includeDescendants:Boolean = true
+  eq: ID
+  ne: ID
+  in: [ID]
+  nin: [ID]
+  includeDescendants: Boolean = true
 }
 
 input JournalEntriesWhereLastUpdate {
-  gt:String
-  lt:String
-  gte:String
-  lte:String
+  gt: String
+  lt: String
+  gte: String
+  lte: String
 }
 
 input JournalEntiresWhereInput {
-  department:JournalEntriesWhereDepartment
-  reconciled:Boolean
-  deleted:Boolean
-  lastUpdate:JournalEntriesWhereLastUpdate
-  or:[JournalEntiresWhereInput]
-  and:[JournalEntiresWhereInput]
+  department: JournalEntriesWhereDepartment
+  reconciled: Boolean
+  deleted: Boolean
+  lastUpdate: JournalEntriesWhereLastUpdate
+  or: [JournalEntiresWhereInput]
+  and: [JournalEntiresWhereInput]
 }
 
 type JournalEntriesRes {
-  totalCount:Int!
-  entries:[JournalEntry!]!
+  totalCount: Int!
+  entries: [JournalEntry!]!
 }
 
 type JournalEntryAddedRes {
-   totalCount:Int!
-   index:Int!
-   entry:JournalEntry!
+  totalCount: Int!
+  index: Int!
+  entry: JournalEntry!
 }
 
 type Query {
-  journalEntries(where:JournalEntiresWhereInput):[JournalEntry!]!
+  journalEntries(where: JournalEntiresWhereInput): [JournalEntry!]!
+  journalEntry(id: ID!): JournalEntry
 }
 
 type Mutation {
-  journalEntryUpdate(id:ID!, fields:JournalEntryUpdateFields!):
-    JournalEntry!
-  journalEntryAdd(fields:JournalEntryAddFields!):JournalEntry!
-  journalEntryDelete(id:ID!):JournalEntry!
+  journalEntryUpdate(id: ID!, fields: JournalEntryUpdateFields!): JournalEntry!
+  journalEntryAdd(fields: JournalEntryAddFields!): JournalEntry!
+  journalEntryDelete(id: ID!): JournalEntry!
 }
 
 type Subscription {
-    journalEntryAdded:JournalEntry!
-    journalEntryUpdated:JournalEntry!
+  journalEntryAdded: JournalEntry!
+  journalEntryUpdated: JournalEntry!
 }

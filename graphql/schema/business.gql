@@ -1,25 +1,25 @@
 type Vendor {
-  approved:Boolean!
-  vendorId:ID
+  approved: Boolean!
+  vendorId: ID
 }
 
 type Business {
-  id:ID!
-  name:String!
-  budget:Budget
-  departments:[Department!]
-  vendor:Vendor
+  id: ID!
+  name: String!
+  budget: Budget
+  departments: [Department!]!
+  vendor: Vendor
 }
 
 input BusinessAddFields {
-  name:String!
+  name: String!
 }
 
 extend type Query {
-  businesses(searchByName:String):[Business!]!
-  business(id:ID!):Business!
+  businesses(searchByName: String): [Business!]!
+  business(id: ID!): Business!
 }
 
 extend type Mutation {
-  addBusiness(fields:BusinessAddFields!):Business!
+  addBusiness(fields: BusinessAddFields!): Business!
 }
