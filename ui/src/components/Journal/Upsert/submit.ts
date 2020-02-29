@@ -4,7 +4,7 @@ import { FormikHelpers } from "formik";
 import ApolloClient from "apollo-client";
 import { parseName } from "humanparser";
 
-import { Values, Status } from "./UpsertEntry";
+import { Values, Status, createInitialValues } from "./UpsertEntry";
 import {
   JournalEntrySourceInput,
   JournalEntrySourceType,
@@ -152,12 +152,19 @@ const getSource = async (
 export default async (args: {
   values: Values;
   formikHelpers: FormikHelpers<Values>;
-  close: () => void;
+  setOpen: (open: boolean) => void;
   client: ApolloClient<any>;
   initialValues: Values;
   entryId?: string;
 }) => {
-  const { values, formikHelpers, close, client, initialValues, entryId } = args;
+  const {
+    values,
+    formikHelpers,
+    setOpen,
+    client,
+    initialValues,
+    entryId
+  } = args;
 
   try {
     // Get field values from values
@@ -297,9 +304,9 @@ export default async (args: {
       errors: {}
     };
     formikHelpers.setStatus(status);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    close();
-    formikHelpers.resetForm();
+    await new Promise(resolve => setTimeout(resolve, 750));
+    setOpen(false);
+    formikHelpers.resetForm({ values: createInitialValues() });
   } catch (error) {
     const status: Status = {
       errors: {

@@ -351,6 +351,10 @@ const Dashboard = function(props: { deptId: string }) {
     return subDeptCards;
   }, [deptReport, department]);
 
+  const onClickAddEntry = useCallback((event?) => setAddEntryOpen(true), [
+    setAddEntryOpen
+  ]);
+
   if (loading) {
     return <p>Loading...</p>;
   } else if (error) {
@@ -369,7 +373,7 @@ const Dashboard = function(props: { deptId: string }) {
                 color="secondary"
                 startIcon={<AddIcon />}
                 children={"New Entry"}
-                onClick={() => setAddEntryOpen(!addEntryOpen)}
+                onClick={onClickAddEntry}
               />
             </Grid>
             <Grid item>
@@ -418,7 +422,7 @@ const Dashboard = function(props: { deptId: string }) {
             {subDeptCards}
           </Grid>
         </Box>
-        <UpsertEntry open={addEntryOpen} close={() => setAddEntryOpen(false)} />
+        <UpsertEntry open={addEntryOpen} setOpen={setAddEntryOpen} />
       </Container>
     </Box>
   );

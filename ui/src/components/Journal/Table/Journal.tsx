@@ -101,7 +101,7 @@ const Journal = function(props: { deptId?: string; mode: JournalMode }) {
         </Box>
         <UpsertEntry
           open={upsertOpen}
-          close={closeUpsert}
+          setOpen={setUpsertOpen}
           entryId={updateEntryId}
         />
       </form>

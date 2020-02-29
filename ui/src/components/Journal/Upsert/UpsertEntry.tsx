@@ -84,7 +84,7 @@ const ENTRY_UPDATE_VALUES = gql`
 export interface UpsertEntryProps {
   entryId?: string;
   open: boolean;
-  close: () => void;
+  setOpen: (open: boolean) => void;
 }
 
 export interface Values {
@@ -102,6 +102,21 @@ export interface Values {
   reconciled: boolean;
 }
 
+export const createInitialValues = (): Values => ({
+  type: null,
+  date: null,
+  department: null,
+  category: null,
+  source: {
+    inputValue: "",
+    value: []
+  },
+  paymentMethod: "",
+  description: "",
+  total: "",
+  reconciled: false
+});
+
 export interface Status {
   submitted?: boolean;
   errors: {
@@ -115,7 +130,7 @@ export type FormikProps = Omit<NativeFormikProps<Values>, "status"> & {
 };
 
 const UpsertEntry = function(props: UpsertEntryProps) {
-  const { entryId, open, close } = props;
+  const { entryId, open, setOpen } = props;
   const isUpdate = !!entryId;
 
   const { loading, error: gqlError, data, client } = useQuery<
@@ -204,20 +219,7 @@ const UpsertEntry = function(props: UpsertEntryProps) {
       };
     }
 
-    return {
-      type: null,
-      date: null,
-      department: null,
-      category: null,
-      source: {
-        inputValue: "",
-        value: []
-      },
-      paymentMethod: "",
-      description: "",
-      total: "",
-      reconciled: false
-    };
+    return createInitialValues();
   }, [isUpdate, data]);
 
   const initialStatus = useMemo<Status>(
@@ -232,8 +234,15 @@ const UpsertEntry = function(props: UpsertEntryProps) {
 
   const onSubmit = useCallback(
     (values: Values, formikHelpers: FormikHelpers<Values>) =>
-      submit({ values, formikHelpers, close, client, initialValues, entryId }),
-    [entryId, initialValues, close, client]
+      submit({
+        values,
+        formikHelpers,
+        setOpen,
+        client,
+        initialValues,
+        entryId
+      }),
+    [entryId, initialValues, setOpen, client]
   );
 
   const children = useCallback(
@@ -242,13 +251,14 @@ const UpsertEntry = function(props: UpsertEntryProps) {
         <UpsertDialog
           open={open}
           isUpdate={isUpdate}
-          onCancel={close}
+          entryId={entryId}
+          setOpen={setOpen}
           loading={loading}
           formikProps={formikProps}
         />
       );
     },
-    [isUpdate, close, open, loading]
+    [isUpdate, entryId, setOpen, open, loading]
   );
 
   return (

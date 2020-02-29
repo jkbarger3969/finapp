@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback } from "react";
 import {
   Dialog,
   PaperProps,
@@ -11,10 +11,12 @@ import {
   CircularProgress,
   Typography
 } from "@material-ui/core";
-import { Delete, Cancel, Add } from "@material-ui/icons";
+import { Delete, Cancel, Add, Queue } from "@material-ui/icons";
+import gql from "graphql-tag";
+import { useMutation } from "@apollo/react-hooks";
 
 import { JournalEntryType } from "../../../apollo/graphTypes";
-import { FormikProps } from "./UpsertEntry";
+import { FormikProps, Status, createInitialValues } from "./UpsertEntry";
 import Type from "./EntryFields/Type";
 import DateEntry from "./EntryFields/DateEntry";
 import Department from "./EntryFields/Department";
@@ -24,15 +26,29 @@ import PaymentMethod from "./EntryFields/PaymentMethod";
 import Description from "./EntryFields/Description";
 import Total from "./EntryFields/Total";
 import Reconcile from "./EntryFields/Reconcile";
+import { entryUpsertId } from "../Table/Journal";
+
+const DELETE_JOURNAL_ENTRY = gql`
+  mutation UpsertEntryDelete($id: ID!) {
+    journalEntryDelete(id: $id) {
+      __typename
+      id
+      deleted
+    }
+  }
+`;
 
 const UpsertDialog = (props: {
   open: boolean;
   isUpdate: boolean;
-  onCancel: () => void;
+  entryId?: string;
+  setOpen: (open: boolean) => void;
   formikProps: FormikProps;
   loading: boolean;
 }) => {
-  const { open, isUpdate, onCancel, formikProps, loading } = props;
+  const { open, isUpdate, entryId, setOpen, formikProps, loading } = props;
+
+  const [deleteEntry] = useMutation(DELETE_JOURNAL_ENTRY);
 
   const { isSubmitting } = formikProps;
   const {
@@ -40,6 +56,7 @@ const UpsertDialog = (props: {
     errors: { general: generalError, submission: submissionError }
   } = formikProps.status;
   const isTypeSet = formikProps.values.type !== null;
+  const { submitForm, resetForm, setSubmitting, setStatus } = formikProps;
 
   const theme = useTheme();
 
@@ -176,6 +193,47 @@ const UpsertDialog = (props: {
     formikProps.values.type
   ]);
 
+  const onClickAddAndNew = useCallback(
+    (event?) => submitForm().then(() => setOpen(true)),
+    [submitForm, setOpen]
+  );
+
+  const onClickCancel = useCallback(
+    (event?) => {
+      setOpen(false);
+      resetForm();
+    },
+    [setOpen, resetForm]
+  );
+
+  const onClickDelete = useCallback(
+    async (event?) => {
+      try {
+        setSubmitting(true);
+        await deleteEntry({ variables: { id: entryId } });
+        const status: Status = {
+          submitted: true,
+          errors: {}
+        };
+        setSubmitting(false);
+        setStatus(status);
+        await new Promise(resolve => setTimeout(resolve, 750));
+        resetForm({ values: createInitialValues() });
+        setOpen(false);
+      } catch (error) {
+        const status: Status = {
+          errors: {
+            submission:
+              "message" in error ? error : JSON.stringify(error, null, 2)
+          }
+        };
+        setStatus(status);
+        setSubmitting(false);
+      }
+    },
+    [deleteEntry, entryId, setOpen, resetForm, setStatus, setSubmitting]
+  );
+
   return (
     <Dialog
       fullWidth
@@ -207,7 +265,7 @@ const UpsertDialog = (props: {
             color="default"
             variant="outlined"
             startIcon={<Delete />}
-            onClick={(...args) => console.log("Delete: ", args)}
+            onClick={onClickDelete}
           >
             Delete
           </Button>
@@ -222,16 +280,25 @@ const UpsertDialog = (props: {
         >
           {isUpdate ? "Update" : "Add"}
         </Button>
+        {!isUpdate && (
+          <Button
+            disabled={disabled}
+            size="medium"
+            color="secondary"
+            variant="outlined"
+            onClick={onClickAddAndNew}
+            startIcon={<Queue />}
+          >
+            Add & New
+          </Button>
+        )}
         <Button
           disabled={isSubmitting || submitted}
           size="medium"
           color="default"
           variant="outlined"
           startIcon={<Cancel />}
-          onClick={() => {
-            onCancel();
-            formikProps.resetForm();
-          }}
+          onClick={onClickCancel}
         >
           Cancel
         </Button>
