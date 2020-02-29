@@ -26,7 +26,7 @@ export type Business = {
   id: Scalars['ID'],
   name: Scalars['String'],
   budget?: Maybe<Budget>,
-  departments?: Maybe<Array<Department>>,
+  departments: Array<Department>,
   vendor?: Maybe<Vendor>,
 };
 
@@ -245,6 +245,7 @@ export type Query = {
   departments: Array<Department>,
   department?: Maybe<Department>,
   journalEntries: Array<JournalEntry>,
+  journalEntry?: Maybe<JournalEntry>,
   journalEntryCategories: Array<JournalEntryCategory>,
   journalEntryCategory: JournalEntryCategory,
   journalEntrySources: Array<JournalEntrySource>,
@@ -281,6 +282,11 @@ export type QueryDepartmentArgs = {
 
 export type QueryJournalEntriesArgs = {
   where?: Maybe<JournalEntiresWhereInput>
+};
+
+
+export type QueryJournalEntryArgs = {
+  id: Scalars['ID']
 };
 
 
@@ -495,7 +501,7 @@ export type BusinessResolvers<ContextType = Context, ParentType extends Resolver
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>,
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
   budget?: Resolver<Maybe<ResolversTypes['Budget']>, ParentType, ContextType>,
-  departments?: Resolver<Maybe<Array<ResolversTypes['Department']>>, ParentType, ContextType>,
+  departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>,
   vendor?: Resolver<Maybe<ResolversTypes['Vendor']>, ParentType, ContextType>,
 };
 
@@ -587,6 +593,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, QueryDepartmentsArgs>,
   department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>,
   journalEntries?: Resolver<Array<ResolversTypes['JournalEntry']>, ParentType, ContextType, QueryJournalEntriesArgs>,
+  journalEntry?: Resolver<Maybe<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntryArgs, 'id'>>,
   journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   journalEntryCategory?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType, RequireFields<QueryJournalEntryCategoryArgs, 'id'>>,
   journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>,
