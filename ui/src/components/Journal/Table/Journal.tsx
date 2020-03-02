@@ -1,14 +1,20 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useMemo } from "react";
 import Table from "@material-ui/core/Table";
 import Box from "@material-ui/core/Box";
 import AutoSizer, { Size } from "react-virtualized-auto-sizer";
+import { Fab, useTheme } from "@material-ui/core";
+import { Add } from "@material-ui/icons";
+import { useQuery } from "@apollo/react-hooks";
 
 import Header from "./Header";
 import Body, { JournalMode } from "./Body";
-import UpsertEntry from "../Upsert/UpsertEntry";
+import UpsertEntry, { Values } from "../Upsert/UpsertEntry";
 import { uuid, namespace } from "../../../utils/uuid";
-import { Fab, useTheme } from "@material-ui/core";
-import { Add } from "@material-ui/icons";
+import { DEPT_FOR_UPSERT_ADD } from "../../Dashboard/Dashboard";
+import {
+  DeptForUpsertAddQuery as DeptForUpsertAdd,
+  DeptForUpsertAddQueryVariables as DeptForUpsertAddVars
+} from "../../../apollo/graphTypes";
 
 export const entryUpsertId = uuid("Journal", namespace);
 
@@ -20,6 +26,24 @@ const Journal = function(props: { deptId?: string; mode: JournalMode }) {
   const [upsertOpen, setUpsertOpen] = useState(false);
   const [updateEntryId, setUpdateEntryId] = useState<undefined | string>(
     undefined
+  );
+
+  const { data: deptForUpsertAdd } = useQuery<
+    DeptForUpsertAdd,
+    DeptForUpsertAddVars
+  >(DEPT_FOR_UPSERT_ADD, {
+    skip: !deptId,
+    variables: { id: deptId as string }
+  });
+
+  const initialValues = useMemo<Partial<Values> | undefined>(
+    () =>
+      deptForUpsertAdd?.department
+        ? {
+            department: deptForUpsertAdd.department
+          }
+        : undefined,
+    [deptForUpsertAdd]
   );
 
   const closeUpsert = useCallback(() => {
@@ -100,6 +124,7 @@ const Journal = function(props: { deptId?: string; mode: JournalMode }) {
           </Table>
         </Box>
         <UpsertEntry
+          initialValues={initialValues}
           open={upsertOpen}
           setOpen={setUpsertOpen}
           entryId={updateEntryId}

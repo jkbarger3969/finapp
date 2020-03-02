@@ -406,6 +406,16 @@ export type Vendor = {
   vendorId?: Maybe<Scalars['ID']>,
 };
 
+export type DeptForUpsertAddQueryVariables = {
+  id: Scalars['ID']
+};
+
+
+export type DeptForUpsertAddQuery = { __typename?: 'Query', department: Maybe<(
+    { __typename?: 'Department' }
+    & DeptEntryOptFragment
+  )> };
+
 export type GetReportDataDept_1Fragment = { __typename: 'Department', id: string, name: string, budget: Maybe<{ __typename: 'Budget', id: string, amount: { __typename?: 'Rational', num: number, den: number } }> };
 
 export type GetReportDataEntry_1Fragment = { __typename: 'JournalEntry', id: string, type: JournalEntryType, lastUpdate: string, deleted: boolean, category: { __typename: 'JournalEntryCategory', id: string, name: string }, total: { __typename?: 'Rational', num: number, den: number }, department: { __typename: 'Department', id: string, ancestors: Array<{ __typename: 'Department', id: string } | { __typename: 'Business', id: string }> } };
@@ -527,6 +537,13 @@ export type SrcEntryOptsQuery = { __typename?: 'Query', businesses: Array<(
     { __typename?: 'Person' }
     & SrcEntryPersonOptFragment
   )> };
+
+export type UpsertEntryDeleteMutationVariables = {
+  id: Scalars['ID']
+};
+
+
+export type UpsertEntryDeleteMutation = { __typename?: 'Mutation', journalEntryDelete: { __typename: 'JournalEntry', id: string, deleted: boolean } };
 
 export type EntryUpdateValuesQueryVariables = {
   id: Scalars['ID']
