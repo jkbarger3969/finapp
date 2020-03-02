@@ -81,12 +81,6 @@ const ENTRY_UPDATE_VALUES = gql`
   ${PAY_METHOD_ENTRY_OPT_FRAGMENT}
 `;
 
-export interface UpsertEntryProps {
-  entryId?: string;
-  open: boolean;
-  setOpen: (open: boolean) => void;
-}
-
 export interface Values {
   type: JournalEntryType | null;
   date: Moment | null;
@@ -102,7 +96,16 @@ export interface Values {
   reconciled: boolean;
 }
 
-export const createInitialValues = (): Values => ({
+export interface UpsertEntryProps {
+  entryId?: string;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  initialValues?: Partial<Values>;
+}
+
+export const createInitialValues = (
+  initialValues: Partial<Values> = {}
+): Values => ({
   type: null,
   date: null,
   department: null,
@@ -114,7 +117,8 @@ export const createInitialValues = (): Values => ({
   paymentMethod: "",
   description: "",
   total: "",
-  reconciled: false
+  reconciled: false,
+  ...initialValues
 });
 
 export interface Status {
@@ -130,7 +134,12 @@ export type FormikProps = Omit<NativeFormikProps<Values>, "status"> & {
 };
 
 const UpsertEntry = function(props: UpsertEntryProps) {
-  const { entryId, open, setOpen } = props;
+  const {
+    entryId,
+    open,
+    setOpen,
+    initialValues: initialValuesOverride = {}
+  } = props;
   const isUpdate = !!entryId;
 
   const { loading, error: gqlError, data, client } = useQuery<
@@ -219,8 +228,8 @@ const UpsertEntry = function(props: UpsertEntryProps) {
       };
     }
 
-    return createInitialValues();
-  }, [isUpdate, data]);
+    return createInitialValues(initialValuesOverride);
+  }, [isUpdate, data, initialValuesOverride]);
 
   const initialStatus = useMemo<Status>(
     () => ({

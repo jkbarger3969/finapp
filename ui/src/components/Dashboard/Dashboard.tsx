@@ -15,6 +15,7 @@ import CardHeader from "@material-ui/core/CardHeader";
 import CardContent from "@material-ui/core/CardContent";
 import numeral from "numeral";
 import { red, green, orange, grey } from "@material-ui/core/colors";
+import gql from "graphql-tag";
 
 import { uuid, namespace } from "../../utils/uuid";
 import { useDebounceDispatch as useDispatch } from "../../redux/hooks";
@@ -25,7 +26,9 @@ import {
   JournalEntryType,
   JournalEntryAdded_2Subscription as JournalEntryAdded,
   JournalEntryUpdated_2Subscription as JournalEntryUpdated,
-  GetReportDataEntry_1Fragment as JournalEntryFragment
+  GetReportDataEntry_1Fragment as JournalEntryFragment,
+  DeptForUpsertAddQuery as DeptForUpsertAdd,
+  DeptForUpsertAddQueryVariables as DeptForUpsertAddVars
 } from "../../apollo/graphTypes";
 import {
   GET_REPORT_DATA,
@@ -33,7 +36,8 @@ import {
   JOURNAL_ENTRY_UPDATED_SUB,
   GET_REPORT_DATA_ENTRY_FRAGMENT
 } from "./ReportData.gql";
-import UpsertEntry from "../Journal/Upsert/UpsertEntry";
+import UpsertEntry, { Values } from "../Journal/Upsert/UpsertEntry";
+import { DEPT_ENTRY_OPT_FRAGMENT } from "../Journal/Upsert/upsertEntry.gql";
 
 const ADD_ENTRY_ID = uuid("DashboardJournalEntry", namespace);
 
@@ -72,6 +76,15 @@ interface DeptReportObj {
   budget: number | null;
 }
 
+export const DEPT_FOR_UPSERT_ADD = gql`
+  query DeptForUpsertAdd($id: ID!) {
+    department(id: $id) {
+      ...DeptEntryOptFragment
+    }
+  }
+  ${DEPT_ENTRY_OPT_FRAGMENT}
+`;
+
 const Dashboard = function(props: { deptId: string }) {
   const { deptId } = props;
 
@@ -94,6 +107,11 @@ const Dashboard = function(props: { deptId: string }) {
   >(GET_REPORT_DATA, {
     variables
   });
+
+  const { data: deptForUpsertAdd } = useQuery<
+    DeptForUpsertAdd,
+    DeptForUpsertAddVars
+  >(DEPT_FOR_UPSERT_ADD, { skip: !deptId, variables: { id: deptId } });
 
   const client = useApolloClient();
 
@@ -355,6 +373,16 @@ const Dashboard = function(props: { deptId: string }) {
     setAddEntryOpen
   ]);
 
+  const initialValues = useMemo<Partial<Values> | undefined>(
+    () =>
+      deptForUpsertAdd?.department
+        ? {
+            department: deptForUpsertAdd.department
+          }
+        : undefined,
+    [deptForUpsertAdd]
+  );
+
   if (loading) {
     return <p>Loading...</p>;
   } else if (error) {
@@ -422,7 +450,11 @@ const Dashboard = function(props: { deptId: string }) {
             {subDeptCards}
           </Grid>
         </Box>
-        <UpsertEntry open={addEntryOpen} setOpen={setAddEntryOpen} />
+        <UpsertEntry
+          initialValues={initialValues}
+          open={addEntryOpen}
+          setOpen={setAddEntryOpen}
+        />
       </Container>
     </Box>
   );
