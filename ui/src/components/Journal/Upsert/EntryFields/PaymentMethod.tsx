@@ -52,12 +52,12 @@ const PaymentMethod = (
 
   const children = useMemo(
     () =>
-      (data?.paymentMethods || []).map(({ id, method }) => (
+      (data?.paymentMethods || []).map(({ id, name }) => (
         <MenuItem
           {...(({
             value: id,
             key: id,
-            children: `${method[0].toUpperCase()}${method.substr(1)}`
+            children: name
           } as MenuItemProps) as any)}
         />
       )),
