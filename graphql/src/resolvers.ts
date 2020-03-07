@@ -23,7 +23,9 @@ import {
   journalEntryCategories,
   journalEntryCategory
 } from "./resolvers/journalEntryCategory";
-import { PaymentMethod, paymentMethods } from "./resolvers/paymentMethod";
+import paymentMethods from "./resolvers/paymentMethod/paymentMethods";
+import paymentMethod from "./resolvers/paymentMethod/paymentMethod";
+import PaymentMethod from "./resolvers/paymentMethod/PaymehtMethodResolver";
 import { people, addPerson } from "./resolvers/person";
 import { User } from "./resolvers/user";
 
@@ -47,6 +49,7 @@ const resolvers: Resolvers = {
     departments,
     department,
     paymentMethods,
+    paymentMethod,
     people
   },
   Mutation: {
