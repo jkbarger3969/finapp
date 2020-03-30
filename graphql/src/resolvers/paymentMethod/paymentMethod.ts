@@ -1,5 +1,6 @@
-import { QueryResolvers } from "../../graphTypes";
 import { ObjectID } from "mongodb";
+import { QueryResolvers } from "../../graphTypes";
+import { $addFields } from "./utils";
 
 const paymentMethod: QueryResolvers["paymentMethod"] = async (
   doc,
@@ -11,9 +12,10 @@ const paymentMethod: QueryResolvers["paymentMethod"] = async (
 
   const { db } = context;
 
-  const result = await db
+  const [result] = await db
     .collection("paymentMethods")
-    .findOne({ _id: new ObjectID(id) });
+    .aggregate([{ $match: { _id: new ObjectID(id) } }, { $addFields }])
+    .toArray();
 
   return result || null;
 };

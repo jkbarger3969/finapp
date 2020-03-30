@@ -1,6 +1,6 @@
 import { ObjectID } from "mongodb";
 import { PaymentMethodResolvers, PaymentMethod } from "../../graphTypes";
-import { nodeFieldResolver } from "../utils/nodeResolver";
+import { $addFields } from "./utils";
 
 const ancestors: PaymentMethodResolvers["ancestors"] = async (
   doc,
@@ -19,7 +19,9 @@ const ancestors: PaymentMethodResolvers["ancestors"] = async (
         ? doc.parent.id
         : ((doc.parent as any) as string | ObjectID)
     );
-    doc = await collect.findOne<PaymentMethod>({ _id });
+    [doc] = await collect
+      .aggregate<PaymentMethod>([{ $match: { _id } }, { $addFields }])
+      .toArray();
     ancestors.push(doc);
   }
 
@@ -38,7 +40,7 @@ const children: PaymentMethodResolvers["children"] = (
 
   return db
     .collection("paymentMethods")
-    .find({ parent })
+    .aggregate([{ $match: { parent } }, { $addFields }])
     .toArray();
 };
 
@@ -58,15 +60,16 @@ const parent: PaymentMethodResolvers["parent"] = async (
 
   const { db } = context;
 
-  const result = await db
+  const [result] = await db
     .collection("paymentMethods")
-    .findOne<PaymentMethod>({ _id });
+    .aggregate([{ $match: { _id } }, { $addFields }])
+    .toArray();
 
   return result;
 };
 
 const PaymentMethod: PaymentMethodResolvers = {
-  id: doc => (doc.id ? doc.id : (doc as any)._id.toHexString()),
+  // id: doc => (doc.id ? doc.id : ((doc as any)._id as ObjectID).toHexString()),
   parent,
   ancestors,
   children,

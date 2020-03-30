@@ -77,7 +77,12 @@ export const PAY_METHOD_ENTRY_OPT_FRAGMENT = gql`
   fragment PayMethodEntryOptFragment on PaymentMethod {
     __typename
     id
+    refId
     name
     active
+    parent {
+      __typename
+      id
+    }
   }
 `;

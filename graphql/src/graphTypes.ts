@@ -166,12 +166,19 @@ export type JournalEntryUpdateFields = {
   reconciled?: Maybe<Scalars['Boolean']>,
 };
 
+export type JournalEntryUpdatePaymentMethod = {
+  id: Scalars['ID'],
+  fields: PaymentMethodUpdateFields,
+};
+
 export type Mutation = {
    __typename?: 'Mutation',
   addBusiness: Business,
   journalEntryUpdate: JournalEntry,
   journalEntryAdd: JournalEntry,
   journalEntryDelete: JournalEntry,
+  paymentMethodUpdate: PaymentMethod,
+  paymentMethodAdd: PaymentMethod,
   addPerson: Person,
 };
 
@@ -183,17 +190,31 @@ export type MutationAddBusinessArgs = {
 
 export type MutationJournalEntryUpdateArgs = {
   id: Scalars['ID'],
-  fields: JournalEntryUpdateFields
+  fields: JournalEntryUpdateFields,
+  paymentMethodAdd?: Maybe<PaymentMethodAddFields>,
+  paymentMethodUpdate?: Maybe<JournalEntryUpdatePaymentMethod>
 };
 
 
 export type MutationJournalEntryAddArgs = {
-  fields: JournalEntryAddFields
+  fields: JournalEntryAddFields,
+  paymentMethodAdd?: Maybe<PaymentMethodAddFields>
 };
 
 
 export type MutationJournalEntryDeleteArgs = {
   id: Scalars['ID']
+};
+
+
+export type MutationPaymentMethodUpdateArgs = {
+  id: Scalars['ID'],
+  fields: PaymentMethodUpdateFields
+};
+
+
+export type MutationPaymentMethodAddArgs = {
+  fields: PaymentMethodAddFields
 };
 
 
@@ -219,6 +240,13 @@ export type PaymentMethod = {
   authorization: Array<PaymentMethodAuthorization>,
 };
 
+export type PaymentMethodAddFields = {
+  active: Scalars['Boolean'],
+  refId?: Maybe<Scalars['String']>,
+  name: Scalars['String'],
+  parent: Scalars['ID'],
+};
+
 export type PaymentMethodAuthorization = {
    __typename?: 'PaymentMethodAuthorization',
   owner: Scalars['Boolean'],
@@ -226,6 +254,12 @@ export type PaymentMethodAuthorization = {
 };
 
 export type PaymentMethodAuthorizedEntity = Person | Business | Department;
+
+export type PaymentMethodUpdateFields = {
+  active?: Maybe<Scalars['Boolean']>,
+  refId?: Maybe<Scalars['String']>,
+  name?: Maybe<Scalars['String']>,
+};
 
 export type PaymentMethodWhereInput = {
   active?: Maybe<Scalars['Boolean']>,
@@ -490,6 +524,9 @@ export type ResolversTypes = {
   RationalInput: RationalInput,
   JournalEntrySourceInput: JournalEntrySourceInput,
   JournalEntrySourceType: JournalEntrySourceType,
+  PaymentMethodAddFields: PaymentMethodAddFields,
+  JournalEntryUpdatePaymentMethod: JournalEntryUpdatePaymentMethod,
+  PaymentMethodUpdateFields: PaymentMethodUpdateFields,
   JournalEntryAddFields: JournalEntryAddFields,
   PersonAddFields: PersonAddFields,
   Subscription: ResolverTypeWrapper<{}>,
@@ -540,6 +577,9 @@ export type ResolversParentTypes = {
   RationalInput: RationalInput,
   JournalEntrySourceInput: JournalEntrySourceInput,
   JournalEntrySourceType: JournalEntrySourceType,
+  PaymentMethodAddFields: PaymentMethodAddFields,
+  JournalEntryUpdatePaymentMethod: JournalEntryUpdatePaymentMethod,
+  PaymentMethodUpdateFields: PaymentMethodUpdateFields,
   JournalEntryAddFields: JournalEntryAddFields,
   PersonAddFields: PersonAddFields,
   Subscription: {},
@@ -630,6 +670,8 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   journalEntryUpdate?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryUpdateArgs, 'id' | 'fields'>>,
   journalEntryAdd?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryAddArgs, 'fields'>>,
   journalEntryDelete?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryDeleteArgs, 'id'>>,
+  paymentMethodUpdate?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType, RequireFields<MutationPaymentMethodUpdateArgs, 'id' | 'fields'>>,
+  paymentMethodAdd?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType, RequireFields<MutationPaymentMethodAddArgs, 'fields'>>,
   addPerson?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<MutationAddPersonArgs, 'fields'>>,
 };
 

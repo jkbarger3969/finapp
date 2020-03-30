@@ -2,13 +2,13 @@ import React from "react";
 import { useSelector } from "react-redux";
 import TableCell from "@material-ui/core/TableCell";
 import Box from "@material-ui/core/Box";
-import { capitalCase } from "change-case";
 
 import { JournalEntry_1Fragment as JournalEntryFragment } from "../../../../apollo/graphTypes";
 import { ROW_ID, PAY_METHOD_ID } from "./cellsReduxIni";
 import { Root } from "../../../../redux/reducers/root";
 import { TableCell as CellFormat } from "../../../../redux/reducers/tableRows";
 import { getCell } from "../../../../redux/selectors/tableRows";
+import { CHECK_ID } from "../../constants";
 
 export interface PaymentMethodProps {
   paymentMethod: JournalEntryFragment["paymentMethod"];
@@ -21,6 +21,11 @@ const PaymentMethod = function(props: PaymentMethodProps) {
   const cellFormat = useSelector<Root, CellFormat>(
     state => getCell(state, ROW_ID, PAY_METHOD_ID) as CellFormat
   );
+
+  let name = paymentMethod.name;
+  if (paymentMethod.parent?.id === CHECK_ID) {
+    name = `CK-${name}`;
+  }
 
   return (
     <Box
@@ -36,7 +41,7 @@ const PaymentMethod = function(props: PaymentMethodProps) {
       order={cellFormat.index > -1 ? cellFormat.index : undefined}
       clone
     >
-      <TableCell component="div">{capitalCase(paymentMethod.name)}</TableCell>
+      <TableCell component="div">{name}</TableCell>
     </Box>
   );
 };

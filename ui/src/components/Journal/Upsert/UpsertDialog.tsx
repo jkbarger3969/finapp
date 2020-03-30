@@ -26,7 +26,6 @@ import PaymentMethod from "./EntryFields/PaymentMethod";
 import Description from "./EntryFields/Description";
 import Total from "./EntryFields/Total";
 import Reconcile from "./EntryFields/Reconcile";
-import { entryUpsertId } from "../Table/Journal";
 
 const DELETE_JOURNAL_ENTRY = gql`
   mutation UpsertEntryDelete($id: ID!) {
@@ -149,7 +148,7 @@ const UpsertDialog = (props: {
           <Box margin={entryMargin} width={350} clone>
             <Source />
           </Box>
-          <Box margin={entryMargin} width={175} clone>
+          <Box margin={entryMargin} width={350} clone>
             <PaymentMethod />
           </Box>
           <Box margin={entryMargin} width={350} clone>

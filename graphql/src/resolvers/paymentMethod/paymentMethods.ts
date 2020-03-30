@@ -10,6 +10,7 @@ import filter, {
   FieldAndConditionCreator
 } from "../utils/filterQuery/filterQuery";
 import mapComparisonOperators from "../utils/filterQuery/mapComarisonOperators";
+import { $addFields } from "./utils";
 
 const NULLISH = Symbol();
 
@@ -95,7 +96,7 @@ export const paymentMethods: QueryResolvers["paymentMethods"] = async (
 
   const payMethodResults = await db
     .collection("paymentMethods")
-    .find(filterQuery)
+    .aggregate([{ $match: filterQuery }, { $addFields }])
     .toArray();
 
   return payMethodResults;

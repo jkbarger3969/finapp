@@ -33,6 +33,10 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
       __typename
       id
       name
+      parent {
+        __typename
+        id
+      }
     }
     source {
       __typename

@@ -14,9 +14,10 @@ import { nodeFieldResolver } from "./utils/nodeResolver";
 import { NodeValue } from "../types";
 import { project, addFields } from "./journalEntry/utils";
 import { getDescendants as deptDescendants } from "./departments";
-
-const JOURNAL_ENTRY_ADDED = "JOURNAL_ENTRY_ADDED";
-const JOURNAL_ENTRY_UPDATED = "JOURNAL_ENTRY_UPDATED";
+import {
+  JOURNAL_ENTRY_ADDED,
+  JOURNAL_ENTRY_UPDATED
+} from "./journalEntry/pubSubs";
 
 const userNodeType = new ObjectID("5dca0427bccd5c6f26b0cde2");
 

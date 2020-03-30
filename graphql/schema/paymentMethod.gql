@@ -4,6 +4,7 @@ type PaymentMethodAuthorization {
   owner: Boolean!
   entity: PaymentMethodAuthorizedEntity
 }
+
 type PaymentMethod {
   id: ID!
   active: Boolean!
@@ -47,7 +48,28 @@ input PaymentMethodWhereInput {
   and: [PaymentMethodWhereInput]
 }
 
+input PaymentMethodAddFields {
+  active: Boolean!
+  refId: String
+  name: String!
+  parent: ID! #Do NOT allow root level payment methods
+}
+
+input PaymentMethodUpdateFields {
+  active: Boolean
+  refId: String
+  name: String
+}
+
 extend type Query {
   paymentMethods(where: PaymentMethodWhereInput): [PaymentMethod!]!
   paymentMethod(id: ID!): PaymentMethod
+}
+
+extend type Mutation {
+  paymentMethodUpdate(
+    id: ID!
+    fields: PaymentMethodUpdateFields!
+  ): PaymentMethod!
+  paymentMethodAdd(fields: PaymentMethodAddFields!): PaymentMethod!
 }
