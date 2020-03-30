@@ -147,12 +147,18 @@ export declare type JournalEntryUpdateFields = {
     source?: Maybe<JournalEntrySourceInput>;
     reconciled?: Maybe<Scalars['Boolean']>;
 };
+export declare type JournalEntryUpdatePaymentMethod = {
+    id: Scalars['ID'];
+    fields: PaymentMethodUpdateFields;
+};
 export declare type Mutation = {
     __typename?: 'Mutation';
     addBusiness: Business;
     journalEntryUpdate: JournalEntry;
     journalEntryAdd: JournalEntry;
     journalEntryDelete: JournalEntry;
+    paymentMethodUpdate: PaymentMethod;
+    paymentMethodAdd: PaymentMethod;
     addPerson: Person;
 };
 export declare type MutationAddBusinessArgs = {
@@ -161,12 +167,22 @@ export declare type MutationAddBusinessArgs = {
 export declare type MutationJournalEntryUpdateArgs = {
     id: Scalars['ID'];
     fields: JournalEntryUpdateFields;
+    paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
+    paymentMethodUpdate?: Maybe<JournalEntryUpdatePaymentMethod>;
 };
 export declare type MutationJournalEntryAddArgs = {
     fields: JournalEntryAddFields;
+    paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
 };
 export declare type MutationJournalEntryDeleteArgs = {
     id: Scalars['ID'];
+};
+export declare type MutationPaymentMethodUpdateArgs = {
+    id: Scalars['ID'];
+    fields: PaymentMethodUpdateFields;
+};
+export declare type MutationPaymentMethodAddArgs = {
+    fields: PaymentMethodAddFields;
 };
 export declare type MutationAddPersonArgs = {
     fields: PersonAddFields;
@@ -179,9 +195,57 @@ export declare type PaymentMethod = {
     __typename?: 'PaymentMethod';
     id: Scalars['ID'];
     active: Scalars['Boolean'];
-    method: Scalars['String'];
+    refId?: Maybe<Scalars['String']>;
+    name: Scalars['String'];
     parent?: Maybe<PaymentMethod>;
     ancestors: Array<PaymentMethod>;
+    children: Array<PaymentMethod>;
+    allowChildren: Scalars['Boolean'];
+    authorization: Array<PaymentMethodAuthorization>;
+};
+export declare type PaymentMethodAddFields = {
+    active: Scalars['Boolean'];
+    refId?: Maybe<Scalars['String']>;
+    name: Scalars['String'];
+    parent: Scalars['ID'];
+};
+export declare type PaymentMethodAuthorization = {
+    __typename?: 'PaymentMethodAuthorization';
+    owner: Scalars['Boolean'];
+    entity?: Maybe<PaymentMethodAuthorizedEntity>;
+};
+export declare type PaymentMethodAuthorizedEntity = Person | Business | Department;
+export declare type PaymentMethodUpdateFields = {
+    active?: Maybe<Scalars['Boolean']>;
+    refId?: Maybe<Scalars['String']>;
+    name?: Maybe<Scalars['String']>;
+};
+export declare type PaymentMethodWhereInput = {
+    active?: Maybe<Scalars['Boolean']>;
+    refId?: Maybe<PaymentMethodWhereRefIdInput>;
+    name?: Maybe<PaymentMethodWhereNameInput>;
+    hasParent?: Maybe<Scalars['Boolean']>;
+    parent?: Maybe<PaymentMethodWhereParentInput>;
+    or?: Maybe<Array<Maybe<PaymentMethodWhereInput>>>;
+    and?: Maybe<Array<Maybe<PaymentMethodWhereInput>>>;
+};
+export declare type PaymentMethodWhereNameInput = {
+    eq?: Maybe<Scalars['String']>;
+    ne?: Maybe<Scalars['String']>;
+    in?: Maybe<Array<Maybe<Scalars['String']>>>;
+    nin?: Maybe<Array<Maybe<Scalars['String']>>>;
+};
+export declare type PaymentMethodWhereParentInput = {
+    eq?: Maybe<Scalars['ID']>;
+    ne?: Maybe<Scalars['ID']>;
+    in?: Maybe<Array<Maybe<Scalars['ID']>>>;
+    nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
+};
+export declare type PaymentMethodWhereRefIdInput = {
+    eq?: Maybe<Scalars['String']>;
+    ne?: Maybe<Scalars['String']>;
+    in?: Maybe<Array<Maybe<Scalars['String']>>>;
+    nin?: Maybe<Array<Maybe<Scalars['String']>>>;
 };
 export declare type Person = {
     __typename?: 'Person';
@@ -214,6 +278,7 @@ export declare type Query = {
     journalEntryCategory: JournalEntryCategory;
     journalEntrySources: Array<JournalEntrySource>;
     paymentMethods: Array<PaymentMethod>;
+    paymentMethod?: Maybe<PaymentMethod>;
     people: Array<Person>;
 };
 export declare type QueryBudgetArgs = {
@@ -243,6 +308,12 @@ export declare type QueryJournalEntryCategoryArgs = {
 };
 export declare type QueryJournalEntrySourcesArgs = {
     searchByName: Scalars['String'];
+};
+export declare type QueryPaymentMethodsArgs = {
+    where?: Maybe<PaymentMethodWhereInput>;
+};
+export declare type QueryPaymentMethodArgs = {
+    id: Scalars['ID'];
 };
 export declare type QueryPeopleArgs = {
     searchByName?: Maybe<PersonNameInput>;
@@ -325,9 +396,17 @@ export declare type ResolversTypes = {
     JournalEntryType: JournalEntryType;
     JournalEntryCategory: ResolverTypeWrapper<JournalEntryCategory>;
     PaymentMethod: ResolverTypeWrapper<PaymentMethod>;
-    JournalEntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'];
+    PaymentMethodAuthorization: ResolverTypeWrapper<Omit<PaymentMethodAuthorization, 'entity'> & {
+        entity?: Maybe<ResolversTypes['PaymentMethodAuthorizedEntity']>;
+    }>;
+    PaymentMethodAuthorizedEntity: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'];
     Person: ResolverTypeWrapper<Person>;
     PersonName: ResolverTypeWrapper<PersonName>;
+    JournalEntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'];
+    PaymentMethodWhereInput: PaymentMethodWhereInput;
+    PaymentMethodWhereRefIdInput: PaymentMethodWhereRefIdInput;
+    PaymentMethodWhereNameInput: PaymentMethodWhereNameInput;
+    PaymentMethodWhereParentInput: PaymentMethodWhereParentInput;
     PersonNameInput: PersonNameInput;
     Mutation: ResolverTypeWrapper<{}>;
     BusinessAddFields: BusinessAddFields;
@@ -335,6 +414,9 @@ export declare type ResolversTypes = {
     RationalInput: RationalInput;
     JournalEntrySourceInput: JournalEntrySourceInput;
     JournalEntrySourceType: JournalEntrySourceType;
+    PaymentMethodAddFields: PaymentMethodAddFields;
+    JournalEntryUpdatePaymentMethod: JournalEntryUpdatePaymentMethod;
+    PaymentMethodUpdateFields: PaymentMethodUpdateFields;
     JournalEntryAddFields: JournalEntryAddFields;
     PersonAddFields: PersonAddFields;
     Subscription: ResolverTypeWrapper<{}>;
@@ -375,9 +457,17 @@ export declare type ResolversParentTypes = {
     JournalEntryType: JournalEntryType;
     JournalEntryCategory: JournalEntryCategory;
     PaymentMethod: PaymentMethod;
-    JournalEntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'];
+    PaymentMethodAuthorization: Omit<PaymentMethodAuthorization, 'entity'> & {
+        entity?: Maybe<ResolversParentTypes['PaymentMethodAuthorizedEntity']>;
+    };
+    PaymentMethodAuthorizedEntity: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'];
     Person: Person;
     PersonName: PersonName;
+    JournalEntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'];
+    PaymentMethodWhereInput: PaymentMethodWhereInput;
+    PaymentMethodWhereRefIdInput: PaymentMethodWhereRefIdInput;
+    PaymentMethodWhereNameInput: PaymentMethodWhereNameInput;
+    PaymentMethodWhereParentInput: PaymentMethodWhereParentInput;
     PersonNameInput: PersonNameInput;
     Mutation: {};
     BusinessAddFields: BusinessAddFields;
@@ -385,6 +475,9 @@ export declare type ResolversParentTypes = {
     RationalInput: RationalInput;
     JournalEntrySourceInput: JournalEntrySourceInput;
     JournalEntrySourceType: JournalEntrySourceType;
+    PaymentMethodAddFields: PaymentMethodAddFields;
+    JournalEntryUpdatePaymentMethod: JournalEntryUpdatePaymentMethod;
+    PaymentMethodUpdateFields: PaymentMethodUpdateFields;
     JournalEntryAddFields: JournalEntryAddFields;
     PersonAddFields: PersonAddFields;
     Subscription: {};
@@ -464,14 +557,27 @@ export declare type MutationResolvers<ContextType = Context, ParentType extends 
     journalEntryUpdate?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryUpdateArgs, 'id' | 'fields'>>;
     journalEntryAdd?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryAddArgs, 'fields'>>;
     journalEntryDelete?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryDeleteArgs, 'id'>>;
+    paymentMethodUpdate?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType, RequireFields<MutationPaymentMethodUpdateArgs, 'id' | 'fields'>>;
+    paymentMethodAdd?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType, RequireFields<MutationPaymentMethodAddArgs, 'fields'>>;
     addPerson?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<MutationAddPersonArgs, 'fields'>>;
 };
 export declare type PaymentMethodResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethod'] = ResolversParentTypes['PaymentMethod']> = {
     id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
     active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
-    method?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    refId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+    name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     parent?: Resolver<Maybe<ResolversTypes['PaymentMethod']>, ParentType, ContextType>;
     ancestors?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType>;
+    children?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType>;
+    allowChildren?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+    authorization?: Resolver<Array<ResolversTypes['PaymentMethodAuthorization']>, ParentType, ContextType>;
+};
+export declare type PaymentMethodAuthorizationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethodAuthorization'] = ResolversParentTypes['PaymentMethodAuthorization']> = {
+    owner?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+    entity?: Resolver<Maybe<ResolversTypes['PaymentMethodAuthorizedEntity']>, ParentType, ContextType>;
+};
+export declare type PaymentMethodAuthorizedEntityResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethodAuthorizedEntity'] = ResolversParentTypes['PaymentMethodAuthorizedEntity']> = {
+    __resolveType: TypeResolveFn<'Person' | 'Business' | 'Department', ParentType, ContextType>;
 };
 export declare type PersonResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Person'] = ResolversParentTypes['Person']> = {
     id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
@@ -493,7 +599,8 @@ export declare type QueryResolvers<ContextType = Context, ParentType extends Res
     journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>;
     journalEntryCategory?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType, RequireFields<QueryJournalEntryCategoryArgs, 'id'>>;
     journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>;
-    paymentMethods?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType>;
+    paymentMethods?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType, QueryPaymentMethodsArgs>;
+    paymentMethod?: Resolver<Maybe<ResolversTypes['PaymentMethod']>, ParentType, ContextType, RequireFields<QueryPaymentMethodArgs, 'id'>>;
     people?: Resolver<Array<ResolversTypes['Person']>, ParentType, ContextType, QueryPeopleArgs>;
 };
 export declare type RationalResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Rational'] = ResolversParentTypes['Rational']> = {
@@ -525,6 +632,8 @@ export declare type Resolvers<ContextType = Context> = {
     JournalEntrySource?: JournalEntrySourceResolvers;
     Mutation?: MutationResolvers<ContextType>;
     PaymentMethod?: PaymentMethodResolvers<ContextType>;
+    PaymentMethodAuthorization?: PaymentMethodAuthorizationResolvers<ContextType>;
+    PaymentMethodAuthorizedEntity?: PaymentMethodAuthorizedEntityResolvers;
     Person?: PersonResolvers<ContextType>;
     PersonName?: PersonNameResolvers<ContextType>;
     Query?: QueryResolvers<ContextType>;

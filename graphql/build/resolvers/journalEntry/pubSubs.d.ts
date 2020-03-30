@@ -1,0 +1,2 @@
+export declare const JOURNAL_ENTRY_ADDED = "JOURNAL_ENTRY_ADDED";
+export declare const JOURNAL_ENTRY_UPDATED = "JOURNAL_ENTRY_UPDATED";

@@ -1,5 +1,7 @@
 import { O } from "ts-toolbelt";
-declare const addFields: {
+import { Collection, Db, ObjectID } from "mongodb";
+import { JournalEntrySourceType } from "../../graphTypes";
+export declare const addFields: {
     $addFields: {
         id: {
             $toString: string;
@@ -38,12 +40,23 @@ declare const addFields: {
         };
     };
 };
-declare type addFields = O.Readonly<typeof addFields, keyof typeof addFields, "deep">;
-declare const project: {
+export declare type addFields = O.Readonly<typeof addFields, keyof typeof addFields, "deep">;
+export declare type project = O.Readonly<typeof project, keyof typeof project, "deep">;
+export declare const project: {
     $project: {
         parent: boolean;
         createdBy: boolean;
     };
 };
-declare type project = O.Readonly<typeof project, keyof typeof project, "deep">;
-export { addFields, project };
+export declare const getSrcCollectionAndNode: (db: Db, sourceType: JournalEntrySourceType, nodeMap: {
+    id: Map<string, import("../../types").NodeInfo>;
+    typename: Map<string, import("../../types").NodeInfo>;
+}) => {
+    collection: Collection<any>;
+    node: ObjectID;
+};
+export declare const $addFields: {
+    readonly id: {
+        readonly $toString: "$_id";
+    };
+};

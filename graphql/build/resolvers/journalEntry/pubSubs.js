@@ -1,0 +1,5 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.JOURNAL_ENTRY_ADDED = "JOURNAL_ENTRY_ADDED";
+exports.JOURNAL_ENTRY_UPDATED = "JOURNAL_ENTRY_UPDATED";
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicHViU3Vicy5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uLy4uL3NyYy9yZXNvbHZlcnMvam91cm5hbEVudHJ5L3B1YlN1YnMudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7QUFBYSxRQUFBLG1CQUFtQixHQUFHLHFCQUFxQixDQUFDO0FBQzVDLFFBQUEscUJBQXFCLEdBQUcsdUJBQXVCLENBQUMifQ==
