@@ -16,13 +16,17 @@ import {
   UpsertEntryAddMutationVariables as AddEntryVars,
   UpsertEntryUpdateMutation as UpdateEntry,
   UpsertEntryUpdateMutationVariables as UpdateEntryVars,
-  JournalEntryUpdateFields
+  JournalEntryUpdateFields,
+  PayMethodEntryOptFragment,
+  RationalInput
 } from "../../../apollo/graphTypes";
 import { SourceValue, SrcObjectValue } from "./EntryFields/Source";
 import {
   SRC_ENTRY_PERSON_OPT_FRAGMENT,
-  SRC_ENTRY_BIZ_OPT_FRAGMENT
+  SRC_ENTRY_BIZ_OPT_FRAGMENT,
+  PAY_METHOD_ENTRY_OPT_FRAGMENT
 } from "./upsertEntry.gql";
+import { CHECK_ID } from "../constants";
 
 const ADD_PERSON = gql`
   mutation UpsertEntryAddPerson($fields: PersonAddFields!) {
@@ -43,8 +47,11 @@ const ADD_BUSINESS = gql`
 `;
 
 const ADD_JOURNAL_ENTRY = gql`
-  mutation UpsertEntryAdd($fields: JournalEntryAddFields!) {
-    journalEntryAdd(fields: $fields) {
+  mutation UpsertEntryAdd(
+    $fields: JournalEntryAddFields!
+    $paymentMethodAdd: PaymentMethodAddFields
+  ) {
+    journalEntryAdd(fields: $fields, paymentMethodAdd: $paymentMethodAdd) {
       __typename
       id
     }
@@ -52,8 +59,18 @@ const ADD_JOURNAL_ENTRY = gql`
 `;
 
 const UPDATE_JOURNAL_ENTRY = gql`
-  mutation UpsertEntryUpdate($id: ID!, $fields: JournalEntryUpdateFields!) {
-    journalEntryUpdate(id: $id, fields: $fields) {
+  mutation UpsertEntryUpdate(
+    $id: ID!
+    $fields: JournalEntryUpdateFields!
+    $paymentMethodAdd: PaymentMethodAddFields
+    $paymentMethodUpdate: JournalEntryUpdatePaymentMethod
+  ) {
+    journalEntryUpdate(
+      id: $id
+      fields: $fields
+      paymentMethodAdd: $paymentMethodAdd
+      paymentMethodUpdate: $paymentMethodUpdate
+    ) {
       __typename
       id
     }
@@ -149,6 +166,71 @@ const getSource = async (
   };
 };
 
+function setPaymentMethod(
+  upsertEntryVars: AddEntryVars,
+  value: Values["paymentMethod"]["value"]
+): AddEntryVars;
+function setPaymentMethod(
+  upsertEntryVars: UpdateEntryVars,
+  value: Values["paymentMethod"]["value"],
+  iniValue: Values["paymentMethod"]["value"]
+): UpdateEntryVars;
+function setPaymentMethod(
+  upsertEntryVars: AddEntryVars | UpdateEntryVars,
+  value: Values["paymentMethod"]["value"],
+  iniValue?: Values["paymentMethod"]["value"]
+) {
+  const curValue = value[value.length - 1];
+  const parent = value[value.length - 2] as
+    | PayMethodEntryOptFragment
+    | undefined;
+
+  // Update
+  if (iniValue) {
+    const prevValue = iniValue[
+      iniValue.length - 1
+    ] as PayMethodEntryOptFragment;
+
+    if (typeof curValue === "string") {
+      // Update payment method
+    } else if (prevValue.id !== curValue.id) {
+      upsertEntryVars.fields.paymentMethod = curValue.id;
+    }
+
+    // Add check number
+  } else if (typeof curValue === "string") {
+    upsertEntryVars.fields.paymentMethod = "";
+
+    if (parent?.id === CHECK_ID) {
+      (upsertEntryVars as AddEntryVars).paymentMethodAdd = {
+        parent: parent.id,
+        name: curValue,
+        active: false
+      };
+    } else {
+      throw Error("Check number/parent type mismatch.");
+    }
+    // Add Payment method
+  } else {
+    upsertEntryVars.fields.paymentMethod = curValue.id;
+  }
+
+  return upsertEntryVars;
+}
+
+const getRational = (
+  number: string | number,
+  fractionDigits = 2
+): RationalInput => {
+  const { n: num, d: den } = new Fraction(
+    (typeof number === "string" ? Number.parseFloat(number) : number).toFixed(
+      fractionDigits
+    )
+  );
+
+  return { num, den };
+};
+
 export default async (args: {
   values: Values;
   formikHelpers: FormikHelpers<Values>;
@@ -178,24 +260,72 @@ export default async (args: {
       formikHelpers,
       client
     );
-    const paymentMethod = values.paymentMethod as NonNullable<
-      Values["paymentMethod"]
-    >;
-    const description = values.description as NonNullable<
-      Values["description"]
-    >;
+
+    const payMethodValue = values.paymentMethod.value;
+
+    const description = values.description?.trim() || undefined;
     const totalField = values.total as NonNullable<Values["total"]>;
     const reconciled = values.reconciled;
 
-    // Update
-    if (entryId) {
+    const isUpdate = !!entryId;
+
+    // Add
+    if (!entryId) {
+      const total = getRational(totalField);
+      const date = dateField.toISOString();
+
+      const variables = {
+        fields: {
+          type,
+          date,
+          department,
+          category,
+          source,
+          description,
+          total,
+          reconciled
+        }
+      } as AddEntryVars;
+
+      const curPayMethod = payMethodValue[payMethodValue.length - 1];
+
+      if (typeof curPayMethod === "string") {
+        const parentPayMethod = payMethodValue[payMethodValue.length - 2] as
+          | PayMethodEntryOptFragment
+          | undefined;
+
+        if (parentPayMethod?.id === CHECK_ID) {
+          variables.paymentMethodAdd = {
+            parent: parentPayMethod.id,
+            refId: curPayMethod,
+            name: curPayMethod,
+            active: false
+          };
+        } else {
+          throw Error("Check number/parent type mismatch.");
+        }
+
+        variables.fields.paymentMethod = "";
+      } else {
+        variables.fields.paymentMethod = curPayMethod.id;
+      }
+
+      await client.mutate<AddEntry, AddEntryVars>({
+        mutation: ADD_JOURNAL_ENTRY,
+        variables
+      });
+
+      // Update
+    } else {
       const fields = {} as JournalEntryUpdateFields;
+      const variables = { id: entryId, fields } as UpdateEntryVars;
 
       // Capture fields that have changed
       if (initialValues.type !== type) {
         fields.type = type;
       }
 
+      // Date
       if (
         !dateField.isSame(
           initialValues.date as NonNullable<typeof initialValues.date>
@@ -204,14 +334,17 @@ export default async (args: {
         fields.date = dateField.toISOString();
       }
 
+      // Department
       if (department !== initialValues.department?.id) {
         fields.department = department;
       }
 
+      // Category
       if (category !== initialValues.category?.id) {
         fields.category = category;
       }
 
+      // Source
       if (
         (() => {
           const value = initialValues.source.value as SrcObjectValue[];
@@ -227,29 +360,73 @@ export default async (args: {
         fields.source = source;
       }
 
-      if (paymentMethod !== initialValues.paymentMethod) {
-        fields.paymentMethod = paymentMethod;
+      // Payment Method
+      {
+        const prevPayMethod = initialValues.paymentMethod.value[
+          initialValues.paymentMethod.value.length - 1
+        ] as PayMethodEntryOptFragment;
+
+        const curPayMethod = payMethodValue[payMethodValue.length - 1];
+
+        // Check number
+        if (typeof curPayMethod === "string") {
+          const parentPayMethod = payMethodValue[payMethodValue.length - 2] as
+            | PayMethodEntryOptFragment
+            | undefined;
+
+          if (parentPayMethod?.id === CHECK_ID) {
+            const prevParentPayMethod = initialValues.paymentMethod.value[
+              initialValues.paymentMethod.value.length - 2
+            ] as PayMethodEntryOptFragment | undefined;
+
+            // Add payment method
+            if (prevParentPayMethod?.id !== CHECK_ID) {
+              variables.paymentMethodAdd = {
+                parent: parentPayMethod.id,
+                refId: curPayMethod,
+                name: curPayMethod,
+                active: false
+              };
+
+              // Update payment method
+              // Ensure same check number was not entered twice
+            } else if (curPayMethod !== prevPayMethod.refId) {
+              variables.paymentMethodUpdate = {
+                id: prevPayMethod.id,
+                fields: {
+                  refId: curPayMethod,
+                  name: curPayMethod
+                }
+              };
+            }
+          } else {
+            throw Error("Check number/parent type mismatch.");
+          }
+        } else if (prevPayMethod.id !== curPayMethod.id) {
+          fields.paymentMethod = curPayMethod.id;
+        }
       }
 
+      // Description
       if (description && description !== initialValues.description) {
         fields.description = description;
       }
 
+      // Total
       if (totalField !== initialValues.total) {
-        const { n: num, d: den } = new Fraction(
-          (typeof totalField === "string"
-            ? Number.parseFloat(totalField)
-            : totalField
-          ).toFixed(2)
-        );
-        fields.total = { num, den };
+        fields.total = getRational(totalField);
       }
 
+      // Reconciled
       if (reconciled !== initialValues.reconciled) {
         fields.reconciled = reconciled;
       }
 
-      if (Object.keys(fields).length === 0) {
+      // Insure updates were processed
+      if (
+        Object.keys(fields).length === 0 &&
+        Object.keys(variables).length < 2
+      ) {
         const status: Status = {
           errors: {
             submission: "No changes detected."
@@ -263,38 +440,7 @@ export default async (args: {
 
       const result = await client.mutate<UpdateEntry, UpdateEntryVars>({
         mutation: UPDATE_JOURNAL_ENTRY,
-        variables: {
-          id: entryId,
-          fields
-        }
-      });
-
-      // Add
-    } else {
-      const { n: num, d: den } = new Fraction(
-        (typeof totalField === "string"
-          ? Number.parseFloat(totalField)
-          : totalField
-        ).toFixed(2)
-      );
-      const total = { num, den };
-      const date = dateField.toISOString();
-
-      const result = await client.mutate<AddEntry, AddEntryVars>({
-        mutation: ADD_JOURNAL_ENTRY,
-        variables: {
-          fields: {
-            type,
-            date,
-            department,
-            category,
-            source,
-            paymentMethod,
-            description,
-            total,
-            reconciled
-          }
-        }
+        variables
       });
     }
 
@@ -306,7 +452,9 @@ export default async (args: {
     formikHelpers.setStatus(status);
     await new Promise(resolve => setTimeout(resolve, 750));
     setOpen(false);
-    formikHelpers.resetForm({ values: createInitialValues() });
+    if (!isUpdate) {
+      formikHelpers.resetForm({ values: createInitialValues() });
+    }
   } catch (error) {
     const status: Status = {
       errors: {

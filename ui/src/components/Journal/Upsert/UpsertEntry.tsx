@@ -29,7 +29,8 @@ import {
 import {
   EntryUpdateValuesQuery,
   EntryUpdateValuesQueryVariables,
-  JournalEntrySourceType
+  JournalEntrySourceType,
+  PayMethodEntryOptFragment
 } from "../../../apollo/graphTypes";
 import submit from "./submit";
 
@@ -65,6 +66,9 @@ const ENTRY_UPDATE_VALUES = gql`
     }
     paymentMethod {
       ...PayMethodEntryOptFragment
+      ancestors {
+        ...PayMethodEntryOptFragment
+      }
     }
     description
     total {
@@ -90,7 +94,10 @@ export interface Values {
     inputValue: string;
     value: SrcValue[];
   };
-  paymentMethod: string;
+  paymentMethod: {
+    inputValue: string;
+    value: (PayMethodEntryOptFragment | string)[];
+  };
   description: string;
   total: string | number;
   reconciled: boolean;
@@ -114,7 +121,10 @@ export const createInitialValues = (
     inputValue: "",
     value: []
   },
-  paymentMethod: "",
+  paymentMethod: {
+    inputValue: "",
+    value: []
+  },
   description: "",
   total: "",
   reconciled: false,
@@ -212,6 +222,13 @@ const UpsertEntry = function(props: UpsertEntryProps) {
         ? journalEntry.total.num / journalEntry.total.den
         : "";
 
+      const paymentMethodVal = journalEntry?.paymentMethod
+        ? [
+            journalEntry.paymentMethod,
+            ...journalEntry.paymentMethod.ancestors
+          ].reverse()
+        : [];
+
       return {
         type: journalEntry?.type ?? null,
         date: moment(journalEntry?.date),
@@ -221,7 +238,10 @@ const UpsertEntry = function(props: UpsertEntryProps) {
           inputValue: "",
           value: sourceVal
         },
-        paymentMethod: journalEntry?.paymentMethod.id ?? "",
+        paymentMethod: {
+          inputValue: "",
+          value: paymentMethodVal
+        },
         description: journalEntry?.description ?? "",
         total,
         reconciled: journalEntry?.reconciled ?? false

@@ -154,9 +154,10 @@ const Source = function(props: SourceProps) {
     validate
   });
 
-  const { value: fieldValue } = field;
-  const { value, inputValue } = fieldValue;
-  const { onBlur: onBlurField } = field;
+  const {
+    value: { value, inputValue },
+    onBlur: onBlurField
+  } = field;
   const { error, touched } = meta;
   const { setValue } = helpers;
 

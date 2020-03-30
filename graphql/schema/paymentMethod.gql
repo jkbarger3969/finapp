@@ -1,11 +1,75 @@
+union PaymentMethodAuthorizedEntity = Person | Business | Department
+
+type PaymentMethodAuthorization {
+  owner: Boolean!
+  entity: PaymentMethodAuthorizedEntity
+}
+
 type PaymentMethod {
-  id:ID!
-  active:Boolean!
-  method:String!
-  parent:PaymentMethod
-  ancestors:[PaymentMethod!]!
+  id: ID!
+  active: Boolean!
+  refId: String
+  name: String!
+  parent: PaymentMethod
+  ancestors: [PaymentMethod!]!
+  children: [PaymentMethod!]!
+  allowChildren: Boolean!
+  authorization: [PaymentMethodAuthorization!]!
+}
+
+input PaymentMethodWhereParentInput {
+  eq: ID
+  ne: ID
+  in: [ID]
+  nin: [ID]
+}
+
+input PaymentMethodWhereRefIdInput {
+  eq: String
+  ne: String
+  in: [String]
+  nin: [String]
+}
+
+input PaymentMethodWhereNameInput {
+  eq: String
+  ne: String
+  in: [String]
+  nin: [String]
+}
+
+input PaymentMethodWhereInput {
+  active: Boolean
+  refId: PaymentMethodWhereRefIdInput
+  name: PaymentMethodWhereNameInput
+  hasParent: Boolean
+  parent: PaymentMethodWhereParentInput
+  or: [PaymentMethodWhereInput]
+  and: [PaymentMethodWhereInput]
+}
+
+input PaymentMethodAddFields {
+  active: Boolean!
+  refId: String
+  name: String!
+  parent: ID! #Do NOT allow root level payment methods
+}
+
+input PaymentMethodUpdateFields {
+  active: Boolean
+  refId: String
+  name: String
 }
 
 extend type Query {
-  paymentMethods:[PaymentMethod!]!
+  paymentMethods(where: PaymentMethodWhereInput): [PaymentMethod!]!
+  paymentMethod(id: ID!): PaymentMethod
+}
+
+extend type Mutation {
+  paymentMethodUpdate(
+    id: ID!
+    fields: PaymentMethodUpdateFields!
+  ): PaymentMethod!
+  paymentMethodAdd(fields: PaymentMethodAddFields!): PaymentMethod!
 }

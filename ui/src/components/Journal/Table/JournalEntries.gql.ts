@@ -1,4 +1,4 @@
-import gql from 'graphql-tag';
+import gql from "graphql-tag";
 
 export const JOURNAL_ENTRY_FRAGMENT = gql`
   fragment JournalEntry_1Fragment on JournalEntry {
@@ -11,11 +11,11 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
       name
       ancestors {
         __typename
-        ...on Business {
-        id
-          bizName : name
+        ... on Business {
+          id
+          bizName: name
         }
-        ...on Department {
+        ... on Department {
           id
           deptName: name
         }
@@ -27,28 +27,31 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
       id
       type
       name
-
     }
     description
     paymentMethod {
       __typename
       id
-      method
+      name
+      parent {
+        __typename
+        id
+      }
     }
     source {
       __typename
-      ...on Person {
+      ... on Person {
         id
         name {
           first
           last
         }
       }
-      ...on Business {
+      ... on Business {
         id
-        bizName : name
+        bizName: name
       }
-      ...on Department {
+      ... on Department {
         id
         deptName: name
       }
@@ -64,11 +67,9 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
 `;
 
 export const JOURNAL_ENTRIES = gql`
-  query JournalEntries_1($where:JournalEntiresWhereInput!) 
-  {
-    journalEntries(where:$where)
-      @connection(key:"JournalEntries_1", filter:["where"]) 
-    {
+  query JournalEntries_1($where: JournalEntiresWhereInput!) {
+    journalEntries(where: $where)
+      @connection(key: "JournalEntries_1", filter: ["where"]) {
       ...JournalEntry_1Fragment
     }
   }

@@ -9,10 +9,10 @@ enum FilterType {
 }
 
 input PaginateInput {
-  skip:Int!
-  limit:Int!
+  skip: Int!
+  limit: Int!
 }
 
 input ByIdFilter {
-  eq:ID
+  eq: ID
 }

@@ -109,9 +109,22 @@ type Query {
   journalEntry(id: ID!): JournalEntry
 }
 
+input JournalEntryUpdatePaymentMethod {
+  id: ID!
+  fields: PaymentMethodUpdateFields!
+}
+
 type Mutation {
-  journalEntryUpdate(id: ID!, fields: JournalEntryUpdateFields!): JournalEntry!
-  journalEntryAdd(fields: JournalEntryAddFields!): JournalEntry!
+  journalEntryUpdate(
+    id: ID!
+    fields: JournalEntryUpdateFields!
+    paymentMethodAdd: PaymentMethodAddFields
+    paymentMethodUpdate: JournalEntryUpdatePaymentMethod
+  ): JournalEntry!
+  journalEntryAdd(
+    fields: JournalEntryAddFields!
+    paymentMethodAdd: PaymentMethodAddFields
+  ): JournalEntry!
   journalEntryDelete(id: ID!): JournalEntry!
 }
 
