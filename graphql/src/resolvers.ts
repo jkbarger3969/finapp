@@ -4,24 +4,25 @@ import {
   Business,
   business,
   businesses,
-  addBusiness
+  addBusiness,
 } from "./resolvers/business";
 import { Department, departments, department } from "./resolvers/departments";
 import {
   journalEntryAdded,
   journalEntryUpdated,
-  journalEntryDelete
+  journalEntryDelete,
 } from "./resolvers/journalEntry";
 import journalEntries from "./resolvers/journalEntry/journalEntries";
 import journalEntry from "./resolvers/journalEntry/journalEntry";
 import journalEntryAdd from "./resolvers/journalEntry/journalEntryAdd";
 import journalEntryUpdate from "./resolvers/journalEntry/journalEntryUpdate";
+import journalEntryAddRefund from "./resolvers/journalEntry/journalEntryAddRefund";
 import JournalEntry from "./resolvers/journalEntry/JournalEntryResolver";
 import { journalEntrySources } from "./resolvers/journalEntrySource";
 import {
   JournalEntryCategory,
   journalEntryCategories,
-  journalEntryCategory
+  journalEntryCategory,
 } from "./resolvers/journalEntryCategory";
 import paymentMethods from "./resolvers/paymentMethod/paymentMethods";
 import paymentMethod from "./resolvers/paymentMethod/paymentMethod";
@@ -52,21 +53,22 @@ const resolvers: Resolvers = {
     department,
     paymentMethods,
     paymentMethod,
-    people
+    people,
   },
   Mutation: {
     journalEntryAdd,
     journalEntryUpdate,
+    journalEntryAddRefund,
     journalEntryDelete,
     addPerson,
     addBusiness,
     paymentMethodAdd,
-    paymentMethodUpdate
+    paymentMethodUpdate,
   },
   Subscription: {
     journalEntryAdded,
-    journalEntryUpdated
-  }
+    journalEntryUpdated,
+  },
 };
 
 export default resolvers;

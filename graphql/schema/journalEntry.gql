@@ -5,6 +5,7 @@ enum JournalEntryType {
 
 type JournalEntry {
   id: ID!
+  refund: ID
   type: JournalEntryType!
   date: String!
   department: Department!
@@ -53,6 +54,20 @@ input JournalEntryAddFields {
   reconciled: Boolean
 }
 
+input JournalEntryAddRefundFields {
+  date: String!
+  description: String
+  total: RationalInput!
+  reconciled: Boolean
+}
+
+input JournalEntryUpdateRefundFields {
+  date: String
+  description: String
+  total: RationalInput
+  reconciled: Boolean
+}
+
 # enum JournalEntriesColumn {
 #   DEPARTMENT
 #   TYPE
@@ -93,16 +108,16 @@ input JournalEntiresWhereInput {
   and: [JournalEntiresWhereInput]
 }
 
-type JournalEntriesRes {
-  totalCount: Int!
-  entries: [JournalEntry!]!
-}
+# type JournalEntriesRes {
+#   totalCount: Int!
+#   entries: [JournalEntry!]!
+# }
 
-type JournalEntryAddedRes {
-  totalCount: Int!
-  index: Int!
-  entry: JournalEntry!
-}
+# type JournalEntryAddedRes {
+#   totalCount: Int!
+#   index: Int!
+#   entry: JournalEntry!
+# }
 
 type Query {
   journalEntries(where: JournalEntiresWhereInput): [JournalEntry!]!
@@ -124,6 +139,14 @@ type Mutation {
   journalEntryAdd(
     fields: JournalEntryAddFields!
     paymentMethodAdd: PaymentMethodAddFields
+  ): JournalEntry!
+  journalEntryAddRefund(
+    id: ID!
+    fields: JournalEntryAddRefundFields!
+  ): JournalEntry!
+  journalEntryUpdateRefund(
+    id: ID!
+    fields: JournalEntryUpdateRefundFields!
   ): JournalEntry!
   journalEntryDelete(id: ID!): JournalEntry!
 }

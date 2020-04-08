@@ -5,12 +5,12 @@ import {
   MutationResolvers,
   PaymentMethod,
   JournalEntryType,
-  RationalInput
+  RationalInput,
 } from "../../graphTypes";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import DocHistory, {
   HistoryObject,
-  RootHistoryObject
+  RootHistoryObject,
 } from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
 import { getSrcCollectionAndNode, $addFields } from "./utils";
@@ -42,10 +42,9 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       type,
       category: categoryId,
       source: { id: sourceId, sourceType },
-      description,
-      total
+      total,
     },
-    paymentMethodAdd
+    paymentMethodAdd,
   } = args;
 
   const date = moment(dateString, moment.ISO_8601);
@@ -54,6 +53,8 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
   }
 
   const reconciled = args.fields.reconciled ?? false;
+
+  const description = (args.fields.description ?? "").trim();
 
   const { db, user, nodeMap, pubSub } = context;
 
@@ -69,7 +70,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
     description: description ? docHistory.addValue(description) : [],
     deleted: docHistory.addValue(false),
     reconciled: docHistory.addValue(reconciled),
-    ...docHistory.rootHistoryObject
+    ...docHistory.rootHistoryObject,
   } as JournalEntryAddInsertDoc;
 
   // Insure doc refs exist and finish insert doc
@@ -89,7 +90,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
       insertDoc["department"] = docHistory.addValue({
         node: new ObjectID(node),
-        id
+        id,
       });
     })(),
 
@@ -113,7 +114,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
       insertDoc["source"] = docHistory.addValue({
         node,
-        id
+        id,
       });
     })(),
 
@@ -135,7 +136,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
       insertDoc["category"] = docHistory.addValue({
         node: new ObjectID(node),
-        id
+        id,
       });
     })(),
 
@@ -166,9 +167,9 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
       insertDoc["paymentMethod"] = docHistory.addValue({
         node: new ObjectID(node),
-        id
+        id,
       });
-    })()
+    })(),
   ]);
 
   const { insertedId, insertedCount } = await db
@@ -188,7 +189,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
   pubSub
     .publish(JOURNAL_ENTRY_ADDED, { journalEntryAdded: newEntry })
-    .catch(error => console.error(error));
+    .catch((error) => console.error(error));
 
   return newEntry;
 };

@@ -1,8 +1,9 @@
 import { O } from "ts-toolbelt";
 import { Collection, Db, ObjectID } from "mongodb";
-import { JournalEntrySourceType } from "../../graphTypes";
+import { JournalEntrySourceType, JournalEntry } from "../../graphTypes";
 import { Context } from "../../types";
 import DocHistory from "../utils/DocHistory";
+import { mergeObjects } from "../utils/mongoUtils";
 
 export const addFields = {
   $addFields: {
@@ -15,11 +16,11 @@ export const addFields = {
     source: { $arrayElemAt: ["$source.value", 0] },
     reconciled: { $arrayElemAt: ["$reconciled.value", 0] },
     description: {
-      $ifNull: [{ $arrayElemAt: ["$description.value", 0] }, null]
+      $ifNull: [{ $arrayElemAt: ["$description.value", 0] }, null],
     },
     date: { $arrayElemAt: ["$date.value", 0] },
-    deleted: { $arrayElemAt: ["$deleted.value", 0] }
-  }
+    deleted: { $arrayElemAt: ["$deleted.value", 0] },
+  },
 };
 export type addFields = O.Readonly<
   typeof addFields,
@@ -31,8 +32,8 @@ export type project = O.Readonly<typeof project, keyof typeof project, "deep">;
 export const project = {
   $project: {
     parent: false,
-    createdBy: false
-  }
+    createdBy: false,
+  },
 };
 
 export const getSrcCollectionAndNode = (
@@ -56,9 +57,31 @@ export const getSrcCollectionAndNode = (
 
   return {
     collection: db.collection(collection),
-    node: new ObjectID(id)
+    node: new ObjectID(id),
   };
 };
+
+// Merge MUST include ALL keys in JournalEntry.  This anonymous function
+// allows type checking. This can be replaced if/when TS allows for keyof enums.
+export const merge = (() => {
+  const obj: { [P in keyof Omit<JournalEntry, "__typename">]-?: null } = {
+    date: null,
+    id: null,
+    refund: null,
+    type: null,
+    department: null,
+    category: null,
+    paymentMethod: null,
+    description: null,
+    total: null,
+    source: null,
+    reconciled: null,
+    lastUpdate: null,
+    deleted: null,
+  };
+
+  return mergeObjects(Object.keys(obj));
+})();
 
 export const $addFields = {
   ...DocHistory.getPresentValues([
@@ -71,7 +94,7 @@ export const $addFields = {
     "reconciled",
     "description",
     "date",
-    "deleted"
+    "deleted",
   ]),
-  id: { $toString: "$_id" }
+  id: { $toString: "$_id" },
 } as const;

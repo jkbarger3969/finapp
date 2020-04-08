@@ -63,7 +63,7 @@ export default class DocHistory {
     return {
       lastUpdate: this._date_,
       createdOn: this._date_,
-      createdBy: this._by_
+      createdBy: this._by_,
     } as const;
   }
 
@@ -72,7 +72,8 @@ export default class DocHistory {
   }
 
   static getPresentValues(
-    presentValueMap: PresentValueMap
+    presentValueMap: PresentValueMap,
+    defaultValue = null
   ): PresentValueProjection {
     const presentValueProjection = {} as {
       [P in keyof PresentValueProjection]: PresentValueProjection[P];
@@ -80,7 +81,7 @@ export default class DocHistory {
 
     for (const key of presentValueMap) {
       presentValueProjection[key] = {
-        $ifNull: [{ $arrayElemAt: [`$${key}.value`, 0] }, null]
+        $ifNull: [{ $arrayElemAt: [`$${key}.value`, 0] }, defaultValue],
       };
     }
 
@@ -91,14 +92,14 @@ export default class DocHistory {
     return {
       value,
       createdBy: this._by_,
-      createdOn: this._date_
+      createdOn: this._date_,
     };
   }
 
   updateValue<T>(field: string, value: T): this {
     this._push_[field] = {
       $each: [this.historyObject(value)],
-      $position: 0
+      $position: 0,
     };
     this._hasUpdate_ = true;
     return this;
