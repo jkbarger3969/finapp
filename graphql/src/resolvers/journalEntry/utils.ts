@@ -1,9 +1,13 @@
 import { O } from "ts-toolbelt";
 import { Collection, Db, ObjectID } from "mongodb";
-import { JournalEntrySourceType, JournalEntry } from "../../graphTypes";
+import {
+  JournalEntrySourceType,
+  JournalEntry,
+  JournalEntryRefund,
+  JournalEntryType,
+} from "../../graphTypes";
 import { Context } from "../../types";
 import DocHistory from "../utils/DocHistory";
-import { mergeObjects } from "../utils/mongoUtils";
 
 export const addFields = {
   $addFields: {
@@ -61,40 +65,96 @@ export const getSrcCollectionAndNode = (
   };
 };
 
-// Merge MUST include ALL keys in JournalEntry.  This anonymous function
-// allows type checking. This can be replaced if/when TS allows for keyof enums.
-export const merge = (() => {
-  const obj: { [P in keyof Omit<JournalEntry, "__typename">]-?: null } = {
-    date: null,
-    id: null,
-    refund: null,
-    type: null,
-    department: null,
-    category: null,
-    paymentMethod: null,
-    description: null,
-    total: null,
-    source: null,
-    reconciled: null,
-    lastUpdate: null,
-    deleted: null,
-  };
+// $ prefix is to indicate mongo
+export const entryAddFieldsStage = {
+  $addFields: {
+    ...DocHistory.getPresentValues(
+      (() => {
+        const obj: {
+          [P in keyof Omit<
+            JournalEntry,
+            "__typename" | "id" | "refunds" | "lastUpdate"
+          >]-?: null;
+        } = {
+          type: null,
+          department: null,
+          category: null,
+          paymentMethod: null,
+          total: null,
+          source: null,
+          reconciled: null,
+          description: null,
+          date: null,
+          deleted: null,
+        };
 
-  return mergeObjects(Object.keys(obj));
-})();
-
-export const $addFields = {
-  ...DocHistory.getPresentValues([
-    "type",
-    "department",
-    "category",
-    "paymentMethod",
-    "total",
-    "source",
-    "reconciled",
-    "description",
-    "date",
-    "deleted",
-  ]),
-  id: { $toString: "$_id" },
+        return Object.keys(obj);
+      })()
+    ),
+    refunds: {
+      $map: {
+        input: "$refunds",
+        as: "refund",
+        in: {
+          $mergeObjects: [
+            "$$refund",
+            {
+              ...DocHistory.getPresentValues(
+                (() => {
+                  const obj: {
+                    [P in keyof Omit<
+                      JournalEntryRefund,
+                      "__typename" | "id" | "lastUpdate"
+                    >]-?: null;
+                  } = {
+                    total: null,
+                    reconciled: null,
+                    date: null,
+                    description: null,
+                    deleted: null,
+                  };
+                  return Object.keys(obj);
+                })(),
+                { asVar: "refund" }
+              ),
+            },
+          ],
+        },
+      },
+    },
+    id: "$_id",
+  },
 } as const;
+
+export const entryTransmutationsStage = {
+  $addFields: {
+    id: { $toString: "$id" },
+    type: {
+      $switch: {
+        branches: [
+          { case: { $eq: ["$type", "credit"] }, then: JournalEntryType.Credit },
+          { case: { $eq: ["$type", "debit"] }, then: JournalEntryType.Debit },
+        ],
+        default: "$type",
+      },
+    },
+    date: { $toString: "$date" },
+    lastUpdate: { $toString: "$lastUpdate" },
+    refunds: {
+      $map: {
+        input: "$refunds",
+        as: "refund",
+        in: {
+          $mergeObjects: [
+            "$$refund",
+            {
+              id: { $toString: "$$refund.id" },
+              date: { $toString: "$$refund.date" },
+              lastUpdate: { $toString: "$$refund.lastUpdate" },
+            },
+          ],
+        },
+      },
+    },
+  },
+};

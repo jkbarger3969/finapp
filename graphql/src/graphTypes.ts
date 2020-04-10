@@ -89,7 +89,7 @@ export type JournalEntriesWhereLastUpdate = {
 export type JournalEntry = {
    __typename?: 'JournalEntry';
   id: Scalars['ID'];
-  refund?: Maybe<Scalars['ID']>;
+  refunds: Array<JournalEntryRefund>;
   type: JournalEntryType;
   date: Scalars['String'];
   department: Department;
@@ -129,6 +129,17 @@ export type JournalEntryCategory = {
   type: JournalEntryType;
   parent?: Maybe<JournalEntryCategory>;
   ancestors: Array<JournalEntryCategory>;
+};
+
+export type JournalEntryRefund = {
+   __typename?: 'JournalEntryRefund';
+  id: Scalars['ID'];
+  date: Scalars['String'];
+  description?: Maybe<Scalars['String']>;
+  total: Rational;
+  reconciled: Scalars['Boolean'];
+  lastUpdate: Scalars['String'];
+  deleted: Scalars['Boolean'];
 };
 
 export type JournalEntrySource = Person | Business | Department;
@@ -523,6 +534,7 @@ export type ResolversTypes = {
   JournalEntriesWhereDepartment: JournalEntriesWhereDepartment,
   JournalEntriesWhereLastUpdate: JournalEntriesWhereLastUpdate,
   JournalEntry: ResolverTypeWrapper<Omit<JournalEntry, 'source'> & { source: ResolversTypes['JournalEntrySource'] }>,
+  JournalEntryRefund: ResolverTypeWrapper<JournalEntryRefund>,
   JournalEntryType: JournalEntryType,
   JournalEntryCategory: ResolverTypeWrapper<JournalEntryCategory>,
   PaymentMethod: ResolverTypeWrapper<PaymentMethod>,
@@ -576,6 +588,7 @@ export type ResolversParentTypes = {
   JournalEntriesWhereDepartment: JournalEntriesWhereDepartment,
   JournalEntriesWhereLastUpdate: JournalEntriesWhereLastUpdate,
   JournalEntry: Omit<JournalEntry, 'source'> & { source: ResolversParentTypes['JournalEntrySource'] },
+  JournalEntryRefund: JournalEntryRefund,
   JournalEntryType: JournalEntryType,
   JournalEntryCategory: JournalEntryCategory,
   PaymentMethod: PaymentMethod,
@@ -650,7 +663,7 @@ export type DepartmentAncestorResolvers<ContextType = Context, ParentType extend
 
 export type JournalEntryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntry'] = ResolversParentTypes['JournalEntry']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>,
-  refund?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>,
+  refunds?: Resolver<Array<ResolversTypes['JournalEntryRefund']>, ParentType, ContextType>,
   type?: Resolver<ResolversTypes['JournalEntryType'], ParentType, ContextType>,
   date?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType>,
@@ -671,6 +684,17 @@ export type JournalEntryCategoryResolvers<ContextType = Context, ParentType exte
   type?: Resolver<ResolversTypes['JournalEntryType'], ParentType, ContextType>,
   parent?: Resolver<Maybe<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   ancestors?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
+  __isTypeOf?: isTypeOfResolverFn<ParentType>,
+};
+
+export type JournalEntryRefundResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntryRefund'] = ResolversParentTypes['JournalEntryRefund']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>,
+  date?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
+  description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>,
+  total?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>,
+  reconciled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>,
+  lastUpdate?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
+  deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>,
   __isTypeOf?: isTypeOfResolverFn<ParentType>,
 };
 
@@ -773,6 +797,7 @@ export type Resolvers<ContextType = Context> = {
   DepartmentAncestor?: DepartmentAncestorResolvers,
   JournalEntry?: JournalEntryResolvers<ContextType>,
   JournalEntryCategory?: JournalEntryCategoryResolvers<ContextType>,
+  JournalEntryRefund?: JournalEntryRefundResolvers<ContextType>,
   JournalEntrySource?: JournalEntrySourceResolvers,
   Mutation?: MutationResolvers<ContextType>,
   PaymentMethod?: PaymentMethodResolvers<ContextType>,

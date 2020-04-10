@@ -1,21 +1,10 @@
-import { ObjectID, InsertOneWriteOpResult } from "mongodb";
+import { ObjectID } from "mongodb";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
 import { MutationResolvers } from "../../graphTypes";
-import { $addFields, merge } from "./utils";
 import * as moment from "moment";
 
-const getTotal = {
-  $addFields: DocHistory.getPresentValues(["total"]),
-} as const;
-
-const totalToDec = {
-  $project: { total: { $divide: ["$total.num", "$total.den"] } },
-} as const;
-
-const sumRefunds = {
-  $group: { _id: null, total: { $sum: "$total" } },
-} as const;
+import journalEntry from "./journalEntry";
 
 const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async (
   doc,
@@ -32,6 +21,12 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
 
   const description = (args.fields.description ?? "").trim();
 
+  // Total Cannot be less than or equal to zero
+  const totalDecimal = total.num / total.den;
+  if (totalDecimal <= 0) {
+    throw new Error("Refund total must be greater than 0.");
+  }
+
   const { db, user } = context;
 
   const collection = db.collection("journalEntries");
@@ -40,29 +35,45 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
 
   const [{ entryTotal, refundTotal }] = (await collection
     .aggregate([
-      {
-        $facet: {
-          entryTotal: [
-            { $match: { _id: srcEntryId } },
-            getTotal,
-            totalToDec,
-            sumRefunds,
-          ],
-          refundTotal: [
-            { $match: { refund: srcEntryId } },
-            getTotal,
-            totalToDec,
-            sumRefunds,
-          ],
-        },
-      },
+      { $match: { _id: srcEntryId } },
       {
         $project: {
           entryTotal: {
-            $ifNull: [{ $arrayElemAt: ["$entryTotal.total", 0] }, 0],
+            $let: {
+              vars: {
+                total: {
+                  $ifNull: [
+                    { $arrayElemAt: ["$total.value", 0] },
+                    { num: 0, den: 1 },
+                  ],
+                },
+              },
+              in: { $divide: ["$$total.num", "$$total.den"] },
+            },
           },
           refundTotal: {
-            $ifNull: [{ $arrayElemAt: ["$refundTotal.total", 0] }, 0],
+            $reduce: {
+              input: "$refunds",
+              initialValue: 0,
+              in: {
+                $sum: [
+                  "$$value",
+                  {
+                    $let: {
+                      vars: {
+                        total: {
+                          $ifNull: [
+                            { $arrayElemAt: ["$$this.total.value", 0] },
+                            { num: 0, den: 1 },
+                          ],
+                        },
+                      },
+                      in: { $divide: ["$$total.num", "$$total.den"] },
+                    },
+                  },
+                ],
+              },
+            },
           },
         },
       },
@@ -70,7 +81,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
     .toArray()) as [{ entryTotal: number; refundTotal: number }];
 
   // Ensure aggregate refunds do NOT exceed the original transaction amount
-  if (entryTotal < refundTotal + total.num / total.den) {
+  if (entryTotal < refundTotal + totalDecimal) {
     throw new Error(
       "Refunds cannot total more than original transaction amount."
     );
@@ -84,40 +95,31 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
   const docHistory = new DocHistory({ node: userNodeType, id: user.id });
 
   const refundEntry = {
-    refund: srcEntryId,
+    id: new ObjectID(),
     date: docHistory.addValue(date.toDate()),
     description: description ? docHistory.addValue(description) : [],
     total: docHistory.addValue(total),
     reconciled: docHistory.addValue(reconciled),
+    lastUpdate: docHistory.lastUpdate,
+    ...docHistory.rootHistoryObject,
   };
 
-  const { insertedId, insertedCount } = await collection.insertOne(refundEntry);
+  const { modifiedCount } = await collection.updateOne(
+    { _id: srcEntryId },
+    {
+      $push: {
+        refunds: refundEntry,
+      },
+    }
+  );
 
-  if (insertedCount === 0) {
+  if (modifiedCount === 0) {
     throw new Error(
       `Failed to add refund entry: "${JSON.stringify(args, null, 2)}".`
     );
   }
 
-  const [result] = await collection
-    .aggregate([
-      { $match: { _id: { $in: [srcEntryId, insertedId] } } },
-      { $addFields },
-      { $sort: { refund: -1 } },
-      ...merge,
-      {
-        $addFields: {
-          type: {
-            $cond: {
-              if: { $eq: ["$type", "credit"] },
-              then: "debit",
-              else: "credit",
-            },
-          },
-        },
-      },
-    ])
-    .toArray();
+  const result = await journalEntry(doc, { id }, context, info);
 
   return result;
 };

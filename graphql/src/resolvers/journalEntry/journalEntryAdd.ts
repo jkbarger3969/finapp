@@ -13,7 +13,11 @@ import DocHistory, {
   RootHistoryObject,
 } from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
-import { getSrcCollectionAndNode, $addFields } from "./utils";
+import {
+  getSrcCollectionAndNode,
+  entryAddFieldsStage,
+  entryTransmutationsStage,
+} from "./utils";
 import { NodeValue } from "../../types";
 import { JOURNAL_ENTRY_ADDED } from "./pubSubs";
 
@@ -184,7 +188,11 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
   const [newEntry] = await db
     .collection("journalEntries")
-    .aggregate([{ $match: { _id: insertedId } }, { $addFields }])
+    .aggregate([
+      { $match: { _id: insertedId } },
+      entryAddFieldsStage,
+      entryTransmutationsStage,
+    ])
     .toArray();
 
   pubSub

@@ -6,7 +6,11 @@ import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
-import { getSrcCollectionAndNode, $addFields } from "./utils";
+import {
+  getSrcCollectionAndNode,
+  entryAddFieldsStage,
+  entryTransmutationsStage,
+} from "./utils";
 import { JOURNAL_ENTRY_UPDATED } from "./pubSubs";
 
 const NULLISH = Symbol();
@@ -28,10 +32,10 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
       source,
       description,
       total,
-      reconciled
+      reconciled,
     },
     paymentMethodAdd,
-    paymentMethodUpdate
+    paymentMethodUpdate,
   } = args;
 
   const { db, nodeMap, user, pubSub } = context;
@@ -87,7 +91,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
         docHistory.updateValue("department", {
           node: new ObjectID(node),
-          id
+          id,
         });
       })()
     );
@@ -120,7 +124,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
         docHistory.updateValue("source", {
           node,
-          id
+          id,
         });
       })()
     );
@@ -146,7 +150,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
         docHistory.updateValue("category", {
           node: new ObjectID(node),
-          id
+          id,
         });
       })()
     );
@@ -174,7 +178,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           doc,
           {
             id: paymentMethodUpdate.id,
-            fields: paymentMethodUpdate.fields
+            fields: paymentMethodUpdate.fields,
           },
           context,
           info
@@ -198,7 +202,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
         docHistory.updateValue("paymentMethod", {
           node: new ObjectID(node),
-          id
+          id,
         });
       }
     })()
@@ -228,12 +232,16 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
   const [updatedDoc] = await db
     .collection("journalEntries")
-    .aggregate([{ $match: { _id } }, { $addFields }])
+    .aggregate([
+      { $match: { _id } },
+      entryAddFieldsStage,
+      entryTransmutationsStage,
+    ])
     .toArray();
 
   pubSub
     .publish(JOURNAL_ENTRY_UPDATED, { journalEntryUpdated: updatedDoc })
-    .catch(error => console.error(error));
+    .catch((error) => console.error(error));
 
   return updatedDoc;
 };

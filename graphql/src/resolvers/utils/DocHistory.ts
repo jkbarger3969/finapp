@@ -1,11 +1,11 @@
 import { ObjectID } from "mongodb";
 
-export type PresentValueMap = Iterable<string>;
+export type PresentValueExpression = {
+  readonly $ifNull: [{ readonly $arrayElemAt: [string, 0] }, null];
+};
 
 export type PresentValueProjection = {
-  readonly [field: string]: {
-    readonly $ifNull: [{ readonly $arrayElemAt: [string, 0] }, null];
-  };
+  readonly [field: string]: PresentValueExpression;
 };
 
 export interface CreatedBy {
@@ -67,22 +67,81 @@ export default class DocHistory {
     } as const;
   }
 
-  getPresentValues(presentValueMap: PresentValueMap) {
+  getPresentValues(presentValueMap: Iterable<string>) {
     return DocHistory.getPresentValues(presentValueMap);
   }
 
+  static getAllFieldsPresentValues(
+    args: { path?: string; exclude?: Iterable<string> } = {
+      path: "$$ROOT",
+    }
+  ) {
+    const { path = "$$ROOT", exclude } = args;
+
+    const isRoot = path === "$$ROOT";
+
+    const docLocation = isRoot ? "__doc" : `${path}.__doc`;
+
+    return [
+      {
+        $addFields: {
+          [docLocation]: {
+            $arrayToObject: {
+              $map: {
+                input: { $objectToArray: isRoot ? path : `$${path}` },
+                as: "kv",
+                in: {
+                  $cond: {
+                    if: {
+                      $eq: [{ $type: "$$kv.v" }, "array"],
+                      ...(exclude ? { $nin: ["$$kv.k", [...exclude]] } : {}),
+                    },
+                    then: {
+                      k: "$$kv.k",
+                      v: {
+                        $ifNull: [{ $arrayElemAt: ["$$kv.v.value", 0] }, null],
+                      },
+                    },
+                    else: "$$kv",
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      isRoot
+        ? { $replaceRoot: { newRoot: `$${docLocation}` } }
+        : {
+            $addFields: {
+              [docLocation]: `$${docLocation}.__doc`,
+            },
+          },
+    ];
+  }
+
+  static getPresentValueExpression(
+    key: string,
+    opts: { defaultValue?: any; asVar?: string } = {}
+  ): PresentValueExpression {
+    const asVar = opts.asVar ? `$${opts.asVar}.` : "";
+    const defaultValue = "defaultValue" in opts ? opts.defaultValue : null;
+
+    return {
+      $ifNull: [{ $arrayElemAt: [`$${asVar}${key}.value`, 0] }, defaultValue],
+    };
+  }
+
   static getPresentValues(
-    presentValueMap: PresentValueMap,
-    defaultValue = null
+    presentValueMap: Iterable<string>,
+    opts?: { defaultValue?: any; asVar?: string }
   ): PresentValueProjection {
     const presentValueProjection = {} as {
       [P in keyof PresentValueProjection]: PresentValueProjection[P];
     };
 
     for (const key of presentValueMap) {
-      presentValueProjection[key] = {
-        $ifNull: [{ $arrayElemAt: [`$${key}.value`, 0] }, defaultValue],
-      };
+      presentValueProjection[key] = this.getPresentValueExpression(key, opts);
     }
 
     return presentValueProjection;

@@ -5,7 +5,7 @@ enum JournalEntryType {
 
 type JournalEntry {
   id: ID!
-  refund: ID
+  refunds: [JournalEntryRefund!]!
   type: JournalEntryType!
   date: String!
   department: Department!
@@ -52,6 +52,16 @@ input JournalEntryAddFields {
   total: RationalInput!
   source: JournalEntrySourceInput!
   reconciled: Boolean
+}
+
+type JournalEntryRefund {
+  id: ID!
+  date: String!
+  description: String
+  total: Rational!
+  reconciled: Boolean!
+  lastUpdate: String!
+  deleted: Boolean!
 }
 
 input JournalEntryAddRefundFields {
