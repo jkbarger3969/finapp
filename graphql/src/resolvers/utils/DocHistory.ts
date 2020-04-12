@@ -51,6 +51,19 @@ export default class DocHistory {
     return this._hasUpdate_;
   }
 
+  get update() {
+    return this.hasUpdate
+      ? {
+          $set: {
+            lastUpdate: this.lastUpdate,
+          },
+          $push: {
+            ...this._push_,
+          },
+        }
+      : null;
+  }
+
   get lastUpdate() {
     return this._date_;
   }

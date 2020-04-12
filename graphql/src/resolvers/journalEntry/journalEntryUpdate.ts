@@ -216,13 +216,11 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
     );
   }
 
-  const $push = docHistory.updatePushArg;
-
   const _id = new ObjectID(id);
 
   const { modifiedCount } = await db
     .collection("journalEntries")
-    .updateOne({ _id }, { $push });
+    .updateOne({ _id }, docHistory.update);
 
   if (modifiedCount === 0) {
     throw new Error(
