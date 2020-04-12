@@ -1,10 +1,12 @@
 import { ObjectID } from "mongodb";
+import * as moment from "moment";
+
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
 import { MutationResolvers } from "../../graphTypes";
-import * as moment from "moment";
-
 import journalEntry from "./journalEntry";
+import { getUniqueId } from "../utils/mongoUtils";
+import { stages } from "./utils";
 
 const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async (
   doc,
@@ -33,52 +35,26 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
 
   const srcEntryId = new ObjectID(id);
 
-  const [{ entryTotal, refundTotal }] = (await collection
+  // Ensure source entry exists and get entry and refund totals.
+  const [srcEntryState] = (await collection
     .aggregate([
       { $match: { _id: srcEntryId } },
+      stages.entryTotal,
+      stages.refundTotal,
       {
         $project: {
-          entryTotal: {
-            $let: {
-              vars: {
-                total: {
-                  $ifNull: [
-                    { $arrayElemAt: ["$total.value", 0] },
-                    { num: 0, den: 1 },
-                  ],
-                },
-              },
-              in: { $divide: ["$$total.num", "$$total.den"] },
-            },
-          },
-          refundTotal: {
-            $reduce: {
-              input: "$refunds",
-              initialValue: 0,
-              in: {
-                $sum: [
-                  "$$value",
-                  {
-                    $let: {
-                      vars: {
-                        total: {
-                          $ifNull: [
-                            { $arrayElemAt: ["$$this.total.value", 0] },
-                            { num: 0, den: 1 },
-                          ],
-                        },
-                      },
-                      in: { $divide: ["$$total.num", "$$total.den"] },
-                    },
-                  },
-                ],
-              },
-            },
-          },
+          entryTotal: true,
+          refundTotal: true,
         },
       },
     ])
     .toArray()) as [{ entryTotal: number; refundTotal: number }];
+
+  if (!srcEntryState) {
+    throw new Error(`Journal Entry "${id}" does not exist.`);
+  }
+
+  const { entryTotal, refundTotal } = srcEntryState;
 
   // Ensure aggregate refunds do NOT exceed the original transaction amount
   if (entryTotal < refundTotal + totalDecimal) {
@@ -95,14 +71,15 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
   const docHistory = new DocHistory({ node: userNodeType, id: user.id });
 
   const refundEntry = {
-    id: new ObjectID(),
+    id: await getUniqueId("refund.id", collection),
     date: docHistory.addValue(date.toDate()),
     description: description ? docHistory.addValue(description) : [],
     total: docHistory.addValue(total),
     reconciled: docHistory.addValue(reconciled),
+    deleted: docHistory.addValue(false),
     lastUpdate: docHistory.lastUpdate,
     ...docHistory.rootHistoryObject,
-  };
+  } as const;
 
   const { modifiedCount } = await collection.updateOne(
     { _id: srcEntryId },

@@ -65,7 +65,6 @@ export const getSrcCollectionAndNode = (
   };
 };
 
-// $ prefix is to indicate mongo
 export const entryAddFieldsStage = {
   $addFields: {
     ...DocHistory.getPresentValues(
@@ -158,3 +157,83 @@ export const entryTransmutationsStage = {
     },
   },
 };
+
+export const getRefundTotals = (exclude: (ObjectID | string)[] = []) => {
+  const $eq = [
+    DocHistory.getPresentValueExpression("deleted", {
+      defaultValue: true,
+      asVar: "this",
+    }),
+    false,
+  ];
+
+  const condition =
+    exclude.length > 0
+      ? {
+          $and: [
+            { $eq },
+            {
+              $not: {
+                $in: ["$$this.id", exclude.map((id) => new ObjectID(id))],
+              },
+            },
+          ],
+        }
+      : { $eq };
+
+  return {
+    $addFields: {
+      refundTotal: {
+        $reduce: {
+          input: "$refunds",
+          initialValue: 0,
+          in: {
+            $sum: [
+              "$$value",
+              {
+                $let: {
+                  vars: {
+                    total: {
+                      $cond: {
+                        if: condition,
+                        then: DocHistory.getPresentValueExpression("total", {
+                          defaultValue: { num: 0, den: 1 },
+                          asVar: "this",
+                        }),
+                        else: {
+                          num: 0,
+                          den: 1,
+                        },
+                      },
+                    },
+                  },
+                  in: { $divide: ["$$total.num", "$$total.den"] },
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  } as const;
+};
+
+export const stages = {
+  entryAddFields: entryAddFieldsStage,
+  entryTransmutations: entryTransmutationsStage,
+  entryTotal: {
+    $addFields: {
+      entryTotal: {
+        $let: {
+          vars: {
+            total: DocHistory.getPresentValueExpression("total", {
+              defaultValue: { num: 0, den: 1 },
+            }),
+          },
+          in: { $divide: ["$$total.num", "$$total.den"] },
+        },
+      },
+    },
+  },
+  refundTotal: getRefundTotals(),
+} as const;
