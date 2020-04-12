@@ -6,11 +6,7 @@ import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
-import {
-  getSrcCollectionAndNode,
-  entryAddFieldsStage,
-  entryTransmutationsStage,
-} from "./utils";
+import { getSrcCollectionAndNode, stages } from "./utils";
 import { JOURNAL_ENTRY_UPDATED } from "./pubSubs";
 
 const NULLISH = Symbol();
@@ -40,6 +36,23 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
   const { db, nodeMap, user, pubSub } = context;
 
+  const entryId = new ObjectID(id);
+
+  // Async validations
+  // All async validation are run at once instead of in series.
+  const updateChecks: Promise<void>[] = [
+    (async () => {
+      const [{ count } = { count: 0 }] = (await db
+        .collection("journalEntries")
+        .aggregate([{ $match: { _id: entryId } }, { $count: "count" }])
+        .toArray()) as [{ count: number }];
+
+      if (count === 0) {
+        throw Error(`Journal entry "${id}" does not exist.`);
+      }
+    })(),
+  ];
+
   const docHistory = new DocHistory({ node: userNodeType, id: user.id });
 
   // Date
@@ -63,16 +76,37 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
   // Total
   if (total) {
-    docHistory.updateValue("total", total);
+    const totalDecimal = total.num / total.den;
+
+    if (totalDecimal <= 0) {
+      throw new Error("Entry total must be greater than 0.");
+    }
+
+    updateChecks.push(
+      (async () => {
+        const [{ refundTotal }] = (await db
+          .collection("journalEntries")
+          .aggregate([
+            { $match: { _id: new ObjectID(id) } },
+            stages.refundTotal,
+          ])
+          .toArray()) as [{ refundTotal: number }];
+
+        if (refundTotal > totalDecimal) {
+          throw new Error(
+            "Entry total cannot be greater than entries total refunds."
+          );
+        }
+
+        docHistory.updateValue("total", total);
+      })()
+    );
   }
 
   // Reconciled
   if ((reconciled ?? NULLISH) !== NULLISH) {
     docHistory.updateValue("reconciled", reconciled);
   }
-
-  // Async ref validation
-  const updateChecks: Promise<void>[] = [];
 
   // Department
   if (departmentId) {
@@ -232,8 +266,8 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
     .collection("journalEntries")
     .aggregate([
       { $match: { _id } },
-      entryAddFieldsStage,
-      entryTransmutationsStage,
+      stages.entryAddFields,
+      stages.entryTransmutations,
     ])
     .toArray();
 

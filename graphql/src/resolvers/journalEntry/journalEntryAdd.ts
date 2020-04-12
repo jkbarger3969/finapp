@@ -17,6 +17,7 @@ import {
   getSrcCollectionAndNode,
   entryAddFieldsStage,
   entryTransmutationsStage,
+  stages,
 } from "./utils";
 import { NodeValue } from "../../types";
 import { JOURNAL_ENTRY_ADDED } from "./pubSubs";
@@ -50,6 +51,12 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
     },
     paymentMethodAdd,
   } = args;
+
+  const totalDecimal = total.num / total.den;
+
+  if (totalDecimal <= 0) {
+    throw new Error("Entry total must be greater than 0.");
+  }
 
   const date = moment(dateString, moment.ISO_8601);
   if (!date.isValid()) {
@@ -190,8 +197,8 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
     .collection("journalEntries")
     .aggregate([
       { $match: { _id: insertedId } },
-      entryAddFieldsStage,
-      entryTransmutationsStage,
+      stages.entryAddFields,
+      stages.entryTransmutations,
     ])
     .toArray();
 
