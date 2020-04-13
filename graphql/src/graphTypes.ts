@@ -191,6 +191,7 @@ export type Mutation = {
   journalEntryAdd: JournalEntry;
   journalEntryAddRefund: JournalEntry;
   journalEntryDelete: JournalEntry;
+  journalEntryDeleteRefund: JournalEntry;
   journalEntryUpdate: JournalEntry;
   journalEntryUpdateRefund: JournalEntry;
   paymentMethodAdd: PaymentMethod;
@@ -221,6 +222,11 @@ export type MutationJournalEntryAddRefundArgs = {
 
 
 export type MutationJournalEntryDeleteArgs = {
+  id: Scalars['ID'];
+};
+
+
+export type MutationJournalEntryDeleteRefundArgs = {
   id: Scalars['ID'];
 };
 
@@ -708,6 +714,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   journalEntryAdd?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryAddArgs, 'fields'>>,
   journalEntryAddRefund?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryAddRefundArgs, 'id' | 'fields'>>,
   journalEntryDelete?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryDeleteArgs, 'id'>>,
+  journalEntryDeleteRefund?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryDeleteRefundArgs, 'id'>>,
   journalEntryUpdate?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryUpdateArgs, 'id' | 'fields'>>,
   journalEntryUpdateRefund?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryUpdateRefundArgs, 'id' | 'fields'>>,
   paymentMethodAdd?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType, RequireFields<MutationPaymentMethodAddArgs, 'fields'>>,

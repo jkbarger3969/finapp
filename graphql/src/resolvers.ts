@@ -18,6 +18,7 @@ import journalEntryAdd from "./resolvers/journalEntry/journalEntryAdd";
 import journalEntryUpdate from "./resolvers/journalEntry/journalEntryUpdate";
 import journalEntryAddRefund from "./resolvers/journalEntry/journalEntryAddRefund";
 import journalEntryUpdateRefund from "./resolvers/journalEntry/journalEntryUpdateRefund";
+import journalEntryDeleteRefund from "./resolvers/journalEntry/journalEntryDeleteRefund";
 import JournalEntry from "./resolvers/journalEntry/JournalEntryResolver";
 import { journalEntrySources } from "./resolvers/journalEntrySource";
 import {
@@ -59,9 +60,10 @@ const resolvers: Resolvers = {
   Mutation: {
     journalEntryAdd,
     journalEntryUpdate,
+    journalEntryDelete,
     journalEntryAddRefund,
     journalEntryUpdateRefund,
-    journalEntryDelete,
+    journalEntryDeleteRefund,
     addPerson,
     addBusiness,
     paymentMethodAdd,
