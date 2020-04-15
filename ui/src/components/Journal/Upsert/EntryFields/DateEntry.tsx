@@ -2,7 +2,7 @@ import React, { useMemo, useCallback, useRef } from "react";
 import {
   KeyboardDatePicker,
   KeyboardDatePickerProps,
-  MuiPickersUtilsProvider
+  MuiPickersUtilsProvider,
 } from "@material-ui/pickers";
 import MomentUtils from "@date-io/moment";
 import { useField, useFormikContext } from "formik";
@@ -10,11 +10,11 @@ import moment, { Moment } from "moment";
 import { TextFieldProps } from "@material-ui/core";
 
 const inputProps = {
-  inputMode: "numeric"
+  inputMode: "numeric",
 } as const;
 
 const keyboardButtonProps = {
-  tabIndex: -1
+  tabIndex: -1,
 } as const;
 
 const validate = (value: Moment | null): string | undefined => {
@@ -41,7 +41,7 @@ const DateField = (
 
   const [field, meta, helpers] = useField<Moment | null>({
     name: "date",
-    validate
+    validate,
   });
 
   const { value } = field;
@@ -50,7 +50,7 @@ const DateField = (
 
   const InputProps = useMemo(
     () => ({
-      autoFocus
+      autoFocus,
     }),
     [autoFocus]
   );
@@ -103,7 +103,7 @@ const DateField = (
       onBlur,
       onOpen,
       onClose,
-      onChange
+      onChange,
     }),
     [
       onBlur,
@@ -115,7 +115,7 @@ const DateField = (
       onOpen,
       onClose,
       onChange,
-      touched
+      touched,
     ]
   );
 
