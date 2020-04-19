@@ -1,7 +1,11 @@
 import { ObjectID } from "mongodb";
 import * as moment from "moment";
 
-import { MutationResolvers, PaymentMethod } from "../../graphTypes";
+import {
+  MutationResolvers,
+  PaymentMethod,
+  JournalEntryUpdateFields,
+} from "../../graphTypes";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
 import DocHistory from "../utils/DocHistory";
@@ -192,15 +196,22 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
   }
 
   // Payment method
-  asyncOps.push(
-    (async () => {
-      if (paymentMethodAdd) {
+  if (paymentMethodAdd) {
+    // Ensure other checks finish before creating payment method
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
         // Add payment method
         const id = new ObjectID(
           await (paymentMethodAddMutation(
             doc,
             { fields: paymentMethodAdd },
-            context,
+            {
+              ...context,
+              ephemeral: {
+                ...(context.ephemeral || {}),
+                docHistoryDate: docHistory.date,
+              },
+            },
             info
           ) as Promise<PaymentMethod>).then(({ id }) => id)
         );
@@ -211,7 +222,12 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           node: new ObjectID(node),
           id,
         });
-      } else if (paymentMethodUpdate) {
+      })
+    );
+  } else if (paymentMethodUpdate) {
+    // Ensure other checks finish before updating payment method
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
         const id = new ObjectID(paymentMethodUpdate.id);
 
         // Update payment method
@@ -221,7 +237,13 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
             id: paymentMethodUpdate.id,
             fields: paymentMethodUpdate.fields,
           },
-          context,
+          {
+            ...context,
+            ephemeral: {
+              ...(context.ephemeral || {}),
+              docHistoryDate: docHistory.date,
+            },
+          },
           info
         );
 
@@ -231,7 +253,11 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           node: new ObjectID(node),
           id,
         });
-      } else if (paymentMethodId) {
+      })
+    );
+  } else if (paymentMethodId) {
+    asyncOps.push(
+      (async () => {
         const id = new ObjectID(paymentMethodId);
 
         const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
@@ -250,13 +276,37 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           node: new ObjectID(node),
           id,
         });
-      }
-    })()
-  );
+      })()
+    );
+  }
 
   await Promise.all(asyncOps);
 
   if (!updateBuilder.hasUpdate) {
+    const keys = (() => {
+      const obj: {
+        [P in keyof Omit<JournalEntryUpdateFields, "__typename">]-?: null;
+      } = {
+        date: null,
+        department: null,
+        type: null,
+        category: null,
+        paymentMethod: null,
+        description: null,
+        total: null,
+        source: null,
+        reconciled: null,
+      };
+
+      return Object.keys(obj);
+    })();
+
+    throw new Error(
+      `Entry update requires at least one of the following fields: ${keys.join(
+        ", "
+      )}".`
+    );
+
     throw new Error(
       `Mutation "journalEntryUpdate" requires at least one of the following fields: "date", "source", "category", "department", "total", "type", "reconciled", or "paymentMethod".`
     );
@@ -269,9 +319,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
     .updateOne({ _id }, updateBuilder.update());
 
   if (modifiedCount === 0) {
-    throw new Error(
-      `Failed to update journal entry: "${JSON.stringify(args)}".`
-    );
+    throw new Error(`Failed to update entry: "${JSON.stringify(args)}".`);
   }
 
   const [updatedDoc] = await db

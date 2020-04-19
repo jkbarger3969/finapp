@@ -129,23 +129,31 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
   // PaymentMethod
   if (paymentMethodAdd) {
     // Do NOT create new payment method until all other checks pass
-    await Promise.all(asyncOps).then(async () => {
-      const { id: node } = nodeMap.typename.get("PaymentMethod");
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
+        const { id: node } = nodeMap.typename.get("PaymentMethod");
 
-      const id = new ObjectID(
-        await (paymentMethodAddMutation(
-          doc,
-          { fields: paymentMethodAdd },
-          context,
-          info
-        ) as Promise<PaymentMethod>).then(({ id }) => id)
-      );
+        const id = new ObjectID(
+          await (paymentMethodAddMutation(
+            doc,
+            { fields: paymentMethodAdd },
+            {
+              ...context,
+              ephemeral: {
+                ...(context.ephemeral || {}),
+                docHistoryDate: docHistory.date,
+              },
+            },
+            info
+          ) as Promise<PaymentMethod>).then(({ id }) => id)
+        );
 
-      docBuilder.addField("paymentMethod", {
-        node: new ObjectID(node),
-        id,
-      });
-    });
+        docBuilder.addField("paymentMethod", {
+          node: new ObjectID(node),
+          id,
+        });
+      })
+    );
   } else {
     // Ensure payment method exists.
     asyncOps.push(
@@ -170,9 +178,9 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
         });
       })()
     );
-
-    await Promise.all(asyncOps);
   }
+
+  await Promise.all(asyncOps);
 
   const { insertedId, insertedCount } = await db
     .collection("journalEntries")

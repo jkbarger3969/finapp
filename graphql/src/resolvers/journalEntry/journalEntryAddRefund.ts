@@ -3,10 +3,11 @@ import * as moment from "moment";
 
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
-import { MutationResolvers } from "../../graphTypes";
+import { MutationResolvers, PaymentMethod } from "../../graphTypes";
 import journalEntry from "./journalEntry";
 import { getUniqueId } from "../utils/mongoUtils";
 import { stages } from "./utils";
+import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 
 const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async (
   doc,
@@ -17,6 +18,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
   const {
     id,
     fields: { date: dateStr, total },
+    paymentMethodAdd,
   } = args;
 
   const reconciled = args.fields.reconciled ?? false;
@@ -34,7 +36,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
     throw new Error(`Date "${dateStr}" not a valid ISO 8601 date string.`);
   }
 
-  const { db, user } = context;
+  const { db, user, nodeMap } = context;
 
   const docHistory = new DocHistory({ node: userNodeType, id: user.id });
 
@@ -42,11 +44,32 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
 
   const srcEntryId = new ObjectID(id);
 
-  let refundEntryId: ObjectID;
+  const docBuilder = docHistory.newHistoricalDoc(true).addFields([
+    ["date", date.toDate()],
+    ["total", total],
+    ["reconciled", reconciled],
+    ["deleted", false],
+  ]);
 
-  await Promise.all([
+  if (description) {
+    docBuilder.addField("description", description);
+  }
+
+  // const refundEntry = {
+  //   id: undefined as ObjectID,
+  //   paymentMethod: undefined as [HistoryObject<NodeValue>],
+  //   date: docHistory.addValue(date.toDate()),
+  //   description: description ? docHistory.addValue(description) : [],
+  //   total: docHistory.addValue(total),
+  //   reconciled: docHistory.addValue(reconciled),
+  //   deleted: docHistory.addValue(false),
+  //   lastUpdate: docHistory.lastUpdate,
+  //   ...docHistory.rootHistoryObject,
+  // };
+
+  const asyncOps = [
+    // Ensure source entry exists and get entry and refund totals.
     (async () => {
-      // Ensure source entry exists and get entry and refund totals.
       const [srcEntryState] = (await collection
         .aggregate([
           { $match: { _id: srcEntryId } },
@@ -62,7 +85,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
         .toArray()) as [{ entryTotal: number; refundTotal: number }];
 
       if (!srcEntryState) {
-        throw new Error(`Journal Entry "${id}" does not exist.`);
+        throw new Error(`Journal entry "${id}" does not exist.`);
       }
 
       const { entryTotal, refundTotal } = srcEntryState;
@@ -74,27 +97,72 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
         );
       }
     })(),
+    // Generate refund ID
     (async () => {
-      refundEntryId = await getUniqueId("refund.id", collection);
+      docBuilder.addField("id", await getUniqueId("refund.id", collection));
     })(),
-  ]);
+  ];
 
-  const refundEntry = {
-    id: refundEntryId,
-    date: docHistory.addValue(date.toDate()),
-    description: description ? docHistory.addValue(description) : [],
-    total: docHistory.addValue(total),
-    reconciled: docHistory.addValue(reconciled),
-    deleted: docHistory.addValue(false),
-    lastUpdate: docHistory.lastUpdate,
-    ...docHistory.rootHistoryObject,
-  } as const;
+  if (paymentMethodAdd) {
+    // Do NOT create new payment method until all other checks pass
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
+        const { id: node } = nodeMap.typename.get("PaymentMethod");
+
+        const id = new ObjectID(
+          await (paymentMethodAddMutation(
+            doc,
+            { fields: paymentMethodAdd },
+            {
+              ...context,
+              ephemeral: {
+                ...(context.ephemeral || {}),
+                docHistoryDate: docHistory.date,
+              },
+            },
+            info
+          ) as Promise<PaymentMethod>).then(({ id }) => id)
+        );
+
+        docBuilder.addField("paymentMethod", {
+          node: new ObjectID(node),
+          id,
+        });
+      })
+    );
+  } else {
+    // Ensure payment method exists.
+    asyncOps.push(
+      (async () => {
+        const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
+
+        const id = new ObjectID(args.fields.paymentMethod);
+
+        if (
+          !(await db
+            .collection(collection)
+            .findOne({ _id: id }, { projection: { _id: true } }))
+        ) {
+          throw new Error(
+            `Payment method with id ${id.toHexString()} does not exist.`
+          );
+        }
+
+        docBuilder.addField("paymentMethod", {
+          node: new ObjectID(node),
+          id,
+        });
+      })()
+    );
+  }
+
+  await Promise.all(asyncOps);
 
   const { modifiedCount } = await collection.updateOne(
     { _id: srcEntryId },
     {
       $push: {
-        refunds: refundEntry,
+        refunds: docBuilder.doc(),
       },
     }
   );

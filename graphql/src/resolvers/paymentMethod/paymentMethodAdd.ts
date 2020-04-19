@@ -5,18 +5,21 @@ import { userNodeType } from "../utils/standIns";
 import { $addFields } from "./utils";
 
 const paymentMethodAdd: MutationResolvers["paymentMethodAdd"] = async (
-  doc,
+  obj,
   args,
   context,
   info
 ) => {
   const {
-    fields: { active, refId, name, parent: parentId }
+    fields: { active, refId, name, parent: parentId },
   } = args;
 
   const { db, user } = context;
 
-  const docHistory = new DocHistory({ node: userNodeType, id: user.id });
+  const docHistory = new DocHistory(
+    { node: userNodeType, id: user.id },
+    context.ephemeral?.docHistoryDate
+  );
 
   const parent = new ObjectID(parentId);
 
@@ -35,12 +38,19 @@ const paymentMethodAdd: MutationResolvers["paymentMethodAdd"] = async (
     );
   }
 
+  const docBuilder = docHistory.newHistoricalDoc(true).addFields([
+    ["active", active],
+    ["name", name],
+  ]);
+
+  if (refId) {
+    docBuilder.addField("refId", refId);
+  }
+
   const { insertedId } = await collection.insertOne({
     parent,
-    active: docHistory.addValue(active),
-    refId: refId ? docHistory.addValue(refId) : [],
-    name: docHistory.addValue(name),
-    allowChildren: false //Not exposed to GQL api at this time
+    allowChildren: false, //Not exposed to GQL api at this time
+    ...docBuilder.doc(),
   });
 
   const [result] = await collection

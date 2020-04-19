@@ -1,4 +1,4 @@
-import { ObjectID, ObjectId } from "mongodb";
+import { ObjectID } from "mongodb";
 import * as moment from "moment";
 
 import DocHistory from "../utils/DocHistory";
@@ -6,9 +6,12 @@ import { userNodeType } from "../utils/standIns";
 import {
   MutationResolvers,
   JournalEntryUpdateRefundFields,
+  PaymentMethod,
 } from "../../graphTypes";
 import journalEntry from "./journalEntry";
 import { stages, getRefundTotals } from "./utils";
+import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
+import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
 
 const NULLISH = Symbol();
 
@@ -18,34 +21,17 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
   context,
   info
 ) => {
-  const { id, fields } = args;
+  const { id, fields, paymentMethodAdd, paymentMethodUpdate } = args;
 
-  const { db, user } = context;
+  const { db, user, nodeMap } = context;
 
   const collection = db.collection("journalEntries");
 
   const refundId = new ObjectID(id);
 
-  const [
-    { count, entryId } = { count: 0, entryId: new ObjectID() },
-  ] = (await collection
-    .aggregate([
-      { $match: { "refunds.id": refundId } },
-      {
-        $group: {
-          _id: null,
-          count: { $sum: 1 },
-          entryId: { $first: "$_id" },
-        },
-      },
-    ])
-    .toArray()) as [{ count: number; entryId: ObjectId }];
-
-  if (count === 0) {
-    throw new Error(`Refund "${id}" does not exists.`);
-  }
-
   const docHistory = new DocHistory({ node: userNodeType, id: user.id });
+
+  const updateBuilder = docHistory.updateHistoricalDoc("refunds.$[refund]");
 
   // Date
   if (fields.date) {
@@ -55,20 +41,43 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
         `Date "${fields.date}" not a valid ISO 8601 date string.`
       );
     }
-    docHistory.updateValue("date", date.toDate());
+    updateBuilder.updateField("date", date.toDate());
   }
+
+  let entryId: ObjectID;
+  let asyncOps = [
+    (async () => {
+      const [result] = (await collection
+        .aggregate([
+          { $match: { "refunds.id": refundId } },
+          { $limit: 1 },
+          {
+            $project: {
+              entryId: "$_id",
+            },
+          },
+        ])
+        .toArray()) as [{ entryId: ObjectID } | undefined];
+
+      if (!result) {
+        throw new Error(`Refund "${id}" does not exists.`);
+      }
+
+      entryId = result.entryId;
+    })(),
+  ];
 
   // Description
   if (fields.description) {
     const description = fields.description.trim();
     if (description) {
-      docHistory.updateValue("description", description);
+      updateBuilder.updateField("description", description);
     }
   }
 
   // Reconciled
   if ((fields.reconciled ?? NULLISH) !== NULLISH) {
-    docHistory.updateValue("reconciled", fields.reconciled);
+    updateBuilder.updateField("reconciled", fields.reconciled);
   }
 
   // Total
@@ -99,16 +108,103 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
       );
     }
 
-    docHistory.updateValue("total", fields.total);
+    updateBuilder.updateField("total", fields.total);
   }
 
-  if (!docHistory.hasUpdate) {
+  // Payment method
+  if (paymentMethodAdd) {
+    // Ensure other checks finish before creating payment method
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
+        const { id: node } = nodeMap.typename.get("PaymentMethod");
+
+        const id = new ObjectID(
+          await (paymentMethodAddMutation(
+            obj,
+            { fields: paymentMethodAdd },
+            {
+              ...context,
+              ephemeral: {
+                ...(context.ephemeral || {}),
+                docHistoryDate: docHistory.date,
+              },
+            },
+            info
+          ) as Promise<PaymentMethod>).then(({ id }) => id)
+        );
+
+        updateBuilder.updateField("paymentMethod", {
+          node: new ObjectID(node),
+          id,
+        });
+      })
+    );
+  } else if (paymentMethodUpdate) {
+    // Ensure other checks finish before creating updating method
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
+        const id = new ObjectID(paymentMethodUpdate.id);
+
+        // Update payment method
+        await paymentMethodUpdateMutation(
+          obj,
+          {
+            id: paymentMethodUpdate.id,
+            fields: paymentMethodUpdate.fields,
+          },
+          {
+            ...context,
+            ephemeral: {
+              ...(context.ephemeral || {}),
+              docHistoryDate: docHistory.date,
+            },
+          },
+          info
+        );
+
+        const { id: node } = nodeMap.typename.get("PaymentMethod");
+
+        updateBuilder.updateField("paymentMethod", {
+          node: new ObjectID(node),
+          id,
+        });
+      })
+    );
+  } else if (fields.paymentMethod) {
+    asyncOps.push(
+      (async () => {
+        const id = new ObjectID(fields.paymentMethod);
+
+        const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
+
+        if (
+          !(await db
+            .collection(collection)
+            .findOne({ _id: id }, { projection: { _id: true } }))
+        ) {
+          throw new Error(
+            `Payment method with id ${id.toHexString()} does not exist.`
+          );
+        }
+
+        updateBuilder.updateField("paymentMethod", {
+          node: new ObjectID(node),
+          id,
+        });
+      })()
+    );
+  }
+
+  await Promise.all(asyncOps);
+
+  if (!updateBuilder.hasUpdate) {
     const keys = (() => {
       const obj: {
         [P in keyof Omit<JournalEntryUpdateRefundFields, "__typename">]-?: null;
       } = {
         date: null,
         description: null,
+        paymentMethod: null,
         total: null,
         reconciled: null,
       };
@@ -125,19 +221,7 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
 
   const { modifiedCount } = await collection.updateOne(
     { _id: entryId },
-    (() => {
-      const update = docHistory.update;
-      return {
-        $push: Object.keys(update.$push).reduce((pushObj, field) => {
-          pushObj[`refunds.$[refund].${field}`] = update.$push[field];
-          return pushObj;
-        }, {}),
-        $set: Object.keys(update.$set).reduce((setObj, field) => {
-          setObj[`refunds.$[refund].${field}`] = update.$set[field];
-          return setObj;
-        }, {}),
-      } as const;
-    })(),
+    updateBuilder.update(),
     {
       arrayFilters: [{ "refund.id": refundId }],
     }

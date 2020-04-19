@@ -1,14 +1,14 @@
-import { ObjectID, UpdateQuery } from "mongodb";
-import { MutationResolvers } from "../../graphTypes";
+import { ObjectID } from "mongodb";
+import { MutationResolvers, PaymentMethodUpdateFields } from "../../graphTypes";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
 import { $addFields } from "./utils";
 
-interface PaymentMethodsSchema {
-  active?: boolean;
-  refId?: string;
-  name?: string;
-}
+// interface PaymentMethodsSchema {
+//   active?: boolean;
+//   refId?: string;
+//   name?: string;
+// }
 
 const paymentMethodUpdate: MutationResolvers["paymentMethodUpdate"] = async (
   obj,
@@ -18,7 +18,12 @@ const paymentMethodUpdate: MutationResolvers["paymentMethodUpdate"] = async (
 ) => {
   const { db, user } = context;
 
-  const docHistory = new DocHistory({ node: userNodeType, id: user.id });
+  const docHistory = new DocHistory(
+    { node: userNodeType, id: user.id },
+    context.ephemeral?.docHistoryDate
+  );
+
+  const updateBuilder = docHistory.updateHistoricalDoc();
 
   const { id, fields } = args;
 
@@ -29,15 +34,35 @@ const paymentMethodUpdate: MutationResolvers["paymentMethodUpdate"] = async (
   const _id = new ObjectID(id);
 
   if (active !== null) {
-    docHistory.updateValue("active", active);
+    updateBuilder.updateField("active", active);
   }
 
   if (refId) {
-    docHistory.updateValue("refId", refId);
+    updateBuilder.updateField("refId", refId);
   }
 
   if (name) {
-    docHistory.updateValue("name", name);
+    updateBuilder.updateField("name", name);
+  }
+
+  if (!updateBuilder.hasUpdate) {
+    const keys = (() => {
+      const obj: {
+        [P in keyof Omit<PaymentMethodUpdateFields, "__typename">]-?: null;
+      } = {
+        active: null,
+        refId: null,
+        name: null,
+      };
+
+      return Object.keys(obj);
+    })();
+
+    throw new Error(
+      `Payment method update requires at least one of the following fields: ${keys.join(
+        ", "
+      )}".`
+    );
   }
 
   const collection = db.collection("paymentMethods");
@@ -45,21 +70,17 @@ const paymentMethodUpdate: MutationResolvers["paymentMethodUpdate"] = async (
   const doc = await collection.findOne({ _id }, { projection: { _id: true } });
 
   if (!doc) {
-    throw new Error(
-      `Mutation "paymentMethodUpdate" payment method "${id}" does not exist.`
-    );
+    throw new Error(`Payment method "${id}" does not exist.`);
   }
 
   const { modifiedCount } = await collection.updateOne(
     { _id },
-    { $push: docHistory.updatePushArg }
+    updateBuilder.update()
   );
 
   if (modifiedCount === 0) {
     throw new Error(
-      `Mutation "paymentMethodUpdate" arguments "${JSON.stringify(
-        args
-      )}" failed.`
+      `Failed to update payment method: "${JSON.stringify(args)}".`
     );
   }
 

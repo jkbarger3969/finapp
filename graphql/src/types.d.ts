@@ -1,26 +1,29 @@
-import {Db, ObjectID} from "mongodb";
-import {PubSub} from "apollo-server";
+import { Db, ObjectID } from "mongodb";
+import { PubSub } from "apollo-server";
 
 export interface NodeValue {
-  node:ObjectID;
-  id:ObjectID;
+  node: ObjectID;
+  id: ObjectID;
 }
 
 export interface NodeInfo {
-  id:string,
-  typename:string,
-  db:string,
-  collection:string
+  id: string;
+  typename: string;
+  db: string;
+  collection: string;
 }
 
 export interface Context {
-  db:Db;
-  nodeMap:{
-    id:Map<string, NodeInfo>,
-    typename:Map<string, NodeInfo>
+  db: Db;
+  nodeMap: {
+    id: Map<string, NodeInfo>;
+    typename: Map<string, NodeInfo>;
   };
-  user?:{
-    id:ObjectID;
+  user?: {
+    id: ObjectID;
   };
-  pubSub:PubSub;
+  pubSub: PubSub;
+  ephemeral?: {
+    docHistoryDate?: Date;
+  };
 }
