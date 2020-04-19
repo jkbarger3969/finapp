@@ -40,7 +40,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
   // Async validations
   // All async validation are run at once instead of in series.
-  const updateChecks: Promise<void>[] = [
+  const asyncOps: Promise<void>[] = [
     (async () => {
       const [{ count } = { count: 0 }] = (await db
         .collection("journalEntries")
@@ -83,7 +83,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
       throw new Error("Entry total must be greater than 0.");
     }
 
-    updateChecks.push(
+    asyncOps.push(
       (async () => {
         const [{ refundTotal }] = (await db
           .collection("journalEntries")
@@ -111,7 +111,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
   // Department
   if (departmentId) {
-    updateChecks.push(
+    asyncOps.push(
       (async () => {
         const { collection, id: node } = nodeMap.typename.get("Department");
         const id = new ObjectID(departmentId);
@@ -136,7 +136,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
   if (source) {
     const { id: sourceId, sourceType } = source;
 
-    updateChecks.push(
+    asyncOps.push(
       (async () => {
         const { collection, node } = getSrcCollectionAndNode(
           db,
@@ -167,7 +167,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
   // Category
   if (categoryId) {
-    updateChecks.push(
+    asyncOps.push(
       (async () => {
         const { collection, id: node } = nodeMap.typename.get(
           "JournalEntryCategory"
@@ -192,7 +192,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
   }
 
   // Payment method
-  updateChecks.push(
+  asyncOps.push(
     (async () => {
       if (paymentMethodAdd) {
         // Add payment method
@@ -254,7 +254,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
     })()
   );
 
-  await Promise.all(updateChecks);
+  await Promise.all(asyncOps);
 
   if (!updateBuilder.hasUpdate) {
     throw new Error(
