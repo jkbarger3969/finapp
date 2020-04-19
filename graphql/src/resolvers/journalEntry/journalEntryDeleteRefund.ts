@@ -44,23 +44,13 @@ const journalEntryDeleteRefund: MutationResolvers["journalEntryDeleteRefund"] = 
 
   const docHistory = new DocHistory({ node: userNodeType, id: user.id });
 
-  docHistory.updateValue("deleted", true);
+  const updateBuilder = docHistory
+    .updateHistoricalDoc("refunds.$[refund]")
+    .updateField("deleted", true);
 
   const { modifiedCount } = await collection.updateOne(
     { _id: entryId },
-    (() => {
-      const update = docHistory.update;
-      return {
-        $push: Object.keys(update.$push).reduce((pushObj, field) => {
-          pushObj[`refunds.$[refund].${field}`] = update.$push[field];
-          return pushObj;
-        }, {}),
-        $set: Object.keys(update.$set).reduce((setObj, field) => {
-          setObj[`refunds.$[refund].${field}`] = update.$set[field];
-          return setObj;
-        }, {}),
-      } as const;
-    })(),
+    updateBuilder.update(),
     {
       arrayFilters: [{ "refund.id": refundId }],
     }

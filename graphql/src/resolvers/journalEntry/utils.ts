@@ -109,6 +109,7 @@ export const entryAddFieldsStage = {
                     total: null,
                     reconciled: null,
                     date: null,
+                    paymentMethod: null,
                     description: null,
                     deleted: null,
                   };
