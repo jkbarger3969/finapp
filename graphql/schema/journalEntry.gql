@@ -58,6 +58,7 @@ type JournalEntryRefund {
   id: ID!
   date: String!
   description: String
+  paymentMethod: PaymentMethod!
   total: Rational!
   reconciled: Boolean!
   lastUpdate: String!
@@ -67,6 +68,7 @@ type JournalEntryRefund {
 input JournalEntryAddRefundFields {
   date: String!
   description: String
+  paymentMethod: ID!
   total: RationalInput!
   reconciled: Boolean
 }
@@ -74,6 +76,7 @@ input JournalEntryAddRefundFields {
 input JournalEntryUpdateRefundFields {
   date: String
   description: String
+  paymentMethod: ID
   total: RationalInput
   reconciled: Boolean
 }
@@ -154,10 +157,13 @@ type Mutation {
   journalEntryAddRefund(
     id: ID!
     fields: JournalEntryAddRefundFields!
+    paymentMethodAdd: PaymentMethodAddFields
   ): JournalEntry!
   journalEntryUpdateRefund(
     id: ID!
     fields: JournalEntryUpdateRefundFields!
+    paymentMethodAdd: PaymentMethodAddFields
+    paymentMethodUpdate: JournalEntryUpdatePaymentMethod
   ): JournalEntry!
   journalEntryDeleteRefund(id: ID!): JournalEntry!
 }
