@@ -5,34 +5,12 @@ import {
   MutationResolvers,
   PaymentMethod,
   JournalEntryType,
-  RationalInput,
 } from "../../graphTypes";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
-import DocHistory, {
-  HistoryObject,
-  RootHistoryObject,
-} from "../utils/DocHistory";
+import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
-import {
-  getSrcCollectionAndNode,
-  entryAddFieldsStage,
-  entryTransmutationsStage,
-  stages,
-} from "./utils";
-import { NodeValue } from "../../types";
+import { getSrcCollectionAndNode, stages } from "./utils";
 import { JOURNAL_ENTRY_ADDED } from "./pubSubs";
-
-export type JournalEntryAddInsertDoc = {
-  date: [HistoryObject<Date>];
-  department: [HistoryObject<NodeValue>];
-  type: [HistoryObject<"credit" | "debit">];
-  category: [HistoryObject<NodeValue>];
-  source: [HistoryObject<NodeValue>];
-  total: [HistoryObject<RationalInput>];
-  description: [HistoryObject<string>] | [];
-  deleted: [HistoryObject<false>];
-  reconciled: [HistoryObject<false>];
-} & RootHistoryObject;
 
 const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
   doc,
@@ -72,20 +50,19 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
   const docHistory = new DocHistory({ node: userNodeType, id: user.id });
 
   //Start building insert doc
-  const insertDoc = {
-    date: docHistory.addValue(date.toDate()),
-    total: docHistory.addValue(total),
-    type: docHistory.addValue(
-      type === JournalEntryType.Credit ? "credit" : "debit"
-    ),
-    description: description ? docHistory.addValue(description) : [],
-    deleted: docHistory.addValue(false),
-    reconciled: docHistory.addValue(reconciled),
-    ...docHistory.rootHistoryObject,
-  } as JournalEntryAddInsertDoc;
+  const docBuilder = docHistory
+    .newHistoricalDoc(true)
+    .addField("date", date.toDate())
+    .addField("total", total)
+    .addField("type", type === JournalEntryType.Credit ? "credit" : "debit")
+    .addField("deleted", false)
+    .addField("reconciled", reconciled);
+  if (description) {
+    docBuilder.addField("description", description);
+  }
 
   // Insure doc refs exist and finish insert doc
-  await Promise.all([
+  const asyncOps = [
     // Department
     (async () => {
       const { collection, id: node } = nodeMap.typename.get("Department");
@@ -99,7 +76,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
         throw new Error(`Department with id ${departmentId} does not exist.`);
       }
 
-      insertDoc["department"] = docHistory.addValue({
+      docBuilder.addField("department", {
         node: new ObjectID(node),
         id,
       });
@@ -123,7 +100,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
         );
       }
 
-      insertDoc["source"] = docHistory.addValue({
+      docBuilder.addField("source", {
         node,
         id,
       });
@@ -145,47 +122,61 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
         throw new Error(`Category with id ${categoryId} does not exist.`);
       }
 
-      insertDoc["category"] = docHistory.addValue({
-        node: new ObjectID(node),
-        id,
-      });
+      docBuilder.addField("category", { node: new ObjectID(node), id });
     })(),
+  ];
 
-    // PaymentMethod
-    (async () => {
-      const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
+  // PaymentMethod
+  if (paymentMethodAdd) {
+    // Do NOT create new payment method until all other checks pass
+    await Promise.all(asyncOps).then(async () => {
+      const { id: node } = nodeMap.typename.get("PaymentMethod");
 
       const id = new ObjectID(
-        paymentMethodAdd
-          ? await (paymentMethodAddMutation(
-              doc,
-              { fields: paymentMethodAdd },
-              context,
-              info
-            ) as Promise<PaymentMethod>).then(({ id }) => id)
-          : args.fields.paymentMethod
+        await (paymentMethodAddMutation(
+          doc,
+          { fields: paymentMethodAdd },
+          context,
+          info
+        ) as Promise<PaymentMethod>).then(({ id }) => id)
       );
 
-      if (
-        !(await db
-          .collection(collection)
-          .findOne({ _id: id }, { projection: { _id: true } }))
-      ) {
-        throw new Error(
-          `Payment method with id ${id.toHexString()} does not exist.`
-        );
-      }
-
-      insertDoc["paymentMethod"] = docHistory.addValue({
+      docBuilder.addField("paymentMethod", {
         node: new ObjectID(node),
         id,
       });
-    })(),
-  ]);
+    });
+  } else {
+    // Ensure payment method exists.
+    asyncOps.push(
+      (async () => {
+        const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
+
+        const id = new ObjectID(args.fields.paymentMethod);
+
+        if (
+          !(await db
+            .collection(collection)
+            .findOne({ _id: id }, { projection: { _id: true } }))
+        ) {
+          throw new Error(
+            `Payment method with id ${id.toHexString()} does not exist.`
+          );
+        }
+
+        docBuilder.addField("paymentMethod", {
+          node: new ObjectID(node),
+          id,
+        });
+      })()
+    );
+
+    await Promise.all(asyncOps);
+  }
 
   const { insertedId, insertedCount } = await db
     .collection("journalEntries")
-    .insertOne(insertDoc);
+    .insertOne(docBuilder.doc());
 
   if (insertedCount === 0) {
     throw new Error(

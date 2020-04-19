@@ -54,6 +54,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
   ];
 
   const docHistory = new DocHistory({ node: userNodeType, id: user.id });
+  const updateBuilder = docHistory.updateHistoricalDoc();
 
   // Date
   if (dateString) {
@@ -61,17 +62,17 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
     if (!date.isValid()) {
       throw new Error(`Date "${dateString}" not a valid ISO 8601 date string.`);
     }
-    docHistory.updateValue("date", date.toDate());
+    updateBuilder.updateField("date", date.toDate());
   }
 
   // Type
   if ((type ?? NULLISH) !== NULLISH) {
-    docHistory.updateValue("type", type);
+    updateBuilder.updateField("type", type);
   }
 
   // Description
   if (description?.trim()) {
-    docHistory.updateValue("description", description);
+    updateBuilder.updateField("description", description);
   }
 
   // Total
@@ -98,14 +99,14 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           );
         }
 
-        docHistory.updateValue("total", total);
+        updateBuilder.updateField("total", total);
       })()
     );
   }
 
   // Reconciled
   if ((reconciled ?? NULLISH) !== NULLISH) {
-    docHistory.updateValue("reconciled", reconciled);
+    updateBuilder.updateField("reconciled", reconciled);
   }
 
   // Department
@@ -123,7 +124,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           throw new Error(`Department with id ${departmentId} does not exist.`);
         }
 
-        docHistory.updateValue("department", {
+        updateBuilder.updateField("department", {
           node: new ObjectID(node),
           id,
         });
@@ -156,7 +157,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           );
         }
 
-        docHistory.updateValue("source", {
+        updateBuilder.updateField("source", {
           node,
           id,
         });
@@ -182,7 +183,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           throw new Error(`Category with id ${categoryId} does not exist.`);
         }
 
-        docHistory.updateValue("category", {
+        updateBuilder.updateField("category", {
           node: new ObjectID(node),
           id,
         });
@@ -193,10 +194,9 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
   // Payment method
   updateChecks.push(
     (async () => {
-      let id: ObjectID | undefined;
       if (paymentMethodAdd) {
         // Add payment method
-        id = new ObjectID(
+        const id = new ObjectID(
           await (paymentMethodAddMutation(
             doc,
             { fields: paymentMethodAdd },
@@ -204,8 +204,15 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
             info
           ) as Promise<PaymentMethod>).then(({ id }) => id)
         );
+
+        const { id: node } = nodeMap.typename.get("PaymentMethod");
+
+        updateBuilder.updateField("paymentMethod", {
+          node: new ObjectID(node),
+          id,
+        });
       } else if (paymentMethodUpdate) {
-        id = new ObjectID(paymentMethodUpdate.id);
+        const id = new ObjectID(paymentMethodUpdate.id);
 
         // Update payment method
         await paymentMethodUpdateMutation(
@@ -217,11 +224,16 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           context,
           info
         );
-      } else if (paymentMethodId) {
-        id = new ObjectID(paymentMethodId);
-      }
 
-      if (id) {
+        const { id: node } = nodeMap.typename.get("PaymentMethod");
+
+        updateBuilder.updateField("paymentMethod", {
+          node: new ObjectID(node),
+          id,
+        });
+      } else if (paymentMethodId) {
+        const id = new ObjectID(paymentMethodId);
+
         const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
 
         if (
@@ -234,7 +246,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           );
         }
 
-        docHistory.updateValue("paymentMethod", {
+        updateBuilder.updateField("paymentMethod", {
           node: new ObjectID(node),
           id,
         });
@@ -244,7 +256,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
   await Promise.all(updateChecks);
 
-  if (!docHistory.hasUpdate) {
+  if (!updateBuilder.hasUpdate) {
     throw new Error(
       `Mutation "journalEntryUpdate" requires at least one of the following fields: "date", "source", "category", "department", "total", "type", "reconciled", or "paymentMethod".`
     );
@@ -254,7 +266,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
   const { modifiedCount } = await db
     .collection("journalEntries")
-    .updateOne({ _id }, docHistory.update);
+    .updateOne({ _id }, updateBuilder.update());
 
   if (modifiedCount === 0) {
     throw new Error(
