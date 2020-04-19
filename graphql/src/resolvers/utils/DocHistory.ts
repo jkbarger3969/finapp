@@ -19,7 +19,7 @@ export interface HistoryObject<T> {
   readonly createdOn: Date;
 }
 
-export interface RootHistory {
+export interface HistoricalRoot {
   readonly lastUpdate: Date;
   readonly createdOn: Date;
   readonly createdBy: CreatedBy;
@@ -29,7 +29,7 @@ export interface HistoricalDoc {
   [field: string]: [HistoryObject<any>];
 }
 
-export type HistoricalRootDoc = RootHistory & HistoricalDoc;
+export type HistoricalRootDoc = HistoricalRoot & HistoricalDoc;
 
 export interface UpdateValue<T> {
   readonly $each: [HistoryObject<T>];
@@ -48,10 +48,18 @@ export type Update = {
 class NewHistoricalDoc<T extends boolean> {
   private readonly _doc_: T extends true ? HistoricalRootDoc : HistoricalDoc;
   constructor(private readonly _docHistory_: DocHistory, withRootHistory: T) {
-    this._doc_ = (withRootHistory ? { ..._docHistory_.update } : {}) as any;
+    this._doc_ = (withRootHistory
+      ? { ..._docHistory_.rootHistory() }
+      : {}) as any;
   }
   addField<T>(field: string, value: T): this {
     (this._doc_ as any)[field] = this._docHistory_.newValue(value);
+    return this;
+  }
+  addFields(fieldValuesMap: Iterable<[string, any]>): this {
+    for (const [field, value] of fieldValuesMap) {
+      this.addField(field, value);
+    }
     return this;
   }
   doc() {
@@ -137,7 +145,7 @@ export default class DocHistory {
     return this._by_;
   }
 
-  rootHistory(): RootHistory {
+  rootHistory(): HistoricalRoot {
     return {
       lastUpdate: this._date_,
       createdOn: this._date_,
