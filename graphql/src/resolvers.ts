@@ -20,6 +20,7 @@ import journalEntryAddRefund from "./resolvers/journalEntry/journalEntryAddRefun
 import journalEntryUpdateRefund from "./resolvers/journalEntry/journalEntryUpdateRefund";
 import journalEntryDeleteRefund from "./resolvers/journalEntry/journalEntryDeleteRefund";
 import JournalEntry from "./resolvers/journalEntry/JournalEntryResolver";
+import JournalEntryRefund from "./resolvers/journalEntry/JournalEntryRefundResolver";
 import { journalEntrySources } from "./resolvers/journalEntrySource";
 import {
   JournalEntryCategory,
@@ -39,6 +40,7 @@ const resolvers: Resolvers = {
   Business,
   Department,
   JournalEntry,
+  JournalEntryRefund,
   PaymentMethod,
   JournalEntryCategory,
   User,

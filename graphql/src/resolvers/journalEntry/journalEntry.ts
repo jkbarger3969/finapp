@@ -1,6 +1,6 @@
 import { ObjectID } from "mongodb";
 
-import { entryAddFieldsStage, entryTransmutationsStage } from "./utils";
+import { stages } from "./utils";
 import { QueryResolvers, JournalEntry } from "../../graphTypes";
 
 const journalEntry: QueryResolvers["journalEntry"] = async (
@@ -16,8 +16,8 @@ const journalEntry: QueryResolvers["journalEntry"] = async (
     .collection<JournalEntry>("journalEntries")
     .aggregate([
       { $match: { _id: new ObjectID(id) } },
-      entryAddFieldsStage,
-      entryTransmutationsStage,
+      stages.entryAddFields,
+      stages.entryTransmutations,
     ])
     .toArray();
 

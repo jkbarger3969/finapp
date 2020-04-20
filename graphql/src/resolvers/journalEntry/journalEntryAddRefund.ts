@@ -66,7 +66,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
   //   lastUpdate: docHistory.lastUpdate,
   //   ...docHistory.rootHistoryObject,
   // };
-
+  let refundId: ObjectID;
   const asyncOps = [
     // Ensure source entry exists and get entry and refund totals.
     (async () => {
@@ -99,7 +99,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
     })(),
     // Generate refund ID
     (async () => {
-      docBuilder.addField("id", await getUniqueId("refund.id", collection));
+      refundId = await getUniqueId("refund.id", collection);
     })(),
   ];
 
@@ -162,7 +162,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
     { _id: srcEntryId },
     {
       $push: {
-        refunds: docBuilder.doc(),
+        refunds: { id: refundId, ...docBuilder.doc() },
       },
     }
   );

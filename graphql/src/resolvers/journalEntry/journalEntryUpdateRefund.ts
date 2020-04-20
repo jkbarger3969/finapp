@@ -90,9 +90,9 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
 
     const refundTotalEx = getRefundTotals([refundId]);
 
-    const [{ entryTotal, refundTotal }] = (await collection
+    const [result] = (await collection
       .aggregate([
-        { $match: { _id: entryId } },
+        { $match: { "refunds.id": refundId } },
         stages.entryTotal,
         //Excluded the current total from the refund total as it WILL change.
         refundTotalEx,
@@ -100,6 +100,12 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
         { $project: { entryTotal: true, refundTotal: true } },
       ])
       .toArray()) as [{ entryTotal: number; refundTotal: number }];
+
+    if (!result) {
+      throw new Error(`Refund "${id}" does not exists.`);
+    }
+
+    const { entryTotal, refundTotal } = result;
 
     // Ensure aggregate refunds do NOT exceed the original transaction amount
     if (entryTotal < refundTotal + totalDecimal) {

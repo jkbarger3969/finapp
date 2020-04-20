@@ -91,36 +91,41 @@ export const entryAddFieldsStage = {
       })()
     ),
     refunds: {
-      $map: {
-        input: "$refunds",
-        as: "refund",
-        in: {
-          $mergeObjects: [
-            "$$refund",
-            {
-              ...DocHistory.getPresentValues(
-                (() => {
-                  const obj: {
-                    [P in keyof Omit<
-                      JournalEntryRefund,
-                      "__typename" | "id" | "lastUpdate"
-                    >]-?: null;
-                  } = {
-                    total: null,
-                    reconciled: null,
-                    date: null,
-                    paymentMethod: null,
-                    description: null,
-                    deleted: null,
-                  };
-                  return Object.keys(obj);
-                })(),
-                { asVar: "refund" }
-              ),
+      $ifNull: [
+        {
+          $map: {
+            input: "$refunds",
+            as: "refund",
+            in: {
+              $mergeObjects: [
+                "$$refund",
+                {
+                  ...DocHistory.getPresentValues(
+                    (() => {
+                      const obj: {
+                        [P in keyof Omit<
+                          JournalEntryRefund,
+                          "__typename" | "id" | "lastUpdate"
+                        >]-?: null;
+                      } = {
+                        total: null,
+                        reconciled: null,
+                        date: null,
+                        paymentMethod: null,
+                        description: null,
+                        deleted: null,
+                      };
+                      return Object.keys(obj);
+                    })(),
+                    { asVar: "refund" }
+                  ),
+                },
+              ],
             },
-          ],
+          },
         },
-      },
+        [],
+      ],
     },
     id: "$_id",
   },
