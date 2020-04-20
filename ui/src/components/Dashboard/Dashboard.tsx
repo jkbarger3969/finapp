@@ -28,13 +28,13 @@ import {
   JournalEntryUpdated_2Subscription as JournalEntryUpdated,
   GetReportDataEntry_1Fragment as JournalEntryFragment,
   DeptForUpsertAddQuery as DeptForUpsertAdd,
-  DeptForUpsertAddQueryVariables as DeptForUpsertAddVars
+  DeptForUpsertAddQueryVariables as DeptForUpsertAddVars,
 } from "../../apollo/graphTypes";
 import {
   GET_REPORT_DATA,
   JOURNAL_ENTRY_ADDED_SUB,
   JOURNAL_ENTRY_UPDATED_SUB,
-  GET_REPORT_DATA_ENTRY_FRAGMENT
+  GET_REPORT_DATA_ENTRY_FRAGMENT,
 } from "./ReportData.gql";
 import UpsertEntry, { Values } from "../Journal/Upsert/UpsertEntry";
 import { DEPT_ENTRY_OPT_FRAGMENT } from "../Journal/Upsert/upsertEntry.gql";
@@ -85,7 +85,7 @@ export const DEPT_FOR_UPSERT_ADD = gql`
   ${DEPT_ENTRY_OPT_FRAGMENT}
 `;
 
-const Dashboard = function(props: { deptId: string }) {
+const Dashboard = function (props: { deptId: string }) {
   const { deptId } = props;
 
   const [addEntryOpen, setAddEntryOpen] = useState(false);
@@ -95,8 +95,8 @@ const Dashboard = function(props: { deptId: string }) {
       deptId,
       where: {
         department: { eq: deptId },
-        deleted: false
-      }
+        deleted: false,
+      },
     }),
     [deptId]
   );
@@ -105,7 +105,7 @@ const Dashboard = function(props: { deptId: string }) {
     GetReportDataQuery,
     GetReportDataQueryVariables
   >(GET_REPORT_DATA, {
-    variables
+    variables,
   });
 
   const { data: deptForUpsertAdd } = useQuery<
@@ -124,7 +124,7 @@ const Dashboard = function(props: { deptId: string }) {
           GetReportDataQueryVariables
         >({
           query: GET_REPORT_DATA,
-          variables
+          variables,
         });
       } catch (error) {
         return null;
@@ -145,17 +145,17 @@ const Dashboard = function(props: { deptId: string }) {
           ...variables,
           where: {
             ...(variables?.where || {}),
-            lastUpdate: { gt }
-          }
+            lastUpdate: { gt },
+          },
         },
         updateQuery: (prev, { fetchMoreResult }) => ({
           ...(prev || {}),
           ...(fetchMoreResult || {}),
           journalEntries: [
             ...(prev?.journalEntries || []),
-            ...(fetchMoreResult?.journalEntries || [])
-          ]
-        })
+            ...(fetchMoreResult?.journalEntries || []),
+          ],
+        }),
       });
     }
 
@@ -169,7 +169,7 @@ const Dashboard = function(props: { deptId: string }) {
           !journalEntryAdded ||
           (journalEntryAdded.id !== deptId &&
             journalEntryAdded.department.ancestors.every(
-              dept => dept.__typename === "Business" || dept.id !== deptId
+              (dept) => dept.__typename === "Business" || dept.id !== deptId
             ))
         ) {
           return prev;
@@ -179,10 +179,10 @@ const Dashboard = function(props: { deptId: string }) {
           ...(prev || {}),
           journalEntries: [
             ...(prev?.journalEntries || []),
-            ...([subscriptionData?.data?.journalEntryAdded] || [])
-          ]
+            ...([subscriptionData?.data?.journalEntryAdded] || []),
+          ],
         };
-      }
+      },
     });
     // Subscribe to updates
     const updateUnSub = subscribeToMore<JournalEntryUpdated>({
@@ -194,12 +194,12 @@ const Dashboard = function(props: { deptId: string }) {
           client.writeFragment<JournalEntryFragment>({
             id: `JournalEntry:${journalEntryUpdated.id}`,
             fragment: GET_REPORT_DATA_ENTRY_FRAGMENT,
-            data: journalEntryUpdated
+            data: journalEntryUpdated,
           });
         }
 
         return prev;
-      }
+      },
     });
 
     return () => {
@@ -209,7 +209,7 @@ const Dashboard = function(props: { deptId: string }) {
   }, [variables, fetchMore, client, subscribeToMore, deptId]);
 
   const entries = useMemo(() => {
-    return (data?.journalEntries || []).filter(entry => !entry.deleted);
+    return (data?.journalEntries || []).filter((entry) => !entry.deleted);
   }, [data]);
   const deptName = data?.department?.name || "";
 
@@ -217,22 +217,13 @@ const Dashboard = function(props: { deptId: string }) {
     document.title = deptName;
   }, [deptName]);
 
-  const dispatch = useDispatch();
-
-  const onClickNewEntry = useCallback(
-    (event?) => {
-      dispatch(create(ADD_ENTRY_ID, { fromDept: deptId }));
-    },
-    [dispatch, deptId]
-  );
-
   const department = data?.department || null;
 
   const {
     totalRemaining,
     budget,
     spentToBudgetRatio,
-    deptReport
+    deptReport,
   } = useMemo(() => {
     // Generate department report objects
     const deptReport = new Map<string, DeptReportObj>();
@@ -250,7 +241,7 @@ const Dashboard = function(props: { deptId: string }) {
       deptReport.set(department.id, {
         name: department.name,
         spent: 0,
-        budget
+        budget,
       });
 
       for (const subDept of department.descendants) {
@@ -266,7 +257,7 @@ const Dashboard = function(props: { deptId: string }) {
         deptReport.set(subDept.id, {
           name: subDept.name,
           spent: 0,
-          budget
+          budget,
         });
       }
     }
@@ -274,11 +265,22 @@ const Dashboard = function(props: { deptId: string }) {
     // Calculating aggregate depts and credits
     let spent = 0;
     for (const entry of entries) {
+      if (entry.deleted) {
+        continue;
+      }
       const deptReportObj = deptReport.get(
         entry.department.id
       ) as DeptReportObj;
 
-      const entryTotal = entry.total.num / entry.total.den;
+      let entryTotal = entry.total.num / entry.total.den;
+
+      // Aggregate refunds
+      for (const refund of entry.refunds) {
+        if (refund.deleted) {
+          continue;
+        }
+        entryTotal -= refund.total.num / refund.total.den;
+      }
 
       if (entry.type === JournalEntryType.Credit) {
         spent -= entryTotal;
@@ -308,7 +310,7 @@ const Dashboard = function(props: { deptId: string }) {
       totalRemaining,
       budget,
       spentToBudgetRatio,
-      deptReport
+      deptReport,
     };
   }, [entries, department]);
 
@@ -326,7 +328,7 @@ const Dashboard = function(props: { deptId: string }) {
           <Card>
             <CardHeader
               titleTypographyProps={{
-                noWrap: true
+                noWrap: true,
               }}
               title={name}
             />
@@ -370,14 +372,14 @@ const Dashboard = function(props: { deptId: string }) {
   }, [deptReport, department]);
 
   const onClickAddEntry = useCallback((event?) => setAddEntryOpen(true), [
-    setAddEntryOpen
+    setAddEntryOpen,
   ]);
 
   const initialValues = useMemo<Partial<Values> | undefined>(
     () =>
       deptForUpsertAdd?.department
         ? {
-            department: deptForUpsertAdd.department
+            department: deptForUpsertAdd.department,
           }
         : undefined,
     [deptForUpsertAdd]

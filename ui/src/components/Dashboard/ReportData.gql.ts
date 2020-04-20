@@ -1,4 +1,4 @@
-import gql from 'graphql-tag';
+import gql from "graphql-tag";
 
 export const GET_REPORT_DATA_DEPT_FRAGMENT = gql`
   fragment GetReportDataDept_1Fragment on Department {
@@ -35,13 +35,22 @@ export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
       id
       ancestors {
         __typename
-        ...on Business {
+        ... on Business {
           id
         }
-        ...on Department {
+        ... on Department {
           id
         }
       }
+    }
+    refunds {
+      __typename
+      id
+      total {
+        num
+        den
+      }
+      deleted
     }
     lastUpdate
     deleted
