@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState, useRef } from "react";
 import Autocomplete, {
   AutocompleteProps as AutocompletePropsRaw,
-  RenderInputParams
+  RenderInputParams,
 } from "@material-ui/lab/Autocomplete";
 import { UseAutocompleteMultipleProps } from "@material-ui/lab/useAutocomplete";
 import { useField } from "formik";
@@ -18,14 +18,15 @@ import {
   SrcEntryOptsQueryVariables as SrcEntryOptsQueryVars,
   SrcEntryBizOptFragment as BizOpt,
   SrcEntryDeptOptFragment as DeptOpt,
-  SrcEntryPersonOptFragment as PersonOpt
+  SrcEntryPersonOptFragment as PersonOpt,
 } from "../../../../apollo/graphTypes";
 import { Values } from "../UpsertEntry";
 import {
   SRC_ENTRY_PERSON_OPT_FRAGMENT,
   SRC_ENTRY_BIZ_OPT_FRAGMENT,
-  SRC_ENTRY_DEPT_OPT_FRAGMENT
+  SRC_ENTRY_DEPT_OPT_FRAGMENT,
 } from "../upsertEntry.gql";
+import Maybe from "graphql/tsutils/Maybe";
 
 const SRC_ENTRY_OPTS_QUERY = gql`
   query SrcEntryOpts($name: String!, $isBiz: Boolean!) {
@@ -124,7 +125,7 @@ const filterOptions: AutocompleteProps["filterOptions"] = (
   { inputValue }
 ) => {
   const regex = new RegExp(`(^|\\s)${inputValue}`, "i");
-  return options.filter(opt => regex.test(getOptionLabel(opt)));
+  return options.filter((opt) => regex.test(getOptionLabel(opt)));
 };
 const validate = ({ value }: Values["source"]) => {
   const srcType = (value[0] ?? null) as JournalEntrySourceType | null;
@@ -146,17 +147,17 @@ const validate = ({ value }: Values["source"]) => {
   }
 };
 
-const Source = function(props: SourceProps) {
+const Source = function (props: SourceProps) {
   const [hasFocus, setHasFocus] = useState(false);
 
   const [field, meta, helpers] = useField<Values["source"]>({
     name: "source",
-    validate
+    validate,
   });
 
   const {
     value: { value, inputValue },
-    onBlur: onBlurField
+    onBlur: onBlurField,
   } = field;
   const { error, touched } = meta;
   const { setValue } = helpers;
@@ -173,8 +174,8 @@ const Source = function(props: SourceProps) {
     skip: !searchedName.current && !value[1],
     variables: {
       name: searchedName.current,
-      isBiz: srcType !== JournalEntrySourceType.Person
-    }
+      isBiz: srcType !== JournalEntrySourceType.Person,
+    },
   });
 
   const idDeptMap = useMemo(() => {
@@ -240,7 +241,28 @@ const Source = function(props: SourceProps) {
   }, [value, options, srcType]);
 
   const renderInput = useCallback(
-    (params: RenderInputParams) => {
+    (
+      params: RenderInputParams & { inputProps?: TextFieldProps["inputProps"] }
+    ) => {
+      // Disable input?
+      if (
+        srcValue &&
+        typeof srcValue !== "string" &&
+        srcValue.__typename !== "Person" &&
+        options.length === 0
+      ) {
+        params = {
+          ...params,
+          inputProps: {
+            ...(params?.inputProps || {}),
+            style: {
+              ...(params?.inputProps?.style || {}),
+              display: "none",
+            },
+          },
+        };
+      }
+
       return (
         <TextField
           {...(props as any)}
@@ -253,12 +275,12 @@ const Source = function(props: SourceProps) {
         />
       );
     },
-    [props, touched, error, label]
+    [props, touched, error, label, options, srcValue]
   );
 
   const onFocus = useCallback((event?) => setHasFocus(true), [setHasFocus]);
   const onBlur = useCallback<NonNullable<AutocompleteProps["onBlur"]>>(
-    event => {
+    (event) => {
       setHasFocus(false);
       // Fixes formik validate called with wrong version of value
       event.persist();
@@ -331,7 +353,7 @@ const Source = function(props: SourceProps) {
       onInputChange,
       onChange,
       filterOptions,
-      name: "source"
+      name: "source",
     };
   }, [
     disableTextInput,
@@ -346,7 +368,7 @@ const Source = function(props: SourceProps) {
     hasFocus,
     onFocus,
     onBlur,
-    options
+    options,
   ]);
 
   if (gqlError) {
