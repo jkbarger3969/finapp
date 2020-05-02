@@ -1,5 +1,6 @@
 import { ObjectID } from "mongodb";
 import * as moment from "moment";
+import { isValid } from "date-fns";
 
 import {
   MutationResolvers,
@@ -14,6 +15,12 @@ import { getSrcCollectionAndNode, stages } from "./utils";
 import { JOURNAL_ENTRY_UPDATED } from "./pubSubs";
 
 const NULLISH = Symbol();
+
+const addDate = {
+  $addFields: {
+    ...DocHistory.getPresentValues(["date"]),
+  },
+} as const;
 
 const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
   doc,
@@ -62,11 +69,49 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
   // Date
   if (dateString) {
-    const date = moment(dateString, moment.ISO_8601);
-    if (!date.isValid()) {
+    const date = new Date(dateString);
+    if (!isValid(date)) {
       throw new Error(`Date "${dateString}" not a valid ISO 8601 date string.`);
     }
-    updateBuilder.updateField("date", date.toDate());
+
+    asyncOps.push(
+      (async () => {
+        const [result] = (await db
+          .collection("journalEntries")
+          .aggregate([
+            { $match: { _id: entryId } },
+            { $limit: 1 },
+            {
+              $project: {
+                refundDate: {
+                  $reduce: {
+                    input: "$refunds",
+                    initialValue: docHistory.date,
+                    in: {
+                      $min: [
+                        "$$value",
+                        DocHistory.getPresentValueExpression("date", {
+                          asVar: "this",
+                          defaultValue: docHistory.date,
+                        }),
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          ])
+          .toArray()) as [{ refundDate: Date }];
+
+        if (result && date > result.refundDate) {
+          throw new Error(
+            "Entry date can not be greater than the earliest refund date."
+          );
+        }
+
+        updateBuilder.updateField("date", date);
+      })()
+    );
   }
 
   // Type

@@ -16,6 +16,7 @@ import journalEntries from "./resolvers/journalEntry/journalEntries";
 import journalEntry from "./resolvers/journalEntry/journalEntry";
 import journalEntryAdd from "./resolvers/journalEntry/journalEntryAdd";
 import journalEntryUpdate from "./resolvers/journalEntry/journalEntryUpdate";
+import journalEntryRefund from "./resolvers/journalEntry/journalEntryRefund";
 import journalEntryAddRefund from "./resolvers/journalEntry/journalEntryAddRefund";
 import journalEntryUpdateRefund from "./resolvers/journalEntry/journalEntryUpdateRefund";
 import journalEntryDeleteRefund from "./resolvers/journalEntry/journalEntryDeleteRefund";
@@ -49,6 +50,7 @@ const resolvers: Resolvers = {
     business,
     budgets,
     journalEntry,
+    journalEntryRefund,
     journalEntries,
     journalEntrySources,
     journalEntryCategories,

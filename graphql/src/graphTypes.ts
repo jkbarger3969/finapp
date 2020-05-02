@@ -364,6 +364,7 @@ export type Query = {
   journalEntry?: Maybe<JournalEntry>;
   journalEntryCategories: Array<JournalEntryCategory>;
   journalEntryCategory: JournalEntryCategory;
+  journalEntryRefund?: Maybe<JournalEntryRefund>;
   journalEntrySources: Array<JournalEntrySource>;
   paymentMethod?: Maybe<PaymentMethod>;
   paymentMethods: Array<PaymentMethod>;
@@ -408,6 +409,11 @@ export type QueryJournalEntryArgs = {
 
 
 export type QueryJournalEntryCategoryArgs = {
+  id: Scalars['ID'];
+};
+
+
+export type QueryJournalEntryRefundArgs = {
   id: Scalars['ID'];
 };
 
@@ -774,6 +780,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   journalEntry?: Resolver<Maybe<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntryArgs, 'id'>>,
   journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   journalEntryCategory?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType, RequireFields<QueryJournalEntryCategoryArgs, 'id'>>,
+  journalEntryRefund?: Resolver<Maybe<ResolversTypes['JournalEntryRefund']>, ParentType, ContextType, RequireFields<QueryJournalEntryRefundArgs, 'id'>>,
   journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>,
   paymentMethod?: Resolver<Maybe<ResolversTypes['PaymentMethod']>, ParentType, ContextType, RequireFields<QueryPaymentMethodArgs, 'id'>>,
   paymentMethods?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType, RequireFields<QueryPaymentMethodsArgs, never>>,

@@ -1,4 +1,4 @@
-import { JournalEntryResolvers, JournalEntryType } from "../../graphTypes";
+import { JournalEntryResolvers } from "../../graphTypes";
 import { nodeFieldResolver } from "../utils/nodeResolver";
 import paymentMethodResolver from "../paymentMethod/paymentMethod";
 

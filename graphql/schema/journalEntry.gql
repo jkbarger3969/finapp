@@ -135,6 +135,7 @@ input JournalEntiresWhereInput {
 type Query {
   journalEntries(where: JournalEntiresWhereInput): [JournalEntry!]!
   journalEntry(id: ID!): JournalEntry
+  journalEntryRefund(id: ID!): JournalEntryRefund
 }
 
 input JournalEntryUpdatePaymentMethod {

@@ -1,5 +1,5 @@
 import { ObjectID } from "mongodb";
-import * as moment from "moment";
+import { isValid } from "date-fns";
 
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
@@ -8,6 +8,12 @@ import journalEntry from "./journalEntry";
 import { getUniqueId } from "../utils/mongoUtils";
 import { stages } from "./utils";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
+
+const addDate = {
+  $addFields: {
+    ...DocHistory.getPresentValues(["date"]),
+  },
+} as const;
 
 const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async (
   doc,
@@ -31,8 +37,8 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
     throw new Error("Refund total must be greater than 0.");
   }
 
-  const date = moment(dateStr, moment.ISO_8601);
-  if (!date.isValid()) {
+  const date = new Date(dateStr);
+  if (!isValid(date)) {
     throw new Error(`Date "${dateStr}" not a valid ISO 8601 date string.`);
   }
 
@@ -45,7 +51,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
   const srcEntryId = new ObjectID(id);
 
   const docBuilder = docHistory.newHistoricalDoc(true).addFields([
-    ["date", date.toDate()],
+    ["date", date],
     ["total", total],
     ["reconciled", reconciled],
     ["deleted", false],
@@ -55,46 +61,44 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
     docBuilder.addField("description", description);
   }
 
-  // const refundEntry = {
-  //   id: undefined as ObjectID,
-  //   paymentMethod: undefined as [HistoryObject<NodeValue>],
-  //   date: docHistory.addValue(date.toDate()),
-  //   description: description ? docHistory.addValue(description) : [],
-  //   total: docHistory.addValue(total),
-  //   reconciled: docHistory.addValue(reconciled),
-  //   deleted: docHistory.addValue(false),
-  //   lastUpdate: docHistory.lastUpdate,
-  //   ...docHistory.rootHistoryObject,
-  // };
   let refundId: ObjectID;
   const asyncOps = [
-    // Ensure source entry exists and get entry and refund totals.
+    // Ensure source entry exists, max refund totals are not exceeded, and
+    // that refund date is after entry date
     (async () => {
       const [srcEntryState] = (await collection
         .aggregate([
           { $match: { _id: srcEntryId } },
+          addDate,
           stages.entryTotal,
           stages.refundTotal,
           {
             $project: {
+              date: true,
               entryTotal: true,
               refundTotal: true,
             },
           },
         ])
-        .toArray()) as [{ entryTotal: number; refundTotal: number }];
+        .toArray()) as [
+        { date: Date; entryTotal: number; refundTotal: number }
+      ];
 
       if (!srcEntryState) {
         throw new Error(`Journal entry "${id}" does not exist.`);
       }
 
-      const { entryTotal, refundTotal } = srcEntryState;
+      const { date: entryDate, entryTotal, refundTotal } = srcEntryState;
 
       // Ensure aggregate refunds do NOT exceed the original transaction amount
       if (entryTotal < refundTotal + totalDecimal) {
         throw new Error(
           "Refunds cannot total more than original transaction amount."
         );
+      }
+
+      if (date < entryDate) {
+        throw new Error("Refund date cannot be before the entry date.");
       }
     })(),
     // Generate refund ID

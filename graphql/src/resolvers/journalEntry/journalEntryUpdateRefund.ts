@@ -1,5 +1,5 @@
 import { ObjectID } from "mongodb";
-import * as moment from "moment";
+import { isValid } from "date-fns";
 
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
@@ -14,6 +14,12 @@ import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
 
 const NULLISH = Symbol();
+
+const addDate = {
+  $addFields: {
+    ...DocHistory.getPresentValues(["date"]),
+  },
+} as const;
 
 const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = async (
   obj,
@@ -33,19 +39,8 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
 
   const updateBuilder = docHistory.updateHistoricalDoc("refunds.$[refund]");
 
-  // Date
-  if (fields.date) {
-    const date = moment(fields.date, moment.ISO_8601);
-    if (!date.isValid()) {
-      throw new Error(
-        `Date "${fields.date}" not a valid ISO 8601 date string.`
-      );
-    }
-    updateBuilder.updateField("date", date.toDate());
-  }
-
   let entryId: ObjectID;
-  let asyncOps = [
+  const asyncOps = [
     (async () => {
       const [result] = (await collection
         .aggregate([
@@ -66,6 +61,39 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
       entryId = result.entryId;
     })(),
   ];
+
+  // Date
+  if (fields.date) {
+    const date = new Date(fields.date);
+    if (!isValid(date)) {
+      throw new Error(
+        `Date "${fields.date}" not a valid ISO 8601 date string.`
+      );
+    }
+
+    asyncOps.push(
+      (async () => {
+        const [result] = (await collection
+          .aggregate([
+            { $match: { "refunds.id": refundId } },
+            { $limit: 1 },
+            addDate,
+            {
+              $project: {
+                date: true,
+              },
+            },
+          ])
+          .toArray()) as [{ date: Date }];
+
+        if (result && date < result.date) {
+          throw new Error("Refund date cannot be before the entry date.");
+        }
+
+        updateBuilder.updateField("date", date);
+      })()
+    );
+  }
 
   // Description
   if (fields.description) {
