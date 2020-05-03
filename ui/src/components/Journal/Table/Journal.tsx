@@ -13,12 +13,12 @@ import { uuid, namespace } from "../../../utils/uuid";
 import { DEPT_FOR_UPSERT_ADD } from "../../Dashboard/Dashboard";
 import {
   DeptForUpsertAddQuery as DeptForUpsertAdd,
-  DeptForUpsertAddQueryVariables as DeptForUpsertAddVars
+  DeptForUpsertAddQueryVariables as DeptForUpsertAddVars,
 } from "../../../apollo/graphTypes";
 
 export const entryUpsertId = uuid("Journal", namespace);
 
-const Journal = function(props: { deptId?: string; mode: JournalMode }) {
+const Journal = function (props: { deptId?: string; mode: JournalMode }) {
   const { deptId, mode } = props;
 
   const theme = useTheme();
@@ -33,23 +33,18 @@ const Journal = function(props: { deptId?: string; mode: JournalMode }) {
     DeptForUpsertAddVars
   >(DEPT_FOR_UPSERT_ADD, {
     skip: !deptId,
-    variables: { id: deptId as string }
+    variables: { id: deptId as string },
   });
 
   const initialValues = useMemo<Partial<Values> | undefined>(
     () =>
       deptForUpsertAdd?.department
         ? {
-            department: deptForUpsertAdd.department
+            department: deptForUpsertAdd.department,
           }
         : undefined,
     [deptForUpsertAdd]
   );
-
-  const closeUpsert = useCallback(() => {
-    setUpsertOpen(false);
-    setUpdateEntryId(undefined);
-  }, [setUpdateEntryId, setUpsertOpen]);
 
   const updateEntry = useCallback(
     (entryId: string) => {

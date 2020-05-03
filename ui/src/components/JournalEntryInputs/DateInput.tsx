@@ -3,7 +3,7 @@ import { useSelector, useDispatch, shallowEqual } from "react-redux";
 import {
   KeyboardDatePicker,
   KeyboardDatePickerProps,
-  MuiPickersUtilsProvider
+  MuiPickersUtilsProvider,
 } from "@material-ui/pickers";
 import moment, { Moment } from "moment";
 import MomentUtils from "@date-io/moment";
@@ -12,17 +12,17 @@ import { Root } from "../../redux/reducers/root";
 import {
   setDateValue,
   clearDateValue,
-  validateDate
+  validateDate,
 } from "../../redux/actions/journalEntryUpsert";
 import {
   getDate,
   isRequired,
   getDateError,
-  getType
+  getType,
 } from "../../redux/selectors/journalEntryUpsert";
 
 const inputProps = {
-  inputMode: "numeric"
+  inputMode: "numeric",
 } as const;
 
 interface SelectorResult {
@@ -39,11 +39,11 @@ export interface DateInputProps {
   variant?: "filled" | "outlined";
 }
 
-const DateInput = function(props: DateInputProps) {
+const DateInput = function (props: DateInputProps) {
   const {
     entryUpsertId,
     autoFocus = false,
-    variant: inputVariant = "filled"
+    variant: inputVariant = "filled",
   } = props;
 
   const dispatch = useDispatch();
@@ -53,7 +53,7 @@ const DateInput = function(props: DateInputProps) {
   const { disabled, date, required, hasError, errorMsg } = useSelector<
     Root,
     SelectorResult
-  >(state => {
+  >((state) => {
     const error = getDateError(state, entryUpsertId);
 
     return {
@@ -61,7 +61,7 @@ const DateInput = function(props: DateInputProps) {
       date: getDate(state, entryUpsertId),
       required: isRequired(state, entryUpsertId),
       hasError: !!error,
-      errorMsg: error?.message || null
+      errorMsg: error?.message || null,
     };
   }, shallowEqual);
 
@@ -83,7 +83,7 @@ const DateInput = function(props: DateInputProps) {
       }
     },
     [entryUpsertId, dispatch, hasError, validate]
-  );
+  ) as any;
 
   const dataPickerProps: KeyboardDatePickerProps = {
     disabled,
@@ -106,12 +106,12 @@ const DateInput = function(props: DateInputProps) {
     autoOk: true,
     InputProps: useMemo(
       () => ({
-        autoFocus
+        autoFocus,
       }),
       [autoFocus]
     ),
     inputProps,
-    placeholder: "mm/dd/yyyy"
+    placeholder: "mm/dd/yyyy",
   };
 
   return (

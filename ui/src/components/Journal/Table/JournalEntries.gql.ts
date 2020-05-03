@@ -1,5 +1,30 @@
 import gql from "graphql-tag";
 
+export const JOURNAL_ENTRY_REFUND = gql`
+  fragment JournalEntryRefund_1Fragment on JournalEntryRefund {
+    __typename
+    id
+    date
+    description
+    total {
+      num
+      den
+    }
+    paymentMethod {
+      __typename
+      id
+      name
+      parent {
+        __typename
+        id
+      }
+    }
+    reconciled
+    lastUpdate
+    deleted
+  }
+`;
+
 export const JOURNAL_ENTRY_FRAGMENT = gql`
   fragment JournalEntry_1Fragment on JournalEntry {
     __typename
@@ -60,10 +85,14 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
       num
       den
     }
+    refunds {
+      ...JournalEntryRefund_1Fragment
+    }
     deleted
     lastUpdate
     reconciled
   }
+  ${JOURNAL_ENTRY_REFUND}
 `;
 
 export const JOURNAL_ENTRIES = gql`

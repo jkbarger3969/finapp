@@ -3,14 +3,13 @@ import {
   Checkbox,
   FormControlLabel,
   FormControlLabelProps,
-  CheckboxProps
+  CheckboxProps,
 } from "@material-ui/core";
 import { useField, FieldInputProps } from "formik";
-
-import { Values } from "../UpsertEntry";
+import { useFormikStatus, FormikStatusType } from "../../../../formik/utils";
 
 const inputProps = {
-  type: "checkbox"
+  type: "checkbox",
 } as const;
 
 const Reconcile = (
@@ -18,31 +17,40 @@ const Reconcile = (
     | ({ label: true } & Partial<
         Omit<
           FormControlLabelProps,
+          | "inputProps"
           | "control"
           | "checked"
           | "label"
-          | keyof FieldInputProps<Values["reconciled"]>
+          | keyof FieldInputProps<any>
         >
       >)
     | ({ label?: false } & Partial<
         Omit<
           CheckboxProps,
-          "inputProps" | "checked" | keyof FieldInputProps<Values["reconciled"]>
+          "inputProps" | "checked" | keyof FieldInputProps<any>
         >
       >)
 ) => {
-  const { label, ...customProps } = props;
+  const { label, disabled = false, ...customProps } = props;
 
-  const [field] = useField<boolean>({
+  const [field] = useField<boolean | undefined>({
     name: "reconciled",
-    type: "checkbox"
+    type: "checkbox",
   });
+
+  const value = field.value ?? false;
+
+  const [formikStatus] = useFormikStatus();
 
   if (label) {
     return (
       <FormControlLabel
         {...customProps}
         {...(field as any)}
+        value={value}
+        disabled={
+          disabled || formikStatus?.type === FormikStatusType.FATAL_ERROR
+        }
         label="Reconcile"
         control={<Checkbox inputProps={inputProps} />}
       />
@@ -50,7 +58,13 @@ const Reconcile = (
   }
 
   return (
-    <Checkbox {...(customProps as any)} {...field} inputProps={inputProps} />
+    <Checkbox
+      {...(customProps as any)}
+      {...field}
+      value={value}
+      disabled={disabled || formikStatus?.type === FormikStatusType.FATAL_ERROR}
+      inputProps={inputProps}
+    />
   );
 };
 

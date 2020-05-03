@@ -10,7 +10,7 @@ import {
   JOURNAL_ENTRIES,
   JOURNAL_ENTRY_ADDED_SUB,
   JOURNAL_ENTRY_UPDATED_SUB,
-  JOURNAL_ENTRY_FRAGMENT
+  JOURNAL_ENTRY_FRAGMENT,
 } from "./JournalEntries.gql";
 import { ROW_ID } from "./Cells/cellsReduxIni";
 import { Root } from "../../../redux/reducers/root";
@@ -21,12 +21,14 @@ import {
   JournalEntries_1QueryVariables as JournalEntriesQueryVars,
   JournalEntryAdded_1Subscription as JournalEntryAdded,
   JournalEntryUpdated_1Subscription as JournalEntryUpdated,
-  JournalEntry_1Fragment as JournalEntryFragment
+  JournalEntry_1Fragment as JournalEntryFragment,
+  JournalEntryRefund_1Fragment as JournalEntryRefundFragment,
+  JournalEntryType,
 } from "../../../apollo/graphTypes";
 
 export enum JournalMode {
   View,
-  Reconcile
+  Reconcile,
 }
 
 export interface BodyProps {
@@ -37,19 +39,43 @@ export interface BodyProps {
   updateEntry: (entryId: string) => void;
 }
 
-const Body = function(props: BodyProps) {
+export type Entry =
+  | JournalEntryFragment
+  | (Omit<JournalEntryFragment, "__typename" | "refunds"> &
+      JournalEntryRefundFragment & { refunds: never[] });
+
+const entriesGen = function* (
+  entry: JournalEntryFragment
+): IterableIterator<Entry> {
+  yield entry;
+  const type =
+    entry.type === JournalEntryType.Credit
+      ? JournalEntryType.Debit
+      : JournalEntryType.Credit;
+  for (const refund of entry.refunds) {
+    yield {
+      ...entry,
+      ...refund,
+      type,
+      description: refund.description || entry.description,
+      refunds: [],
+    };
+  }
+};
+
+const Body = function (props: BodyProps) {
   const { height, deptId, mode, width: parentWidth, updateEntry } = props;
 
   const variables = useMemo<JournalEntriesQueryVars | undefined>(() => {
     return deptId
       ? {
-          where: { department: { eq: deptId } }
+          where: { department: { eq: deptId } },
         }
       : undefined;
   }, [deptId]);
 
   const cellFormats = useSelector<Root, CellFormat[]>(
-    state => getIndexedCells(state, ROW_ID),
+    (state) => getIndexedCells(state, ROW_ID),
     shallowEqual
   );
 
@@ -65,7 +91,7 @@ const Body = function(props: BodyProps) {
     JournalEntriesQuery,
     JournalEntriesQueryVars
   >(JOURNAL_ENTRIES, {
-    variables
+    variables,
   });
 
   const client = useApolloClient();
@@ -76,7 +102,7 @@ const Body = function(props: BodyProps) {
       try {
         return client.readQuery<JournalEntriesQuery, JournalEntriesQueryVars>({
           query: JOURNAL_ENTRIES,
-          variables
+          variables,
         });
       } catch (error) {
         return null;
@@ -98,22 +124,22 @@ const Body = function(props: BodyProps) {
               ...variables,
               where: {
                 ...(variables?.where || {}),
-                lastUpdate: { gt }
-              }
+                lastUpdate: { gt },
+              },
             }
           : {
               where: {
-                lastUpdate: { gt }
-              }
+                lastUpdate: { gt },
+              },
             },
         updateQuery: (prev, { fetchMoreResult }) => ({
           ...(prev || {}),
           ...(fetchMoreResult || {}),
           journalEntries: [
             ...(prev?.journalEntries || []),
-            ...(fetchMoreResult?.journalEntries || [])
-          ]
-        })
+            ...(fetchMoreResult?.journalEntries || []),
+          ],
+        }),
       });
     }
 
@@ -127,7 +153,7 @@ const Body = function(props: BodyProps) {
           !journalEntryAdded ||
           (journalEntryAdded.id !== deptId &&
             journalEntryAdded.department.ancestors.every(
-              dept => dept.__typename === "Business" || dept.id !== deptId
+              (dept) => dept.__typename === "Business" || dept.id !== deptId
             ))
         ) {
           return prev;
@@ -137,10 +163,10 @@ const Body = function(props: BodyProps) {
           ...(prev || {}),
           journalEntries: [
             ...(prev?.journalEntries || []),
-            ...([subscriptionData?.data?.journalEntryAdded] || [])
-          ]
+            ...([subscriptionData?.data?.journalEntryAdded] || []),
+          ],
         };
-      }
+      },
     });
 
     // Subscribe to updates
@@ -153,12 +179,12 @@ const Body = function(props: BodyProps) {
           client.writeFragment<JournalEntryFragment>({
             id: `JournalEntry:${journalEntryUpdated.id}`,
             fragment: JOURNAL_ENTRY_FRAGMENT,
-            data: journalEntryUpdated
+            data: journalEntryUpdated,
           });
         }
 
         return prev;
-      }
+      },
     });
 
     return () => {
@@ -173,14 +199,14 @@ const Body = function(props: BodyProps) {
         return;
       }
 
-      updateQuery(prev => {
+      updateQuery((prev) => {
         const entries = prev.journalEntries || [];
 
         for (let i = 0, len = entries.length; i < len; i++) {
           if (entries[i].id === id) {
             return {
               ...prev,
-              journalEntries: [...entries.slice(0, i), ...entries.slice(i + 1)]
+              journalEntries: [...entries.slice(0, i), ...entries.slice(i + 1)],
             };
           }
         }
@@ -191,23 +217,27 @@ const Body = function(props: BodyProps) {
     [mode, updateQuery]
   );
 
+  const journalEntries = data?.journalEntries || [];
   const entries = useMemo(() => {
-    const entries = data?.journalEntries || [];
+    const filters =
+      mode === JournalMode.Reconcile
+        ? [(entry: Entry) => !entry.reconciled && !entry.deleted]
+        : [(entry: Entry) => !entry.deleted];
 
-    if (mode === JournalMode.Reconcile) {
-      return entries
-        .filter(entry => !entry.reconciled && !entry.deleted)
-        .sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-    }
+    return journalEntries
+      .reduce((entries: Entry[], journalEntry) => {
+        for (const entry of entriesGen(journalEntry)) {
+          if (filters.every((filter) => filter(entry))) {
+            entries.push(entry);
+          }
+        }
 
-    return entries
-      .filter(entry => !entry.deleted)
+        return entries;
+      }, [])
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [data, mode]);
+  }, [journalEntries, mode]);
 
-  const iteCount = entries.length ?? 500;
+  const itemCount = entries.length ?? 500;
 
   const entryRow = useCallback(
     ({ index, style }: { index: number; style: React.CSSProperties }) => {
@@ -226,7 +256,7 @@ const Body = function(props: BodyProps) {
   );
 
   const itemKey = useCallback<NonNullable<FixedSizeListProps["itemKey"]>>(
-    index => entries[index]?.id ?? index,
+    (index) => entries[index]?.id ?? index,
     [entries]
   );
 
@@ -242,7 +272,7 @@ const Body = function(props: BodyProps) {
             itemKey={itemKey}
             height={height}
             width={width}
-            itemCount={iteCount}
+            itemCount={itemCount}
             itemSize={53}
             overscanCount={10}
           >
