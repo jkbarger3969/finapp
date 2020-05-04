@@ -5,15 +5,18 @@ import {
   MutationResolvers,
   PaymentMethod,
   JournalEntryType,
+  JournalEntrySourceType,
 } from "../../graphTypes";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
 import { getSrcCollectionAndNode, stages } from "./utils";
 import { JOURNAL_ENTRY_ADDED } from "./pubSubs";
+import { addBusiness } from "../business";
+import { addPerson } from "../person";
 
 const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
-  doc,
+  obj,
   args,
   context,
   info
@@ -24,11 +27,21 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       department: departmentId,
       type,
       category: categoryId,
-      source: { id: sourceId, sourceType },
+      source,
       total,
     },
     paymentMethodAdd,
+    businessAdd,
+    personAdd,
   } = args;
+
+  // "businessAdd" and "personAdd" are mutually exclusive, gql has
+  // no concept of this.
+  if (businessAdd && personAdd) {
+    throw new Error(
+      `"businessAdd" and "personAdd" are mutually exclusive source creation arguments.`
+    );
+  }
 
   const totalDecimal = total.num / total.den;
 
@@ -82,30 +95,6 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       });
     })(),
 
-    // Source
-    (async () => {
-      const { collection, node } = getSrcCollectionAndNode(
-        db,
-        sourceType,
-        nodeMap
-      );
-
-      const id = new ObjectID(sourceId);
-
-      if (
-        !(await collection.findOne({ _id: id }, { projection: { _id: true } }))
-      ) {
-        throw new Error(
-          `Source type "${sourceType}" with id ${sourceId} does not exist.`
-        );
-      }
-
-      docBuilder.addField("source", {
-        node,
-        id,
-      });
-    })(),
-
     // Category
     (async () => {
       const { collection, id: node } = nodeMap.typename.get(
@@ -135,7 +124,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
         const id = new ObjectID(
           await (paymentMethodAddMutation(
-            doc,
+            obj,
             { fields: paymentMethodAdd },
             {
               ...context,
@@ -180,6 +169,84 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
     );
   }
 
+  // Source
+  if (businessAdd) {
+    // Do NOT create a new business until all other checks pass
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
+        const { node } = getSrcCollectionAndNode(
+          db,
+          JournalEntrySourceType.Business,
+          nodeMap
+        );
+
+        const { id } = await addBusiness(
+          obj,
+          { fields: businessAdd },
+          context,
+          info
+        );
+
+        docBuilder.addField("source", {
+          node,
+          id: new ObjectID(id),
+        });
+      })
+    );
+  } else if (personAdd) {
+    // Do NOT create a new person until all other checks pass
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
+        const { node } = getSrcCollectionAndNode(
+          db,
+          JournalEntrySourceType.Person,
+          nodeMap
+        );
+
+        const { id } = await addPerson(
+          obj,
+          { fields: personAdd },
+          context,
+          info
+        );
+
+        docBuilder.addField("source", {
+          node,
+          id: new ObjectID(id),
+        });
+      })
+    );
+  } else {
+    asyncOps.push(
+      (async () => {
+        const { sourceType, id: sourceId } = source;
+        const { collection, node } = getSrcCollectionAndNode(
+          db,
+          sourceType,
+          nodeMap
+        );
+
+        const id = new ObjectID(sourceId);
+
+        if (
+          !(await collection.findOne(
+            { _id: id },
+            { projection: { _id: true } }
+          ))
+        ) {
+          throw new Error(
+            `Source type "${sourceType}" with id ${sourceId} does not exist.`
+          );
+        }
+
+        docBuilder.addField("source", {
+          node,
+          id,
+        });
+      })()
+    );
+  }
+
   await Promise.all(asyncOps);
 
   const { insertedId, insertedCount } = await db
@@ -188,7 +255,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
   if (insertedCount === 0) {
     throw new Error(
-      `Failed to add journal entry: "${JSON.stringify(args, null, 2)}".`
+      `Failed to add journal entry: ${JSON.stringify(args, null, 2)}`
     );
   }
 

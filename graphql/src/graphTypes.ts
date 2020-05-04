@@ -215,6 +215,8 @@ export type MutationAddPersonArgs = {
 export type MutationJournalEntryAddArgs = {
   fields: JournalEntryAddFields;
   paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
+  personAdd?: Maybe<PersonAddFields>;
+  businessAdd?: Maybe<BusinessAddFields>;
 };
 
 
@@ -240,6 +242,8 @@ export type MutationJournalEntryUpdateArgs = {
   fields: JournalEntryUpdateFields;
   paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
   paymentMethodUpdate?: Maybe<JournalEntryUpdatePaymentMethod>;
+  personAdd?: Maybe<PersonAddFields>;
+  businessAdd?: Maybe<BusinessAddFields>;
 };
 
 

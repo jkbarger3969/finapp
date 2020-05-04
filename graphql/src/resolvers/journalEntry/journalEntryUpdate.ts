@@ -6,6 +6,7 @@ import {
   MutationResolvers,
   PaymentMethod,
   JournalEntryUpdateFields,
+  JournalEntrySourceType,
 } from "../../graphTypes";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
@@ -13,6 +14,8 @@ import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
 import { getSrcCollectionAndNode, stages } from "./utils";
 import { JOURNAL_ENTRY_UPDATED } from "./pubSubs";
+import { addBusiness } from "../business";
+import { addPerson } from "../person";
 
 const NULLISH = Symbol();
 
@@ -23,7 +26,7 @@ const addDate = {
 } as const;
 
 const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
-  doc,
+  obj,
   args,
   context,
   info
@@ -43,7 +46,25 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
     },
     paymentMethodAdd,
     paymentMethodUpdate,
+    personAdd,
+    businessAdd,
   } = args;
+
+  // "paymentMethodAdd" and "paymentMethodUpdate" are mutually exclusive, gql
+  // has no concept of this.
+  if (paymentMethodAdd && paymentMethodUpdate) {
+    throw new Error(
+      `"paymentMethodAdd" and "paymentMethodUpdate" are mutually exclusive arguments.`
+    );
+  }
+
+  // "businessAdd" and "personAdd" are mutually exclusive, gql has
+  // no concept of this.
+  if (personAdd && businessAdd) {
+    throw new Error(
+      `"businessAdd" and "personAdd" are mutually exclusive source creation arguments.`
+    );
+  }
 
   const { db, nodeMap, user, pubSub } = context;
 
@@ -181,8 +202,80 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
     );
   }
 
+  // Category
+  if (categoryId) {
+    asyncOps.push(
+      (async () => {
+        const { collection, id: node } = nodeMap.typename.get(
+          "JournalEntryCategory"
+        );
+
+        const id = new ObjectID(categoryId);
+
+        if (
+          !(await db
+            .collection(collection)
+            .findOne({ _id: id }, { projection: { _id: true } }))
+        ) {
+          throw new Error(`Category with id ${categoryId} does not exist.`);
+        }
+
+        updateBuilder.updateField("category", {
+          node: new ObjectID(node),
+          id,
+        });
+      })()
+    );
+  }
+
   // Source
-  if (source) {
+  if (businessAdd) {
+    // Do NOT create a new business until all other checks pass
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
+        const { id } = await addBusiness(
+          obj,
+          { fields: businessAdd },
+          context,
+          info
+        );
+
+        const { node } = getSrcCollectionAndNode(
+          db,
+          JournalEntrySourceType.Business,
+          nodeMap
+        );
+
+        updateBuilder.updateField("source", {
+          node,
+          id: new ObjectID(id),
+        });
+      })
+    );
+  } else if (personAdd) {
+    // Do NOT create a new person until all other checks pass
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
+        const { id } = await addPerson(
+          obj,
+          { fields: personAdd },
+          context,
+          info
+        );
+
+        const { node } = getSrcCollectionAndNode(
+          db,
+          JournalEntrySourceType.Person,
+          nodeMap
+        );
+
+        updateBuilder.updateField("source", {
+          node,
+          id: new ObjectID(id),
+        });
+      })
+    );
+  } else if (source) {
     const { id: sourceId, sourceType } = source;
 
     asyncOps.push(
@@ -214,32 +307,6 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
     );
   }
 
-  // Category
-  if (categoryId) {
-    asyncOps.push(
-      (async () => {
-        const { collection, id: node } = nodeMap.typename.get(
-          "JournalEntryCategory"
-        );
-
-        const id = new ObjectID(categoryId);
-
-        if (
-          !(await db
-            .collection(collection)
-            .findOne({ _id: id }, { projection: { _id: true } }))
-        ) {
-          throw new Error(`Category with id ${categoryId} does not exist.`);
-        }
-
-        updateBuilder.updateField("category", {
-          node: new ObjectID(node),
-          id,
-        });
-      })()
-    );
-  }
-
   // Payment method
   if (paymentMethodAdd) {
     // Ensure other checks finish before creating payment method
@@ -248,7 +315,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
         // Add payment method
         const id = new ObjectID(
           await (paymentMethodAddMutation(
-            doc,
+            obj,
             { fields: paymentMethodAdd },
             {
               ...context,
@@ -277,7 +344,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
 
         // Update payment method
         await paymentMethodUpdateMutation(
-          doc,
+          obj,
           {
             id: paymentMethodUpdate.id,
             fields: paymentMethodUpdate.fields,

@@ -149,10 +149,14 @@ type Mutation {
     fields: JournalEntryUpdateFields!
     paymentMethodAdd: PaymentMethodAddFields
     paymentMethodUpdate: JournalEntryUpdatePaymentMethod
+    personAdd: PersonAddFields
+    businessAdd: BusinessAddFields
   ): JournalEntry!
   journalEntryAdd(
     fields: JournalEntryAddFields!
     paymentMethodAdd: PaymentMethodAddFields
+    personAdd: PersonAddFields
+    businessAdd: BusinessAddFields
   ): JournalEntry!
   journalEntryDelete(id: ID!): JournalEntry!
   journalEntryAddRefund(
