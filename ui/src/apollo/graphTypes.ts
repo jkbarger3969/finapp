@@ -277,12 +277,16 @@ export type MutationJournalEntryUpdateArgs = {
   fields: JournalEntryUpdateFields;
   paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
   paymentMethodUpdate?: Maybe<JournalEntryUpdatePaymentMethod>;
+  personAdd?: Maybe<PersonAddFields>;
+  businessAdd?: Maybe<BusinessAddFields>;
 };
 
 
 export type MutationJournalEntryAddArgs = {
   fields: JournalEntryAddFields;
   paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
+  personAdd?: Maybe<PersonAddFields>;
+  businessAdd?: Maybe<BusinessAddFields>;
 };
 
 
@@ -641,6 +645,34 @@ export type DeleteEntry_1MutationVariables = {
 
 
 export type DeleteEntry_1Mutation = { __typename?: 'Mutation', journalEntryDelete: { __typename: 'JournalEntry', id: string, deleted: boolean } };
+
+export type AddEntryMutationVariables = {
+  fields: JournalEntryAddFields;
+  paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
+  personAdd?: Maybe<PersonAddFields>;
+  businessAdd?: Maybe<BusinessAddFields>;
+};
+
+
+export type AddEntryMutation = { __typename?: 'Mutation', journalEntryAdd: (
+    { __typename?: 'JournalEntry' }
+    & JournalEntry_1Fragment
+  ) };
+
+export type UpdateEntryMutationVariables = {
+  id: Scalars['ID'];
+  fields: JournalEntryUpdateFields;
+  paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
+  paymentMethodUpdate?: Maybe<JournalEntryUpdatePaymentMethod>;
+  personAdd?: Maybe<PersonAddFields>;
+  businessAdd?: Maybe<BusinessAddFields>;
+};
+
+
+export type UpdateEntryMutation = { __typename?: 'Mutation', journalEntryUpdate: (
+    { __typename?: 'JournalEntry' }
+    & JournalEntry_1Fragment
+  ) };
 
 export type CatEntryOptsQueryVariables = {};
 
@@ -1105,10 +1137,10 @@ export type ResolversTypes = {
   PaymentMethodAddFields: PaymentMethodAddFields,
   JournalEntryUpdatePaymentMethod: JournalEntryUpdatePaymentMethod,
   PaymentMethodUpdateFields: PaymentMethodUpdateFields,
+  PersonAddFields: PersonAddFields,
   JournalEntryAddFields: JournalEntryAddFields,
   JournalEntryAddRefundFields: JournalEntryAddRefundFields,
   JournalEntryUpdateRefundFields: JournalEntryUpdateRefundFields,
-  PersonAddFields: PersonAddFields,
   Subscription: ResolverTypeWrapper<{}>,
   DepartmentAddFields: DepartmentAddFields,
   SortDirection: SortDirection,
@@ -1168,10 +1200,10 @@ export type ResolversParentTypes = {
   PaymentMethodAddFields: PaymentMethodAddFields,
   JournalEntryUpdatePaymentMethod: JournalEntryUpdatePaymentMethod,
   PaymentMethodUpdateFields: PaymentMethodUpdateFields,
+  PersonAddFields: PersonAddFields,
   JournalEntryAddFields: JournalEntryAddFields,
   JournalEntryAddRefundFields: JournalEntryAddRefundFields,
   JournalEntryUpdateRefundFields: JournalEntryUpdateRefundFields,
-  PersonAddFields: PersonAddFields,
   Subscription: {},
   DepartmentAddFields: DepartmentAddFields,
   SortDirection: SortDirection,
