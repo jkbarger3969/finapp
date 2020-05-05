@@ -1,12 +1,43 @@
+input JournalEntryCategoryWhereParentInput {
+  eq: ID
+  ne: ID
+  in: [ID]
+  nin: [ID]
+}
+
+input JournalEntryCategoryWhereNameInput {
+  eq: String
+  ne: String
+  in: [String]
+  nin: [String]
+}
+
+input JournalEntryCategoryWhereTypeInput {
+  eq: JournalEntryType
+  ne: JournalEntryType
+}
+
+input JournalEntryCategoryWhereInput {
+  name: JournalEntryCategoryWhereNameInput
+  type: JournalEntryCategoryWhereTypeInput
+  hasParent: Boolean
+  parent: JournalEntryCategoryWhereParentInput
+  or: [JournalEntryCategoryWhereInput]
+  and: [JournalEntryCategoryWhereInput]
+}
+
 type JournalEntryCategory {
-  id:ID!
-  name:String!
-  type:JournalEntryType!
-  parent:JournalEntryCategory
-  ancestors:[JournalEntryCategory!]!
+  id: ID!
+  name: String!
+  type: JournalEntryType!
+  parent: JournalEntryCategory
+  ancestors: [JournalEntryCategory!]!
+  children: [JournalEntryCategory!]!
 }
 
 extend type Query {
-  journalEntryCategories:[JournalEntryCategory!]!
-  journalEntryCategory(id:ID!):JournalEntryCategory!
+  journalEntryCategories(
+    where: JournalEntryCategoryWhereInput
+  ): [JournalEntryCategory!]!
+  journalEntryCategory(id: ID!): JournalEntryCategory!
 }

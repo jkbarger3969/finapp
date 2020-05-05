@@ -130,6 +130,35 @@ export type JournalEntryCategory = {
   type: JournalEntryType;
   parent?: Maybe<JournalEntryCategory>;
   ancestors: Array<JournalEntryCategory>;
+  children: Array<JournalEntryCategory>;
+};
+
+export type JournalEntryCategoryWhereInput = {
+  name?: Maybe<JournalEntryCategoryWhereNameInput>;
+  type?: Maybe<JournalEntryCategoryWhereTypeInput>;
+  hasParent?: Maybe<Scalars['Boolean']>;
+  parent?: Maybe<JournalEntryCategoryWhereParentInput>;
+  or?: Maybe<Array<Maybe<JournalEntryCategoryWhereInput>>>;
+  and?: Maybe<Array<Maybe<JournalEntryCategoryWhereInput>>>;
+};
+
+export type JournalEntryCategoryWhereNameInput = {
+  eq?: Maybe<Scalars['String']>;
+  ne?: Maybe<Scalars['String']>;
+  in?: Maybe<Array<Maybe<Scalars['String']>>>;
+  nin?: Maybe<Array<Maybe<Scalars['String']>>>;
+};
+
+export type JournalEntryCategoryWhereParentInput = {
+  eq?: Maybe<Scalars['ID']>;
+  ne?: Maybe<Scalars['ID']>;
+  in?: Maybe<Array<Maybe<Scalars['ID']>>>;
+  nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
+};
+
+export type JournalEntryCategoryWhereTypeInput = {
+  eq?: Maybe<JournalEntryType>;
+  ne?: Maybe<JournalEntryType>;
 };
 
 export type JournalEntryRefund = {
@@ -412,6 +441,11 @@ export type QueryJournalEntryArgs = {
 };
 
 
+export type QueryJournalEntryCategoriesArgs = {
+  where?: Maybe<JournalEntryCategoryWhereInput>;
+};
+
+
 export type QueryJournalEntryCategoryArgs = {
   id: Scalars['ID'];
 };
@@ -473,6 +507,11 @@ export type Vendor = {
    __typename?: 'Vendor';
   approved: Scalars['Boolean'];
   vendorId?: Maybe<Scalars['ID']>;
+};
+
+export type WhereRegexInput = {
+  pattern: Scalars['String'];
+  flags?: Maybe<Scalars['String']>;
 };
 
 
@@ -565,6 +604,10 @@ export type ResolversTypes = {
   JournalEntryType: JournalEntryType,
   JournalEntryCategory: ResolverTypeWrapper<JournalEntryCategory>,
   JournalEntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'],
+  JournalEntryCategoryWhereInput: JournalEntryCategoryWhereInput,
+  JournalEntryCategoryWhereNameInput: JournalEntryCategoryWhereNameInput,
+  JournalEntryCategoryWhereTypeInput: JournalEntryCategoryWhereTypeInput,
+  JournalEntryCategoryWhereParentInput: JournalEntryCategoryWhereParentInput,
   PaymentMethodWhereInput: PaymentMethodWhereInput,
   PaymentMethodWhereRefIdInput: PaymentMethodWhereRefIdInput,
   PaymentMethodWhereNameInput: PaymentMethodWhereNameInput,
@@ -589,6 +632,7 @@ export type ResolversTypes = {
   FilterType: FilterType,
   PaginateInput: PaginateInput,
   ByIdFilter: ByIdFilter,
+  WhereRegexInput: WhereRegexInput,
   User: ResolverTypeWrapper<User>,
 };
 
@@ -619,6 +663,10 @@ export type ResolversParentTypes = {
   JournalEntryType: JournalEntryType,
   JournalEntryCategory: JournalEntryCategory,
   JournalEntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'],
+  JournalEntryCategoryWhereInput: JournalEntryCategoryWhereInput,
+  JournalEntryCategoryWhereNameInput: JournalEntryCategoryWhereNameInput,
+  JournalEntryCategoryWhereTypeInput: JournalEntryCategoryWhereTypeInput,
+  JournalEntryCategoryWhereParentInput: JournalEntryCategoryWhereParentInput,
   PaymentMethodWhereInput: PaymentMethodWhereInput,
   PaymentMethodWhereRefIdInput: PaymentMethodWhereRefIdInput,
   PaymentMethodWhereNameInput: PaymentMethodWhereNameInput,
@@ -643,6 +691,7 @@ export type ResolversParentTypes = {
   FilterType: FilterType,
   PaginateInput: PaginateInput,
   ByIdFilter: ByIdFilter,
+  WhereRegexInput: WhereRegexInput,
   User: User,
 };
 
@@ -706,6 +755,7 @@ export type JournalEntryCategoryResolvers<ContextType = Context, ParentType exte
   type?: Resolver<ResolversTypes['JournalEntryType'], ParentType, ContextType>,
   parent?: Resolver<Maybe<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   ancestors?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
+  children?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   __isTypeOf?: isTypeOfResolverFn<ParentType>,
 };
 
@@ -782,7 +832,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentsArgs, never>>,
   journalEntries?: Resolver<Array<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntriesArgs, never>>,
   journalEntry?: Resolver<Maybe<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntryArgs, 'id'>>,
-  journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
+  journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType, RequireFields<QueryJournalEntryCategoriesArgs, never>>,
   journalEntryCategory?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType, RequireFields<QueryJournalEntryCategoryArgs, 'id'>>,
   journalEntryRefund?: Resolver<Maybe<ResolversTypes['JournalEntryRefund']>, ParentType, ContextType, RequireFields<QueryJournalEntryRefundArgs, 'id'>>,
   journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>,

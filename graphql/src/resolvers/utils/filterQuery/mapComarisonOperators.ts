@@ -52,7 +52,7 @@ const mapComparisonOperators = async (
         break;
       case "in":
         comparisonSelector.$in = await Promise.all(
-          comparisonOperators[op].map(val => operatorValueTransformer(val))
+          comparisonOperators[op].map((val) => operatorValueTransformer(val))
         );
         break;
       case "lt":
@@ -72,7 +72,7 @@ const mapComparisonOperators = async (
         break;
       case "nin":
         comparisonSelector.$nin = await Promise.all(
-          comparisonOperators[op].map(val => operatorValueTransformer(val))
+          comparisonOperators[op].map((val) => operatorValueTransformer(val))
         );
         break;
     }

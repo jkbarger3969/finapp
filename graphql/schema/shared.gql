@@ -16,3 +16,8 @@ input PaginateInput {
 input ByIdFilter {
   eq: ID
 }
+
+input WhereRegexInput {
+  pattern: String!
+  flags: String
+}

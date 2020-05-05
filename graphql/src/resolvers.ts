@@ -25,9 +25,10 @@ import JournalEntryRefund from "./resolvers/journalEntry/JournalEntryRefundResol
 import { journalEntrySources } from "./resolvers/journalEntrySource";
 import {
   JournalEntryCategory,
-  journalEntryCategories,
+  // journalEntryCategories,
   journalEntryCategory,
 } from "./resolvers/journalEntryCategory";
+import journalEntryCategories from "./resolvers/journalEntryCategory/journalEntryCategories";
 import paymentMethods from "./resolvers/paymentMethod/paymentMethods";
 import paymentMethod from "./resolvers/paymentMethod/paymentMethod";
 import paymentMethodAdd from "./resolvers/paymentMethod/paymentMethodAdd";
