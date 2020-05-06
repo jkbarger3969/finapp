@@ -11,7 +11,7 @@ import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
 import { getSrcCollectionAndNode, stages } from "./utils";
-import { JOURNAL_ENTRY_ADDED } from "./pubSubs";
+import { JOURNAL_ENTRY_ADDED, JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 import { addBusiness } from "../business";
 import { addPerson } from "../person";
 
@@ -270,6 +270,9 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
   pubSub
     .publish(JOURNAL_ENTRY_ADDED, { journalEntryAdded: newEntry })
+    .catch((error) => console.error(error));
+  pubSub
+    .publish(JOURNAL_ENTRY_UPSERTED, { journalEntryUpserted: newEntry })
     .catch((error) => console.error(error));
 
   return newEntry;

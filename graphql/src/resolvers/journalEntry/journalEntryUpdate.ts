@@ -13,7 +13,7 @@ import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
 import { getSrcCollectionAndNode, stages } from "./utils";
-import { JOURNAL_ENTRY_UPDATED } from "./pubSubs";
+import { JOURNAL_ENTRY_UPDATED, JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 import { addBusiness } from "../business";
 import { addPerson } from "../person";
 
@@ -444,7 +444,12 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
     .toArray();
 
   pubSub
-    .publish(JOURNAL_ENTRY_UPDATED, { journalEntryUpdated: updatedDoc })
+    .publish(JOURNAL_ENTRY_UPDATED, {
+      journalEntryUpdated: updatedDoc,
+    })
+    .catch((error) => console.error(error));
+  pubSub
+    .publish(JOURNAL_ENTRY_UPSERTED, { journalEntryUpserted: updatedDoc })
     .catch((error) => console.error(error));
 
   return updatedDoc;

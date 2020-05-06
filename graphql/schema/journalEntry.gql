@@ -176,4 +176,5 @@ type Mutation {
 type Subscription {
   journalEntryAdded: JournalEntry!
   journalEntryUpdated: JournalEntry!
+  journalEntryUpserted: JournalEntry!
 }

@@ -3,6 +3,7 @@ import { ObjectID } from "mongodb";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
 import journalEntry from "./journalEntry";
+import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 
 const journalEntryDeleteRefund: MutationResolvers["journalEntryDeleteRefund"] = async (
   obj,
@@ -11,7 +12,7 @@ const journalEntryDeleteRefund: MutationResolvers["journalEntryDeleteRefund"] = 
   info
 ) => {
   const { id } = args;
-  const { db, user } = context;
+  const { db, user, pubSub } = context;
 
   const collection = db.collection("journalEntries");
 
@@ -66,6 +67,10 @@ const journalEntryDeleteRefund: MutationResolvers["journalEntryDeleteRefund"] = 
     context,
     info
   );
+
+  pubSub
+    .publish(JOURNAL_ENTRY_UPSERTED, { journalEntryUpserted: result })
+    .catch((error) => console.error(error));
 
   return result;
 };

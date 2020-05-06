@@ -8,6 +8,7 @@ import journalEntry from "./journalEntry";
 import { getUniqueId } from "../utils/mongoUtils";
 import { stages } from "./utils";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
+import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 
 const addDate = {
   $addFields: {
@@ -42,7 +43,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
     throw new Error(`Date "${dateStr}" not a valid ISO 8601 date string.`);
   }
 
-  const { db, user, nodeMap } = context;
+  const { db, user, nodeMap, pubSub } = context;
 
   const docHistory = new DocHistory({ node: userNodeType, id: user.id });
 
@@ -178,6 +179,10 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
   }
 
   const result = await journalEntry(doc, { id }, context, info);
+
+  pubSub
+    .publish(JOURNAL_ENTRY_UPSERTED, { journalEntryUpserted: result })
+    .catch((error) => console.error(error));
 
   return result;
 };

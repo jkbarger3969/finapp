@@ -22,6 +22,7 @@ import journalEntryUpdateRefund from "./resolvers/journalEntry/journalEntryUpdat
 import journalEntryDeleteRefund from "./resolvers/journalEntry/journalEntryDeleteRefund";
 import JournalEntry from "./resolvers/journalEntry/JournalEntryResolver";
 import JournalEntryRefund from "./resolvers/journalEntry/JournalEntryRefundResolver";
+import journalEntryUpserted from "./resolvers/journalEntry/journalEntryUpserted";
 import { journalEntrySources } from "./resolvers/journalEntrySource";
 import {
   JournalEntryCategory,
@@ -77,6 +78,7 @@ const resolvers: Resolvers = {
   Subscription: {
     journalEntryAdded,
     journalEntryUpdated,
+    journalEntryUpserted,
   },
 };
 

@@ -12,6 +12,7 @@ import journalEntry from "./journalEntry";
 import { stages, getRefundTotals } from "./utils";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
+import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 
 const NULLISH = Symbol();
 
@@ -29,7 +30,7 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
 ) => {
   const { id, fields, paymentMethodAdd, paymentMethodUpdate } = args;
 
-  const { db, user, nodeMap } = context;
+  const { db, user, nodeMap, pubSub } = context;
 
   const collection = db.collection("journalEntries");
 
@@ -271,6 +272,10 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
     context,
     info
   );
+
+  pubSub
+    .publish(JOURNAL_ENTRY_UPSERTED, { journalEntryUpserted: result })
+    .catch((error) => console.error(error));
 
   return result;
 };

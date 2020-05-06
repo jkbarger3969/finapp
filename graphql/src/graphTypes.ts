@@ -495,6 +495,7 @@ export type Subscription = {
    __typename?: 'Subscription';
   journalEntryAdded: JournalEntry;
   journalEntryUpdated: JournalEntry;
+  journalEntryUpserted: JournalEntry;
 };
 
 export type User = {
@@ -850,6 +851,7 @@ export type RationalResolvers<ContextType = Context, ParentType extends Resolver
 export type SubscriptionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription']> = {
   journalEntryAdded?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryAdded", ParentType, ContextType>,
   journalEntryUpdated?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryUpdated", ParentType, ContextType>,
+  journalEntryUpserted?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryUpserted", ParentType, ContextType>,
 };
 
 export type UserResolvers<ContextType = Context, ParentType extends ResolversParentTypes['User'] = ResolversParentTypes['User']> = {
