@@ -1,30 +1,39 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import Autocomplete, {
   AutocompleteProps as AutocompletePropsRaw,
-  RenderInputParams
+  RenderInputParams,
 } from "@material-ui/lab/Autocomplete";
 import { UseAutocompleteMultipleProps } from "@material-ui/lab/useAutocomplete";
-import { useField } from "formik";
+import { useField, useFormikContext } from "formik";
 import gql from "graphql-tag";
-import { useQuery } from "@apollo/react-hooks";
+import { useQuery, QueryHookOptions } from "@apollo/react-hooks";
 import { TextFieldProps, TextField, Box, Chip } from "@material-ui/core";
 import { ChevronRight } from "@material-ui/icons";
 
 import { CAT_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";
 import {
-  CatEntryOptsQuery,
+  CatEntryOptsQuery as CatEntryOpts,
+  CatEntryOptsQueryVariables as CatEntryOptsVars,
   CatEntryOptFragment as CatValue,
-  JournalEntryType
+  CatEntryOptFragment,
+  JournalEntryType,
 } from "../../../../apollo/graphTypes";
+import {
+  TransmutationValue,
+  useFormikStatus,
+  FormikStatusType,
+} from "../../../../formik/utils";
 
 const CAT_OPTS_QUERY = gql`
-  query CatEntryOpts {
-    catOpts: journalEntryCategories {
+  query CatEntryOpts($where: JournalEntryCategoryWhereInput!) {
+    catOpts: journalEntryCategories(where: $where) {
       ...CatEntryOptFragment
     }
   }
   ${CAT_ENTRY_OPT_FRAGMENT}
 `;
+
+type CatValueBeta = TransmutationValue<String, CatEntryOptFragment[]>;
 
 type AutocompleteProps = AutocompletePropsRaw<CatValue> &
   UseAutocompleteMultipleProps<CatValue>;
@@ -35,6 +44,7 @@ const renderTags: AutocompleteProps["renderTags"] = (
   getTagProps
 ) => {
   const lastIndex = values.length - 1;
+
   return values.map((dept: any, index: number) => {
     const isLastIndex = lastIndex === index;
     const { key, ...props } = getTagProps({ index }) as any;
@@ -49,11 +59,11 @@ const renderTags: AutocompleteProps["renderTags"] = (
       >
         <Chip
           color={isLastIndex ? "primary" : "default"}
-          disabled={!isLastIndex}
           variant={isLastIndex ? "default" : "outlined"}
           label={dept.name}
           size="medium"
           {...props}
+          disabled={!isLastIndex}
         />{" "}
         {!isLastIndex && <ChevronRight fontSize="small" />}
       </Box>
@@ -61,152 +71,187 @@ const renderTags: AutocompleteProps["renderTags"] = (
   });
 };
 
+const NULLISH = Symbol();
+
 export type CategoryProps = {
-  entryType: JournalEntryType | null;
+  entryType?: string | null;
   variant?: "filled" | "outlined";
   autoFocus?: boolean;
 } & Omit<TextFieldProps, "value">;
 
-const Category = function(props: CategoryProps) {
-  const { entryType, ...fowardProps } = props;
+const Category = function (props: CategoryProps) {
+  const formikContext = useFormikContext<{
+    category?: CatValueBeta;
+    type?: JournalEntryType;
+  }>();
 
-  const { loading, error: gqlError, data } = useQuery<CatEntryOptsQuery>(
-    CAT_OPTS_QUERY
+  const { disabled: disabledFromProps = false } = props;
+
+  const value = formikContext.values?.category?.value || [];
+  const inputValue =
+    formikContext.values?.category?.inputValue.trimLeft() || "";
+  const entryType = formikContext.values?.type ?? null;
+
+  const catValue = value[value.length - 1];
+
+  const variables = useMemo<CatEntryOptsVars>(
+    () =>
+      catValue?.id
+        ? {
+            where: {
+              parent: {
+                eq: catValue.id,
+              },
+              type: {
+                eq: entryType,
+              },
+            },
+          }
+        : {
+            where: {
+              hasParent: false,
+              type: {
+                eq: entryType,
+              },
+            },
+          },
+    [catValue, entryType]
   );
 
-  const categories = data?.catOpts || [];
+  const [formikStatus, setFormikStatus] = useFormikStatus();
 
-  const [hasFocus, setHasFocus] = useState(false);
+  const onError = useCallback<
+    NonNullable<QueryHookOptions<CatEntryOpts, CatEntryOptsVars>["onError"]>
+  >(
+    (error) =>
+      void setFormikStatus({
+        msg: error.message,
+        type: FormikStatusType.FATAL_ERROR,
+      }),
+    [setFormikStatus]
+  );
 
-  // Input must be controlled to stop input when leaf option is selected.
-  const [inputValue, setInputValue] = useState("");
+  const { loading, error: gqlError, data } = useQuery<
+    CatEntryOpts,
+    CatEntryOptsVars
+  >(CAT_OPTS_QUERY, {
+    skip: (entryType ?? NULLISH) === NULLISH,
+    variables,
+    onCompleted: () =>
+      setTimeout(() => formikContext.validateField("category"), 0),
+    onError,
+  });
+  const catOpts = data?.catOpts;
+  const options = useMemo<CatEntryOptFragment[]>(() => catOpts || [], [
+    catOpts,
+  ]);
 
   const validate = useCallback(
-    (value: CatValue | null) => {
+    (transmutationVal: CatValueBeta | null | undefined) => {
+      const values = transmutationVal?.value || [];
+      const value = values[values.length - 1] || null;
+
       if (!value) {
         return "Category Required";
-      } else if (categories.some(({ parent }) => parent?.id === value.id)) {
+      } else if (options.length > 0) {
         return "Sub-category Required";
       }
     },
-    [categories]
+    [options]
   );
 
-  const [field, meta, helpers] = useField<CatValue | null>({
+  const [field, meta, helpers] = useField<CatValueBeta | null | undefined>({
     name: "category",
-    validate
+    validate,
   });
 
-  const { value: catValue, onBlur: onBlurField } = field;
+  const { onBlur: onBlurField } = field;
   const { error, touched } = meta;
   const { setValue } = helpers;
 
   // Reset category value if type changes
   useEffect(() => {
-    if (
-      catValue !== null &&
-      entryType !== null &&
-      entryType !== catValue.type
-    ) {
-      setValue(null);
+    if (catValue && entryType !== catValue.type) {
+      setValue({
+        inputValue: "",
+        value: [],
+      });
     }
   }, [entryType, catValue, setValue]);
 
-  const idCatMap = useMemo(
+  // const disableTextInput = useMemo(() => {
+  //   return value.length > 0 && options.length === 0;
+  // }, [value, options]);
+
+  const helperText = useMemo(() => {
+    if (!!error && touched) {
+      return error;
+    } else if ((entryType ?? NULLISH) === NULLISH) {
+      return "Category requires entry type.";
+    } else if (!!gqlError) {
+      return gqlError.message;
+    }
+    return "";
+  }, [entryType, error, touched, gqlError]);
+
+  const disabled = useMemo(
     () =>
-      new Map(
-        categories.reduce((idCats, cat) => {
-          idCats.push([cat.id, cat]);
-          return idCats;
-        }, [] as [string, CatValue][])
-      ),
-    [categories]
+      loading ||
+      formikStatus?.type === FormikStatusType.FATAL_ERROR ||
+      (entryType ?? NULLISH) === NULLISH ||
+      disabledFromProps,
+    [disabledFromProps, entryType, formikStatus, loading]
   );
-
-  const value = useMemo(() => {
-    if (!catValue) {
-      return [];
-    }
-
-    const value: CatValue[] = [catValue];
-
-    let id = catValue.parent?.id;
-
-    while (id && idCatMap.has(id)) {
-      const parentCat = idCatMap.get(id) as CatValue;
-      value.unshift(parentCat);
-      id = parentCat.parent?.id;
-    }
-
-    return value;
-  }, [catValue, idCatMap]);
-
-  const options = useMemo(() => {
-    const catId = value[value.length - 1]?.id;
-    if (entryType === null) {
-      return [];
-    } else if (catId) {
-      return categories.filter(
-        opt => opt.parent?.id === catId && opt.type === entryType
-      );
-    } else {
-      return categories.filter(opt => !opt.parent && opt.type === entryType);
-    }
-  }, [categories, value, entryType]);
-
-  const disableTextInput = useMemo(() => {
-    return value.length > 0 && options.length === 0;
-  }, [value, options]);
 
   const renderInput = useCallback(
     (params: RenderInputParams) => {
       return (
         <TextField
-          {...(fowardProps as any)}
+          {...(props as any)}
           variant={props.variant || "filled"}
           {...params}
-          error={touched && !!error}
-          helperText={touched ? error : undefined}
+          error={(touched && !!error) || !!gqlError}
+          disabled={disabled}
+          helperText={helperText}
           name="category"
           label="Category"
-          disabled={disableTextInput}
         />
       );
     },
-    [props, fowardProps, touched, error, disableTextInput]
+    [props, touched, error, gqlError, disabled, helperText]
   );
+
+  const [hasFocus, setHasFocus] = useState(false);
 
   const onFocus = useCallback((event?) => setHasFocus(true), [setHasFocus]);
   const onBlur = useCallback(
-    event => {
+    (event) => {
       setHasFocus(false);
-      onBlurField(event);
+      // Fixes formik validate called with wrong version of value
+      event.persist();
+      setTimeout(() => void onBlurField(event), 0);
     },
     [setHasFocus, onBlurField]
   );
 
   const onChange = useCallback<NonNullable<AutocompleteProps["onChange"]>>(
     (event, value) => {
-      if (!value) {
-        setValue(null);
-      } else if (Array.isArray(value)) {
-        const len = value.length;
-        setValue(len === 0 ? null : value[len - 1]);
-      } else {
-        setValue(value);
-      }
+      setValue({ inputValue, value });
     },
-    [setValue]
+    [setValue, inputValue]
   );
 
   const onInputChange = useCallback<
     NonNullable<AutocompleteProps["onInputChange"]>
   >(
-    (event, value: string, reason) => {
-      value = (value || "").trimStart();
-      setInputValue(value);
+    (event, inputValue: string, reason) => {
+      inputValue = (inputValue || "").trimStart();
+      setValue({
+        inputValue,
+        value,
+      });
     },
-    [setInputValue]
+    [setValue, value]
   );
 
   const autoCompleteProps = useMemo<AutocompleteProps>(() => {
@@ -218,7 +263,7 @@ const Category = function(props: CategoryProps) {
       options,
       renderTags,
       forcePopupIcon: false,
-      disabled: loading,
+      disabled,
       value,
       renderInput,
       loading,
@@ -226,28 +271,24 @@ const Category = function(props: CategoryProps) {
       multiple: true,
       getOptionLabel,
       onInputChange,
-      inputValue: disableTextInput ? "" : inputValue,
+      inputValue,
       onChange,
-      name: "category"
+      name: "category",
     };
   }, [
-    disableTextInput,
-    onChange,
-    onInputChange,
-    inputValue,
-    value,
-    loading,
-    renderInput,
     field,
     hasFocus,
+    options,
     onFocus,
     onBlur,
-    options
+    loading,
+    disabled,
+    value,
+    renderInput,
+    onInputChange,
+    inputValue,
+    onChange,
   ]);
-
-  if (gqlError) {
-    return <pre>{JSON.stringify(gqlError, null, 2)}</pre>;
-  }
 
   return <Autocomplete {...autoCompleteProps} />;
 };

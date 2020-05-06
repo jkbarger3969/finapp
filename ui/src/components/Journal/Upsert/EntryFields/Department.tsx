@@ -1,21 +1,26 @@
 import React, { useCallback, useMemo, useState } from "react";
 import Autocomplete, {
   AutocompleteProps as AutocompletePropsRaw,
-  RenderInputParams
+  RenderInputParams,
 } from "@material-ui/lab/Autocomplete";
 import { UseAutocompleteMultipleProps } from "@material-ui/lab/useAutocomplete";
 import { useField } from "formik";
 import gql from "graphql-tag";
-import { useQuery } from "@apollo/react-hooks";
+import { useQuery, QueryHookOptions } from "@apollo/react-hooks";
 import { TextFieldProps, TextField, Box, Chip } from "@material-ui/core";
 import { ChevronRight } from "@material-ui/icons";
 
 import {
   DeptEntryOptFragment as DeptValue,
   DeptEntryOptsQuery,
-  DeptEntryOptsQueryVariables as DeptEntryOptsQueryVars
+  DeptEntryOptsQueryVariables as DeptEntryOptsQueryVars,
 } from "../../../../apollo/graphTypes";
 import { DEPT_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";
+import {
+  // TransmutationValue,
+  useFormikStatus,
+  FormikStatusType,
+} from "../../../../formik/utils";
 
 const DEPT_OPTS_QUERY = gql`
   query DeptEntryOpts($fromParent: ID) {
@@ -50,11 +55,11 @@ const renderTags: AutocompleteProps["renderTags"] = (
       >
         <Chip
           color={isLastIndex ? "primary" : "default"}
-          disabled={!isLastIndex}
           variant={isLastIndex ? "default" : "outlined"}
           label={dept.name}
           size="medium"
           {...props}
+          disabled={!isLastIndex}
         />{" "}
         {!isLastIndex && <ChevronRight fontSize="small" />}
       </Box>
@@ -66,11 +71,28 @@ export type DepartmentProps = {
   autoFocus?: boolean;
 } & Omit<TextFieldProps, "value">;
 
-const Department = function(props: DepartmentProps) {
+const Department = function (props: DepartmentProps) {
+  const { disabled: disabledFromProps = false } = props;
+
+  const [formikStatus, setFormikStatus] = useFormikStatus();
+
+  const onError = useCallback<
+    NonNullable<
+      QueryHookOptions<DeptEntryOptsQuery, DeptEntryOptsQueryVars>["onError"]
+    >
+  >(
+    (error) =>
+      void setFormikStatus({
+        msg: error.message,
+        type: FormikStatusType.FATAL_ERROR,
+      }),
+    [setFormikStatus]
+  );
+
   const { loading, error: gqlError, data } = useQuery<
     DeptEntryOptsQuery,
     DeptEntryOptsQueryVars
-  >(DEPT_OPTS_QUERY, { variables: { fromParent: businessId } });
+  >(DEPT_OPTS_QUERY, { onError, variables: { fromParent: businessId } });
 
   const depts = data?.deptOpts || [];
 
@@ -97,7 +119,7 @@ const Department = function(props: DepartmentProps) {
 
   const [field, meta, helpers] = useField<DeptValue | null>({
     name: "department",
-    validate
+    validate,
   });
 
   const { value: deptValue, onBlur: onBlurField } = field;
@@ -135,7 +157,7 @@ const Department = function(props: DepartmentProps) {
 
   const options = useMemo(() => {
     const deptId = value[value.length - 1]?.id;
-    return depts.filter(opt =>
+    return depts.filter((opt) =>
       deptId ? opt.parent.id === deptId : opt.parent.__typename === "Business"
     );
   }, [depts, value]);
@@ -143,6 +165,24 @@ const Department = function(props: DepartmentProps) {
   const disableTextInput = useMemo(() => {
     return value.length > 0 && options.length === 0;
   }, [value, options]);
+
+  const helperText = useMemo(() => {
+    if (!!error && touched) {
+      return error;
+    } else if (!!gqlError) {
+      return gqlError.message;
+    }
+    return "";
+  }, [error, touched, gqlError]);
+
+  const disabled = useMemo(
+    () =>
+      loading ||
+      disableTextInput ||
+      formikStatus?.type === FormikStatusType.FATAL_ERROR ||
+      disabledFromProps,
+    [disableTextInput, disabledFromProps, formikStatus, loading]
+  );
 
   const renderInput = useCallback(
     (params: RenderInputParams) => {
@@ -152,19 +192,19 @@ const Department = function(props: DepartmentProps) {
           variant={props.variant || "filled"}
           {...params}
           error={touched && !!error}
-          helperText={touched ? error : undefined}
+          helperText={helperText}
           name="department"
           label="Department"
-          disabled={disableTextInput}
+          disabled={disabled}
         />
       );
     },
-    [props, touched, error, disableTextInput]
+    [props, touched, error, helperText, disabled]
   );
 
   const onFocus = useCallback((event?) => setHasFocus(true), [setHasFocus]);
   const onBlur = useCallback(
-    event => {
+    (event) => {
       setHasFocus(false);
       onBlurField(event);
     },
@@ -203,7 +243,7 @@ const Department = function(props: DepartmentProps) {
       options,
       renderTags,
       forcePopupIcon: false,
-      disabled: loading,
+      disabled,
       value,
       renderInput,
       loading,
@@ -213,21 +253,22 @@ const Department = function(props: DepartmentProps) {
       onChange,
       onInputChange,
       inputValue: disableTextInput ? "" : inputValue,
-      name: "department"
+      name: "department",
     };
   }, [
-    disableTextInput,
-    inputValue,
-    onInputChange,
-    onChange,
-    value,
-    loading,
-    renderInput,
     field,
     hasFocus,
+    options,
     onFocus,
     onBlur,
-    options
+    disableTextInput,
+    disabled,
+    value,
+    renderInput,
+    loading,
+    onChange,
+    onInputChange,
+    inputValue,
   ]);
 
   if (gqlError) {

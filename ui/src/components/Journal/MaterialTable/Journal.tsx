@@ -1,4 +1,10 @@
-import React, { useMemo, forwardRef, useState, useCallback } from "react";
+import React, {
+  useMemo,
+  forwardRef,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
 import MaterialTable, {
   Column,
   Options,
@@ -44,6 +50,7 @@ import {
 } from "@material-ui/core";
 import { green, red } from "@material-ui/core/colors";
 import { BankTransferIn, BankTransferOut } from "mdi-material-ui";
+import gql from "graphql-tag";
 
 import {
   JournalEntries_1Query as JournalEntriesQuery,
@@ -55,11 +62,10 @@ import {
   JournalEntryType,
   DeptForUpsertAddQuery as DeptForUpsertAdd,
   DeptForUpsertAddQueryVariables as DeptForUpsertAddVars,
+  OnEntryUpsert_1Subscription as OnEntryUpsert,
 } from "../../../apollo/graphTypes";
 import {
   JOURNAL_ENTRIES,
-  JOURNAL_ENTRY_ADDED_SUB,
-  JOURNAL_ENTRY_UPDATED_SUB,
   JOURNAL_ENTRY_FRAGMENT,
 } from "../Table/JournalEntries.gql";
 import { JournalMode } from "../Table/Body";
@@ -68,6 +74,7 @@ import UpsertEntry, { Values } from "../Upsert/UpsertEntry";
 import { DEPT_FOR_UPSERT_ADD } from "../../Dashboard/Dashboard";
 import AddRefund from "../Upsert/Refunds/AddRefund";
 import UpdateRefund from "../Upsert/Refunds/UpdateRefund";
+import AddEntry from "../Upsert/Entries/AddEntry";
 
 const tableIcons = {
   Add: forwardRef<SVGSVGElement>((props, ref) => (
@@ -147,6 +154,23 @@ const entriesGen = function* (
   }
 };
 
+const ON_ENTRY_UPSERT = gql`
+  subscription OnEntryUpsert_1 {
+    journalEntryUpserted {
+      ...JournalEntry_1Fragment
+      department {
+        ancestors {
+          ... on Department {
+            __typename
+            id
+          }
+        }
+      }
+    }
+  }
+  ${JOURNAL_ENTRY_FRAGMENT}
+`;
+
 const Journal = (props: {
   journalTitle?: string;
   deptId?: string;
@@ -158,6 +182,12 @@ const Journal = (props: {
   const [updateEntryId, setUpdateEntryId] = useState<undefined | string>(
     undefined
   );
+
+  // Add Entry
+  const [addEntryOpen, setAddEntryOpen] = useState<boolean>(false);
+  const addEntryOnClose = useCallback(() => void setAddEntryOpen(false), [
+    setAddEntryOpen,
+  ]);
 
   // Add Refund
   const [addRefundOpen, setAddRefundOpen] = useState<boolean>(false);
@@ -212,12 +242,55 @@ const Journal = (props: {
       : undefined;
   }, [deptId]);
 
-  const { loading, error, data } = useQuery<
+  const { loading, error, data, subscribeToMore } = useQuery<
     JournalEntriesQuery,
     JournalEntriesQueryVars
   >(JOURNAL_ENTRIES, {
     variables,
   });
+
+  useEffect(() => {
+    return subscribeToMore<OnEntryUpsert>({
+      document: ON_ENTRY_UPSERT,
+      updateQuery: (prev, { subscriptionData }) => {
+        if (!subscriptionData.data) {
+          return prev;
+        }
+
+        const upsertEntry = subscriptionData.data.journalEntryUpserted;
+
+        const ancestors = upsertEntry.department.ancestors;
+
+        if (
+          deptId &&
+          upsertEntry.department.id !== deptId &&
+          ancestors.every((dept) => (dept as any).id !== deptId)
+        ) {
+          // Filter entry out of query results if department changes.
+          const journalEntriesFiltered = prev.journalEntries.filter(
+            (entry) => entry.id !== upsertEntry.id
+          );
+
+          if (journalEntriesFiltered.length === prev.journalEntries.length) {
+            return prev;
+          }
+
+          return Object.assign({}, prev, {
+            journalEntries: journalEntriesFiltered,
+          });
+        }
+
+        // Apollo will take care of updating if entry already exists in cache.
+        if (prev.journalEntries.some((entry) => entry.id === upsertEntry.id)) {
+          return prev;
+        }
+
+        return Object.assign({}, prev, {
+          journalEntries: [upsertEntry, ...prev.journalEntries],
+        });
+      },
+    });
+  }, [deptId, subscribeToMore]);
 
   const columns = useMemo<Column<Entry>[]>(() => {
     const searchable = false;
@@ -497,12 +570,12 @@ const Journal = (props: {
         tooltip: "Add Entry",
         isFreeAction: true,
         onClick: () => {
-          setUpdateEntryId(undefined);
-          setUpsertOpen(true);
+          setAddEntryOpen(true);
         },
       },
     ];
   }, [
+    setAddEntryOpen,
     setUpdateEntryId,
     setUpdateRefundOpen,
     setUpdateRefund,
@@ -576,6 +649,7 @@ const Journal = (props: {
         setOpen={setUpsertOpen}
         entryId={updateEntryId}
       />
+      <AddEntry open={addEntryOpen} onClose={addEntryOnClose} />
       <AddRefund
         entryId={addRefundToEntry}
         open={addRefundOpen}

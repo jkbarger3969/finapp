@@ -83,9 +83,8 @@ const submitUpdate: (
 
   // Description
   const description =
-    (values.description || "").trim() &&
     values.description !== iniValues.description
-      ? (values.description as string).trim()
+      ? values.description?.trim() ?? ""
       : null;
 
   // Total

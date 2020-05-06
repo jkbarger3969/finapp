@@ -5,7 +5,7 @@ import Autocomplete, {
 } from "@material-ui/lab/Autocomplete";
 import { UseAutocompleteMultipleProps } from "@material-ui/lab/useAutocomplete";
 import { useField } from "formik";
-import { useQuery } from "@apollo/react-hooks";
+import { useQuery, QueryHookOptions } from "@apollo/react-hooks";
 import { TextFieldProps, TextField, Box, Chip } from "@material-ui/core";
 import { ChevronRight } from "@material-ui/icons";
 import { parseName } from "humanparser";
@@ -26,7 +26,11 @@ import {
   SRC_ENTRY_BIZ_OPT_FRAGMENT,
   SRC_ENTRY_DEPT_OPT_FRAGMENT,
 } from "../upsertEntry.gql";
-import Maybe from "graphql/tsutils/Maybe";
+import {
+  TransmutationValue,
+  useFormikStatus,
+  FormikStatusType,
+} from "../../../../formik/utils";
 
 const SRC_ENTRY_OPTS_QUERY = gql`
   query SrcEntryOpts($name: String!, $isBiz: Boolean!) {
@@ -51,6 +55,7 @@ export type SrcObjectValue = BizOpt | DeptOpt | PersonOpt;
 export type SourceValue = SrcObjectValue | string;
 export type Value = SourceValue | JournalEntrySourceType;
 type Options = Value[];
+export type FieldValue = TransmutationValue<string, Value[]>;
 
 type AutocompleteProps = AutocompletePropsRaw<Value> &
   UseAutocompleteMultipleProps<Value>;
@@ -127,7 +132,8 @@ const filterOptions: AutocompleteProps["filterOptions"] = (
   const regex = new RegExp(`(^|\\s)${inputValue}`, "i");
   return options.filter((opt) => regex.test(getOptionLabel(opt)));
 };
-const validate = ({ value }: Values["source"]) => {
+const validate = (transmutationVal?: Values["source"]) => {
+  const value = transmutationVal?.value || [];
   const srcType = (value[0] ?? null) as JournalEntrySourceType | null;
   const srcValue = value.length > 1 ? value[value.length - 1] : null;
 
@@ -148,17 +154,18 @@ const validate = ({ value }: Values["source"]) => {
 };
 
 const Source = function (props: SourceProps) {
+  const { disabled: disabledFromProps = false } = props;
+
   const [hasFocus, setHasFocus] = useState(false);
 
-  const [field, meta, helpers] = useField<Values["source"]>({
+  const [field, meta, helpers] = useField<FieldValue | null | undefined>({
     name: "source",
     validate,
   });
 
-  const {
-    value: { value, inputValue },
-    onBlur: onBlurField,
-  } = field;
+  const { onBlur: onBlurField } = field;
+  const value = field.value?.value ?? [];
+  const inputValue = field.value?.inputValue ?? "";
   const { error, touched } = meta;
   const { setValue } = helpers;
 
@@ -166,6 +173,21 @@ const Source = function (props: SourceProps) {
   const srcValue = value.length > 1 ? value[value.length - 1] : null;
 
   const searchedName = useRef("");
+
+  const [formikStatus, setFormikStatus] = useFormikStatus();
+
+  const onError = useCallback<
+    NonNullable<
+      QueryHookOptions<SrcEntryOptsQuery, SrcEntryOptsQueryVars>["onError"]
+    >
+  >(
+    (error) =>
+      void setFormikStatus({
+        msg: error.message,
+        type: FormikStatusType.FATAL_ERROR,
+      }),
+    [setFormikStatus]
+  );
 
   const { loading, error: gqlError, data } = useQuery<
     SrcEntryOptsQuery,
@@ -176,6 +198,7 @@ const Source = function (props: SourceProps) {
       name: searchedName.current,
       isBiz: srcType !== JournalEntrySourceType.Person,
     },
+    onError,
   });
 
   const idDeptMap = useMemo(() => {
@@ -240,6 +263,15 @@ const Source = function (props: SourceProps) {
     return "Vendor";
   }, [value, options, srcType]);
 
+  const disabled = useMemo(
+    () =>
+      loading ||
+      disabledFromProps ||
+      disableTextInput ||
+      formikStatus?.type === FormikStatusType.FATAL_ERROR,
+    [disableTextInput, disabledFromProps, formikStatus, loading]
+  );
+
   const renderInput = useCallback(
     (
       params: RenderInputParams & { inputProps?: TextFieldProps["inputProps"] }
@@ -272,10 +304,11 @@ const Source = function (props: SourceProps) {
           helperText={touched ? error : undefined}
           name="source"
           label={label}
+          disabled={disabled}
         />
       );
     },
-    [props, touched, error, label, options, srcValue]
+    [srcValue, options.length, props, touched, error, label, disabled]
   );
 
   const onFocus = useCallback((event?) => setHasFocus(true), [setHasFocus]);
@@ -354,21 +387,23 @@ const Source = function (props: SourceProps) {
       onChange,
       filterOptions,
       name: "source",
+      disabled,
     };
   }, [
-    disableTextInput,
-    freeSolo,
-    inputValue,
-    onInputChange,
-    onChange,
-    value,
-    loading,
-    renderInput,
     field,
+    disableTextInput,
+    inputValue,
     hasFocus,
+    options,
     onFocus,
     onBlur,
-    options,
+    freeSolo,
+    value,
+    renderInput,
+    loading,
+    onInputChange,
+    onChange,
+    disabled,
   ]);
 
   if (gqlError) {

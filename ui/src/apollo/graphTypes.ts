@@ -137,6 +137,35 @@ export type JournalEntryCategory = {
   type: JournalEntryType;
   parent?: Maybe<JournalEntryCategory>;
   ancestors: Array<JournalEntryCategory>;
+  children: Array<JournalEntryCategory>;
+};
+
+export type JournalEntryCategoryWhereInput = {
+  name?: Maybe<JournalEntryCategoryWhereNameInput>;
+  type?: Maybe<JournalEntryCategoryWhereTypeInput>;
+  hasParent?: Maybe<Scalars['Boolean']>;
+  parent?: Maybe<JournalEntryCategoryWhereParentInput>;
+  or?: Maybe<Array<Maybe<JournalEntryCategoryWhereInput>>>;
+  and?: Maybe<Array<Maybe<JournalEntryCategoryWhereInput>>>;
+};
+
+export type JournalEntryCategoryWhereNameInput = {
+  eq?: Maybe<Scalars['String']>;
+  ne?: Maybe<Scalars['String']>;
+  in?: Maybe<Array<Maybe<Scalars['String']>>>;
+  nin?: Maybe<Array<Maybe<Scalars['String']>>>;
+};
+
+export type JournalEntryCategoryWhereParentInput = {
+  eq?: Maybe<Scalars['ID']>;
+  ne?: Maybe<Scalars['ID']>;
+  in?: Maybe<Array<Maybe<Scalars['ID']>>>;
+  nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
+};
+
+export type JournalEntryCategoryWhereTypeInput = {
+  eq?: Maybe<JournalEntryType>;
+  ne?: Maybe<JournalEntryType>;
 };
 
 export type JournalEntryRefund = {
@@ -478,6 +507,11 @@ export type QueryJournalEntryArgs = {
 };
 
 
+export type QueryJournalEntryCategoriesArgs = {
+  where?: Maybe<JournalEntryCategoryWhereInput>;
+};
+
+
 export type QueryJournalEntryCategoryArgs = {
   id: Scalars['ID'];
 };
@@ -527,6 +561,7 @@ export type Subscription = {
    __typename?: 'Subscription';
   journalEntryAdded: JournalEntry;
   journalEntryUpdated: JournalEntry;
+  journalEntryUpserted: JournalEntry;
 };
 
 
@@ -540,6 +575,11 @@ export type Vendor = {
    __typename?: 'Vendor';
   approved: Scalars['Boolean'];
   vendorId?: Maybe<Scalars['ID']>;
+};
+
+export type WhereRegexInput = {
+  pattern: Scalars['String'];
+  flags?: Maybe<Scalars['String']>;
 };
 
 export type DepartmentName_1QueryVariables = {
@@ -594,6 +634,14 @@ export type JournalEntryUpdated_2SubscriptionVariables = {};
 export type JournalEntryUpdated_2Subscription = { __typename?: 'Subscription', journalEntryUpdated: (
     { __typename?: 'JournalEntry' }
     & GetReportDataEntry_1Fragment
+  ) };
+
+export type OnEntryUpsert_1SubscriptionVariables = {};
+
+
+export type OnEntryUpsert_1Subscription = { __typename?: 'Subscription', journalEntryUpserted: (
+    { __typename?: 'JournalEntry', department: { __typename?: 'Department', ancestors: Array<{ __typename: 'Department', id: string } | { __typename?: 'Business' }> } }
+    & JournalEntry_1Fragment
   ) };
 
 export type Reconcile_1MutationVariables = {
@@ -674,7 +722,9 @@ export type UpdateEntryMutation = { __typename?: 'Mutation', journalEntryUpdate:
     & JournalEntry_1Fragment
   ) };
 
-export type CatEntryOptsQueryVariables = {};
+export type CatEntryOptsQueryVariables = {
+  where: JournalEntryCategoryWhereInput;
+};
 
 
 export type CatEntryOptsQuery = { __typename?: 'Query', catOpts: Array<(
@@ -850,7 +900,7 @@ export type UpsertEntryUpdateMutation = { __typename?: 'Mutation', journalEntryU
 
 export type DeptEntryOptFragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
 
-export type CatEntryOptFragment = { __typename: 'JournalEntryCategory', id: string, name: string, type: JournalEntryType, parent?: Maybe<{ __typename?: 'JournalEntryCategory', id: string }> };
+export type CatEntryOptFragment = { __typename: 'JournalEntryCategory', id: string, name: string, type: JournalEntryType, parent?: Maybe<{ __typename: 'JournalEntryCategory', id: string }> };
 
 export type SrcEntryPersonOptFragment = { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } };
 
@@ -1116,6 +1166,10 @@ export type ResolversTypes = {
   JournalEntryType: JournalEntryType,
   JournalEntryCategory: ResolverTypeWrapper<JournalEntryCategory>,
   JournalEntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'],
+  JournalEntryCategoryWhereInput: JournalEntryCategoryWhereInput,
+  JournalEntryCategoryWhereNameInput: JournalEntryCategoryWhereNameInput,
+  JournalEntryCategoryWhereTypeInput: JournalEntryCategoryWhereTypeInput,
+  JournalEntryCategoryWhereParentInput: JournalEntryCategoryWhereParentInput,
   LC_JournalEntryUpsert: ResolverTypeWrapper<Lc_JournalEntryUpsert>,
   LC_JournalEntryUpsertType: Lc_JournalEntryUpsertType,
   LC_JournalEntryUpsertSubmitStatus: Lc_JournalEntryUpsertSubmitStatus,
@@ -1147,6 +1201,7 @@ export type ResolversTypes = {
   FilterType: FilterType,
   PaginateInput: PaginateInput,
   ByIdFilter: ByIdFilter,
+  WhereRegexInput: WhereRegexInput,
   User: ResolverTypeWrapper<User>,
   CacheControlScope: CacheControlScope,
   Upload: ResolverTypeWrapper<Scalars['Upload']>,
@@ -1179,6 +1234,10 @@ export type ResolversParentTypes = {
   JournalEntryType: JournalEntryType,
   JournalEntryCategory: JournalEntryCategory,
   JournalEntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'],
+  JournalEntryCategoryWhereInput: JournalEntryCategoryWhereInput,
+  JournalEntryCategoryWhereNameInput: JournalEntryCategoryWhereNameInput,
+  JournalEntryCategoryWhereTypeInput: JournalEntryCategoryWhereTypeInput,
+  JournalEntryCategoryWhereParentInput: JournalEntryCategoryWhereParentInput,
   LC_JournalEntryUpsert: Lc_JournalEntryUpsert,
   LC_JournalEntryUpsertType: Lc_JournalEntryUpsertType,
   LC_JournalEntryUpsertSubmitStatus: Lc_JournalEntryUpsertSubmitStatus,
@@ -1210,6 +1269,7 @@ export type ResolversParentTypes = {
   FilterType: FilterType,
   PaginateInput: PaginateInput,
   ByIdFilter: ByIdFilter,
+  WhereRegexInput: WhereRegexInput,
   User: User,
   CacheControlScope: CacheControlScope,
   Upload: Scalars['Upload'],
@@ -1275,6 +1335,7 @@ export type JournalEntryCategoryResolvers<ContextType = Context, ParentType exte
   type?: Resolver<ResolversTypes['JournalEntryType'], ParentType, ContextType>,
   parent?: Resolver<Maybe<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   ancestors?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
+  children?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   __isTypeOf?: isTypeOfResolverFn<ParentType>,
 };
 
@@ -1398,7 +1459,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentsArgs, never>>,
   journalEntries?: Resolver<Array<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntriesArgs, never>>,
   journalEntry?: Resolver<Maybe<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntryArgs, 'id'>>,
-  journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
+  journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType, RequireFields<QueryJournalEntryCategoriesArgs, never>>,
   journalEntryCategory?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType, RequireFields<QueryJournalEntryCategoryArgs, 'id'>>,
   journalEntryRefund?: Resolver<Maybe<ResolversTypes['JournalEntryRefund']>, ParentType, ContextType, RequireFields<QueryJournalEntryRefundArgs, 'id'>>,
   journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>,
@@ -1417,6 +1478,7 @@ export type RationalResolvers<ContextType = Context, ParentType extends Resolver
 export type SubscriptionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription']> = {
   journalEntryAdded?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryAdded", ParentType, ContextType>,
   journalEntryUpdated?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryUpdated", ParentType, ContextType>,
+  journalEntryUpserted?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryUpserted", ParentType, ContextType>,
 };
 
 export interface UploadScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['Upload'], any> {

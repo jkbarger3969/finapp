@@ -291,7 +291,7 @@ const PaymentMethod = (
       setHasFocus(false);
       // Fixes formik validate called with wrong version of value
       event.persist();
-      setTimeout(() => onBlurField(event), 0);
+      setTimeout(() => void onBlurField(event), 0);
     },
     [setHasFocus, onBlurField]
   );

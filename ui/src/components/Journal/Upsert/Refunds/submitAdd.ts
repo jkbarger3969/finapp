@@ -89,8 +89,8 @@ const submitAdd: (
     id,
     fields: {
       date: values.date.value,
-      description: (values.description || "").trim()
-        ? (values.description as string).trim()
+      description: values.description?.trim()
+        ? values.description.trim()
         : null,
       paymentMethod,
       total: values.total.value,

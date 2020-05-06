@@ -80,7 +80,6 @@ const UpdateRefundDialog = (
   }
 ) => {
   const {
-    entryId,
     refundId,
     open,
     onClose,

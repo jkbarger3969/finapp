@@ -30,7 +30,7 @@ const Description = (
   });
 
   const onChange = useCallback<NonNullable<TextFieldProps["onChange"]>>(
-    (event) => void setValue((event?.target?.value ?? "").trimLeft() || null),
+    (event) => void setValue(event?.target?.value?.trimLeft() || null),
     [setValue]
   );
 

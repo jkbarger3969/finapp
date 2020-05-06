@@ -26,13 +26,11 @@ import {
   GetEntryRefundInfo_1QueryVariables as GetEntryRefundInfoVars,
   JournalEntryType,
 } from "../../../../apollo/graphTypes";
-import DateEntry, { DateValue } from "../EntryFields/DateEntry";
+import DateEntry from "../EntryFields/DateEntry";
 import Description from "../EntryFields/Description";
-import Total, { TotalValue } from "../EntryFields/Total";
+import Total from "../EntryFields/Total";
 import Reconcile from "../EntryFields/Reconcile";
-import PaymentMethod, {
-  PaymentMethodValue,
-} from "../EntryFields/PaymentMethod";
+import PaymentMethod from "../EntryFields/PaymentMethod";
 import {
   FormikStatusType,
   useFormikStatus,
@@ -78,7 +76,7 @@ const AddRefundDialog = (
     >
   >(
     (error) =>
-      void setFormikStatus({
+      setFormikStatus({
         msg: error.message,
         type: FormikStatusType.FATAL_ERROR,
       }),
@@ -92,7 +90,6 @@ const AddRefundDialog = (
     skip: !entryId,
     variables: { id: entryId as string },
     onError,
-    errorPolicy: "all",
   });
 
   const total = data?.journalEntry?.total;
@@ -253,28 +250,7 @@ const AddRefundDialog = (
 const AddRefund = (props: AddRefundProps) => {
   const { entryId, open, onClose, onExited } = props;
 
-  const initialValues = useMemo<AddValues>(
-    () => ({
-      date: {
-        inputValue: null,
-        value: "",
-      } as DateValue,
-      description: "",
-      paymentMethod: {
-        inputValue: "",
-        value: [],
-      } as PaymentMethodValue,
-      total: {
-        inputValue: "",
-        value: {
-          num: 0,
-          den: 1,
-        },
-      } as TotalValue,
-      reconciled: false,
-    }),
-    []
-  );
+  const initialValues = useMemo<Partial<AddValues>>(() => ({}), []);
 
   const client = useApolloClient();
   const onSubmit = useCallback<FormikConfig<AddValues>["onSubmit"]>(
@@ -308,7 +284,7 @@ const AddRefund = (props: AddRefundProps) => {
 
   return (
     <Formik
-      initialValues={initialValues}
+      initialValues={initialValues as AddValues}
       initialStatus={null}
       isInitialValid={false}
       enableReinitialize={true}
