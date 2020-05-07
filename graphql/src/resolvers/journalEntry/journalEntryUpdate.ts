@@ -163,9 +163,9 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           ])
           .toArray()) as [{ refundTotal: number }];
 
-        if (refundTotal > totalDecimal) {
+        if (totalDecimal < refundTotal) {
           throw new Error(
-            "Entry total cannot be greater than entries total refunds."
+            "Entry total cannot be less than entry's total refunds."
           );
         }
 
@@ -417,10 +417,6 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
       `Entry update requires at least one of the following fields: ${keys.join(
         ", "
       )}".`
-    );
-
-    throw new Error(
-      `Mutation "journalEntryUpdate" requires at least one of the following fields: "date", "source", "category", "department", "total", "type", "reconciled", or "paymentMethod".`
     );
   }
 
