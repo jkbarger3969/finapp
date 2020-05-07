@@ -51,6 +51,7 @@ export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
         den
       }
       deleted
+      lastUpdate
     }
     lastUpdate
     deleted

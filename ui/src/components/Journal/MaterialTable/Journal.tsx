@@ -4,6 +4,7 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useRef,
 } from "react";
 import MaterialTable, {
   Column,
@@ -13,7 +14,7 @@ import MaterialTable, {
   Components,
   MTableBody,
 } from "material-table";
-import { useQuery } from "@apollo/react-hooks";
+import { useQuery, useMutation } from "@apollo/react-hooks";
 import numeral from "numeral";
 import moment from "moment";
 import { capitalCase } from "change-case";
@@ -55,14 +56,20 @@ import gql from "graphql-tag";
 import {
   JournalEntries_1Query as JournalEntriesQuery,
   JournalEntries_1QueryVariables as JournalEntriesQueryVars,
-  JournalEntryAdded_1Subscription as JournalEntryAdded,
-  JournalEntryUpdated_1Subscription as JournalEntryUpdated,
   JournalEntry_1Fragment as JournalEntryFragment,
   JournalEntryRefund_1Fragment as JournalEntryRefundFragment,
   JournalEntryType,
   DeptForUpsertAddQuery as DeptForUpsertAdd,
   DeptForUpsertAddQueryVariables as DeptForUpsertAddVars,
   OnEntryUpsert_1Subscription as OnEntryUpsert,
+  ReconcileEntryMutation as ReconcileEntry,
+  ReconcileEntryMutationVariables as ReconcileEntryVars,
+  ReconcileRefundMutation as ReconcileRefund,
+  ReconcileRefundMutationVariables as ReconcileRefundVars,
+  DeleteEntryMutation as DeleteEntry,
+  DeleteEntryMutationVariables as DeleteEntryVars,
+  DeleteRefundMutation as DeleteRefund,
+  DeleteRefundMutationVariables as DeleteRefundVars,
 } from "../../../apollo/graphTypes";
 import {
   JOURNAL_ENTRIES,
@@ -171,6 +178,41 @@ const ON_ENTRY_UPSERT = gql`
   ${JOURNAL_ENTRY_FRAGMENT}
 `;
 
+const RECONCILE_ENTRY = gql`
+  mutation ReconcileEntry($id: ID!) {
+    journalEntryUpdate(id: $id, fields: { reconciled: true }) {
+      ...JournalEntry_1Fragment
+    }
+  }
+  ${JOURNAL_ENTRY_FRAGMENT}
+`;
+
+const RECONCILE_REFUND = gql`
+  mutation ReconcileRefund($id: ID!) {
+    journalEntryUpdateRefund(id: $id, fields: { reconciled: true }) {
+      ...JournalEntry_1Fragment
+    }
+  }
+  ${JOURNAL_ENTRY_FRAGMENT}
+`;
+
+const DELETE_ENTRY = gql`
+  mutation DeleteEntry($id: ID!) {
+    journalEntryDelete(id: $id) {
+      ...JournalEntry_1Fragment
+    }
+  }
+  ${JOURNAL_ENTRY_FRAGMENT}
+`;
+const DELETE_REFUND = gql`
+  mutation DeleteRefund($id: ID!) {
+    journalEntryDeleteRefund(id: $id) {
+      ...JournalEntry_1Fragment
+    }
+  }
+  ${JOURNAL_ENTRY_FRAGMENT}
+`;
+
 const Journal = (props: {
   journalTitle?: string;
   deptId?: string;
@@ -215,6 +257,29 @@ const Journal = (props: {
     setUpdateRefund,
   ]);
 
+  // Reconcile Entry
+  const [reconcileEntry, { loading: reconcilingEntry }] = useMutation<
+    ReconcileEntry,
+    ReconcileEntryVars
+  >(RECONCILE_ENTRY);
+  // Reconcile Refund
+  const [reconcileRefund, { loading: reconcilingRefund }] = useMutation<
+    ReconcileRefund,
+    ReconcileRefundVars
+  >(RECONCILE_REFUND);
+
+  // Delete Entry
+  const [deleteEntry, { loading: deletingEntry }] = useMutation<
+    DeleteEntry,
+    DeleteEntryVars
+  >(DELETE_ENTRY);
+
+  // Delete Refund
+  const [deleteRefund, { loading: deletingRefund }] = useMutation<
+    DeleteRefund,
+    DeleteRefundVars
+  >(DELETE_REFUND);
+
   const { data: deptForUpsertAdd } = useQuery<
     DeptForUpsertAdd,
     DeptForUpsertAddVars
@@ -247,8 +312,12 @@ const Journal = (props: {
     JournalEntriesQueryVars
   >(JOURNAL_ENTRIES, {
     variables,
+    fetchPolicy: "cache-and-network",
   });
 
+  const isLoading = loading && !data?.journalEntries;
+
+  // Subscribe to updates
   useEffect(() => {
     return subscribeToMore<OnEntryUpsert>({
       document: ON_ENTRY_UPSERT,
@@ -478,6 +547,7 @@ const Journal = (props: {
       pageSizeOptions: [25, 50, 100],
       showTitle: !!journalTitle,
       selection: mode === JournalMode.Reconcile,
+      showSelectAllCheckbox: false,
     }),
     [journalTitle, mode]
   );
@@ -493,12 +563,26 @@ const Journal = (props: {
             color: "secondary",
             fontSize: "large",
           },
-          onClick(event, rowData) {
-            if (Array.isArray(rowData)) {
-              for (const { id } of rowData) {
-                console.log(`Reconcile: ${id}`);
-              }
-            }
+          onClick: async (event, rowData) => {
+            await Promise.all(
+              (Array.isArray(rowData) ? rowData : [rowData]).map(
+                async (entry) => {
+                  if (entry.reconciled) {
+                    return;
+                  }
+
+                  try {
+                    if (entry.__typename === "JournalEntryRefund") {
+                      await reconcileRefund({ variables: { id: entry.id } });
+                    } else {
+                      await reconcileEntry({ variables: { id: entry.id } });
+                    }
+                  } catch (error) {
+                    console.error(error);
+                  }
+                }
+              )
+            );
           },
         },
       ];
@@ -510,8 +594,26 @@ const Journal = (props: {
         return {
           icon: DeleteIcon as any,
           tooltip: `Delete ${isRefund ? "Refund" : "Entry"}`,
-          onClick: (event, rowData) => {
-            console.log("Delete: ", (rowData as JournalEntryFragment).id);
+          onClick: async (event, rowData) => {
+            await Promise.all(
+              (Array.isArray(rowData) ? rowData : [rowData]).map(
+                async (entry) => {
+                  if (entry.deleted) {
+                    return;
+                  }
+
+                  try {
+                    if (entry.__typename === "JournalEntryRefund") {
+                      await deleteRefund({ variables: { id: entry.id } });
+                    } else {
+                      await deleteEntry({ variables: { id: entry.id } });
+                    }
+                  } catch (error) {
+                    console.error(error);
+                  }
+                }
+              )
+            );
           },
         };
       },
@@ -574,15 +676,7 @@ const Journal = (props: {
         },
       },
     ];
-  }, [
-    setAddEntryOpen,
-    setUpdateEntryId,
-    setUpdateRefundOpen,
-    setUpdateRefund,
-    setAddRefundOpen,
-    setUpsertOpen,
-    mode,
-  ]);
+  }, [mode, reconcileRefund, reconcileEntry, deleteRefund, deleteEntry]);
 
   const components = useMemo<Components>(
     () => ({
@@ -634,7 +728,13 @@ const Journal = (props: {
     <React.Fragment>
       <MaterialTable
         icons={tableIcons}
-        isLoading={loading}
+        isLoading={
+          isLoading ||
+          reconcilingEntry ||
+          reconcilingRefund ||
+          deletingEntry ||
+          deletingRefund
+        }
         columns={columns}
         data={entries}
         options={options}

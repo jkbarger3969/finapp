@@ -385,7 +385,7 @@ const UpdateRefund = (props: UpdateRefundProps) => {
     <Formik
       initialValues={(initialVariables ?? {}) as UpdateValues}
       initialStatus={initialStatus}
-      isInitialValid={false}
+      // isInitialValid={false}
       enableReinitialize={true}
       onSubmit={onSubmit}
       children={children}

@@ -221,7 +221,7 @@ const AddEntry = (props: AddEntryProps) => {
     <Formik
       initialValues={initialValues as AddValues}
       initialStatus={null}
-      isInitialValid={false}
+      // isInitialValid={false}
       enableReinitialize={true}
       onSubmit={onSubmit}
       children={children}
