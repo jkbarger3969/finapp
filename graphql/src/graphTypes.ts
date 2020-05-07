@@ -67,6 +67,7 @@ export type JournalEntiresWhereInput = {
   reconciled?: Maybe<Scalars['Boolean']>;
   deleted?: Maybe<Scalars['Boolean']>;
   lastUpdate?: Maybe<JournalEntriesWhereLastUpdate>;
+  lastUpdateRefund?: Maybe<JournalEntriesWhereLastUpdate>;
   or?: Maybe<Array<Maybe<JournalEntiresWhereInput>>>;
   and?: Maybe<Array<Maybe<JournalEntiresWhereInput>>>;
 };

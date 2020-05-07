@@ -145,6 +145,13 @@ const filter = async (where: Where, db: Db) => {
         filterQuery["lastUpdate"] = matchCondition(where[key], dateStrToDate);
         break;
 
+      case "lastUpdateRefund":
+        filterQuery["refunds.lastUpdate"] = matchCondition(
+          where[key],
+          dateStrToDate
+        );
+        break;
+
       case "or":
         filterQuery.$or = await Promise.all(
           where[key].map((where) => filter(where, db))

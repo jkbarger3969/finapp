@@ -93,34 +93,50 @@ export const entryAddFieldsStage = {
     refunds: {
       $ifNull: [
         {
-          $map: {
-            input: "$refunds",
-            as: "refund",
+          $let: {
+            vars: {
+              entryDeleted: DocHistory.getPresentValueExpression("deleted", {
+                defaultValue: false,
+              }),
+            },
             in: {
-              $mergeObjects: [
-                "$$refund",
-                {
-                  ...DocHistory.getPresentValues(
-                    (() => {
-                      const obj: {
-                        [P in keyof Omit<
-                          JournalEntryRefund,
-                          "__typename" | "id" | "lastUpdate"
-                        >]-?: null;
-                      } = {
-                        total: null,
-                        reconciled: null,
-                        date: null,
-                        paymentMethod: null,
-                        description: null,
-                        deleted: null,
-                      };
-                      return Object.keys(obj);
-                    })(),
-                    { asVar: "refund" }
-                  ),
+              $map: {
+                input: "$refunds",
+                as: "refund",
+                in: {
+                  $mergeObjects: [
+                    "$$refund",
+                    {
+                      ...DocHistory.getPresentValues(
+                        (() => {
+                          const obj: {
+                            [P in keyof Omit<
+                              JournalEntryRefund,
+                              "__typename" | "id" | "lastUpdate"
+                            >]-?: null;
+                          } = {
+                            total: null,
+                            reconciled: null,
+                            date: null,
+                            paymentMethod: null,
+                            description: null,
+                            deleted: null,
+                          };
+                          return Object.keys(obj);
+                        })(),
+                        { asVar: "refund" }
+                      ),
+                    },
+                    {
+                      $cond: {
+                        if: "$$entryDeleted",
+                        then: { deleted: true },
+                        else: {},
+                      },
+                    },
+                  ],
                 },
-              ],
+              },
             },
           },
         },

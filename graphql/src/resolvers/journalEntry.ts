@@ -19,6 +19,7 @@ import {
   JOURNAL_ENTRY_UPDATED,
   JOURNAL_ENTRY_UPSERTED,
 } from "./journalEntry/pubSubs";
+import journalEntry from "./journalEntry/journalEntry";
 
 const userNodeType = new ObjectID("5dca0427bccd5c6f26b0cde2");
 
@@ -712,10 +713,12 @@ export const journalEntryDelete: MutationResolvers["journalEntryDelete"] = async
     );
   }
 
-  const [doc] = await db
-    .collection("journalEntries")
-    .aggregate([{ $match: { _id } }, addFields, project])
-    .toArray();
+  // const [doc] = await db
+  //   .collection("journalEntries")
+  //   .aggregate([{ $match: { _id } }, addFields, project])
+  //   .toArray();
+
+  const doc = await journalEntry(parent, { id }, context, info);
 
   pubSub
     .publish(JOURNAL_ENTRY_UPDATED, { journalEntryUpdated: doc })

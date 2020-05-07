@@ -117,6 +117,7 @@ input JournalEntiresWhereInput {
   reconciled: Boolean
   deleted: Boolean
   lastUpdate: JournalEntriesWhereLastUpdate
+  lastUpdateRefund: JournalEntriesWhereLastUpdate
   or: [JournalEntiresWhereInput]
   and: [JournalEntiresWhereInput]
 }
