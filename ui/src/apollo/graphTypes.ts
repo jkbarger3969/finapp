@@ -673,26 +673,6 @@ export type ReconcileRefundMutation = { __typename?: 'Mutation', journalEntryUpd
     & JournalEntry_1Fragment
   ) };
 
-export type DeleteEntryMutationVariables = {
-  id: Scalars['ID'];
-};
-
-
-export type DeleteEntryMutation = { __typename?: 'Mutation', journalEntryDelete: (
-    { __typename?: 'JournalEntry' }
-    & JournalEntry_1Fragment
-  ) };
-
-export type DeleteRefundMutationVariables = {
-  id: Scalars['ID'];
-};
-
-
-export type DeleteRefundMutation = { __typename?: 'Mutation', journalEntryDeleteRefund: (
-    { __typename?: 'JournalEntry' }
-    & JournalEntry_1Fragment
-  ) };
-
 export type Reconcile_1MutationVariables = {
   id: Scalars['ID'];
 };
@@ -742,6 +722,57 @@ export type DeleteEntry_1MutationVariables = {
 
 
 export type DeleteEntry_1Mutation = { __typename?: 'Mutation', journalEntryDelete: { __typename: 'JournalEntry', id: string, deleted: boolean } };
+
+export type DeptIniValueForAddEntryQueryVariables = {
+  id: Scalars['ID'];
+};
+
+
+export type DeptIniValueForAddEntryQuery = { __typename?: 'Query', department?: Maybe<(
+    { __typename?: 'Department' }
+    & DeptEntryOptFragment
+  )> };
+
+export type DeleteEntryMutationVariables = {
+  id: Scalars['ID'];
+};
+
+
+export type DeleteEntryMutation = { __typename?: 'Mutation', journalEntryDelete: (
+    { __typename?: 'JournalEntry' }
+    & JournalEntry_1Fragment
+  ) };
+
+export type UpdateEntryIniStateQueryVariables = {
+  id: Scalars['ID'];
+};
+
+
+export type UpdateEntryIniStateQuery = { __typename?: 'Query', journalEntry?: Maybe<{ __typename: 'JournalEntry', id: string, type: JournalEntryType, date: string, description?: Maybe<string>, reconciled: boolean, department: (
+      { __typename?: 'Department' }
+      & DeptEntryOptFragment
+    ), category: (
+      { __typename?: 'JournalEntryCategory', ancestors: Array<(
+        { __typename?: 'JournalEntryCategory' }
+        & CatEntryOptFragment
+      )> }
+      & CatEntryOptFragment
+    ), source: (
+      { __typename?: 'Person' }
+      & SrcEntryPersonOptFragment
+    ) | (
+      { __typename?: 'Business' }
+      & SrcEntryBizOptFragment
+    ) | { __typename?: 'Department', ancestors: Array<{ __typename: 'Department', id: string } | (
+        { __typename?: 'Business' }
+        & SrcEntryBizOptFragment
+      )> }, paymentMethod: (
+      { __typename?: 'PaymentMethod', ancestors: Array<(
+        { __typename?: 'PaymentMethod' }
+        & PayMethodEntryOptFragment
+      )> }
+      & PayMethodEntryOptFragment
+    ), total: { __typename?: 'Rational', num: number, den: number }, refunds: Array<{ __typename: 'JournalEntryRefund', id: string, deleted: boolean, date: string, total: { __typename?: 'Rational', num: number, den: number } }> }> };
 
 export type AddEntryMutationVariables = {
   fields: JournalEntryAddFields;
@@ -825,13 +856,23 @@ export type GetEntryRefundInfo_1Query = { __typename?: 'Query', journalEntry?: M
     & JournalEntry_2Fragment
   )> };
 
-export type GetEntryRefundInfo_2QueryVariables = {
+export type DeleteRefundMutationVariables = {
+  id: Scalars['ID'];
+};
+
+
+export type DeleteRefundMutation = { __typename?: 'Mutation', journalEntryDeleteRefund: (
+    { __typename?: 'JournalEntry' }
+    & JournalEntry_1Fragment
+  ) };
+
+export type UpdateRefundIniStateQueryVariables = {
   entryId: Scalars['ID'];
   refundId: Scalars['ID'];
 };
 
 
-export type GetEntryRefundInfo_2Query = { __typename?: 'Query', journalEntry?: Maybe<(
+export type UpdateRefundIniStateQuery = { __typename?: 'Query', journalEntry?: Maybe<(
     { __typename?: 'JournalEntry' }
     & JournalEntry_2Fragment
   )>, journalEntryRefund?: Maybe<{ __typename: 'JournalEntryRefund', id: string, date: string, description?: Maybe<string>, reconciled: boolean, paymentMethod: (

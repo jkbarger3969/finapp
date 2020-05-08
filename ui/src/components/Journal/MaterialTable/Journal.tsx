@@ -4,7 +4,6 @@ import React, {
   useState,
   useCallback,
   useEffect,
-  useRef,
 } from "react";
 import MaterialTable, {
   Column,
@@ -59,17 +58,11 @@ import {
   JournalEntry_1Fragment as JournalEntryFragment,
   JournalEntryRefund_1Fragment as JournalEntryRefundFragment,
   JournalEntryType,
-  DeptForUpsertAddQuery as DeptForUpsertAdd,
-  DeptForUpsertAddQueryVariables as DeptForUpsertAddVars,
   OnEntryUpsert_1Subscription as OnEntryUpsert,
   ReconcileEntryMutation as ReconcileEntry,
   ReconcileEntryMutationVariables as ReconcileEntryVars,
   ReconcileRefundMutation as ReconcileRefund,
   ReconcileRefundMutationVariables as ReconcileRefundVars,
-  DeleteEntryMutation as DeleteEntry,
-  DeleteEntryMutationVariables as DeleteEntryVars,
-  DeleteRefundMutation as DeleteRefund,
-  DeleteRefundMutationVariables as DeleteRefundVars,
 } from "../../../apollo/graphTypes";
 import {
   JOURNAL_ENTRIES,
@@ -77,11 +70,12 @@ import {
 } from "../Table/JournalEntries.gql";
 import { JournalMode } from "../Table/Body";
 import { CHECK_ID } from "../constants";
-import UpsertEntry, { Values } from "../Upsert/UpsertEntry";
-import { DEPT_FOR_UPSERT_ADD } from "../../Dashboard/Dashboard";
 import AddRefund from "../Upsert/Refunds/AddRefund";
 import UpdateRefund from "../Upsert/Refunds/UpdateRefund";
 import AddEntry from "../Upsert/Entries/AddEntry";
+import UpdateEntry from "../Upsert/Entries/UpdateEntry";
+import DeleteEntry from "../Upsert/Entries/DeleteEntry";
+import DeleteRefund from "../Upsert/Refunds/DeleteRefund";
 
 const tableIcons = {
   Add: forwardRef<SVGSVGElement>((props, ref) => (
@@ -196,23 +190,6 @@ const RECONCILE_REFUND = gql`
   ${JOURNAL_ENTRY_FRAGMENT}
 `;
 
-const DELETE_ENTRY = gql`
-  mutation DeleteEntry($id: ID!) {
-    journalEntryDelete(id: $id) {
-      ...JournalEntry_1Fragment
-    }
-  }
-  ${JOURNAL_ENTRY_FRAGMENT}
-`;
-const DELETE_REFUND = gql`
-  mutation DeleteRefund($id: ID!) {
-    journalEntryDeleteRefund(id: $id) {
-      ...JournalEntry_1Fragment
-    }
-  }
-  ${JOURNAL_ENTRY_FRAGMENT}
-`;
-
 const Journal = (props: {
   journalTitle?: string;
   deptId?: string;
@@ -220,15 +197,27 @@ const Journal = (props: {
 }) => {
   const { deptId = null, journalTitle = null, mode } = props;
 
-  const [upsertOpen, setUpsertOpen] = useState(false);
-  const [updateEntryId, setUpdateEntryId] = useState<undefined | string>(
-    undefined
-  );
-
   // Add Entry
   const [addEntryOpen, setAddEntryOpen] = useState<boolean>(false);
   const addEntryOnClose = useCallback(() => void setAddEntryOpen(false), [
     setAddEntryOpen,
+  ]);
+
+  // Update Entry
+  const [updateEntryOpen, setUpdateEntryOpen] = useState<boolean>(false);
+  const [updateEntry, setUpdateEntry] = useState<string | null>(null);
+
+  const updateEntryOnClose = useCallback(() => void setUpdateEntryOpen(false), [
+    setUpdateEntryOpen,
+  ]);
+  const updateEntryOnExited = useCallback(() => void setUpdateEntry(null), [
+    setUpdateEntry,
+  ]);
+
+  // Delete Entry
+  const [deleteEntry, setDeleteEntry] = useState<string | null>(null);
+  const deleteEntryOnClose = useCallback(() => void setDeleteEntry(null), [
+    setDeleteEntry,
   ]);
 
   // Add Refund
@@ -257,6 +246,12 @@ const Journal = (props: {
     setUpdateRefund,
   ]);
 
+  // Delete Entry
+  const [deleteRefund, setDeleteRefund] = useState<string | null>(null);
+  const deleteRefundOnClose = useCallback(() => void setDeleteRefund(null), [
+    setDeleteRefund,
+  ]);
+
   // Reconcile Entry
   const [reconcileEntry, { loading: reconcilingEntry }] = useMutation<
     ReconcileEntry,
@@ -267,37 +262,6 @@ const Journal = (props: {
     ReconcileRefund,
     ReconcileRefundVars
   >(RECONCILE_REFUND);
-
-  // Delete Entry
-  const [deleteEntry, { loading: deletingEntry }] = useMutation<
-    DeleteEntry,
-    DeleteEntryVars
-  >(DELETE_ENTRY);
-
-  // Delete Refund
-  const [deleteRefund, { loading: deletingRefund }] = useMutation<
-    DeleteRefund,
-    DeleteRefundVars
-  >(DELETE_REFUND);
-
-  const { data: deptForUpsertAdd } = useQuery<
-    DeptForUpsertAdd,
-    DeptForUpsertAddVars
-  >(DEPT_FOR_UPSERT_ADD, {
-    skip: !deptId,
-    variables: { id: deptId as string },
-  });
-
-  const defaultAddDept = deptForUpsertAdd?.department;
-  const initialValues = useMemo<Partial<Values> | undefined>(
-    () =>
-      defaultAddDept
-        ? {
-            department: defaultAddDept,
-          }
-        : undefined,
-    [defaultAddDept]
-  );
 
   const variables = useMemo<JournalEntriesQueryVars | undefined>(() => {
     return deptId
@@ -600,16 +564,10 @@ const Journal = (props: {
                 async (entry) => {
                   if (entry.deleted) {
                     return;
-                  }
-
-                  try {
-                    if (entry.__typename === "JournalEntryRefund") {
-                      await deleteRefund({ variables: { id: entry.id } });
-                    } else {
-                      await deleteEntry({ variables: { id: entry.id } });
-                    }
-                  } catch (error) {
-                    console.error(error);
+                  } else if (entry.__typename === "JournalEntryRefund") {
+                    setDeleteRefund(entry.id);
+                  } else {
+                    setDeleteEntry(entry.id);
                   }
                 }
               )
@@ -622,7 +580,7 @@ const Journal = (props: {
 
         return {
           icon: Edit as any,
-          tooltip: `Edit ${isRefund ? "Refund" : "Entry"}`,
+          tooltip: `Update ${isRefund ? "Refund" : "Entry"}`,
           onClick: (event, rowData) => {
             if (isRefund) {
               setUpdateRefundOpen(true);
@@ -631,8 +589,8 @@ const Journal = (props: {
                 refundId: (rowData as Entry).id,
               });
             } else {
-              setUpdateEntryId((rowData as Entry).id);
-              setUpsertOpen(true);
+              setUpdateEntryOpen(true);
+              setUpdateEntry((rowData as Entry).id);
             }
           },
         };
@@ -676,7 +634,7 @@ const Journal = (props: {
         },
       },
     ];
-  }, [mode, reconcileRefund, reconcileEntry, deleteRefund, deleteEntry]);
+  }, [mode, reconcileRefund, reconcileEntry, setDeleteRefund, setDeleteEntry]);
 
   const components = useMemo<Components>(
     () => ({
@@ -728,13 +686,7 @@ const Journal = (props: {
     <React.Fragment>
       <MaterialTable
         icons={tableIcons}
-        isLoading={
-          isLoading ||
-          reconcilingEntry ||
-          reconcilingRefund ||
-          deletingEntry ||
-          deletingRefund
-        }
+        isLoading={isLoading || reconcilingEntry || reconcilingRefund}
         columns={columns}
         data={entries}
         options={options}
@@ -743,13 +695,14 @@ const Journal = (props: {
         components={components}
         title={journalTitle ?? undefined}
       />
-      <UpsertEntry
-        initialValues={initialValues}
-        open={upsertOpen}
-        setOpen={setUpsertOpen}
-        entryId={updateEntryId}
+      <AddEntry deptId={deptId} open={addEntryOpen} onClose={addEntryOnClose} />
+      <UpdateEntry
+        entryId={updateEntry}
+        open={updateEntryOpen}
+        onClose={updateEntryOnClose}
+        onExited={updateEntryOnExited}
       />
-      <AddEntry open={addEntryOpen} onClose={addEntryOnClose} />
+      <DeleteEntry entryId={deleteEntry} onClose={deleteEntryOnClose} />
       <AddRefund
         entryId={addRefundToEntry}
         open={addRefundOpen}
@@ -763,6 +716,7 @@ const Journal = (props: {
         onClose={updateRefundOnClose}
         onExited={updateRefundOnExited}
       />
+      <DeleteRefund refundId={deleteRefund} onClose={deleteRefundOnClose} />
     </React.Fragment>
   );
 };

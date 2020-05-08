@@ -398,7 +398,11 @@ const Dashboard = function (props: { deptId: string }) {
             {subDeptCards}
           </Grid>
         </Box>
-        <AddEntry open={addEntryOpen} onClose={addEntryOnClose} />
+        <AddEntry
+          deptId={deptId}
+          open={addEntryOpen}
+          onClose={addEntryOnClose}
+        />
       </Container>
     </Box>
   );

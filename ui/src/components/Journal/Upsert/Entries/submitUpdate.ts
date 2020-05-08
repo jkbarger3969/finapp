@@ -1,4 +1,4 @@
-import { O } from "ts-toolbelt";
+import { O, U } from "ts-toolbelt";
 import { FormikConfig } from "formik";
 import gql from "graphql-tag";
 import ApolloClient from "apollo-client";
@@ -10,9 +10,6 @@ import {
   PayMethodEntryOptFragment,
   DeptEntryOptFragment,
   CatEntryOptFragment,
-  SrcEntryBizOptFragment,
-  SrcEntryDeptOptFragment,
-  SrcEntryPersonOptFragment,
   JournalEntrySourceType,
   UpdateEntryMutation as UpdateEntry,
   UpdateEntryMutationVariables as UpdateEntryVars,
@@ -20,12 +17,7 @@ import {
 import { TransmutationValue } from "../../../../formik/utils";
 import { CHECK_ID } from "../../constants";
 import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/JournalEntries.gql";
-
-export type SourceValue =
-  | SrcEntryBizOptFragment
-  | SrcEntryDeptOptFragment
-  | SrcEntryPersonOptFragment
-  | string;
+import { SourceValue } from "./submitAdd";
 
 export type UpdateValues = O.NonNullable<
   O.Overwrite<
@@ -35,7 +27,7 @@ export type UpdateValues = O.NonNullable<
       "deep"
     >,
     {
-      category: CatEntryOptFragment;
+      category: TransmutationValue<string, CatEntryOptFragment[]>;
       date: TransmutationValue<
         Date,
         NonNullable<JournalEntryUpdateFields["date"]>
@@ -64,7 +56,7 @@ export type IniUpdateValues = O.Overwrite<
     paymentMethod: TransmutationValue<string, PayMethodEntryOptFragment[]>;
     source: TransmutationValue<
       string,
-      (JournalEntrySourceType | Exclude<SourceValue, string>)[]
+      (JournalEntrySourceType | U.Exclude<SourceValue, string>)[]
     >;
   }
 >;
@@ -106,8 +98,16 @@ const submitUpdate: (
   values
 ) => {
   // Category
-  const category =
-    values.category.id === iniValues.category.id ? null : values.category.id;
+  const category = (() => {
+    const category =
+      values.category.value[values.category.value.length - 1]?.id ?? null;
+
+    return category ===
+      (iniValues.category.value[iniValues.category.value.length - 1]?.id ??
+        null)
+      ? null
+      : category;
+  })();
 
   // Date
   const date = isEqual(iniValues.date.inputValue, values.date.inputValue)
@@ -201,11 +201,13 @@ const submitUpdate: (
   // Source
   const { source, personAdd, businessAdd } = (() => {
     const srcType = values.source.value[0] as JournalEntrySourceType;
-    const src = values.source.value[values.source.value.length] as SourceValue;
+    const src = values.source.value[
+      values.source.value.length - 1
+    ] as SourceValue;
 
     const iniSrcType = iniValues.source.value[0] as JournalEntrySourceType;
     const iniSrc = iniValues.source.value[
-      iniValues.source.value.length
+      iniValues.source.value.length - 1
     ] as Exclude<SourceValue, string>;
 
     if (typeof src === "string") {
@@ -278,6 +280,8 @@ const submitUpdate: (
     personAdd,
     businessAdd,
   };
+
+  console.log(variables);
 
   await client.mutate<UpdateEntry, UpdateEntryVars>({
     mutation: UPDATE_ENTRY,

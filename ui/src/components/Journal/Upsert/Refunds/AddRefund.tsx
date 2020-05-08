@@ -160,6 +160,8 @@ const AddRefundDialog = (
       open={open}
       onClose={onClose}
       onExited={onExited}
+      disableBackdropClick={isSubmitting}
+      disableEscapeKeyDown={isSubmitting}
       fullWidth
       maxWidth="lg"
       PaperProps={

@@ -17,8 +17,8 @@ import {
 import { Add as AddIcon, Cancel as CancelIcon } from "@material-ui/icons";
 
 import {
-  GetEntryRefundInfo_2Query as GetEntryRefundInfoQuery,
-  GetEntryRefundInfo_2QueryVariables as GetEntryRefundInfoQueryVars,
+  UpdateRefundIniStateQuery as UpdateRefundIniState,
+  UpdateRefundIniStateQueryVariables as UpdateRefundIniStateVars,
   JournalEntry_2Fragment as JournalEntryFragment,
 } from "../../../../apollo/graphTypes";
 import submitUpdate, { UpdateValues, IniUpdateValues } from "./submitUpdate";
@@ -45,8 +45,8 @@ export interface UpdateRefundProps {
   onExited: () => void;
 }
 
-const GET_ENTRY_REFUND_INFO = gql`
-  query GetEntryRefundInfo_2($entryId: ID!, $refundId: ID!) {
+const UPDATE_REFUND_INI_STATE = gql`
+  query UpdateRefundIniState($entryId: ID!, $refundId: ID!) {
     journalEntry(id: $entryId) {
       ...JournalEntry_2Fragment
     }
@@ -158,6 +158,8 @@ const UpdateRefundDialog = (
       open={open}
       onClose={onClose}
       onExited={onExited}
+      disableBackdropClick={isSubmitting}
+      disableEscapeKeyDown={isSubmitting}
       fullWidth
       maxWidth="lg"
       PaperProps={
@@ -191,19 +193,25 @@ const UpdateRefundDialog = (
             <Grid item lg={4} sm={6} xs={12}>
               <DateEntry
                 minDate={minDate}
-                disabled={loading || isSubmitting}
+                disabled={loading || isSubmitting || !!fatalError}
                 fullWidth
               />
             </Grid>
             <Grid item lg={4} sm={6} xs={12}>
-              <Description disabled={loading || isSubmitting} fullWidth />
+              <Description
+                disabled={loading || isSubmitting || !!fatalError}
+                fullWidth
+              />
             </Grid>
             <Grid item lg={4} sm={6} xs={12}>
-              <PaymentMethod disabled={loading || isSubmitting} fullWidth />
+              <PaymentMethod
+                disabled={loading || isSubmitting || !!fatalError}
+                fullWidth
+              />
             </Grid>
             <Grid item lg={4} sm={6} xs={12}>
               <Total
-                disabled={loading || isSubmitting}
+                disabled={loading || isSubmitting || !!fatalError}
                 fullWidth
                 maxTotal={maxTotal}
               />
@@ -217,7 +225,10 @@ const UpdateRefundDialog = (
               md={6}
               sm={12}
             >
-              <Reconcile disabled={loading || isSubmitting} label />
+              <Reconcile
+                disabled={loading || isSubmitting || !!fatalError}
+                label
+              />
             </Grid>
           </Grid>
         </DialogContent>
@@ -235,7 +246,7 @@ const UpdateRefundDialog = (
           </Button>
         )}
         <Button
-          disabled={loading || isSubmitting}
+          disabled={loading || isSubmitting || !!fatalError}
           color={fatalError ? "primary" : "default"}
           startIcon={!fatalError && <CancelIcon />}
           onClick={onClose}
@@ -251,9 +262,9 @@ const UpdateRefund = (props: UpdateRefundProps) => {
   const { entryId, refundId, open, onClose, onExited } = props;
 
   const { loading, error, data } = useQuery<
-    GetEntryRefundInfoQuery,
-    GetEntryRefundInfoQueryVars
-  >(GET_ENTRY_REFUND_INFO, {
+    UpdateRefundIniState,
+    UpdateRefundIniStateVars
+  >(UPDATE_REFUND_INI_STATE, {
     skip: !entryId,
     variables: {
       entryId: entryId as string,
@@ -273,7 +284,7 @@ const UpdateRefund = (props: UpdateRefundProps) => {
   );
 
   const journalEntryRefund = data?.journalEntryRefund;
-  const initialVariables = useMemo<IniUpdateValues>(() => {
+  const initialValues = useMemo<IniUpdateValues>(() => {
     if (!journalEntryRefund) {
       return {} as any;
     }
@@ -329,7 +340,7 @@ const UpdateRefund = (props: UpdateRefundProps) => {
   const client = useApolloClient();
   const onSubmit = useCallback<FormikConfig<UpdateValues>["onSubmit"]>(
     async (values, formikHelpers) => {
-      if (!initialVariables) {
+      if (!initialValues) {
         formikHelpers.setStatus({
           msg: `Failed to load initial values for refund "${refundId}".`,
           type: FormikStatusType.FATAL_ERROR,
@@ -347,7 +358,7 @@ const UpdateRefund = (props: UpdateRefundProps) => {
         formikHelpers.setStatus(null);
         await submitUpdate(
           client,
-          initialVariables,
+          initialValues,
           refundId,
           values,
           formikHelpers
@@ -360,7 +371,7 @@ const UpdateRefund = (props: UpdateRefundProps) => {
         } as FormikStatus);
       }
     },
-    [client, initialVariables, onClose, refundId]
+    [client, initialValues, onClose, refundId]
   );
 
   const children = useCallback(
@@ -383,7 +394,7 @@ const UpdateRefund = (props: UpdateRefundProps) => {
 
   return (
     <Formik
-      initialValues={(initialVariables ?? {}) as UpdateValues}
+      initialValues={(initialValues ?? {}) as UpdateValues}
       initialStatus={initialStatus}
       // isInitialValid={false}
       enableReinitialize={true}

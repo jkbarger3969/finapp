@@ -50,10 +50,12 @@ const Total = (
     autoFocus = false,
     disabled = false,
     variant = "filled",
-    minTotal = 0.01,
     maxTotal = Number.MAX_SAFE_INTEGER,
+    minTotal: minTotalProp = 0,
     ...textFieldProps
   } = props;
+
+  const minTotal = Math.max(0.01, minTotalProp);
 
   const validate = useCallback(
     (value: TotalValue | undefined) => {
@@ -75,7 +77,7 @@ const Total = (
       } else if (num === 0) {
         return "Cannot be 0";
       } else if (num < minTotal) {
-        return "Invalid Total";
+        return `Cannot be less than ${numeral(minTotal).format("$0,0.00")}`;
       }
     },
     [minTotal, maxTotal]
@@ -109,12 +111,18 @@ const Total = (
   const helperText = useMemo(() => {
     if (touched && error) {
       return error;
-    } else if (maxTotal === Number.MAX_SAFE_INTEGER) {
-      return "";
-    } else {
+    } else if (maxTotal !== Number.MAX_SAFE_INTEGER && minTotal > 0.01) {
+      return `Max ${numeral(maxTotal).format("$0,0.00")} & Min ${numeral(
+        minTotal
+      ).format("$0,0.00")}`;
+    } else if (maxTotal !== Number.MAX_SAFE_INTEGER) {
       return `Max ${numeral(maxTotal).format("$0,0.00")}`;
+    } else if (minTotal > 0.01) {
+      return `Min ${numeral(minTotal).format("$0,0.00")}`;
+    } else {
+      return "";
     }
-  }, [maxTotal, touched, error]);
+  }, [touched, error, maxTotal, minTotal]);
 
   const [formikStatus] = useFormikStatus();
 
