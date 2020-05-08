@@ -20,7 +20,6 @@ import {
   SrcEntryDeptOptFragment as DeptOpt,
   SrcEntryPersonOptFragment as PersonOpt,
 } from "../../../../apollo/graphTypes";
-import { Values } from "../UpsertEntry";
 import {
   SRC_ENTRY_PERSON_OPT_FRAGMENT,
   SRC_ENTRY_BIZ_OPT_FRAGMENT,
@@ -132,7 +131,7 @@ const filterOptions: AutocompleteProps["filterOptions"] = (
   const regex = new RegExp(`(^|\\s)${inputValue}`, "i");
   return options.filter((opt) => regex.test(getOptionLabel(opt)));
 };
-const validate = (transmutationVal?: Values["source"]) => {
+const validate = (transmutationVal?: FieldValue) => {
   const value = transmutationVal?.value || [];
   const srcType = (value[0] ?? null) as JournalEntrySourceType | null;
   const srcValue = value.length > 1 ? value[value.length - 1] : null;

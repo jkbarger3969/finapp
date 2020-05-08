@@ -5,7 +5,6 @@ import { useQuery, QueryHookOptions } from "@apollo/react-hooks";
 import { useField, FieldInputProps } from "formik";
 
 import { PAY_METHOD_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";
-import { Values } from "../UpsertEntry";
 import {
   PayMethodEntryOptsQuery as PayMethodEntryOpts,
   PayMethodEntryOptsQueryVariables as PayMethodEntryOptsQueryVars,
@@ -40,7 +39,7 @@ const PAY_METHOD_ENTRY_OPTS = gql`
 
 export type PaymentMethodValue = TransmutationValue<string, Value[]>;
 
-const validate = (payMethodValue: Values["paymentMethod"] | undefined) => {
+const validate = (payMethodValue: PaymentMethodValue | undefined) => {
   const value = payMethodValue?.value ?? [];
   const numValues = value.length;
   const curValue = value[numValues - 1];

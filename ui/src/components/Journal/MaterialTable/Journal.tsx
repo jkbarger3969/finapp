@@ -68,7 +68,6 @@ import {
   JOURNAL_ENTRIES,
   JOURNAL_ENTRY_FRAGMENT,
 } from "../Table/JournalEntries.gql";
-import { JournalMode } from "../Table/Body";
 import { CHECK_ID } from "../constants";
 import AddRefund from "../Upsert/Refunds/AddRefund";
 import UpdateRefund from "../Upsert/Refunds/UpdateRefund";
@@ -76,6 +75,11 @@ import AddEntry from "../Upsert/Entries/AddEntry";
 import UpdateEntry from "../Upsert/Entries/UpdateEntry";
 import DeleteEntry from "../Upsert/Entries/DeleteEntry";
 import DeleteRefund from "../Upsert/Refunds/DeleteRefund";
+
+export enum JournalMode {
+  View,
+  Reconcile,
+}
 
 const tableIcons = {
   Add: forwardRef<SVGSVGElement>((props, ref) => (

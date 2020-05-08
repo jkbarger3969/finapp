@@ -14,12 +14,11 @@ import {
   FormHelperText,
 } from "@material-ui/core";
 import { JournalEntryType } from "../../../../apollo/graphTypes";
-import { Values } from "../UpsertEntry";
 import { useFormikStatus, FormikStatusType } from "../../../../formik/utils";
 
 const NULLISH: unique symbol = Symbol();
 
-const validate = (value: Values["type"]) => {
+const validate = (value?: JournalEntryType) => {
   if (((value ?? NULLISH) as any) === NULLISH) {
     return "Type Required";
   }

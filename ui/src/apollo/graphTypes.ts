@@ -673,16 +673,6 @@ export type ReconcileRefundMutation = { __typename?: 'Mutation', journalEntryUpd
     & JournalEntry_1Fragment
   ) };
 
-export type Reconcile_1MutationVariables = {
-  id: Scalars['ID'];
-};
-
-
-export type Reconcile_1Mutation = { __typename?: 'Mutation', journalEntryUpdate: (
-    { __typename?: 'JournalEntry' }
-    & JournalEntry_1Fragment
-  ) };
-
 export type JournalEntryRefund_1Fragment = { __typename: 'JournalEntryRefund', id: string, date: string, description?: Maybe<string>, reconciled: boolean, lastUpdate: string, deleted: boolean, total: { __typename?: 'Rational', num: number, den: number }, paymentMethod: { __typename: 'PaymentMethod', id: string, name: string, parent?: Maybe<{ __typename: 'PaymentMethod', id: string }> } };
 
 export type JournalEntry_1Fragment = { __typename: 'JournalEntry', id: string, date: string, type: JournalEntryType, description?: Maybe<string>, deleted: boolean, lastUpdate: string, reconciled: boolean, department: { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Department', id: string, deptName: string } | { __typename: 'Business', id: string, bizName: string }> }, category: { __typename: 'JournalEntryCategory', id: string, type: JournalEntryType, name: string }, paymentMethod: { __typename: 'PaymentMethod', id: string, name: string, parent?: Maybe<{ __typename: 'PaymentMethod', id: string }> }, source: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } | { __typename: 'Business', id: string, bizName: string } | { __typename: 'Department', id: string, deptName: string }, total: { __typename?: 'Rational', num: number, den: number }, refunds: Array<(
@@ -715,13 +705,6 @@ export type JournalEntryUpdated_1Subscription = { __typename?: 'Subscription', j
     { __typename?: 'JournalEntry' }
     & JournalEntry_1Fragment
   ) };
-
-export type DeleteEntry_1MutationVariables = {
-  id: Scalars['ID'];
-};
-
-
-export type DeleteEntry_1Mutation = { __typename?: 'Mutation', journalEntryDelete: { __typename: 'JournalEntry', id: string, deleted: boolean } };
 
 export type DeptIniValueForAddEntryQueryVariables = {
   id: Scalars['ID'];
@@ -910,84 +893,6 @@ export type UpdateRefundMutation = { __typename?: 'Mutation', journalEntryUpdate
       & JournalEntryRefund_1Fragment
     )> } };
 
-export type UpsertEntryDeleteMutationVariables = {
-  id: Scalars['ID'];
-};
-
-
-export type UpsertEntryDeleteMutation = { __typename?: 'Mutation', journalEntryDelete: { __typename: 'JournalEntry', id: string, deleted: boolean } };
-
-export type EntryUpdateValuesQueryVariables = {
-  id: Scalars['ID'];
-};
-
-
-export type EntryUpdateValuesQuery = { __typename?: 'Query', journalEntry?: Maybe<(
-    { __typename?: 'JournalEntry' }
-    & EntryUpdateValueFragment
-  )> };
-
-export type EntryUpdateValueFragment = { __typename: 'JournalEntry', id: string, type: JournalEntryType, date: string, description?: Maybe<string>, reconciled: boolean, department: (
-    { __typename?: 'Department' }
-    & DeptEntryOptFragment
-  ), category: (
-    { __typename?: 'JournalEntryCategory' }
-    & CatEntryOptFragment
-  ), source: (
-    { __typename?: 'Person' }
-    & SrcEntryPersonOptFragment
-  ) | (
-    { __typename?: 'Business' }
-    & SrcEntryBizOptFragment
-  ) | { __typename?: 'Department', ancestors: Array<{ __typename: 'Department', id: string } | (
-      { __typename?: 'Business' }
-      & SrcEntryBizOptFragment
-    )> }, paymentMethod: (
-    { __typename?: 'PaymentMethod', ancestors: Array<(
-      { __typename?: 'PaymentMethod' }
-      & PayMethodEntryOptFragment
-    )> }
-    & PayMethodEntryOptFragment
-  ), total: { __typename?: 'Rational', num: number, den: number } };
-
-export type UpsertEntryAddPersonMutationVariables = {
-  fields: PersonAddFields;
-};
-
-
-export type UpsertEntryAddPersonMutation = { __typename?: 'Mutation', addPerson: (
-    { __typename?: 'Person' }
-    & SrcEntryPersonOptFragment
-  ) };
-
-export type UpsertEntryAddBusinessMutationVariables = {
-  fields: BusinessAddFields;
-};
-
-
-export type UpsertEntryAddBusinessMutation = { __typename?: 'Mutation', addBusiness: (
-    { __typename?: 'Business' }
-    & SrcEntryBizOptFragment
-  ) };
-
-export type UpsertEntryAddMutationVariables = {
-  fields: JournalEntryAddFields;
-  paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
-};
-
-
-export type UpsertEntryAddMutation = { __typename?: 'Mutation', journalEntryAdd: { __typename: 'JournalEntry', id: string } };
-
-export type UpsertEntryUpdateMutationVariables = {
-  id: Scalars['ID'];
-  fields: JournalEntryUpdateFields;
-  paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
-  paymentMethodUpdate?: Maybe<JournalEntryUpdatePaymentMethod>;
-};
-
-
-export type UpsertEntryUpdateMutation = { __typename?: 'Mutation', journalEntryUpdate: { __typename: 'JournalEntry', id: string } };
-
 export type DeptEntryOptFragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
 
 export type CatEntryOptFragment = { __typename: 'JournalEntryCategory', id: string, name: string, type: JournalEntryType, parent?: Maybe<{ __typename: 'JournalEntryCategory', id: string }> };
@@ -1002,111 +907,6 @@ export type SrcEntryBizOptFragment = { __typename: 'Business', id: string, name:
   )> };
 
 export type PayMethodEntryOptFragment = { __typename: 'PaymentMethod', id: string, refId?: Maybe<string>, name: string, active: boolean, parent?: Maybe<{ __typename: 'PaymentMethod', id: string }> };
-
-export type CatInputOpts_1QueryVariables = {};
-
-
-export type CatInputOpts_1Query = { __typename?: 'Query', catOpts: Array<(
-    { __typename?: 'JournalEntryCategory' }
-    & CatInputOptsCat_1Fragment
-  )> };
-
-export type CatInputOptsCat_1Fragment = { __typename: 'JournalEntryCategory', id: string, name: string, type: JournalEntryType, parent?: Maybe<{ __typename?: 'JournalEntryCategory', id: string }> };
-
-export type DeptInputOpts_1QueryVariables = {
-  fromParent?: Maybe<Scalars['ID']>;
-};
-
-
-export type DeptInputOpts_1Query = { __typename?: 'Query', deptOpts: Array<(
-    { __typename?: 'Department' }
-    & DeptInputOptsDept_1Fragment
-  )> };
-
-export type DeptInputOptsDept_1Fragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
-
-export type Lc_JournalEntryUpsert_1Fragment = { __typename: 'LC_JournalEntryUpsert', id: string, valid: boolean, type: Lc_JournalEntryUpsertType, submitStatus: Lc_JournalEntryUpsertSubmitStatus, submitError?: Maybe<string>, inputValues: { __typename?: 'LC_JournalEntryUpsertInputValues', deptInput?: Maybe<string>, totalInput?: Maybe<string>, srcInput?: Maybe<string>, srcType?: Maybe<JournalEntrySourceType> }, inputErrors: { __typename?: 'LC_JournalEntryUpsertInputErrors', dateError?: Maybe<string>, deptError?: Maybe<string>, typeError?: Maybe<string>, payMethodError?: Maybe<string>, totalError?: Maybe<string>, srcError?: Maybe<string> }, fields: { __typename?: 'LC_JournalEntryUpsertFields', id?: Maybe<string>, date?: Maybe<string>, department: Array<string>, type?: Maybe<string>, paymentMethod?: Maybe<string>, total?: Maybe<{ __typename?: 'Rational', num: number, den: number }>, source: Array<{ __typename?: 'LC_JournalEntryUpsertSource', sourceType: JournalEntrySourceType, id: string }> } };
-
-export type Lc_JournalEntryUpserts_1QueryVariables = {};
-
-
-export type Lc_JournalEntryUpserts_1Query = { __typename?: 'Query', lc_journalEntryUpserts: Array<(
-    { __typename?: 'LC_JournalEntryUpsert' }
-    & Lc_JournalEntryUpsert_1Fragment
-  )> };
-
-export type AddJournalEntry_1MutationVariables = {
-  fields: JournalEntryAddFields;
-};
-
-
-export type AddJournalEntry_1Mutation = { __typename?: 'Mutation', journalEntryAdd: { __typename: 'JournalEntry', id: string } };
-
-export type UpdateJournalEntry_1MutationVariables = {
-  id: Scalars['ID'];
-  fields: JournalEntryUpdateFields;
-};
-
-
-export type UpdateJournalEntry_1Mutation = { __typename?: 'Mutation', journalEntryUpdate: { __typename: 'JournalEntry', id: string } };
-
-export type PayMethodInput_1QueryVariables = {};
-
-
-export type PayMethodInput_1Query = { __typename?: 'Query', paymentMethods: Array<{ __typename: 'PaymentMethod', id: string, name: string, active: boolean }> };
-
-export type BusinessSrcDeptOpts_1Fragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
-
-export type BusinessSrcBizOpts_1Fragment = { __typename: 'Business', id: string, name: string, vendor?: Maybe<{ __typename?: 'Vendor', approved: boolean, vendorId?: Maybe<string> }>, deptOpts: Array<(
-    { __typename?: 'Department' }
-    & BusinessSrcDeptOpts_1Fragment
-  )> };
-
-export type BusinessSrcOptsInput_1QueryVariables = {
-  searchByName: Scalars['String'];
-  deptId: Scalars['ID'];
-  bizId: Scalars['ID'];
-  withBizOpt: Scalars['Boolean'];
-  withDeptAncestors: Scalars['Boolean'];
-  withBizOpts: Scalars['Boolean'];
-};
-
-
-export type BusinessSrcOptsInput_1Query = { __typename?: 'Query', bizOpt: (
-    { __typename?: 'Business' }
-    & BusinessSrcBizOpts_1Fragment
-  ), deptAncestors?: Maybe<{ __typename: 'Department', id: string, ancestors: Array<(
-      { __typename?: 'Department' }
-      & BusinessSrcDeptOpts_1Fragment
-    ) | (
-      { __typename?: 'Business' }
-      & BusinessSrcBizOpts_1Fragment
-    )> }>, bizOpts: Array<(
-    { __typename?: 'Business' }
-    & BusinessSrcBizOpts_1Fragment
-  )> };
-
-export type BizSrcInsureBizDataQueryVariables = {
-  id: Scalars['ID'];
-};
-
-
-export type BizSrcInsureBizDataQuery = { __typename?: 'Query', business: (
-    { __typename?: 'Business' }
-    & BusinessSrcBizOpts_1Fragment
-  ) };
-
-export type PersonSrcOpt_1Fragment = { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } };
-
-export type PeopleSrcOpts_1QueryVariables = {
-  searchByName: PersonNameInput;
-};
-
-
-export type PeopleSrcOpts_1Query = { __typename?: 'Query', people: Array<(
-    { __typename?: 'Person' }
-    & PersonSrcOpt_1Fragment
-  )> };
 
 export type DeptsForNav_1QueryVariables = {};
 
