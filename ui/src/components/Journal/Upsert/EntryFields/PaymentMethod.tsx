@@ -1,23 +1,27 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { TextField, TextFieldProps, Box, Chip } from "@material-ui/core";
 import gql from "graphql-tag";
-import { useQuery } from "@apollo/react-hooks";
-import { useField } from "formik";
+import { useQuery, QueryHookOptions } from "@apollo/react-hooks";
+import { useField, FieldInputProps } from "formik";
 
 import { PAY_METHOD_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";
-import { Values } from "../UpsertEntry";
 import {
   PayMethodEntryOptsQuery as PayMethodEntryOpts,
   PayMethodEntryOptsQueryVariables as PayMethodEntryOptsQueryVars,
-  PayMethodEntryOptFragment
+  PayMethodEntryOptFragment,
 } from "../../../../apollo/graphTypes";
 import Autocomplete, {
   AutocompleteProps as AutocompletePropsRaw,
-  RenderInputParams
+  RenderInputParams,
 } from "@material-ui/lab/Autocomplete";
 import { UseAutocompleteMultipleProps } from "@material-ui/lab/useAutocomplete";
 import { ChevronRight } from "@material-ui/icons";
 import { CHECK_ID } from "../../constants";
+import {
+  TransmutationValue,
+  useFormikStatus,
+  FormikStatusType,
+} from "../../../../formik/utils";
 
 type Value = PayMethodEntryOptFragment | string;
 
@@ -33,7 +37,10 @@ const PAY_METHOD_ENTRY_OPTS = gql`
   ${PAY_METHOD_ENTRY_OPT_FRAGMENT}
 `;
 
-const validate = ({ value }: Values["paymentMethod"]) => {
+export type PaymentMethodValue = TransmutationValue<string, Value[]>;
+
+const validate = (payMethodValue: PaymentMethodValue | undefined) => {
+  const value = payMethodValue?.value ?? [];
   const numValues = value.length;
   const curValue = value[numValues - 1];
   const parent = value[numValues - 2] as PayMethodEntryOptFragment | undefined;
@@ -114,20 +121,30 @@ const renderTags: AutocompleteProps["renderTags"] = (values, getTagProps) => {
 const PaymentMethod = (
   props: {
     variant?: "filled" | "outlined";
-    autoFocus?: boolean;
-  } & Omit<TextFieldProps, "value">
+  } & {} & Omit<
+      TextFieldProps,
+      | "value"
+      | "variant"
+      | "error"
+      | "helperText"
+      | "name"
+      | "label"
+      | keyof FieldInputProps<any>
+      | keyof Omit<RenderInputParams, "id" | "disabled">
+    >
 ) => {
+  const { disabled = false, ...textFieldProps } = props;
+
   const [hasFocus, setHasFocus] = useState(false);
 
-  const [field, meta, helpers] = useField<Values["paymentMethod"]>({
+  const [field, meta, helpers] = useField<PaymentMethodValue | undefined>({
     name: "paymentMethod",
-    validate
+    validate,
   });
 
-  const {
-    value: { value, inputValue },
-    onBlur: onBlurField
-  } = field;
+  const onBlurField = field.onBlur;
+  const value = field.value?.value ?? [];
+  const inputValue = field.value?.inputValue ?? "";
   const { error, touched } = meta;
   const { setValue } = helpers;
 
@@ -138,23 +155,45 @@ const PaymentMethod = (
       curValue === null
         ? {
             where: {
-              hasParent: false
-            }
+              hasParent: false,
+            },
           }
         : {
             where: {
               parent: {
-                eq: (curValue as PayMethodEntryOptFragment).id
-              }
-            }
+                eq: (curValue as PayMethodEntryOptFragment).id,
+              },
+            },
           },
     [curValue]
+  );
+
+  const [formikStatus, setFormikStatus] = useFormikStatus();
+
+  const onError = useCallback<
+    NonNullable<
+      QueryHookOptions<
+        PayMethodEntryOpts,
+        PayMethodEntryOptsQueryVars
+      >["onError"]
+    >
+  >(
+    (error) =>
+      void setFormikStatus({
+        msg: error.message,
+        type: FormikStatusType.FATAL_ERROR,
+      }),
+    [setFormikStatus]
   );
 
   const { loading, error: gqlError, data } = useQuery<
     PayMethodEntryOpts,
     PayMethodEntryOptsQueryVars
-  >(PAY_METHOD_ENTRY_OPTS, { skip: typeof curValue === "string", variables });
+  >(PAY_METHOD_ENTRY_OPTS, {
+    skip: typeof curValue === "string",
+    variables,
+    onError,
+  });
 
   const options = useMemo<PayMethodEntryOptFragment[]>(
     () =>
@@ -175,7 +214,7 @@ const PaymentMethod = (
 
   const disableTextInput = useMemo(() => !hasOptions && !freeSolo, [
     hasOptions,
-    freeSolo
+    freeSolo,
   ]);
 
   const label = useMemo(() => {
@@ -192,7 +231,7 @@ const PaymentMethod = (
   const InputProps = useMemo(() => {
     if ((curValue as PayMethodEntryOptFragment | null)?.id === CHECK_ID) {
       return {
-        type: "number"
+        type: "number",
       };
     }
 
@@ -203,7 +242,7 @@ const PaymentMethod = (
     if ((curValue as PayMethodEntryOptFragment | null)?.id === CHECK_ID) {
       return {
         min: "0",
-        step: "1"
+        step: "1",
       };
     }
 
@@ -214,36 +253,44 @@ const PaymentMethod = (
     (params: RenderInputParams) => {
       params.InputProps = {
         ...(params.InputProps ?? {}),
-        ...InputProps
+        ...InputProps,
       };
 
       params.inputProps = {
         ...(params.inputProps ?? {}),
-        ...inputProps
+        ...inputProps,
       };
+
+      const helperText = (() => {
+        if (gqlError) {
+          return gqlError.message;
+        } else if (touched) {
+          return error;
+        }
+      })();
 
       return (
         <TextField
-          {...(props as any)}
-          variant={props.variant || "filled"}
+          {...textFieldProps}
           {...params}
-          error={touched && !!error}
-          helperText={touched ? error : undefined}
+          variant={(textFieldProps.variant || "filled") as any}
+          error={(touched && !!error) || !!gqlError}
+          helperText={helperText}
           name="paymentMethod"
           label={label}
         />
       );
     },
-    [props, touched, error, label, InputProps, inputProps]
+    [textFieldProps, touched, gqlError, error, label, InputProps, inputProps]
   );
 
   const onFocus = useCallback((event?) => setHasFocus(true), [setHasFocus]);
   const onBlur = useCallback<NonNullable<AutocompleteProps["onBlur"]>>(
-    event => {
+    (event) => {
       setHasFocus(false);
       // Fixes formik validate called with wrong version of value
       event.persist();
-      setTimeout(() => onBlurField(event), 0);
+      setTimeout(() => void onBlurField(event), 0);
     },
     [setHasFocus, onBlurField]
   );
@@ -270,6 +317,11 @@ const PaymentMethod = (
   const autoCompleteProps = useMemo<AutocompleteProps>(
     () => ({
       value,
+      disabled:
+        !!gqlError ||
+        loading ||
+        formikStatus?.type === FormikStatusType.FATAL_ERROR ||
+        disabled,
       multiple: true,
       options,
       renderInput,
@@ -281,10 +333,13 @@ const PaymentMethod = (
       inputValue: disableTextInput ? "" : inputValue,
       onFocus,
       onBlur,
-      open: hasFocus && hasOptions,
+      open:
+        hasFocus &&
+        hasOptions &&
+        formikStatus?.type !== FormikStatusType.FATAL_ERROR,
       loading,
       autoSelect: true,
-      name: "paymentMethod"
+      name: "paymentMethod",
     }),
     [
       options,
@@ -299,13 +354,12 @@ const PaymentMethod = (
       onBlur,
       hasFocus,
       hasOptions,
-      loading
+      loading,
+      gqlError,
+      disabled,
+      formikStatus,
     ]
   );
-
-  if (gqlError) {
-    return <pre>{JSON.stringify(gqlError, null, 2)}</pre>;
-  }
 
   return <Autocomplete {...autoCompleteProps} />;
 };

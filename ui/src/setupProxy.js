@@ -1,4 +1,4 @@
-const proxy = require('http-proxy-middleware');
+const { createProxyMiddleware } = require("http-proxy-middleware");
 module.exports = function(app) {
   // app.use(
   //   '/graphql',
@@ -7,10 +7,11 @@ module.exports = function(app) {
   //   })
   // );
   app.use(
-    '^/graphql',
-    proxy({
-      target: 'http://localhost:4000',
-      ws: true
+    "/graphql",
+    createProxyMiddleware({
+      target: "http://localhost:4000",
+      changeOrigin: true,
+      ws: true,
     })
   );
 };

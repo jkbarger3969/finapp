@@ -1,0 +1,10 @@
+import React from "react";
+import { CircularProgress, Theme } from "@material-ui/core";
+
+import Overlay from "./Overlay";
+
+const OverlayLoading = (props: { zIndex: keyof Theme["zIndex"] | number }) => {
+  return <Overlay {...props} children={<CircularProgress />} />;
+};
+
+export default OverlayLoading;

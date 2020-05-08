@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { useField, useFormikContext } from "formik";
 import ToggleButtonGroup, {
-  ToggleButtonGroupProps
+  ToggleButtonGroupProps,
 } from "@material-ui/lab/ToggleButtonGroup";
 import ToggleButton from "@material-ui/lab/ToggleButton";
 import { BankPlus, BankMinus } from "mdi-material-ui";
@@ -11,31 +11,35 @@ import {
   FormControlLabel,
   FormControlLabelProps,
   FormControl,
-  FormHelperText
+  FormHelperText,
 } from "@material-ui/core";
 import { JournalEntryType } from "../../../../apollo/graphTypes";
-import { Values } from "../UpsertEntry";
+import { useFormikStatus, FormikStatusType } from "../../../../formik/utils";
 
 const NULLISH: unique symbol = Symbol();
 
-const validate = (value: Values["type"]) => {
+const validate = (value?: JournalEntryType) => {
   if (((value ?? NULLISH) as any) === NULLISH) {
     return "Type Required";
   }
 };
 
-const Type = function(
+const Type = function (
   props: {
     label?: boolean | FormControlLabelProps["labelPlacement"];
-  } & ToggleButtonGroupProps
+  } & ToggleButtonGroupProps & { disabled?: boolean }
 ) {
+  const { disabled: disabledFromProps = false } = props;
+
+  const [formikStatus] = useFormikStatus();
+
   const { label = false } = props;
 
   const { isSubmitting } = useFormikContext();
 
   const [field, meta, helpers] = useField<JournalEntryType | null>({
     name: "type",
-    validate
+    validate,
   });
 
   const { error, touched } = meta;
@@ -53,23 +57,28 @@ const Type = function(
         }
 
         setValue(value);
-        await new Promise(resolve => setTimeout(resolve, 0)); //Avoid pres
+        await new Promise((resolve) => setTimeout(resolve, 0)); //Avoid pres
         setTouched(true);
-      }
+      },
     }),
     [field, isSubmitting, setValue, setTouched]
   );
+
+  const disabled =
+    isSubmitting ||
+    disabledFromProps ||
+    formikStatus?.type === FormikStatusType.FATAL_ERROR;
 
   const control = useMemo(
     () => (
       <Box pl={1} clone>
         <ToggleButtonGroup {...(props as any)} {...toggleButtonGroupProps}>
-          <ToggleButton value={JournalEntryType.Credit}>
+          <ToggleButton disabled={disabled} value={JournalEntryType.Credit}>
             <Tooltip arrow placement="top" title="Credit">
               <BankPlus />
             </Tooltip>
           </ToggleButton>
-          <ToggleButton value={JournalEntryType.Debit}>
+          <ToggleButton disabled={disabled} value={JournalEntryType.Debit}>
             <Tooltip arrow placement="top" title="Debit">
               <BankMinus />
             </Tooltip>
@@ -77,7 +86,7 @@ const Type = function(
         </ToggleButtonGroup>
       </Box>
     ),
-    [toggleButtonGroupProps, props]
+    [props, toggleButtonGroupProps, disabled]
   );
 
   if (label) {

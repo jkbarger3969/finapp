@@ -1,18 +1,32 @@
 import { ObjectID } from "mongodb";
 import * as moment from "moment";
+import { isValid } from "date-fns";
 
-import { MutationResolvers, PaymentMethod } from "../../graphTypes";
+import {
+  MutationResolvers,
+  PaymentMethod,
+  JournalEntryUpdateFields,
+  JournalEntrySourceType,
+} from "../../graphTypes";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
-import { getSrcCollectionAndNode, $addFields } from "./utils";
-import { JOURNAL_ENTRY_UPDATED } from "./pubSubs";
+import { getSrcCollectionAndNode, stages } from "./utils";
+import { JOURNAL_ENTRY_UPDATED, JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
+import { addBusiness } from "../business";
+import { addPerson } from "../person";
 
 const NULLISH = Symbol();
 
+const addDate = {
+  $addFields: {
+    ...DocHistory.getPresentValues(["date"]),
+  },
+} as const;
+
 const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
-  doc,
+  obj,
   args,
   context,
   info
@@ -28,51 +42,146 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
       source,
       description,
       total,
-      reconciled
+      reconciled,
     },
     paymentMethodAdd,
-    paymentMethodUpdate
+    paymentMethodUpdate,
+    personAdd,
+    businessAdd,
   } = args;
+
+  // "paymentMethodAdd" and "paymentMethodUpdate" are mutually exclusive, gql
+  // has no concept of this.
+  if (paymentMethodAdd && paymentMethodUpdate) {
+    throw new Error(
+      `"paymentMethodAdd" and "paymentMethodUpdate" are mutually exclusive arguments.`
+    );
+  }
+
+  // "businessAdd" and "personAdd" are mutually exclusive, gql has
+  // no concept of this.
+  if (personAdd && businessAdd) {
+    throw new Error(
+      `"businessAdd" and "personAdd" are mutually exclusive source creation arguments.`
+    );
+  }
 
   const { db, nodeMap, user, pubSub } = context;
 
+  const entryId = new ObjectID(id);
+
+  // Async validations
+  // All async validation are run at once instead of in series.
+  const asyncOps: Promise<void>[] = [
+    (async () => {
+      const [{ count } = { count: 0 }] = (await db
+        .collection("journalEntries")
+        .aggregate([{ $match: { _id: entryId } }, { $count: "count" }])
+        .toArray()) as [{ count: number }];
+
+      if (count === 0) {
+        throw Error(`Journal entry "${id}" does not exist.`);
+      }
+    })(),
+  ];
+
   const docHistory = new DocHistory({ node: userNodeType, id: user.id });
+  const updateBuilder = docHistory.updateHistoricalDoc();
 
   // Date
   if (dateString) {
-    const date = moment(dateString, moment.ISO_8601);
-    if (!date.isValid()) {
+    const date = new Date(dateString);
+    if (!isValid(date)) {
       throw new Error(`Date "${dateString}" not a valid ISO 8601 date string.`);
     }
-    docHistory.updateValue("date", date.toDate());
+
+    asyncOps.push(
+      (async () => {
+        const [result] = (await db
+          .collection("journalEntries")
+          .aggregate([
+            { $match: { _id: entryId } },
+            { $limit: 1 },
+            {
+              $project: {
+                refundDate: {
+                  $reduce: {
+                    input: "$refunds",
+                    initialValue: docHistory.date,
+                    in: {
+                      $min: [
+                        "$$value",
+                        DocHistory.getPresentValueExpression("date", {
+                          asVar: "this",
+                          defaultValue: docHistory.date,
+                        }),
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          ])
+          .toArray()) as [{ refundDate: Date }];
+
+        if (result && date > result.refundDate) {
+          throw new Error(
+            "Entry date can not be greater than the earliest refund date."
+          );
+        }
+
+        updateBuilder.updateField("date", date);
+      })()
+    );
   }
 
   // Type
   if ((type ?? NULLISH) !== NULLISH) {
-    docHistory.updateValue("type", type);
+    updateBuilder.updateField("type", type);
   }
 
   // Description
   if (description?.trim()) {
-    docHistory.updateValue("description", description);
+    updateBuilder.updateField("description", description);
   }
 
   // Total
   if (total) {
-    docHistory.updateValue("total", total);
+    const totalDecimal = total.num / total.den;
+
+    if (totalDecimal <= 0) {
+      throw new Error("Entry total must be greater than 0.");
+    }
+
+    asyncOps.push(
+      (async () => {
+        const [{ refundTotal }] = (await db
+          .collection("journalEntries")
+          .aggregate([
+            { $match: { _id: new ObjectID(id) } },
+            stages.refundTotal,
+          ])
+          .toArray()) as [{ refundTotal: number }];
+
+        if (totalDecimal < refundTotal) {
+          throw new Error(
+            "Entry total cannot be less than entry's total refunds."
+          );
+        }
+
+        updateBuilder.updateField("total", total);
+      })()
+    );
   }
 
   // Reconciled
   if ((reconciled ?? NULLISH) !== NULLISH) {
-    docHistory.updateValue("reconciled", reconciled);
+    updateBuilder.updateField("reconciled", reconciled);
   }
-
-  // Async ref validation
-  const updateChecks: Promise<void>[] = [];
 
   // Department
   if (departmentId) {
-    updateChecks.push(
+    asyncOps.push(
       (async () => {
         const { collection, id: node } = nodeMap.typename.get("Department");
         const id = new ObjectID(departmentId);
@@ -85,19 +194,91 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           throw new Error(`Department with id ${departmentId} does not exist.`);
         }
 
-        docHistory.updateValue("department", {
+        updateBuilder.updateField("department", {
           node: new ObjectID(node),
-          id
+          id,
+        });
+      })()
+    );
+  }
+
+  // Category
+  if (categoryId) {
+    asyncOps.push(
+      (async () => {
+        const { collection, id: node } = nodeMap.typename.get(
+          "JournalEntryCategory"
+        );
+
+        const id = new ObjectID(categoryId);
+
+        if (
+          !(await db
+            .collection(collection)
+            .findOne({ _id: id }, { projection: { _id: true } }))
+        ) {
+          throw new Error(`Category with id ${categoryId} does not exist.`);
+        }
+
+        updateBuilder.updateField("category", {
+          node: new ObjectID(node),
+          id,
         });
       })()
     );
   }
 
   // Source
-  if (source) {
+  if (businessAdd) {
+    // Do NOT create a new business until all other checks pass
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
+        const { id } = await addBusiness(
+          obj,
+          { fields: businessAdd },
+          context,
+          info
+        );
+
+        const { node } = getSrcCollectionAndNode(
+          db,
+          JournalEntrySourceType.Business,
+          nodeMap
+        );
+
+        updateBuilder.updateField("source", {
+          node,
+          id: new ObjectID(id),
+        });
+      })
+    );
+  } else if (personAdd) {
+    // Do NOT create a new person until all other checks pass
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
+        const { id } = await addPerson(
+          obj,
+          { fields: personAdd },
+          context,
+          info
+        );
+
+        const { node } = getSrcCollectionAndNode(
+          db,
+          JournalEntrySourceType.Person,
+          nodeMap
+        );
+
+        updateBuilder.updateField("source", {
+          node,
+          id: new ObjectID(id),
+        });
+      })
+    );
+  } else if (source) {
     const { id: sourceId, sourceType } = source;
 
-    updateChecks.push(
+    asyncOps.push(
       (async () => {
         const { collection, node } = getSrcCollectionAndNode(
           db,
@@ -118,72 +299,79 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           );
         }
 
-        docHistory.updateValue("source", {
+        updateBuilder.updateField("source", {
           node,
-          id
-        });
-      })()
-    );
-  }
-
-  // Category
-  if (categoryId) {
-    updateChecks.push(
-      (async () => {
-        const { collection, id: node } = nodeMap.typename.get(
-          "JournalEntryCategory"
-        );
-
-        const id = new ObjectID(categoryId);
-
-        if (
-          !(await db
-            .collection(collection)
-            .findOne({ _id: id }, { projection: { _id: true } }))
-        ) {
-          throw new Error(`Category with id ${categoryId} does not exist.`);
-        }
-
-        docHistory.updateValue("category", {
-          node: new ObjectID(node),
-          id
+          id,
         });
       })()
     );
   }
 
   // Payment method
-  updateChecks.push(
-    (async () => {
-      let id: ObjectID | undefined;
-      if (paymentMethodAdd) {
+  if (paymentMethodAdd) {
+    // Ensure other checks finish before creating payment method
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
         // Add payment method
-        id = new ObjectID(
+        const id = new ObjectID(
           await (paymentMethodAddMutation(
-            doc,
+            obj,
             { fields: paymentMethodAdd },
-            context,
+            {
+              ...context,
+              ephemeral: {
+                ...(context.ephemeral || {}),
+                docHistoryDate: docHistory.date,
+              },
+            },
             info
           ) as Promise<PaymentMethod>).then(({ id }) => id)
         );
-      } else if (paymentMethodUpdate) {
-        id = new ObjectID(paymentMethodUpdate.id);
+
+        const { id: node } = nodeMap.typename.get("PaymentMethod");
+
+        updateBuilder.updateField("paymentMethod", {
+          node: new ObjectID(node),
+          id,
+        });
+      })
+    );
+  } else if (paymentMethodUpdate) {
+    // Ensure other checks finish before updating payment method
+    asyncOps.push(
+      Promise.all(asyncOps.splice(0)).then(async () => {
+        const id = new ObjectID(paymentMethodUpdate.id);
 
         // Update payment method
         await paymentMethodUpdateMutation(
-          doc,
+          obj,
           {
             id: paymentMethodUpdate.id,
-            fields: paymentMethodUpdate.fields
+            fields: paymentMethodUpdate.fields,
           },
-          context,
+          {
+            ...context,
+            ephemeral: {
+              ...(context.ephemeral || {}),
+              docHistoryDate: docHistory.date,
+            },
+          },
           info
         );
-      } else if (paymentMethodId) {
-        id = new ObjectID(paymentMethodId);
-      }
 
-      if (id) {
+        const { id: node } = nodeMap.typename.get("PaymentMethod");
+
+        updateBuilder.updateField("paymentMethod", {
+          node: new ObjectID(node),
+          id,
+        });
+      })
+    );
+  } else if (paymentMethodId) {
+    asyncOps.push(
+      (async () => {
+        const id = new ObjectID(paymentMethodId);
+
         const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
 
         if (
@@ -196,44 +384,69 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           );
         }
 
-        docHistory.updateValue("paymentMethod", {
+        updateBuilder.updateField("paymentMethod", {
           node: new ObjectID(node),
-          id
+          id,
         });
-      }
-    })()
-  );
-
-  await Promise.all(updateChecks);
-
-  if (!docHistory.hasUpdate) {
-    throw new Error(
-      `Mutation "journalEntryUpdate" requires at least one of the following fields: "date", "source", "category", "department", "total", "type", "reconciled", or "paymentMethod".`
+      })()
     );
   }
 
-  const $push = docHistory.updatePushArg;
+  await Promise.all(asyncOps);
+
+  if (!updateBuilder.hasUpdate) {
+    const keys = (() => {
+      const obj: {
+        [P in keyof Omit<JournalEntryUpdateFields, "__typename">]-?: null;
+      } = {
+        date: null,
+        department: null,
+        type: null,
+        category: null,
+        paymentMethod: null,
+        description: null,
+        total: null,
+        source: null,
+        reconciled: null,
+      };
+
+      return Object.keys(obj);
+    })();
+
+    throw new Error(
+      `Entry update requires at least one of the following fields: ${keys.join(
+        ", "
+      )}".`
+    );
+  }
 
   const _id = new ObjectID(id);
 
   const { modifiedCount } = await db
     .collection("journalEntries")
-    .updateOne({ _id }, { $push });
+    .updateOne({ _id }, updateBuilder.update());
 
   if (modifiedCount === 0) {
-    throw new Error(
-      `Failed to update journal entry: "${JSON.stringify(args)}".`
-    );
+    throw new Error(`Failed to update entry: "${JSON.stringify(args)}".`);
   }
 
   const [updatedDoc] = await db
     .collection("journalEntries")
-    .aggregate([{ $match: { _id } }, { $addFields }])
+    .aggregate([
+      { $match: { _id } },
+      stages.entryAddFields,
+      stages.entryTransmutations,
+    ])
     .toArray();
 
   pubSub
-    .publish(JOURNAL_ENTRY_UPDATED, { journalEntryUpdated: updatedDoc })
-    .catch(error => console.error(error));
+    .publish(JOURNAL_ENTRY_UPDATED, {
+      journalEntryUpdated: updatedDoc,
+    })
+    .catch((error) => console.error(error));
+  pubSub
+    .publish(JOURNAL_ENTRY_UPSERTED, { journalEntryUpserted: updatedDoc })
+    .catch((error) => console.error(error));
 
   return updatedDoc;
 };

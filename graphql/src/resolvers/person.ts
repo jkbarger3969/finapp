@@ -1,84 +1,97 @@
-import {ObjectID} from "mongodb";
+import { ObjectID } from "mongodb";
 
-import {QueryResolvers, MutationResolvers} from "../graphTypes";
+import { QueryResolvers, MutationResolvers } from "../graphTypes";
 
-export const people:QueryResolvers["people"] = 
-  async (parent, args, context, info) =>
-{
+export const people: QueryResolvers["people"] = async (
+  parent,
+  args,
+  context,
+  info
+) => {
+  const { searchByName } = args;
 
-  const {searchByName} = args;
-
-  const {db} = context;
+  const { db } = context;
 
   let match = {};
 
-  if(searchByName) {
-
+  if (searchByName) {
     const first = searchByName.first.trim().toLowerCase();
     const last = searchByName.last.trim().toLowerCase();
-    
+
     const query = [];
 
-    if(first.length > 0) {
-      query.push({"name.first":new RegExp(`^${first}`, "i")}); 
+    if (first.length > 0) {
+      query.push({ "name.first": new RegExp(`^${first}`, "i") });
     }
 
-    if(last.length > 0) {
-      query.push({"name.last":new RegExp(`^${last}`, "i")}); 
+    if (last.length > 0) {
+      query.push({ "name.last": new RegExp(`^${last}`, "i") });
     }
 
-    switch(query.length) {
+    switch (query.length) {
       case 0:
         break;
       case 1:
         match = query[0];
         break;
       default:
-        match = {$or:query};
+        match = { $or: query };
     }
 
-    const results = await db.collection("people").aggregate([
-      {$match:match},
-      {$addFields:{id:{$toString:"$_id"}}}
-    ]).toArray();
+    const results = await db
+      .collection("people")
+      .aggregate([
+        { $match: match },
+        { $addFields: { id: { $toString: "$_id" } } },
+      ])
+      .toArray();
 
     return results;
-
   }
+};
 
-}
+export const addPerson: MutationResolvers["addPerson"] = async (
+  parent,
+  args,
+  context,
+  info
+) => {
+  const { db } = context;
 
-export const addPerson:MutationResolvers["addPerson"] = 
-  async(parent, args, context, info) =>
-{
+  const {
+    fields: {
+      name: { first, last },
+    },
+  } = args;
 
-  const {db} = context;
-
-  const {fields:{name:{first, last}}} = args;
-
-  if(first.length === 0) {
+  // Ensure graphql required fields not defeated by blank string.
+  if (first.length === 0) {
     throw new Error(`Mutation "addPerson" requires first name.`);
-  } else if(last.length === 0) {
+  } else if (last.length === 0) {
     throw new Error(`Mutation "addPerson" requires last name.`);
   }
 
-  const {insertedId, insertedCount} = await db.collection("people").insertOne({
-    name:{
-      first,
-      last
-    }
-  });
+  const { insertedId, insertedCount } = await db
+    .collection("people")
+    .insertOne({
+      name: {
+        first,
+        last,
+      },
+    });
 
-  if(insertedCount === 0) {
-    throw new Error(`Mutation "addPerson" arguments "${JSON.stringify(args)}" failed.`);
+  if (insertedCount === 0) {
+    throw new Error(`Failed to add person: ${JSON.stringify(args, null, 2)}`);
   }
 
-  const newPerson = await db.collection("people").aggregate([
-    {$match:{_id:new ObjectID(insertedId)}},
-    {$limit:1},
-    {$addFields:{id:{$toString:"$_id"}}}
-  ]).toArray();
+  const [newPerson] = await db
+    .collection("people")
+    .aggregate([
+      { $match: { _id: new ObjectID(insertedId) } },
+      { $limit: 1 },
+      { $addFields: { id: { $toString: "$_id" } } },
+    ])
+    .toArray();
 
-  return newPerson[0];
-
-}
+  return newPerson;
+};

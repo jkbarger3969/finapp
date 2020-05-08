@@ -4,25 +4,32 @@ import {
   Business,
   business,
   businesses,
-  addBusiness
+  addBusiness,
 } from "./resolvers/business";
 import { Department, departments, department } from "./resolvers/departments";
 import {
   journalEntryAdded,
   journalEntryUpdated,
-  journalEntryDelete
+  journalEntryDelete,
 } from "./resolvers/journalEntry";
 import journalEntries from "./resolvers/journalEntry/journalEntries";
 import journalEntry from "./resolvers/journalEntry/journalEntry";
 import journalEntryAdd from "./resolvers/journalEntry/journalEntryAdd";
 import journalEntryUpdate from "./resolvers/journalEntry/journalEntryUpdate";
+import journalEntryRefund from "./resolvers/journalEntry/journalEntryRefund";
+import journalEntryAddRefund from "./resolvers/journalEntry/journalEntryAddRefund";
+import journalEntryUpdateRefund from "./resolvers/journalEntry/journalEntryUpdateRefund";
+import journalEntryDeleteRefund from "./resolvers/journalEntry/journalEntryDeleteRefund";
 import JournalEntry from "./resolvers/journalEntry/JournalEntryResolver";
+import JournalEntryRefund from "./resolvers/journalEntry/JournalEntryRefundResolver";
+import journalEntryUpserted from "./resolvers/journalEntry/journalEntryUpserted";
 import { journalEntrySources } from "./resolvers/journalEntrySource";
 import {
   JournalEntryCategory,
-  journalEntryCategories,
-  journalEntryCategory
+  // journalEntryCategories,
+  journalEntryCategory,
 } from "./resolvers/journalEntryCategory";
+import journalEntryCategories from "./resolvers/journalEntryCategory/journalEntryCategories";
 import paymentMethods from "./resolvers/paymentMethod/paymentMethods";
 import paymentMethod from "./resolvers/paymentMethod/paymentMethod";
 import paymentMethodAdd from "./resolvers/paymentMethod/paymentMethodAdd";
@@ -36,6 +43,7 @@ const resolvers: Resolvers = {
   Business,
   Department,
   JournalEntry,
+  JournalEntryRefund,
   PaymentMethod,
   JournalEntryCategory,
   User,
@@ -44,6 +52,7 @@ const resolvers: Resolvers = {
     business,
     budgets,
     journalEntry,
+    journalEntryRefund,
     journalEntries,
     journalEntrySources,
     journalEntryCategories,
@@ -52,21 +61,25 @@ const resolvers: Resolvers = {
     department,
     paymentMethods,
     paymentMethod,
-    people
+    people,
   },
   Mutation: {
     journalEntryAdd,
     journalEntryUpdate,
     journalEntryDelete,
+    journalEntryAddRefund,
+    journalEntryUpdateRefund,
+    journalEntryDeleteRefund,
     addPerson,
     addBusiness,
     paymentMethodAdd,
-    paymentMethodUpdate
+    paymentMethodUpdate,
   },
   Subscription: {
     journalEntryAdded,
-    journalEntryUpdated
-  }
+    journalEntryUpdated,
+    journalEntryUpserted,
+  },
 };
 
 export default resolvers;

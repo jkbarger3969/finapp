@@ -24,6 +24,7 @@ export const CAT_ENTRY_OPT_FRAGMENT = gql`
     name
     type
     parent {
+      __typename
       id
     }
   }

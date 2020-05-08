@@ -1,12 +1,12 @@
 import { ObjectID, FilterQuery, Condition, Db } from "mongodb";
 
-import { addFields, project } from "./utils";
+import { stages } from "./utils";
 import {
   QueryResolvers,
   JournalEntiresWhereInput as Where,
   JournalEntriesWhereDepartment,
   JournalEntry,
-  JournalEntriesWhereLastUpdate
+  JournalEntriesWhereLastUpdate,
 } from "../../graphTypes";
 
 type WhereCond = JournalEntriesWhereDepartment & JournalEntriesWhereLastUpdate;
@@ -15,7 +15,7 @@ type WhereCondKeys =
   | keyof JournalEntriesWhereLastUpdate;
 
 const NULLISH = Symbol();
-const condValTransformDefault = condVal => condVal;
+const condValTransformDefault = (condVal) => condVal;
 const matchCondition = (
   cond: WhereCond,
   condValTransform = condValTransformDefault,
@@ -67,7 +67,7 @@ const matchCondition = (
 
 const toObjectId = (id: string | string[]) => {
   if (Array.isArray(id)) {
-    return id.map(id => new ObjectID(id));
+    return id.map((id) => new ObjectID(id));
   }
 
   return new ObjectID(id as string);
@@ -102,15 +102,15 @@ const filter = async (where: Where, db: Db) => {
                   startWith: "$_id",
                   connectFromField: "_id",
                   connectToField: "parent.id",
-                  as: "descendants"
-                }
+                  as: "descendants",
+                },
               },
               {
                 $project: {
                   _id: true,
-                  "descendants._id": true
-                }
-              }
+                  "descendants._id": true,
+                },
+              },
             ])
             .toArray();
 
@@ -145,15 +145,22 @@ const filter = async (where: Where, db: Db) => {
         filterQuery["lastUpdate"] = matchCondition(where[key], dateStrToDate);
         break;
 
+      case "lastUpdateRefund":
+        filterQuery["refunds.lastUpdate"] = matchCondition(
+          where[key],
+          dateStrToDate
+        );
+        break;
+
       case "or":
         filterQuery.$or = await Promise.all(
-          where[key].map(where => filter(where, db))
+          where[key].map((where) => filter(where, db))
         );
         break;
 
       case "and":
         filterQuery.$and = await Promise.all(
-          where[key].map(where => filter(where, db))
+          where[key].map((where) => filter(where, db))
         );
         break;
     }
@@ -180,7 +187,7 @@ const journalEntries: QueryResolvers["journalEntries"] = async (
     pipeline.push({ $match });
   }
 
-  pipeline.push(addFields, project);
+  pipeline.push(stages.entryAddFields, stages.entryTransmutations);
 
   const results = await db
     .collection<JournalEntry>("journalEntries")

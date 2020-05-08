@@ -2,59 +2,132 @@ import React, { useMemo, useCallback, useRef } from "react";
 import {
   KeyboardDatePicker,
   KeyboardDatePickerProps,
-  MuiPickersUtilsProvider
+  MuiPickersUtilsProvider,
 } from "@material-ui/pickers";
-import MomentUtils from "@date-io/moment";
-import { useField, useFormikContext } from "formik";
-import moment, { Moment } from "moment";
+import DateFnsUtils from "@date-io/date-fns";
+import { useField, useFormikContext, FieldInputProps } from "formik";
 import { TextFieldProps } from "@material-ui/core";
+import { parseISO, min, isValid, formatISO, format } from "date-fns";
+
+import {
+  TransmutationValue,
+  createValueTransmutator,
+  useFormikStatus,
+  FormikStatusType,
+} from "../../../../formik/utils";
 
 const inputProps = {
-  inputMode: "numeric"
+  inputMode: "numeric",
 } as const;
 
 const keyboardButtonProps = {
-  tabIndex: -1
+  tabIndex: -1,
 } as const;
 
-const validate = (value: Moment | null): string | undefined => {
-  if (value) {
-    if (!value.isValid()) {
-      return "Invalid Date";
+const dateValueTransmutator = createValueTransmutator(
+  (...args: Parameters<KeyboardDatePickerProps["onChange"]>) => {
+    const [date, value] = args;
+    if (date && isValid(date)) {
+      return formatISO(date);
     }
-  } else {
-    return "Date is Required";
+    return value || "";
   }
-};
+);
+export type DateValue = TransmutationValue<Date | null, string>;
 
 const DateField = (
   props: {
     variant?: "filled" | "outlined";
-    autoFocus?: boolean;
-  } & TextFieldProps
+    maxDate?: Date;
+    minDate?: Date;
+  } & Omit<
+    TextFieldProps,
+    | "value"
+    | "variant"
+    | "error"
+    | "helperText"
+    | "animateYearScrolling"
+    | "disableToolbar"
+    | "disableFuture"
+    | "inputVariant"
+    | "variant"
+    | "format"
+    | "margin"
+    | "label"
+    | "maxDate"
+    | "initialFocusedDate"
+    | "autoOk"
+    | "InputProps"
+    | "inputProps"
+    | "placeholder"
+    | "KeyboardButtonProps"
+    | "onBlur"
+    | "onOpen"
+    | "onClose"
+    | "onChange"
+    | keyof FieldInputProps<any>
+  >
 ) => {
-  const { variant: inputVariant = "filled", autoFocus = false } = props;
-
-  const calOpen = useRef(false);
+  const {
+    variant: inputVariant = "filled",
+    autoFocus = false,
+    disabled = false,
+    maxDate = new Date(),
+    minDate,
+  } = props;
 
   const { isSubmitting } = useFormikContext();
 
-  const [field, meta, helpers] = useField<Moment | null>({
+  const validate = useCallback(
+    (
+      value: TransmutationValue<Date | null, string> | undefined
+    ): string | undefined => {
+      const dateStr = (value?.value || "").trim();
+      if (dateStr) {
+        const date = parseISO(dateStr);
+        if (!isValid(date)) {
+          return "Invalid Date";
+        } else if (minDate && date < minDate) {
+          return `Cannot be before ${format(minDate, "MM/dd/yyyy")}`;
+        } else if (maxDate < date) {
+          return `Cannot be after ${format(maxDate, "MM/dd/yyyy")}`;
+        }
+      } else {
+        return "Date is Required";
+      }
+    },
+    [minDate, maxDate]
+  );
+
+  const [field, meta, helpers] = useField<
+    TransmutationValue<Date | null, string> | undefined
+  >({
     name: "date",
-    validate
+    validate,
   });
 
-  const { value } = field;
+  const value = field.value?.inputValue ?? null;
   const { error, touched } = meta;
   const { setValue, setTouched } = helpers;
 
+  const initialInputValue = meta.initialValue?.inputValue;
+  const initialFocusedDate = useMemo(
+    () =>
+      initialInputValue && isValid(initialInputValue)
+        ? initialInputValue
+        : new Date(),
+    [initialInputValue]
+  );
+
   const InputProps = useMemo(
     () => ({
-      autoFocus
+      autoFocus,
     }),
     [autoFocus]
   );
 
+  // Handle touched
+  const calOpen = useRef(false);
   const onBlur = useCallback(
     () =>
       setTimeout(() => {
@@ -65,25 +138,35 @@ const DateField = (
       }, 0),
     [setTouched, calOpen]
   );
-
   const onOpen = useCallback(() => (calOpen.current = true), [calOpen]);
-
   const onClose = useCallback(() => {
     calOpen.current = false;
     onBlur();
   }, [calOpen, onBlur]);
 
-  const onChange = useCallback(
-    (date: Moment | null) =>
-      setValue(date ? moment.min([date, moment()]) : date),
+  const onChange = useCallback<KeyboardDatePickerProps["onChange"]>(
+    (date, value) => {
+      setValue(
+        dateValueTransmutator(
+          // limit max date
+          date && isValid(date) ? min([new Date(), date]) : date,
+          value
+        )
+      );
+    },
     [setValue]
   );
+
+  const [formikStatus] = useFormikStatus();
 
   const dataPickerProps: KeyboardDatePickerProps = useMemo(
     () => ({
       ...field,
-      value: field.value,
-      disabled: isSubmitting,
+      disabled:
+        isSubmitting ||
+        disabled ||
+        formikStatus?.type === FormikStatusType.FATAL_ERROR,
+      value,
       error: touched && !!error,
       helperText: touched ? error : undefined,
       animateYearScrolling: true,
@@ -91,10 +174,10 @@ const DateField = (
       disableFuture: true,
       inputVariant,
       variant: "inline",
-      format: "MM/DD/YYYY",
+      format: "MM/dd/yyyy",
       margin: "none",
       label: "Date",
-      initialFocusedDate: field.value || moment(),
+      initialFocusedDate,
       autoOk: true,
       InputProps,
       inputProps,
@@ -103,9 +186,11 @@ const DateField = (
       onBlur,
       onOpen,
       onClose,
-      onChange
+      onChange,
     }),
     [
+      value,
+      initialFocusedDate,
       onBlur,
       error,
       inputVariant,
@@ -115,13 +200,19 @@ const DateField = (
       onOpen,
       onClose,
       onChange,
-      touched
+      touched,
+      disabled,
+      formikStatus,
     ]
   );
 
   return (
-    <MuiPickersUtilsProvider utils={MomentUtils}>
-      <KeyboardDatePicker {...(props as any)} {...dataPickerProps} />
+    <MuiPickersUtilsProvider utils={DateFnsUtils}>
+      <KeyboardDatePicker
+        maxDate={maxDate}
+        {...(props as any)}
+        {...dataPickerProps}
+      />
     </MuiPickersUtilsProvider>
   );
 };

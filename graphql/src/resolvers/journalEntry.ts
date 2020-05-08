@@ -8,7 +8,7 @@ import {
   JournalEntryResolvers,
   JournalEntrySourceType,
   SubscriptionResolvers,
-  JournalEntryType
+  JournalEntryType,
 } from "../graphTypes";
 import { nodeFieldResolver } from "./utils/nodeResolver";
 import { NodeValue } from "../types";
@@ -16,8 +16,10 @@ import { project, addFields } from "./journalEntry/utils";
 import { getDescendants as deptDescendants } from "./departments";
 import {
   JOURNAL_ENTRY_ADDED,
-  JOURNAL_ENTRY_UPDATED
+  JOURNAL_ENTRY_UPDATED,
+  JOURNAL_ENTRY_UPSERTED,
 } from "./journalEntry/pubSubs";
+import journalEntry from "./journalEntry/journalEntry";
 
 const userNodeType = new ObjectID("5dca0427bccd5c6f26b0cde2");
 
@@ -32,7 +34,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
 
   const createdBy = {
     node: userNodeType,
-    id: user.id
+    id: user.id,
   };
 
   const createdOn = new Date();
@@ -42,9 +44,9 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
 
   const updateQuery = {
     $set: {
-      lastUpdate
+      lastUpdate,
     },
-    $push
+    $push,
   };
 
   const {
@@ -56,7 +58,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
     paymentMethod: paymentMethodId = null,
     description = null,
     reconciled = null,
-    type = null
+    type = null,
   } = fields;
 
   let numFieldsToUpdate = 0;
@@ -76,10 +78,10 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
         {
           value: date.toDate(),
           createdBy,
-          createdOn
-        }
+          createdOn,
+        },
       ],
-      $position: 0
+      $position: 0,
     };
   }
 
@@ -140,10 +142,10 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
         {
           value,
           createdBy,
-          createdOn
-        }
+          createdOn,
+        },
       ],
-      $position: 0
+      $position: 0,
     };
   }
 
@@ -172,13 +174,13 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
         {
           value: {
             node: new ObjectID(node),
-            id
+            id,
           },
           createdBy,
-          createdOn
-        }
+          createdOn,
+        },
       ],
-      $position: 0
+      $position: 0,
     };
   }
 
@@ -190,10 +192,10 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
         {
           value: total,
           createdBy,
-          createdOn
-        }
+          createdOn,
+        },
       ],
-      $position: 0
+      $position: 0,
     };
   }
 
@@ -207,10 +209,10 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
         {
           value,
           createdBy,
-          createdOn
-        }
+          createdOn,
+        },
       ],
-      $position: 0
+      $position: 0,
     };
 
     if (categoryId === null) {
@@ -219,17 +221,17 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
         .aggregate([
           { $match: { _id: new ObjectID(id) } },
           {
-            $addFields: { catId: { $arrayElemAt: ["$category.value.id", 0] } }
+            $addFields: { catId: { $arrayElemAt: ["$category.value.id", 0] } },
           },
           {
             $lookup: {
               from: "journalEntryCategories",
               localField: "catId",
               foreignField: "_id",
-              as: "cats"
-            }
+              as: "cats",
+            },
           },
-          { $project: { cats: true } }
+          { $project: { cats: true } },
         ])
         .next();
 
@@ -253,7 +255,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
     const category = await db.collection(collection).findOne(
       { _id: catObjId },
       {
-        projection: { type: true }
+        projection: { type: true },
       }
     );
 
@@ -268,13 +270,13 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
         {
           value: {
             node: new ObjectID(node),
-            id: catObjId
+            id: catObjId,
           },
           createdBy,
-          createdOn
-        }
+          createdOn,
+        },
       ],
-      $position: 0
+      $position: 0,
     };
 
     let typeValue: "credit" | "debit";
@@ -284,7 +286,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
         .aggregate([
           { $match: { _id: new ObjectID(id) } },
           { $addFields: { type: { $arrayElemAt: ["$type.value", 0] } } },
-          { $project: { type: true } }
+          { $project: { type: true } },
         ])
         .next();
 
@@ -325,13 +327,13 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
         {
           value: {
             node: new ObjectID(node),
-            id
+            id,
           },
           createdBy,
-          createdOn
-        }
+          createdOn,
+        },
       ],
-      $position: 0
+      $position: 0,
     };
   }
 
@@ -343,10 +345,10 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
         {
           value: description,
           createdBy,
-          createdOn
-        }
+          createdOn,
+        },
       ],
-      $position: 0
+      $position: 0,
     };
   }
 
@@ -358,10 +360,10 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
         {
           value: reconciled,
           createdBy,
-          createdOn
-        }
+          createdOn,
+        },
       ],
-      $position: 0
+      $position: 0,
     };
   }
 
@@ -390,7 +392,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
 
   pubSub
     .publish(JOURNAL_ENTRY_UPDATED, { journalEntryUpdated: doc[0] })
-    .catch(error => console.error(error));
+    .catch((error) => console.error(error));
 
   return doc[0];
 };
@@ -409,7 +411,7 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
     source: { id: sourceId, sourceType },
     description = null,
     paymentMethod: paymentMethodId,
-    total
+    total,
   } = args.fields;
 
   const reconciled = args.fields.reconciled ?? false;
@@ -421,7 +423,7 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
   const createdBy = {
     node: userNodeType,
-    id: user.id
+    id: user.id,
   };
 
   const insertDoc = {
@@ -429,15 +431,15 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       {
         value: total,
         createdBy,
-        createdOn
-      }
+        createdOn,
+      },
     ],
     type: [
       {
         value: type === JournalEntryType.Credit ? "credit" : "debit",
         createdBy,
-        createdOn
-      }
+        createdOn,
+      },
     ],
     lastUpdate,
     createdOn,
@@ -446,16 +448,16 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       {
         value: false,
         createdBy,
-        createdOn
-      }
+        createdOn,
+      },
     ],
     reconciled: [
       {
         value: reconciled,
         createdBy,
-        createdOn
-      }
-    ]
+        createdOn,
+      },
+    ],
   } as any;
 
   // Description
@@ -464,8 +466,8 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       {
         value: description,
         createdBy,
-        createdOn
-      }
+        createdOn,
+      },
     ];
   } else {
     insertDoc["description"] = [];
@@ -483,8 +485,8 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
     {
       value: date.toDate(),
       createdBy,
-      createdOn
-    }
+      createdOn,
+    },
   ];
 
   // Department
@@ -510,11 +512,11 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       {
         value: {
           node: new ObjectID(node),
-          id
+          id,
         },
         createdBy,
-        createdOn
-      }
+        createdOn,
+      },
     ];
   }
 
@@ -543,11 +545,11 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       {
         value: {
           node: new ObjectID(node),
-          id
+          id,
         },
         createdBy,
-        createdOn
-      }
+        createdOn,
+      },
     ];
   }
 
@@ -604,8 +606,8 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       {
         value,
         createdBy,
-        createdOn
-      }
+        createdOn,
+      },
     ];
   }
 
@@ -632,11 +634,11 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       {
         value: {
           node: new ObjectID(node),
-          id
+          id,
         },
         createdBy,
-        createdOn
-      }
+        createdOn,
+      },
     ];
   }
 
@@ -657,7 +659,7 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
   pubSub
     .publish(JOURNAL_ENTRY_ADDED, { journalEntryAdded: newEntry[0] })
-    .catch(error => console.error(error));
+    .catch((error) => console.error(error));
 
   return newEntry[0];
 };
@@ -673,7 +675,7 @@ export const journalEntryDelete: MutationResolvers["journalEntryDelete"] = async
 
   const createdBy = {
     node: userNodeType,
-    id: user.id
+    id: user.id,
   };
 
   const createdOn = new Date();
@@ -681,7 +683,7 @@ export const journalEntryDelete: MutationResolvers["journalEntryDelete"] = async
 
   const updateQuery = {
     $set: {
-      lastUpdate
+      lastUpdate,
     },
     $push: {
       deleted: {
@@ -689,12 +691,12 @@ export const journalEntryDelete: MutationResolvers["journalEntryDelete"] = async
           {
             value: true,
             createdBy,
-            createdOn
-          }
+            createdOn,
+          },
         ],
-        $position: 0
-      }
-    }
+        $position: 0,
+      },
+    },
   };
 
   const _id = new ObjectID(id);
@@ -711,20 +713,25 @@ export const journalEntryDelete: MutationResolvers["journalEntryDelete"] = async
     );
   }
 
-  const doc = await db
-    .collection("journalEntries")
-    .aggregate([{ $match: { _id } }, addFields, project])
-    .toArray();
+  // const [doc] = await db
+  //   .collection("journalEntries")
+  //   .aggregate([{ $match: { _id } }, addFields, project])
+  //   .toArray();
+
+  const doc = await journalEntry(parent, { id }, context, info);
 
   pubSub
-    .publish(JOURNAL_ENTRY_UPDATED, { journalEntryUpdated: doc[0] })
-    .catch(error => console.error(error));
+    .publish(JOURNAL_ENTRY_UPDATED, { journalEntryUpdated: doc })
+    .catch((error) => console.error(error));
+  pubSub
+    .publish(JOURNAL_ENTRY_UPSERTED, { journalEntryUpserted: doc })
+    .catch((error) => console.error(error));
 
-  return doc[0];
+  return doc;
 };
 
 export const JournalEntry: JournalEntryResolvers = {
-  type: parent =>
+  type: (parent) =>
     (parent.type as any) === "credit"
       ? JournalEntryType.Credit
       : JournalEntryType.Debit,
@@ -737,13 +744,13 @@ export const JournalEntry: JournalEntryResolvers = {
   },
   lastUpdate: (parent, args, context, info) => {
     return ((parent.lastUpdate as any) as Date).toISOString();
-  }
+  },
 };
 
 export const journalEntryAdded: SubscriptionResolvers["journalEntryAdded"] = {
-  subscribe: (_, __, { pubSub }) => pubSub.asyncIterator(JOURNAL_ENTRY_ADDED)
+  subscribe: (_, __, { pubSub }) => pubSub.asyncIterator(JOURNAL_ENTRY_ADDED),
 };
 
 export const journalEntryUpdated: SubscriptionResolvers["journalEntryUpdated"] = {
-  subscribe: (_, __, { pubSub }) => pubSub.asyncIterator(JOURNAL_ENTRY_UPDATED)
+  subscribe: (_, __, { pubSub }) => pubSub.asyncIterator(JOURNAL_ENTRY_UPDATED),
 };

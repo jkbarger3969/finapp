@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery, useApolloClient } from "@apollo/react-hooks";
+import { useQuery } from "@apollo/react-hooks";
 import { Link } from "react-router-dom";
 import Grid from "@material-ui/core/Grid";
 import Container from "@material-ui/core/Container";
@@ -17,29 +17,18 @@ import numeral from "numeral";
 import { red, green, orange, grey } from "@material-ui/core/colors";
 import gql from "graphql-tag";
 
-import { uuid, namespace } from "../../utils/uuid";
-import { useDebounceDispatch as useDispatch } from "../../redux/hooks";
-import { create } from "../../redux/actions/journalEntryUpsert";
 import {
   GetReportDataQuery,
   GetReportDataQueryVariables,
   JournalEntryType,
-  JournalEntryAdded_2Subscription as JournalEntryAdded,
-  JournalEntryUpdated_2Subscription as JournalEntryUpdated,
-  GetReportDataEntry_1Fragment as JournalEntryFragment,
-  DeptForUpsertAddQuery as DeptForUpsertAdd,
-  DeptForUpsertAddQueryVariables as DeptForUpsertAddVars
+  OnEntryUpsert_2Subscription as OnEntryUpsert,
 } from "../../apollo/graphTypes";
 import {
   GET_REPORT_DATA,
-  JOURNAL_ENTRY_ADDED_SUB,
-  JOURNAL_ENTRY_UPDATED_SUB,
-  GET_REPORT_DATA_ENTRY_FRAGMENT
+  GET_REPORT_DATA_ENTRY_FRAGMENT,
 } from "./ReportData.gql";
-import UpsertEntry, { Values } from "../Journal/Upsert/UpsertEntry";
 import { DEPT_ENTRY_OPT_FRAGMENT } from "../Journal/Upsert/upsertEntry.gql";
-
-const ADD_ENTRY_ID = uuid("DashboardJournalEntry", namespace);
+import AddEntry from "../Journal/Upsert/Entries/AddEntry";
 
 const colorMeter = (percentSpent: number, shade = 800) => {
   if (percentSpent < 0.75) {
@@ -85,131 +74,98 @@ export const DEPT_FOR_UPSERT_ADD = gql`
   ${DEPT_ENTRY_OPT_FRAGMENT}
 `;
 
-const Dashboard = function(props: { deptId: string }) {
+const ON_ENTRY_UPSERT = gql`
+  subscription OnEntryUpsert_2 {
+    journalEntryUpserted {
+      ...GetReportDataEntry_1Fragment
+      department {
+        ancestors {
+          ... on Department {
+            __typename
+            id
+          }
+        }
+      }
+    }
+  }
+  ${GET_REPORT_DATA_ENTRY_FRAGMENT}
+`;
+
+const Dashboard = function (props: { deptId: string }) {
   const { deptId } = props;
 
-  const [addEntryOpen, setAddEntryOpen] = useState(false);
+  const [addEntryOpen, setAddEntryOpen] = useState<boolean>(false);
+  const addEntryOnClose = useCallback(() => void setAddEntryOpen(false), [
+    setAddEntryOpen,
+  ]);
 
   const variables = useMemo(
     () => ({
       deptId,
       where: {
         department: { eq: deptId },
-        deleted: false
-      }
+        deleted: false,
+      },
     }),
     [deptId]
   );
 
-  const { loading, error, data, subscribeToMore, fetchMore } = useQuery<
+  const { loading, error, data, subscribeToMore } = useQuery<
     GetReportDataQuery,
     GetReportDataQueryVariables
   >(GET_REPORT_DATA, {
-    variables
+    variables,
+    fetchPolicy: "cache-and-network",
   });
 
-  const { data: deptForUpsertAdd } = useQuery<
-    DeptForUpsertAdd,
-    DeptForUpsertAddVars
-  >(DEPT_FOR_UPSERT_ADD, { skip: !deptId, variables: { id: deptId } });
+  const isLoading = loading && !data?.journalEntries;
 
-  const client = useApolloClient();
-
+  // Subscribe to updates
   useEffect(() => {
-    // Check if query has been cache already
-    const cacheResults = (() => {
-      try {
-        return client.readQuery<
-          GetReportDataQuery,
-          GetReportDataQueryVariables
-        >({
-          query: GET_REPORT_DATA,
-          variables
-        });
-      } catch (error) {
-        return null;
-      }
-    })();
-
-    // Request updated for any changes since last cache
-    if (cacheResults?.journalEntries) {
-      const gt = cacheResults.journalEntries
-        .reduce((date, entry) => {
-          const entryDate = new Date(entry.lastUpdate);
-          return entryDate > date ? entryDate : date;
-        }, new Date(0))
-        .toISOString();
-
-      fetchMore<keyof typeof variables>({
-        variables: {
-          ...variables,
-          where: {
-            ...(variables?.where || {}),
-            lastUpdate: { gt }
-          }
-        },
-        updateQuery: (prev, { fetchMoreResult }) => ({
-          ...(prev || {}),
-          ...(fetchMoreResult || {}),
-          journalEntries: [
-            ...(prev?.journalEntries || []),
-            ...(fetchMoreResult?.journalEntries || [])
-          ]
-        })
-      });
-    }
-
-    // Subscribe to entry additions
-    const addUnSub = subscribeToMore<JournalEntryAdded>({
-      document: JOURNAL_ENTRY_ADDED_SUB,
+    return subscribeToMore<OnEntryUpsert>({
+      document: ON_ENTRY_UPSERT,
       updateQuery: (prev, { subscriptionData }) => {
-        const journalEntryAdded = subscriptionData?.data?.journalEntryAdded;
-
-        if (
-          !journalEntryAdded ||
-          (journalEntryAdded.id !== deptId &&
-            journalEntryAdded.department.ancestors.every(
-              dept => dept.__typename === "Business" || dept.id !== deptId
-            ))
-        ) {
+        if (!subscriptionData.data) {
           return prev;
         }
 
-        return {
-          ...(prev || {}),
-          journalEntries: [
-            ...(prev?.journalEntries || []),
-            ...([subscriptionData?.data?.journalEntryAdded] || [])
-          ]
-        };
-      }
-    });
-    // Subscribe to updates
-    const updateUnSub = subscribeToMore<JournalEntryUpdated>({
-      document: JOURNAL_ENTRY_UPDATED_SUB,
-      updateQuery: (prev, { subscriptionData }) => {
-        const journalEntryUpdated = subscriptionData?.data?.journalEntryUpdated;
+        const upsertEntry = subscriptionData.data.journalEntryUpserted;
 
-        if (journalEntryUpdated) {
-          client.writeFragment<JournalEntryFragment>({
-            id: `JournalEntry:${journalEntryUpdated.id}`,
-            fragment: GET_REPORT_DATA_ENTRY_FRAGMENT,
-            data: journalEntryUpdated
+        const ancestors = upsertEntry.department.ancestors;
+
+        if (
+          deptId &&
+          upsertEntry.department.id !== deptId &&
+          ancestors.every((dept) => (dept as any).id !== deptId)
+        ) {
+          // Filter entry out of query results if department changes.
+          const journalEntriesFiltered = prev.journalEntries.filter(
+            (entry) => entry.id !== upsertEntry.id
+          );
+
+          if (journalEntriesFiltered.length === prev.journalEntries.length) {
+            return prev;
+          }
+
+          return Object.assign({}, prev, {
+            journalEntries: journalEntriesFiltered,
           });
         }
 
-        return prev;
-      }
-    });
+        // Apollo will take care of updating if entry already exists in cache.
+        if (prev.journalEntries.some((entry) => entry.id === upsertEntry.id)) {
+          return prev;
+        }
 
-    return () => {
-      addUnSub();
-      updateUnSub();
-    };
-  }, [variables, fetchMore, client, subscribeToMore, deptId]);
+        return Object.assign({}, prev, {
+          journalEntries: [upsertEntry, ...prev.journalEntries],
+        });
+      },
+    });
+  }, [deptId, subscribeToMore]);
 
   const entries = useMemo(() => {
-    return (data?.journalEntries || []).filter(entry => !entry.deleted);
+    return (data?.journalEntries || []).filter((entry) => !entry.deleted);
   }, [data]);
   const deptName = data?.department?.name || "";
 
@@ -217,22 +173,13 @@ const Dashboard = function(props: { deptId: string }) {
     document.title = deptName;
   }, [deptName]);
 
-  const dispatch = useDispatch();
-
-  const onClickNewEntry = useCallback(
-    (event?) => {
-      dispatch(create(ADD_ENTRY_ID, { fromDept: deptId }));
-    },
-    [dispatch, deptId]
-  );
-
   const department = data?.department || null;
 
   const {
     totalRemaining,
     budget,
     spentToBudgetRatio,
-    deptReport
+    deptReport,
   } = useMemo(() => {
     // Generate department report objects
     const deptReport = new Map<string, DeptReportObj>();
@@ -250,7 +197,7 @@ const Dashboard = function(props: { deptId: string }) {
       deptReport.set(department.id, {
         name: department.name,
         spent: 0,
-        budget
+        budget,
       });
 
       for (const subDept of department.descendants) {
@@ -266,7 +213,7 @@ const Dashboard = function(props: { deptId: string }) {
         deptReport.set(subDept.id, {
           name: subDept.name,
           spent: 0,
-          budget
+          budget,
         });
       }
     }
@@ -274,11 +221,22 @@ const Dashboard = function(props: { deptId: string }) {
     // Calculating aggregate depts and credits
     let spent = 0;
     for (const entry of entries) {
+      if (entry.deleted) {
+        continue;
+      }
       const deptReportObj = deptReport.get(
         entry.department.id
       ) as DeptReportObj;
 
-      const entryTotal = entry.total.num / entry.total.den;
+      let entryTotal = entry.total.num / entry.total.den;
+
+      // Aggregate refunds
+      for (const refund of entry.refunds) {
+        if (refund.deleted) {
+          continue;
+        }
+        entryTotal -= refund.total.num / refund.total.den;
+      }
 
       if (entry.type === JournalEntryType.Credit) {
         spent -= entryTotal;
@@ -308,7 +266,7 @@ const Dashboard = function(props: { deptId: string }) {
       totalRemaining,
       budget,
       spentToBudgetRatio,
-      deptReport
+      deptReport,
     };
   }, [entries, department]);
 
@@ -326,7 +284,7 @@ const Dashboard = function(props: { deptId: string }) {
           <Card>
             <CardHeader
               titleTypographyProps={{
-                noWrap: true
+                noWrap: true,
               }}
               title={name}
             />
@@ -370,20 +328,10 @@ const Dashboard = function(props: { deptId: string }) {
   }, [deptReport, department]);
 
   const onClickAddEntry = useCallback((event?) => setAddEntryOpen(true), [
-    setAddEntryOpen
+    setAddEntryOpen,
   ]);
 
-  const initialValues = useMemo<Partial<Values> | undefined>(
-    () =>
-      deptForUpsertAdd?.department
-        ? {
-            department: deptForUpsertAdd.department
-          }
-        : undefined,
-    [deptForUpsertAdd]
-  );
-
-  if (loading) {
+  if (isLoading) {
     return <p>Loading...</p>;
   } else if (error) {
     console.error(error);
@@ -450,10 +398,10 @@ const Dashboard = function(props: { deptId: string }) {
             {subDeptCards}
           </Grid>
         </Box>
-        <UpsertEntry
-          initialValues={initialValues}
+        <AddEntry
+          deptId={deptId}
           open={addEntryOpen}
-          setOpen={setAddEntryOpen}
+          onClose={addEntryOnClose}
         />
       </Container>
     </Box>
