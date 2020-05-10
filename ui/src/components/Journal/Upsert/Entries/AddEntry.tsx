@@ -12,7 +12,11 @@ import {
   useTheme,
   GridProps,
 } from "@material-ui/core";
-import { Add as AddIcon, Cancel as CancelIcon } from "@material-ui/icons";
+import {
+  Add as AddIcon,
+  Cancel as CancelIcon,
+  Queue as QueueIcon,
+} from "@material-ui/icons";
 import { Formik, FormikConfig, FormikProps, useFormikContext } from "formik";
 import { useApolloClient, useQuery } from "@apollo/react-hooks";
 import gql from "graphql-tag";
@@ -65,12 +69,13 @@ const DEPT_INI_VALUE = gql`
 const AddEntryDialog = (
   props: AddEntryProps & {
     loading: boolean;
-    handleSubmit: FormikProps<AddValues>["handleSubmit"];
   }
 ) => {
-  const { open, onClose, handleSubmit, loading } = props;
+  const { open, onClose, loading } = props;
 
-  const { resetForm, isSubmitting, isValid } = useFormikContext<AddValues>();
+  const { resetForm, isSubmitting, isValid, submitForm } = useFormikContext<
+    AddValues
+  >();
 
   const [formikStatus, setFormikStatus] = useFormikStatus();
 
@@ -107,6 +112,37 @@ const AddEntryDialog = (
   }, [fatalError, isSubmitting, loading]);
 
   const theme = useTheme();
+
+  const onClickAdd = useCallback(async () => {
+    try {
+      setFormikStatus(null);
+      await submitForm();
+      onClose();
+    } catch (error) {
+      setFormikStatus({
+        msg: error.message ?? `${error}`,
+        type: FormikStatusType.ERROR,
+      } as FormikStatus);
+    }
+  }, [submitForm, onClose, setFormikStatus]);
+
+  const onClickAddAndNew = useCallback(async () => {
+    try {
+      setFormikStatus(null);
+      await submitForm();
+      resetForm();
+    } catch (error) {
+      setFormikStatus({
+        msg: error.message ?? `${error}`,
+        type: FormikStatusType.ERROR,
+      } as FormikStatus);
+    }
+  }, [submitForm, resetForm, setFormikStatus]);
+
+  const handleSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => event.preventDefault(),
+    []
+  );
 
   return (
     <Dialog
@@ -208,15 +244,27 @@ const AddEntryDialog = (
       </Box>
       <DialogActions>
         {!fatalError && (
-          <Button
-            disabled={loading || isSubmitting || !isValid}
-            type="submit"
-            startIcon={<AddIcon />}
-            color="primary"
-            variant="contained"
-          >
-            Add
-          </Button>
+          <React.Fragment>
+            <Button
+              onClick={onClickAdd}
+              disabled={loading || isSubmitting || !isValid}
+              type="submit"
+              startIcon={<AddIcon />}
+              color="primary"
+              variant="contained"
+            >
+              Add
+            </Button>
+            <Button
+              onClick={onClickAddAndNew}
+              disabled={loading || isSubmitting || !isValid}
+              type="submit"
+              startIcon={<QueueIcon />}
+              variant="outlined"
+            >
+              Add & New
+            </Button>
+          </React.Fragment>
         )}
         <Button
           disabled={isSubmitting}
@@ -257,29 +305,13 @@ const AddEntry = (props: AddEntryProps) => {
 
   const client = useApolloClient();
   const onSubmit = useCallback<FormikConfig<AddValues>["onSubmit"]>(
-    async (values, formikHelpers) => {
-      try {
-        formikHelpers.setStatus(null);
-        await submitAdd(client, values, formikHelpers);
-        onClose();
-      } catch (error) {
-        formikHelpers.setStatus({
-          msg: error.message ?? `${error}`,
-          type: FormikStatusType.ERROR,
-        } as FormikStatus);
-      }
-    },
-    [client, onClose]
+    (values, formikHelpers) => submitAdd(client, values, formikHelpers),
+    [client]
   );
 
   const children = useCallback(
     (props: FormikProps<AddValues>) => (
-      <AddEntryDialog
-        open={open}
-        onClose={onClose}
-        loading={loading}
-        handleSubmit={props.handleSubmit}
-      />
+      <AddEntryDialog open={open} onClose={onClose} loading={loading} />
     ),
     [open, onClose, loading]
   );
@@ -288,7 +320,6 @@ const AddEntry = (props: AddEntryProps) => {
     <Formik
       initialValues={initialValues as AddValues}
       initialStatus={initialStatus}
-      // isInitialValid={false}
       enableReinitialize={true}
       onSubmit={onSubmit}
       children={children}
