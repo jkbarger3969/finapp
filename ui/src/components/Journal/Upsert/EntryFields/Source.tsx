@@ -264,11 +264,11 @@ const Source = function (props: SourceProps) {
 
   const disabled = useMemo(
     () =>
-      loading ||
+      // loading || CANNOT disable on loading bc input loses focus on first char
       disabledFromProps ||
       disableTextInput ||
       formikStatus?.type === FormikStatusType.FATAL_ERROR,
-    [disableTextInput, disabledFromProps, formikStatus, loading]
+    [disableTextInput, disabledFromProps, formikStatus]
   );
 
   const renderInput = useCallback(

@@ -32,6 +32,7 @@ const Overlay = (
   return (
     <Box
       {...boxProps}
+      overflow="auto"
       position="absolute"
       display="flex"
       alignItems="center"
