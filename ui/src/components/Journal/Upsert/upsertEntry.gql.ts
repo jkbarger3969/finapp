@@ -47,11 +47,12 @@ export const SRC_ENTRY_DEPT_OPT_FRAGMENT = gql`
     id
     name
     parent {
-      __typename
       ... on Business {
+        __typename
         id
       }
       ... on Department {
+        __typename
         id
       }
     }

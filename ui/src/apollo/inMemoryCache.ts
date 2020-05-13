@@ -1,15 +1,14 @@
-import { InMemoryCache, IntrospectionFragmentMatcher } 
-  from 'apollo-cache-inmemory';
+import {
+  InMemoryCache,
+  IntrospectionFragmentMatcher,
+} from "apollo-cache-inmemory";
 
-import localState from './localStateInI';
-import introspectionQueryResultData from './fragmentTypes.json';
+import introspectionQueryResultData from "./fragmentTypes.json";
 
 const fragmentMatcher = new IntrospectionFragmentMatcher({
-  introspectionQueryResultData
+  introspectionQueryResultData,
 });
 
-const inMemoryCache = new InMemoryCache({fragmentMatcher, addTypename:false});
-
-inMemoryCache.writeData({data:{...localState}});
+const inMemoryCache = new InMemoryCache({ fragmentMatcher, addTypename: true });
 
 export default inMemoryCache;

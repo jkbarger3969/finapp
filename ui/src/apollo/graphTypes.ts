@@ -746,10 +746,16 @@ export type UpdateEntryIniStateQuery = { __typename?: 'Query', journalEntry?: Ma
     ) | (
       { __typename?: 'Business' }
       & SrcEntryBizOptFragment
-    ) | { __typename?: 'Department', ancestors: Array<{ __typename: 'Department', id: string } | (
+    ) | (
+      { __typename?: 'Department', ancestors: Array<(
+        { __typename?: 'Department' }
+        & SrcEntryDeptOptFragment
+      ) | (
         { __typename?: 'Business' }
         & SrcEntryBizOptFragment
-      )> }, paymentMethod: (
+      )> }
+      & SrcEntryDeptOptFragment
+    ), paymentMethod: (
       { __typename?: 'PaymentMethod', ancestors: Array<(
         { __typename?: 'PaymentMethod' }
         & PayMethodEntryOptFragment

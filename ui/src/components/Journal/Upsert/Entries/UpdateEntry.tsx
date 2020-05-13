@@ -78,12 +78,10 @@ const UPDATE_ENTRY_INI_STATE = gql`
       source {
         ...SrcEntryPersonOptFragment
         ...SrcEntryBizOptFragment
+        ...SrcEntryDeptOptFragment
         ... on Department {
           ancestors {
-            ... on Department {
-              id
-              __typename
-            }
+            ...SrcEntryDeptOptFragment
             ...SrcEntryBizOptFragment
           }
         }
@@ -340,6 +338,11 @@ const UpdateEntry = (props: UpdateEntryProps) => {
       id: entryId as string,
     },
   });
+
+  if (error) {
+    console.log(entryId, UPDATE_ENTRY_INI_STATE);
+    console.error(error);
+  }
 
   const initialStatus = useMemo(
     () =>
