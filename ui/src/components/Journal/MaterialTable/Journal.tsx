@@ -51,6 +51,7 @@ import {
 import { green, red } from "@material-ui/core/colors";
 import { BankTransferIn, BankTransferOut } from "mdi-material-ui";
 import gql from "graphql-tag";
+import { format } from "date-fns";
 
 import {
   JournalEntries_1Query as JournalEntriesQuery,
@@ -133,7 +134,7 @@ const tableIcons = {
   ViewColumn: forwardRef<SVGSVGElement>((props, ref) => (
     <ViewColumn {...props} ref={ref} />
   )),
-};
+} as const;
 
 export type Entry =
   | JournalEntryFragment
@@ -330,105 +331,145 @@ const Journal = (props: {
   }, [deptId, subscribeToMore]);
 
   const columns = useMemo<Column<Entry>[]>(() => {
-    const searchable = false;
-    const filtering = false;
-    const sorting = false;
-
     return [
       {
         field: "reconciled",
         title: "Reconciled",
         render: ({ reconciled }) => (reconciled ? <DoneIcon /> : null),
-        customFilterAndSearch: (filter, rowData) => {
-          const momentDate = moment(rowData.date);
-
-          const search: {
-            [P in keyof Omit<
-              Entry,
-              "id" | "__typename" | "deleted" | "lastUpdate" | "refunds"
-            >]-?: string[];
-          } = {
-            type: [
-              rowData.type === JournalEntryType.Credit ? "credit" : "debit",
-            ],
-            date: [
-              momentDate.format("dddd, MMMM Do YYYY, h:mm:ss a"),
-              momentDate.toString(),
-              momentDate.format("M/d/YY"),
-              momentDate.format("M/d/YYYY"),
-              momentDate.format("MMM DD, YYYY"),
-            ],
-            description: [rowData.description || ""],
-            reconciled: [rowData.reconciled ? "reconciled" : ""],
-            department: [rowData.department.name],
-            category: [rowData.category.name],
-            paymentMethod: [
-              rowData.paymentMethod.parent?.id === CHECK_ID
-                ? `CK-${rowData.paymentMethod.name}`
-                : rowData.paymentMethod.name,
-            ],
-            source: [
-              (() => {
-                switch (rowData.source.__typename) {
-                  case "Person":
-                    return `${rowData.source.name.first} ${rowData.source.name.last}`;
-                  case "Business":
-                    return rowData.source.bizName;
-                  case "Department":
-                    return rowData.source.deptName;
-                }
-              })(),
-            ],
-            total: [
-              numeral(rowData.total.num / rowData.total.den).format("$0,0.00"),
-            ],
-          };
-
-          const fuseResult = new Fuse([search], {
-            threshold: 0.4,
-            useExtendedSearch: true,
-            keys: [
-              "date",
-              "type",
-              "description",
-              "reconciled",
-              "department",
-              "category",
-              "paymentMethod",
-              "source",
-              "total",
-            ],
-          }).search(filter);
-          return fuseResult.length > 0;
+        sorting: true,
+        searchable: true,
+        customSort: (
+          { reconciled: reconciledA },
+          { reconciled: reconciledB }
+        ) => {
+          return +reconciledA - +reconciledB;
+        },
+        customFilterAndSearch: (filter, { reconciled }) => {
+          if (reconciled) {
+            return (
+              ((filter as string) || "").trim().toLowerCase() === "reconciled"
+            );
+          }
+          return (
+            ((filter as string) || "").trim().toLowerCase() === "!reconciled"
+          );
         },
         hidden: mode === JournalMode.Reconcile,
-        filtering,
-        sorting,
+        filtering: false,
       },
       {
         field: "total",
         title: "Total",
         render: ({ total: { num, den } }) =>
           numeral(num / den).format("$0,0.00"),
-        searchable,
-        filtering,
-        sorting,
+        searchable: true,
+        filtering: false,
+        sorting: true,
+        customSort: ({ total: totalA }, { total: totalB }) => {
+          return totalA.num / totalA.den - totalB.num / totalB.den;
+        },
+        customFilterAndSearch: (filter, { total: { num, den } }) => {
+          return (
+            new Fuse(
+              [
+                {
+                  total: [
+                    numeral(num / den).format("$0,0.00"),
+                    (num / den).toFixed(2),
+                  ],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["total"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
       {
         field: "date",
         title: "Date",
-        render: ({ date }) => moment(date).format("MMM DD, YYYY"),
-        searchable,
-        filtering,
-        sorting,
+        render: ({ date }) => format(new Date(date), "MMM dd, yyyy"),
+        searchable: true,
+        filtering: false,
+        sorting: true,
+        defaultSort: "desc",
+        customSort: ({ date: dateA }, { date: dateB }) => {
+          return new Date(dateA).getTime() - new Date(dateB).getTime();
+        },
+        customFilterAndSearch: (filter, { date: dateStr }) => {
+          const date = new Date(dateStr);
+
+          return (
+            new Fuse(
+              [
+                {
+                  date: [
+                    dateStr,
+                    format(date, "M/d/yy"),
+                    format(date, "MM/d/yy"),
+                    format(date, "M/d/yyyy"),
+                    format(date, "MM/d/yyyy"),
+                    format(date, "MMM dd, yyyy"),
+                  ],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["date"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
       {
         field: "category",
         title: "Category",
-        render: ({ category }) => capitalCase(category.name),
-        searchable,
-        filtering,
-        sorting,
+        render: (data, type) => {
+          const name =
+            type === "group"
+              ? ((data as any) as JournalEntryFragment["category"]).name
+              : data.category.name;
+          return capitalCase(name);
+        },
+        searchable: true,
+        filtering: false,
+        sorting: true,
+        customSort: (dataA, dataB) => {
+          const { category: categoryA } = dataA;
+          const { category: categoryB } = dataB;
+
+          const nameA = categoryA.name.toUpperCase(); // ignore upper and lowercase
+          const nameB = categoryB.name.toUpperCase(); // ignore upper and lowercase
+          if (nameA < nameB) {
+            return -1;
+          }
+          if (nameA > nameB) {
+            return 1;
+          }
+
+          // names must be equal
+          return 0;
+        },
+        customFilterAndSearch: (filter, { category: { name } }) => {
+          return (
+            new Fuse(
+              [
+                {
+                  category: [name],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["category"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
       {
         field: "source",
@@ -443,9 +484,68 @@ const Journal = (props: {
               return source.deptName;
           }
         },
-        searchable,
-        filtering,
-        sorting,
+        searchable: true,
+        filtering: false,
+        sorting: true,
+        customSort: ({ source: sourceA }, { source: sourceB }) => {
+          const nameA = (() => {
+            switch (sourceA.__typename) {
+              case "Person":
+                return sourceA.name.last.toUpperCase();
+              case "Business":
+                return sourceA.bizName.toUpperCase();
+              case "Department":
+                return sourceA.deptName.toUpperCase();
+            }
+          })();
+
+          const nameB = (() => {
+            switch (sourceB.__typename) {
+              case "Person":
+                return sourceB.name.last.toUpperCase();
+              case "Business":
+                return sourceB.bizName.toUpperCase();
+              case "Department":
+                return sourceB.deptName.toUpperCase();
+            }
+          })();
+          if (nameA < nameB) {
+            return -1;
+          }
+          if (nameA > nameB) {
+            return 1;
+          }
+
+          // names must be equal
+          return 0;
+        },
+        customFilterAndSearch: (filter, { source }) => {
+          return (
+            new Fuse(
+              [
+                {
+                  source: [
+                    (() => {
+                      switch (source.__typename) {
+                        case "Person":
+                          return `${source.name.first} ${source.name.last}`;
+                        case "Business":
+                          return source.bizName;
+                        case "Department":
+                          return source.deptName;
+                      }
+                    })(),
+                  ],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["source"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
       {
         field: "paymentMethod",
@@ -454,25 +554,121 @@ const Journal = (props: {
           paymentMethod.parent?.id === CHECK_ID
             ? `CK-${paymentMethod.name}`
             : paymentMethod.name,
-        searchable,
-        filtering,
-        sorting,
+        searchable: true,
+        filtering: false,
+        sorting: true,
+        customSort: (
+          { paymentMethod: paymentMethodA },
+          { paymentMethod: paymentMethodB }
+        ) => {
+          const nameA = (() => {
+            return (paymentMethodA.parent?.id === CHECK_ID
+              ? `CK-${paymentMethodA.name}`
+              : paymentMethodA.name
+            ).toUpperCase();
+          })();
+
+          const nameB = (() => {
+            return (paymentMethodB.parent?.id === CHECK_ID
+              ? `CK-${paymentMethodB.name}`
+              : paymentMethodB.name
+            ).toUpperCase();
+          })();
+          if (nameA < nameB) {
+            return -1;
+          }
+          if (nameA > nameB) {
+            return 1;
+          }
+
+          // names must be equal
+          return 0;
+        },
+        customFilterAndSearch: (filter, { paymentMethod }) => {
+          return (
+            new Fuse(
+              [
+                {
+                  paymentMethod: [
+                    paymentMethod.parent?.id === CHECK_ID
+                      ? `CK-${paymentMethod.name}`
+                      : paymentMethod.name,
+                  ],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["paymentMethod"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
       {
         field: "description",
         title: "Description",
         render: ({ description }) => description,
-        searchable,
-        filtering,
-        sorting,
+        searchable: true,
+        filtering: false,
+        sorting: false,
+        customFilterAndSearch: (filter, { description }) => {
+          return (
+            new Fuse(
+              [
+                {
+                  description: [description?.trim() || ""],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["description"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
       {
         field: "department",
         title: "Department",
         render: ({ department }) => capitalCase(department.name),
-        searchable,
-        filtering,
-        sorting,
+        searchable: true,
+        filtering: false,
+        sorting: true,
+        customSort: (
+          { department: departmentA },
+          { department: departmentB }
+        ) => {
+          const nameA = departmentA.name.toUpperCase();
+          const nameB = departmentB.name.toUpperCase();
+
+          if (nameA < nameB) {
+            return -1;
+          }
+          if (nameA > nameB) {
+            return 1;
+          }
+
+          // names must be equal
+          return 0;
+        },
+        customFilterAndSearch: (filter, { department }) => {
+          return (
+            new Fuse(
+              [
+                {
+                  department: [department.name],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["department"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
     ];
   }, [mode]);
@@ -508,7 +704,6 @@ const Journal = (props: {
       rowStyle: ({ type }: Entry) => ({
         color: type === JournalEntryType.Credit ? green[900] : red[900],
       }),
-      // -53px = pagination, -64px = toolbar
       maxBodyHeight: "calc(100vh - 53px - 64px)",
       headerStyle: { position: "sticky", top: 0 },
       pageSize: 25,
@@ -516,6 +711,7 @@ const Journal = (props: {
       showTitle: !!journalTitle,
       selection: mode === JournalMode.Reconcile,
       showSelectAllCheckbox: false,
+      debounceInterval: 500,
     }),
     [journalTitle, mode]
   );
