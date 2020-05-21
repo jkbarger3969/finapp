@@ -6,6 +6,7 @@ enum JournalEntryType {
 type JournalEntry {
   id: ID!
   refunds: [JournalEntryRefund!]!
+  items: [JournalEntryItem!]!
   type: JournalEntryType!
   date: String!
   department: Department!
@@ -54,6 +55,7 @@ input JournalEntryAddFields {
   reconciled: Boolean
 }
 
+# Refunds
 type JournalEntryRefund {
   id: ID!
   date: String!
@@ -81,28 +83,43 @@ input JournalEntryUpdateRefundFields {
   reconciled: Boolean
 }
 
-# enum JournalEntriesColumn {
-#   DEPARTMENT
-#   TYPE
-#   CATEGORY
-#   # ROOT_TYPE
-#   PAYMENT_METHOD
-#   TOTAL
-#   DATE
-#   SOURCE
-# }
+# Items
+type JournalEntryItem {
+  id: ID!
+  department: Department
+  category: JournalEntryCategory
+  description: String
+  total: Rational!
+  lastUpdate: String!
+  deleted: Boolean!
+}
 
-# input JournalEntriesSortByInput {
-#   column:JournalEntriesColumn!
-#   direction:SortDirection = ASC
-# }
+input JournalEntryAddItemFields {
+  department: ID
+  category: ID
+  description: String
+  total: RationalInput!
+}
 
+input JournalEntryUpdateItemFields {
+  department: ID
+  category: ID
+  description: String
+  total: RationalInput
+}
+
+type JournEntryItemUpsertResult {
+  journalEntryItem: JournalEntryItem!
+  journalEntry: JournalEntry!
+}
+
+# Where
 input JournalEntriesWhereDepartment {
   eq: ID
   ne: ID
   in: [ID]
   nin: [ID]
-  includeDescendants: Boolean = true
+  matchDecedentTree: Boolean
 }
 
 input JournalEntriesWhereLastUpdate {
@@ -122,21 +139,11 @@ input JournalEntiresWhereInput {
   and: [JournalEntiresWhereInput]
 }
 
-# type JournalEntriesRes {
-#   totalCount: Int!
-#   entries: [JournalEntry!]!
-# }
-
-# type JournalEntryAddedRes {
-#   totalCount: Int!
-#   index: Int!
-#   entry: JournalEntry!
-# }
-
 type Query {
   journalEntries(where: JournalEntiresWhereInput): [JournalEntry!]!
   journalEntry(id: ID!): JournalEntry
   journalEntryRefund(id: ID!): JournalEntryRefund
+  journalEntryItem(id: ID!): JournalEntryItem
 }
 
 input JournalEntryUpdatePaymentMethod {
@@ -172,6 +179,15 @@ type Mutation {
     paymentMethodUpdate: JournalEntryUpdatePaymentMethod
   ): JournalEntry!
   journalEntryDeleteRefund(id: ID!): JournalEntry!
+  journalEntryAddItem(
+    id: ID!
+    fields: JournalEntryAddItemFields!
+  ): JournEntryItemUpsertResult!
+  journalEntryUpdateItem(
+    id: ID!
+    fields: JournalEntryUpdateItemFields!
+  ): JournEntryItemUpsertResult!
+  journalEntryDeleteItem(id: ID!): JournEntryItemUpsertResult!
 }
 
 type Subscription {
