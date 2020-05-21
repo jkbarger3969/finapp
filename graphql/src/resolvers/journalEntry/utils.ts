@@ -72,7 +72,7 @@ export const entryAddFieldsStage = {
         const obj: {
           [P in keyof Omit<
             JournalEntry,
-            "__typename" | "id" | "refunds" | "lastUpdate"
+            "__typename" | "id" | "refunds" | "items" | "lastUpdate"
           >]-?: null;
         } = {
           type: null,
@@ -142,6 +142,9 @@ export const entryAddFieldsStage = {
         },
         [],
       ],
+    },
+    items: {
+      $ifNull: ["$items", []],
     },
     id: "$_id",
   },
