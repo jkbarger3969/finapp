@@ -15,7 +15,6 @@ import MaterialTable, {
 } from "material-table";
 import { useQuery, useMutation } from "@apollo/react-hooks";
 import numeral from "numeral";
-import moment from "moment";
 import { capitalCase } from "change-case";
 import Fuse from "fuse.js";
 import {
@@ -271,7 +270,7 @@ const Journal = (props: {
   const variables = useMemo<JournalEntriesQueryVars | undefined>(() => {
     return deptId
       ? {
-          where: { department: { eq: deptId } },
+          where: { department: { eq: deptId, matchDecedentTree: true } },
         }
       : undefined;
   }, [deptId]);
