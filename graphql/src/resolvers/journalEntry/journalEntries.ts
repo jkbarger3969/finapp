@@ -17,6 +17,7 @@ import parseComparisonOps from "../utils/filterQuery/querySelectors/parseCompari
 import { OpsParser } from "../utils/filterQuery/querySelectors/types";
 import { iterateOwnKeyValues } from "../../utils/iterableFns";
 
+// Where condition parsing
 const dateOpParsers: Readonly<OpsParser[]> = [
   parseComparisonOps((dateStr: string | string[]) =>
     Array.isArray(dateStr)
@@ -214,7 +215,7 @@ const journalEntries: QueryResolvers["journalEntries"] = async (
       fieldAndConditionGenerator,
       context
     );
-    console.log($match);
+
     pipeline.push({ $match });
   }
 

@@ -108,7 +108,7 @@ input JournalEntryUpdateItemFields {
   total: RationalInput
 }
 
-type JournEntryItemUpsertResult {
+type JournalEntryItemUpsertResult {
   journalEntryItem: JournalEntryItem!
   journalEntry: JournalEntry!
 }
@@ -135,6 +135,7 @@ input JournalEntiresWhereInput {
   deleted: Boolean
   lastUpdate: JournalEntriesWhereLastUpdate
   lastUpdateRefund: JournalEntriesWhereLastUpdate
+  lastUpdateItem: JournalEntriesWhereLastUpdate
   or: [JournalEntiresWhereInput]
   and: [JournalEntiresWhereInput]
 }
@@ -182,12 +183,12 @@ type Mutation {
   journalEntryAddItem(
     id: ID!
     fields: JournalEntryAddItemFields!
-  ): JournEntryItemUpsertResult!
+  ): JournalEntryItemUpsertResult!
   journalEntryUpdateItem(
     id: ID!
     fields: JournalEntryUpdateItemFields!
-  ): JournEntryItemUpsertResult!
-  journalEntryDeleteItem(id: ID!): JournEntryItemUpsertResult!
+  ): JournalEntryItemUpsertResult!
+  journalEntryDeleteItem(id: ID!): JournalEntryItemUpsertResult!
 }
 
 type Subscription {

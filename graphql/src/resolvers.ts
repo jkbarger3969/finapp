@@ -20,8 +20,13 @@ import journalEntryRefund from "./resolvers/journalEntry/journalEntryRefund";
 import journalEntryAddRefund from "./resolvers/journalEntry/journalEntryAddRefund";
 import journalEntryUpdateRefund from "./resolvers/journalEntry/journalEntryUpdateRefund";
 import journalEntryDeleteRefund from "./resolvers/journalEntry/journalEntryDeleteRefund";
+import journalEntryAddItem from "./resolvers/journalEntry/journalEntryAddItem";
+import journalEntryUpdateItem from "./resolvers/journalEntry/journalEntryUpdateItem";
+import journalEntryDeleteItem from "./resolvers/journalEntry/journalEntryDeleteItem";
+import journalEntryItem from "./resolvers/journalEntry/journalEntryItem";
 import JournalEntry from "./resolvers/journalEntry/JournalEntryResolver";
 import JournalEntryRefund from "./resolvers/journalEntry/JournalEntryRefundResolver";
+import JournalEntryItem from "./resolvers/journalEntry/JournalEntryItemResolver";
 import journalEntryUpserted from "./resolvers/journalEntry/journalEntryUpserted";
 import { journalEntrySources } from "./resolvers/journalEntrySource";
 import {
@@ -44,6 +49,7 @@ const resolvers: Resolvers = {
   Department,
   JournalEntry,
   JournalEntryRefund,
+  JournalEntryItem,
   PaymentMethod,
   JournalEntryCategory,
   User,
@@ -53,6 +59,7 @@ const resolvers: Resolvers = {
     budgets,
     journalEntry,
     journalEntryRefund,
+    journalEntryItem,
     journalEntries,
     journalEntrySources,
     journalEntryCategories,
@@ -70,6 +77,9 @@ const resolvers: Resolvers = {
     journalEntryAddRefund,
     journalEntryUpdateRefund,
     journalEntryDeleteRefund,
+    journalEntryAddItem,
+    journalEntryUpdateItem,
+    journalEntryDeleteItem,
     addPerson,
     addBusiness,
     paymentMethodAdd,

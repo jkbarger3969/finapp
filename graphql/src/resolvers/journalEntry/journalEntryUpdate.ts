@@ -154,14 +154,16 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
     }
 
     asyncOps.push(
+      // Check that new total is not less than refunds and items
       (async () => {
-        const [{ refundTotal }] = (await db
+        const [{ refundTotal, itemTotal }] = (await db
           .collection("journalEntries")
           .aggregate([
             { $match: { _id: new ObjectID(id) } },
             stages.refundTotal,
+            stages.itemTotal,
           ])
-          .toArray()) as [{ refundTotal: number }];
+          .toArray()) as [{ refundTotal: number; itemTotal: number }];
 
         if (totalDecimal < refundTotal) {
           throw new Error(
@@ -169,6 +171,11 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           );
         }
 
+        if (totalDecimal < itemTotal) {
+          throw new Error(
+            "Entry total cannot be less than entry's total items."
+          );
+        }
         updateBuilder.updateField("total", total);
       })()
     );
