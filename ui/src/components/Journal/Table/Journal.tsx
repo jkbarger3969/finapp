@@ -4,6 +4,7 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useRef,
 } from "react";
 import MaterialTable, {
   Column,
@@ -12,6 +13,7 @@ import MaterialTable, {
   MaterialTableProps,
   Components,
   MTableBody,
+  MTableBodyRow,
 } from "material-table";
 import { useQuery, useMutation } from "@apollo/react-hooks";
 import numeral from "numeral";
@@ -47,7 +49,7 @@ import {
   TableCell,
   Typography,
 } from "@material-ui/core";
-import { green, red } from "@material-ui/core/colors";
+import { green, red, amber, cyan } from "@material-ui/core/colors";
 import { BankTransferIn, BankTransferOut } from "mdi-material-ui";
 import gql from "graphql-tag";
 import { format } from "date-fns";
@@ -57,6 +59,7 @@ import {
   JournalEntries_1QueryVariables as JournalEntriesQueryVars,
   JournalEntry_1Fragment as JournalEntryFragment,
   JournalEntryRefund_1Fragment as JournalEntryRefundFragment,
+  JournalEntryItem_1Fragment as JournalEntryItemFragment,
   JournalEntryType,
   OnEntryUpsert_1Subscription as OnEntryUpsert,
   ReconcileEntryMutation as ReconcileEntry,
@@ -64,10 +67,7 @@ import {
   ReconcileRefundMutation as ReconcileRefund,
   ReconcileRefundMutationVariables as ReconcileRefundVars,
 } from "../../../apollo/graphTypes";
-import {
-  JOURNAL_ENTRIES,
-  JOURNAL_ENTRY_FRAGMENT,
-} from "../Table/JournalEntries.gql";
+import { JOURNAL_ENTRIES, JOURNAL_ENTRY_FRAGMENT } from "./JournalEntries.gql";
 import { CHECK_ID } from "../constants";
 import AddRefund from "../Upsert/Refunds/AddRefund";
 import UpdateRefund from "../Upsert/Refunds/UpdateRefund";
@@ -138,13 +138,15 @@ const tableIcons = {
 export type Entry =
   | JournalEntryFragment
   | (Omit<JournalEntryFragment, "__typename" | "refunds"> &
-      JournalEntryRefundFragment & { refunds: string });
+      JournalEntryRefundFragment & { refunds: string })
+  | (Omit<JournalEntryFragment, "__typename" | "items"> &
+      JournalEntryItemFragment & { items: string });
 
 const entriesGen = function* (
   entry: JournalEntryFragment
 ): IterableIterator<Entry> {
   yield entry;
-  const type =
+  const refundType =
     entry.type === JournalEntryType.Credit
       ? JournalEntryType.Debit
       : JournalEntryType.Credit;
@@ -152,9 +154,19 @@ const entriesGen = function* (
     yield {
       ...entry,
       ...refund,
-      type,
+      type: refundType,
       description: refund.description || entry.description,
       refunds: entry.id,
+    };
+  }
+  for (const item of entry.items) {
+    yield {
+      ...entry,
+      ...item,
+      category: item.category || entry.category,
+      department: item.department || entry.department,
+      description: item.description || entry.description,
+      items: entry.id,
     };
   }
 };
@@ -698,11 +710,49 @@ const Journal = (props: {
     []
   );
 
+  const parentChildData = useCallback<
+    NonNullable<MaterialTableProps<Entry>["parentChildData"]>
+  >(
+    (child, parents) =>
+      child.__typename === "JournalEntryItem"
+        ? parents.find((parent) => parent.id === child.items)
+        : undefined,
+    []
+  );
+
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const onTreeExpandChange = useCallback<
+    NonNullable<MaterialTableProps<Entry>["onTreeExpandChange"]>
+  >(
+    (entry: Entry, isExpanded) => {
+      if (isExpanded) {
+        expandedItems.add(entry.id);
+      } else {
+        expandedItems.delete(entry.id);
+      }
+      setExpandedItems(new Set(expandedItems));
+    },
+    [expandedItems, setExpandedItems]
+  );
+
   const options = useMemo<Options>(
     () => ({
-      rowStyle: ({ type }: Entry) => ({
-        color: type === JournalEntryType.Credit ? green[900] : red[900],
-      }),
+      rowStyle: (data: Entry) => {
+        const style = {} as React.CSSProperties;
+
+        style.color =
+          data.type === JournalEntryType.Credit ? green[900] : red[900];
+
+        if (expandedItems.has(data.id)) {
+          style.backgroundColor = cyan[100];
+        }
+
+        if (data.__typename === "JournalEntryItem") {
+          style.backgroundColor = amber[100];
+        }
+
+        return style;
+      },
       maxBodyHeight: "calc(100vh - 53px - 64px)",
       headerStyle: { position: "sticky", top: 0 },
       pageSize: 25,
@@ -711,8 +761,10 @@ const Journal = (props: {
       selection: mode === JournalMode.Reconcile,
       showSelectAllCheckbox: false,
       debounceInterval: 500,
+      emptyRowsWhenPaging: false,
+      columnsButton: true,
     }),
-    [journalTitle, mode]
+    [expandedItems, journalTitle, mode]
   );
 
   const actions = useMemo<MaterialTableProps<Entry>["actions"]>(() => {
@@ -857,6 +909,7 @@ const Journal = (props: {
             </TableBody>
           )
         : (props) => <MTableBody {...props} />,
+      // Row: JournalRow,
     }),
     [error, columns, actions]
   );
@@ -893,6 +946,8 @@ const Journal = (props: {
         actions={actions}
         components={components}
         title={journalTitle ?? undefined}
+        parentChildData={parentChildData}
+        onTreeExpandChange={onTreeExpandChange}
       />
       <AddEntry deptId={deptId} open={addEntryOpen} onClose={addEntryOnClose} />
       <UpdateEntry

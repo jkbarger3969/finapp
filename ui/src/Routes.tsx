@@ -2,8 +2,8 @@ import React from "react";
 import { Route, Switch, useParams } from "react-router-dom";
 
 // import Journal from "./components/Journal/Table/Journal";
-import Journal from "./components/Journal/MaterialTable/Journal";
-import { JournalMode } from "./components/Journal/MaterialTable/Journal";
+import Journal from "./components/Journal/Table/Journal";
+import { JournalMode } from "./components/Journal/Table/Journal";
 import Dashboard from "./components/Dashboard/Dashboard";
 import TopNav from "./components/TopNav";
 import { useQuery } from "@apollo/react-hooks";
