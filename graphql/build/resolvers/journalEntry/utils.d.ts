@@ -85,6 +85,34 @@ export declare const entryAddFieldsStage: {
                 };
             }, readonly []];
         };
+        readonly items: {
+            readonly $ifNull: readonly [{
+                readonly $let: {
+                    readonly vars: {
+                        readonly entryDeleted: import("../utils/DocHistory").PresentValueExpression;
+                    };
+                    readonly in: {
+                        readonly $map: {
+                            readonly input: "$items";
+                            readonly as: "item";
+                            readonly in: {
+                                readonly $mergeObjects: readonly ["$$item", {
+                                    readonly [x: string]: import("../utils/DocHistory").PresentValueExpression;
+                                }, {
+                                    readonly $cond: {
+                                        readonly if: "$$entryDeleted";
+                                        readonly then: {
+                                            readonly deleted: true;
+                                        };
+                                        readonly else: {};
+                                    };
+                                }];
+                            };
+                        };
+                    };
+                };
+            }, readonly []];
+        };
         readonly id: "$_id";
     };
 };
@@ -129,6 +157,25 @@ export declare const entryTransmutationsStage: {
                 };
             };
         };
+        items: {
+            $map: {
+                input: string;
+                as: string;
+                in: {
+                    $mergeObjects: (string | {
+                        id: {
+                            $toString: string;
+                        };
+                        date: {
+                            $toString: string;
+                        };
+                        lastUpdate: {
+                            $toString: string;
+                        };
+                    })[];
+                };
+            };
+        };
     };
 };
 export declare const getRefundTotals: (exclude?: (string | ObjectID)[]) => {
@@ -136,6 +183,51 @@ export declare const getRefundTotals: (exclude?: (string | ObjectID)[]) => {
         readonly refundTotal: {
             readonly $reduce: {
                 readonly input: "$refunds";
+                readonly initialValue: 0;
+                readonly in: {
+                    readonly $sum: readonly ["$$value", {
+                        readonly $let: {
+                            readonly vars: {
+                                readonly total: {
+                                    readonly $cond: {
+                                        readonly if: {
+                                            $and: ({
+                                                $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
+                                                $not?: undefined;
+                                            } | {
+                                                $not: {
+                                                    $in: (string | ObjectID[])[];
+                                                };
+                                                $eq?: undefined;
+                                            })[];
+                                            $eq?: undefined;
+                                        } | {
+                                            $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
+                                            $and?: undefined;
+                                        };
+                                        readonly then: import("../utils/DocHistory").PresentValueExpression;
+                                        readonly else: {
+                                            readonly num: 0;
+                                            readonly den: 1;
+                                        };
+                                    };
+                                };
+                            };
+                            readonly in: {
+                                readonly $divide: readonly ["$$total.num", "$$total.den"];
+                            };
+                        };
+                    }];
+                };
+            };
+        };
+    };
+};
+export declare const getItemTotals: (exclude?: (string | ObjectID)[]) => {
+    readonly $addFields: {
+        readonly itemTotal: {
+            readonly $reduce: {
+                readonly input: "$items";
                 readonly initialValue: 0;
                 readonly in: {
                     readonly $sum: readonly ["$$value", {
@@ -207,6 +299,34 @@ export declare const stages: {
                     };
                 }, readonly []];
             };
+            readonly items: {
+                readonly $ifNull: readonly [{
+                    readonly $let: {
+                        readonly vars: {
+                            readonly entryDeleted: import("../utils/DocHistory").PresentValueExpression;
+                        };
+                        readonly in: {
+                            readonly $map: {
+                                readonly input: "$items";
+                                readonly as: "item";
+                                readonly in: {
+                                    readonly $mergeObjects: readonly ["$$item", {
+                                        readonly [x: string]: import("../utils/DocHistory").PresentValueExpression;
+                                    }, {
+                                        readonly $cond: {
+                                            readonly if: "$$entryDeleted";
+                                            readonly then: {
+                                                readonly deleted: true;
+                                            };
+                                            readonly else: {};
+                                        };
+                                    }];
+                                };
+                            };
+                        };
+                    };
+                }, readonly []];
+            };
             readonly id: "$_id";
         };
     };
@@ -251,6 +371,25 @@ export declare const stages: {
                     };
                 };
             };
+            items: {
+                $map: {
+                    input: string;
+                    as: string;
+                    in: {
+                        $mergeObjects: (string | {
+                            id: {
+                                $toString: string;
+                            };
+                            date: {
+                                $toString: string;
+                            };
+                            lastUpdate: {
+                                $toString: string;
+                            };
+                        })[];
+                    };
+                };
+            };
         };
     };
     readonly entryTotal: {
@@ -272,6 +411,51 @@ export declare const stages: {
             readonly refundTotal: {
                 readonly $reduce: {
                     readonly input: "$refunds";
+                    readonly initialValue: 0;
+                    readonly in: {
+                        readonly $sum: readonly ["$$value", {
+                            readonly $let: {
+                                readonly vars: {
+                                    readonly total: {
+                                        readonly $cond: {
+                                            readonly if: {
+                                                $and: ({
+                                                    $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
+                                                    $not?: undefined;
+                                                } | {
+                                                    $not: {
+                                                        $in: (string | ObjectID[])[];
+                                                    };
+                                                    $eq?: undefined;
+                                                })[];
+                                                $eq?: undefined;
+                                            } | {
+                                                $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
+                                                $and?: undefined;
+                                            };
+                                            readonly then: import("../utils/DocHistory").PresentValueExpression;
+                                            readonly else: {
+                                                readonly num: 0;
+                                                readonly den: 1;
+                                            };
+                                        };
+                                    };
+                                };
+                                readonly in: {
+                                    readonly $divide: readonly ["$$total.num", "$$total.den"];
+                                };
+                            };
+                        }];
+                    };
+                };
+            };
+        };
+    };
+    readonly itemTotal: {
+        readonly $addFields: {
+            readonly itemTotal: {
+                readonly $reduce: {
+                    readonly input: "$items";
                     readonly initialValue: 0;
                     readonly in: {
                         readonly $sum: readonly ["$$value", {

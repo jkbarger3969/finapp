@@ -12,14 +12,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const paymentMethod_1 = require("../paymentMethod/paymentMethod");
 const paymentMethod = (doc, args, context, info) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const payMethod = (_a = doc.paymentMethod, (_a !== null && _a !== void 0 ? _a : doc));
-    if ("node" in payMethod && "id" in payMethod) {
+    const payMethod = (_a = doc) === null || _a === void 0 ? void 0 : _a.paymentMethod;
+    if (payMethod && "node" in payMethod && "id" in payMethod) {
         return paymentMethod_1.default(payMethod, { id: payMethod.id }, context, info);
     }
     return payMethod;
 });
-const JournalEntry = {
+const JournalRefundEntry = {
     paymentMethod,
 };
-exports.default = JournalEntry;
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiSm91cm5hbEVudHJ5UmVmdW5kUmVzb2x2ZXIuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi8uLi9zcmMvcmVzb2x2ZXJzL2pvdXJuYWxFbnRyeS9Kb3VybmFsRW50cnlSZWZ1bmRSZXNvbHZlci50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7OztBQUVBLGtFQUFtRTtBQUVuRSxNQUFNLGFBQWEsR0FBaUQsQ0FDbEUsR0FBUSxFQUNSLElBQUksRUFDSixPQUFPLEVBQ1AsSUFBSSxFQUNKLEVBQUU7O0lBQ0YsTUFBTSxTQUFTLFNBQUcsR0FBRyxDQUFDLGFBQWEsdUNBQUksR0FBRyxFQUFBLENBQUM7SUFDM0MsSUFBSSxNQUFNLElBQUksU0FBUyxJQUFJLElBQUksSUFBSSxTQUFTLEVBQUU7UUFDNUMsT0FBTyx1QkFBcUIsQ0FDMUIsU0FBUyxFQUNULEVBQUUsRUFBRSxFQUFFLFNBQVMsQ0FBQyxFQUFZLEVBQUUsRUFDOUIsT0FBTyxFQUNQLElBQUksQ0FDTCxDQUFDO0tBQ0g7SUFFRCxPQUFPLFNBQVMsQ0FBQztBQUNuQixDQUFDLENBQUEsQ0FBQztBQUVGLE1BQU0sWUFBWSxHQUFnQztJQUNoRCxhQUFhO0NBQ2QsQ0FBQztBQUVGLGtCQUFlLFlBQVksQ0FBQyJ9
+exports.default = JournalRefundEntry;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiSm91cm5hbEVudHJ5UmVmdW5kUmVzb2x2ZXIuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi8uLi9zcmMvcmVzb2x2ZXJzL2pvdXJuYWxFbnRyeS9Kb3VybmFsRW50cnlSZWZ1bmRSZXNvbHZlci50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7OztBQUNBLGtFQUFpRTtBQUVqRSxNQUFNLGFBQWEsR0FBaUQsQ0FDbEUsR0FBRyxFQUNILElBQUksRUFDSixPQUFPLEVBQ1AsSUFBSSxFQUNKLEVBQUU7O0lBQ0YsTUFBTSxTQUFTLEdBQUcsTUFBQSxHQUFHLDBDQUFFLGFBQW9CLENBQUM7SUFDNUMsSUFBSSxTQUFTLElBQUksTUFBTSxJQUFJLFNBQVMsSUFBSSxJQUFJLElBQUksU0FBUyxFQUFFO1FBQ3pELE9BQU8sdUJBQW1CLENBQ3hCLFNBQVMsRUFDVCxFQUFFLEVBQUUsRUFBRSxTQUFTLENBQUMsRUFBWSxFQUFFLEVBQzlCLE9BQU8sRUFDUCxJQUFJLENBQ0wsQ0FBQztLQUNIO0lBRUQsT0FBTyxTQUFTLENBQUM7QUFDbkIsQ0FBQyxDQUFBLENBQUM7QUFFRixNQUFNLGtCQUFrQixHQUFnQztJQUN0RCxhQUFhO0NBQ2QsQ0FBQztBQUVGLGtCQUFlLGtCQUFrQixDQUFDIn0=
