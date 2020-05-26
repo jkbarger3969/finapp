@@ -104,7 +104,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
     })(),
     // Generate refund ID
     (async () => {
-      refundId = await getUniqueId("refund.id", collection);
+      refundId = await getUniqueId("refunds.id", collection);
     })(),
   ];
 

@@ -103,7 +103,7 @@ const Dashboard = function (props: { deptId: string }) {
     () => ({
       deptId,
       where: {
-        department: { eq: deptId },
+        department: { eq: deptId, matchDecedentTree: true },
         deleted: false,
       },
     }),

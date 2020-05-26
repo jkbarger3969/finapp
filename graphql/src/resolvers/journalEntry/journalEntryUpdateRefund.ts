@@ -117,15 +117,12 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
       throw new Error("Refund total must be greater than 0.");
     }
 
-    const refundTotalEx = getRefundTotals([refundId]);
-
     const [result] = (await collection
       .aggregate([
         { $match: { "refunds.id": refundId } },
         stages.entryTotal,
         //Excluded the current total from the refund total as it WILL change.
-        refundTotalEx,
-        // getRefundTotals([refundId]),
+        getRefundTotals([refundId]),
         { $project: { entryTotal: true, refundTotal: true } },
       ])
       .toArray()) as [{ entryTotal: number; refundTotal: number }];

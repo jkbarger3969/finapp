@@ -6,8 +6,8 @@ import ApolloClient from "apollo-client";
 import {
   JournalEntryAddRefundFields,
   PayMethodEntryOptFragment,
-  AddRefundMutation as AddRefund,
-  AddRefundMutationVariables as AddRefundVars,
+  AddEntryRefundMutation as AddRefund,
+  AddEntryRefundMutationVariables as AddRefundVars,
 } from "../../../../apollo/graphTypes";
 import { TransmutationValue } from "../../../../formik/utils";
 import { JOURNAL_ENTRY_REFUND } from "../../Table/JournalEntries.gql";
@@ -29,7 +29,7 @@ export type AddValues = O.Overwrite<
 >;
 
 const ADD_REFUND = gql`
-  mutation AddRefund(
+  mutation AddEntryRefund(
     $id: ID!
     $fields: JournalEntryAddRefundFields!
     $paymentMethodAdd: PaymentMethodAddFields

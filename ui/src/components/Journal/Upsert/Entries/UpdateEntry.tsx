@@ -260,12 +260,14 @@ const UpdateEntryDialog = (
               <Category
                 disabled={isSubmitting || loading || !!fatalError}
                 fullWidth
+                required
               />
             </Grid>
             <Grid {...gridEntryResponsiveProps}>
               <Department
                 disabled={isSubmitting || loading || !!fatalError}
                 fullWidth
+                required
               />
             </Grid>
             <Grid {...gridEntryResponsiveProps}>

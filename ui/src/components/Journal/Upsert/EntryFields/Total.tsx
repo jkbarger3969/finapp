@@ -69,7 +69,7 @@ const Total = (
         typeof inputValue === "string"
           ? Number.parseFloat(inputValue)
           : inputValue;
-
+      console.log("num", num, "maxTotal", maxTotal);
       if (Number.isNaN(num)) {
         return "Invalid Number";
       } else if (num > maxTotal) {

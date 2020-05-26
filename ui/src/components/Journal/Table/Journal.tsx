@@ -4,6 +4,7 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useRef,
 } from "react";
 import MaterialTable, {
   Column,
@@ -12,10 +13,10 @@ import MaterialTable, {
   MaterialTableProps,
   Components,
   MTableBody,
+  MTableBodyRow,
 } from "material-table";
 import { useQuery, useMutation } from "@apollo/react-hooks";
 import numeral from "numeral";
-import moment from "moment";
 import { capitalCase } from "change-case";
 import Fuse from "fuse.js";
 import {
@@ -48,15 +49,21 @@ import {
   TableCell,
   Typography,
 } from "@material-ui/core";
-import { green, red } from "@material-ui/core/colors";
-import { BankTransferIn, BankTransferOut } from "mdi-material-ui";
+import { green, red, amber, cyan } from "@material-ui/core/colors";
+import {
+  BankTransferIn as BankTransferInIcon,
+  BankTransferOut as BankTransferOutIcon,
+  FileTree as FileTreeIcon,
+} from "mdi-material-ui";
 import gql from "graphql-tag";
+import { format } from "date-fns";
 
 import {
   JournalEntries_1Query as JournalEntriesQuery,
   JournalEntries_1QueryVariables as JournalEntriesQueryVars,
   JournalEntry_1Fragment as JournalEntryFragment,
   JournalEntryRefund_1Fragment as JournalEntryRefundFragment,
+  JournalEntryItem_1Fragment as JournalEntryItemFragment,
   JournalEntryType,
   OnEntryUpsert_1Subscription as OnEntryUpsert,
   ReconcileEntryMutation as ReconcileEntry,
@@ -64,10 +71,7 @@ import {
   ReconcileRefundMutation as ReconcileRefund,
   ReconcileRefundMutationVariables as ReconcileRefundVars,
 } from "../../../apollo/graphTypes";
-import {
-  JOURNAL_ENTRIES,
-  JOURNAL_ENTRY_FRAGMENT,
-} from "../Table/JournalEntries.gql";
+import { JOURNAL_ENTRIES, JOURNAL_ENTRY_FRAGMENT } from "./JournalEntries.gql";
 import { CHECK_ID } from "../constants";
 import AddRefund from "../Upsert/Refunds/AddRefund";
 import UpdateRefund from "../Upsert/Refunds/UpdateRefund";
@@ -75,6 +79,9 @@ import AddEntry from "../Upsert/Entries/AddEntry";
 import UpdateEntry from "../Upsert/Entries/UpdateEntry";
 import DeleteEntry from "../Upsert/Entries/DeleteEntry";
 import DeleteRefund from "../Upsert/Refunds/DeleteRefund";
+import AddItem from "../Upsert/Items/AddItem";
+import UpdateItem from "../Upsert/Items/UpdateItem";
+import DeleteItem from "../Upsert/Items/DeleteItem";
 
 export enum JournalMode {
   View,
@@ -133,18 +140,21 @@ const tableIcons = {
   ViewColumn: forwardRef<SVGSVGElement>((props, ref) => (
     <ViewColumn {...props} ref={ref} />
   )),
-};
+} as const;
 
 export type Entry =
   | JournalEntryFragment
   | (Omit<JournalEntryFragment, "__typename" | "refunds"> &
-      JournalEntryRefundFragment & { refunds: string });
+      JournalEntryRefundFragment & { refunds: string })
+  | (Omit<JournalEntryFragment, "__typename" | "items"> &
+      JournalEntryItemFragment & { items: string });
 
 const entriesGen = function* (
-  entry: JournalEntryFragment
+  entry: JournalEntryFragment,
+  mode: JournalMode
 ): IterableIterator<Entry> {
   yield entry;
-  const type =
+  const refundType =
     entry.type === JournalEntryType.Credit
       ? JournalEntryType.Debit
       : JournalEntryType.Credit;
@@ -152,9 +162,22 @@ const entriesGen = function* (
     yield {
       ...entry,
       ...refund,
-      type,
+      type: refundType,
       description: refund.description || entry.description,
       refunds: entry.id,
+    };
+  }
+  if (mode === JournalMode.Reconcile) {
+    return;
+  }
+  for (const item of entry.items) {
+    yield {
+      ...entry,
+      ...item,
+      category: item.category || entry.category,
+      department: item.department || entry.department,
+      description: item.description || entry.description,
+      items: entry.id,
     };
   }
 };
@@ -250,10 +273,41 @@ const Journal = (props: {
     setUpdateRefund,
   ]);
 
-  // Delete Entry
+  // Delete Refund
   const [deleteRefund, setDeleteRefund] = useState<string | null>(null);
   const deleteRefundOnClose = useCallback(() => void setDeleteRefund(null), [
     setDeleteRefund,
+  ]);
+
+  // Add Item
+  const [addItemOpen, setAddItemOpen] = useState<boolean>(false);
+  const [addItemToEntry, setAddItemToEntry] = useState<string | null>(null);
+
+  const addItemOnClose = useCallback(() => void setAddItemOpen(false), [
+    setAddItemOpen,
+  ]);
+  const addItemOnExited = useCallback(() => void setAddItemToEntry(null), [
+    setAddItemToEntry,
+  ]);
+
+  // Update Item
+  const [updateItemOpen, setUpdateItemOpen] = useState<boolean>(false);
+  const [updateItem, setUpdateItem] = useState<{
+    entryId: string;
+    itemId: string;
+  } | null>(null);
+
+  // Delete Item
+  const [deleteItem, setDeleteItem] = useState<string | null>(null);
+  const deleteItemOnClose = useCallback(() => void setDeleteItem(null), [
+    setDeleteItem,
+  ]);
+
+  const updateItemOnClose = useCallback(() => void setUpdateItemOpen(false), [
+    setUpdateItemOpen,
+  ]);
+  const updateItemOnExited = useCallback(() => void setUpdateItem(null), [
+    setUpdateItem,
   ]);
 
   // Reconcile Entry
@@ -270,7 +324,7 @@ const Journal = (props: {
   const variables = useMemo<JournalEntriesQueryVars | undefined>(() => {
     return deptId
       ? {
-          where: { department: { eq: deptId } },
+          where: { department: { eq: deptId, matchDecedentTree: true } },
         }
       : undefined;
   }, [deptId]);
@@ -330,105 +384,145 @@ const Journal = (props: {
   }, [deptId, subscribeToMore]);
 
   const columns = useMemo<Column<Entry>[]>(() => {
-    const searchable = false;
-    const filtering = false;
-    const sorting = false;
-
     return [
       {
         field: "reconciled",
         title: "Reconciled",
         render: ({ reconciled }) => (reconciled ? <DoneIcon /> : null),
-        customFilterAndSearch: (filter, rowData) => {
-          const momentDate = moment(rowData.date);
-
-          const search: {
-            [P in keyof Omit<
-              Entry,
-              "id" | "__typename" | "deleted" | "lastUpdate" | "refunds"
-            >]-?: string[];
-          } = {
-            type: [
-              rowData.type === JournalEntryType.Credit ? "credit" : "debit",
-            ],
-            date: [
-              momentDate.format("dddd, MMMM Do YYYY, h:mm:ss a"),
-              momentDate.toString(),
-              momentDate.format("M/d/YY"),
-              momentDate.format("M/d/YYYY"),
-              momentDate.format("MMM DD, YYYY"),
-            ],
-            description: [rowData.description || ""],
-            reconciled: [rowData.reconciled ? "reconciled" : ""],
-            department: [rowData.department.name],
-            category: [rowData.category.name],
-            paymentMethod: [
-              rowData.paymentMethod.parent?.id === CHECK_ID
-                ? `CK-${rowData.paymentMethod.name}`
-                : rowData.paymentMethod.name,
-            ],
-            source: [
-              (() => {
-                switch (rowData.source.__typename) {
-                  case "Person":
-                    return `${rowData.source.name.first} ${rowData.source.name.last}`;
-                  case "Business":
-                    return rowData.source.bizName;
-                  case "Department":
-                    return rowData.source.deptName;
-                }
-              })(),
-            ],
-            total: [
-              numeral(rowData.total.num / rowData.total.den).format("$0,0.00"),
-            ],
-          };
-
-          const fuseResult = new Fuse([search], {
-            threshold: 0.4,
-            useExtendedSearch: true,
-            keys: [
-              "date",
-              "type",
-              "description",
-              "reconciled",
-              "department",
-              "category",
-              "paymentMethod",
-              "source",
-              "total",
-            ],
-          }).search(filter);
-          return fuseResult.length > 0;
+        sorting: true,
+        searchable: true,
+        customSort: (
+          { reconciled: reconciledA },
+          { reconciled: reconciledB }
+        ) => {
+          return +reconciledA - +reconciledB;
+        },
+        customFilterAndSearch: (filter, { reconciled }) => {
+          if (reconciled) {
+            return (
+              ((filter as string) || "").trim().toLowerCase() === "reconciled"
+            );
+          }
+          return (
+            ((filter as string) || "").trim().toLowerCase() === "!reconciled"
+          );
         },
         hidden: mode === JournalMode.Reconcile,
-        filtering,
-        sorting,
+        filtering: false,
       },
       {
         field: "total",
         title: "Total",
         render: ({ total: { num, den } }) =>
           numeral(num / den).format("$0,0.00"),
-        searchable,
-        filtering,
-        sorting,
+        searchable: true,
+        filtering: false,
+        sorting: true,
+        customSort: ({ total: totalA }, { total: totalB }) => {
+          return totalA.num / totalA.den - totalB.num / totalB.den;
+        },
+        customFilterAndSearch: (filter, { total: { num, den } }) => {
+          return (
+            new Fuse(
+              [
+                {
+                  total: [
+                    numeral(num / den).format("$0,0.00"),
+                    (num / den).toFixed(2),
+                  ],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["total"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
       {
         field: "date",
         title: "Date",
-        render: ({ date }) => moment(date).format("MMM DD, YYYY"),
-        searchable,
-        filtering,
-        sorting,
+        render: ({ date }) => format(new Date(date), "MMM dd, yyyy"),
+        searchable: true,
+        filtering: false,
+        sorting: true,
+        defaultSort: "desc",
+        customSort: ({ date: dateA }, { date: dateB }) => {
+          return new Date(dateA).getTime() - new Date(dateB).getTime();
+        },
+        customFilterAndSearch: (filter, { date: dateStr }) => {
+          const date = new Date(dateStr);
+
+          return (
+            new Fuse(
+              [
+                {
+                  date: [
+                    dateStr,
+                    format(date, "M/d/yy"),
+                    format(date, "MM/d/yy"),
+                    format(date, "M/d/yyyy"),
+                    format(date, "MM/d/yyyy"),
+                    format(date, "MMM dd, yyyy"),
+                  ],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["date"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
       {
         field: "category",
         title: "Category",
-        render: ({ category }) => capitalCase(category.name),
-        searchable,
-        filtering,
-        sorting,
+        render: (data, type) => {
+          const name =
+            type === "group"
+              ? ((data as any) as JournalEntryFragment["category"]).name
+              : data.category.name;
+          return capitalCase(name);
+        },
+        searchable: true,
+        filtering: false,
+        sorting: true,
+        customSort: (dataA, dataB) => {
+          const { category: categoryA } = dataA;
+          const { category: categoryB } = dataB;
+
+          const nameA = categoryA.name.toUpperCase(); // ignore upper and lowercase
+          const nameB = categoryB.name.toUpperCase(); // ignore upper and lowercase
+          if (nameA < nameB) {
+            return -1;
+          }
+          if (nameA > nameB) {
+            return 1;
+          }
+
+          // names must be equal
+          return 0;
+        },
+        customFilterAndSearch: (filter, { category: { name } }) => {
+          return (
+            new Fuse(
+              [
+                {
+                  category: [name],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["category"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
       {
         field: "source",
@@ -443,9 +537,68 @@ const Journal = (props: {
               return source.deptName;
           }
         },
-        searchable,
-        filtering,
-        sorting,
+        searchable: true,
+        filtering: false,
+        sorting: true,
+        customSort: ({ source: sourceA }, { source: sourceB }) => {
+          const nameA = (() => {
+            switch (sourceA.__typename) {
+              case "Person":
+                return sourceA.name.last.toUpperCase();
+              case "Business":
+                return sourceA.bizName.toUpperCase();
+              case "Department":
+                return sourceA.deptName.toUpperCase();
+            }
+          })();
+
+          const nameB = (() => {
+            switch (sourceB.__typename) {
+              case "Person":
+                return sourceB.name.last.toUpperCase();
+              case "Business":
+                return sourceB.bizName.toUpperCase();
+              case "Department":
+                return sourceB.deptName.toUpperCase();
+            }
+          })();
+          if (nameA < nameB) {
+            return -1;
+          }
+          if (nameA > nameB) {
+            return 1;
+          }
+
+          // names must be equal
+          return 0;
+        },
+        customFilterAndSearch: (filter, { source }) => {
+          return (
+            new Fuse(
+              [
+                {
+                  source: [
+                    (() => {
+                      switch (source.__typename) {
+                        case "Person":
+                          return `${source.name.first} ${source.name.last}`;
+                        case "Business":
+                          return source.bizName;
+                        case "Department":
+                          return source.deptName;
+                      }
+                    })(),
+                  ],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["source"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
       {
         field: "paymentMethod",
@@ -454,25 +607,121 @@ const Journal = (props: {
           paymentMethod.parent?.id === CHECK_ID
             ? `CK-${paymentMethod.name}`
             : paymentMethod.name,
-        searchable,
-        filtering,
-        sorting,
+        searchable: true,
+        filtering: false,
+        sorting: true,
+        customSort: (
+          { paymentMethod: paymentMethodA },
+          { paymentMethod: paymentMethodB }
+        ) => {
+          const nameA = (() => {
+            return (paymentMethodA.parent?.id === CHECK_ID
+              ? `CK-${paymentMethodA.name}`
+              : paymentMethodA.name
+            ).toUpperCase();
+          })();
+
+          const nameB = (() => {
+            return (paymentMethodB.parent?.id === CHECK_ID
+              ? `CK-${paymentMethodB.name}`
+              : paymentMethodB.name
+            ).toUpperCase();
+          })();
+          if (nameA < nameB) {
+            return -1;
+          }
+          if (nameA > nameB) {
+            return 1;
+          }
+
+          // names must be equal
+          return 0;
+        },
+        customFilterAndSearch: (filter, { paymentMethod }) => {
+          return (
+            new Fuse(
+              [
+                {
+                  paymentMethod: [
+                    paymentMethod.parent?.id === CHECK_ID
+                      ? `CK-${paymentMethod.name}`
+                      : paymentMethod.name,
+                  ],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["paymentMethod"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
       {
         field: "description",
         title: "Description",
         render: ({ description }) => description,
-        searchable,
-        filtering,
-        sorting,
+        searchable: true,
+        filtering: false,
+        sorting: false,
+        customFilterAndSearch: (filter, { description }) => {
+          return (
+            new Fuse(
+              [
+                {
+                  description: [description?.trim() || ""],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["description"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
       {
         field: "department",
         title: "Department",
         render: ({ department }) => capitalCase(department.name),
-        searchable,
-        filtering,
-        sorting,
+        searchable: true,
+        filtering: false,
+        sorting: true,
+        customSort: (
+          { department: departmentA },
+          { department: departmentB }
+        ) => {
+          const nameA = departmentA.name.toUpperCase();
+          const nameB = departmentB.name.toUpperCase();
+
+          if (nameA < nameB) {
+            return -1;
+          }
+          if (nameA > nameB) {
+            return 1;
+          }
+
+          // names must be equal
+          return 0;
+        },
+        customFilterAndSearch: (filter, { department }) => {
+          return (
+            new Fuse(
+              [
+                {
+                  department: [department.name],
+                },
+              ],
+              {
+                threshold: 0.4,
+                useExtendedSearch: true,
+                keys: ["department"],
+              }
+            ).search(filter).length > 0
+          );
+        },
       },
     ];
   }, [mode]);
@@ -503,12 +752,54 @@ const Journal = (props: {
     []
   );
 
+  const parentChildData = useCallback<
+    NonNullable<MaterialTableProps<Entry>["parentChildData"]>
+  >(
+    (child, parents) =>
+      child.__typename === "JournalEntryItem"
+        ? parents.find((parent) => parent.id === child.items)
+        : undefined,
+    []
+  );
+
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const onTreeExpandChange = useCallback<
+    NonNullable<MaterialTableProps<Entry>["onTreeExpandChange"]>
+  >(
+    (entry: Entry, isExpanded) => {
+      if (isExpanded) {
+        expandedItems.add(entry.id);
+      } else {
+        expandedItems.delete(entry.id);
+      }
+      setExpandedItems(new Set(expandedItems));
+    },
+    [expandedItems, setExpandedItems]
+  );
+
   const options = useMemo<Options>(
     () => ({
-      rowStyle: ({ type }: Entry) => ({
-        color: type === JournalEntryType.Credit ? green[900] : red[900],
-      }),
-      // -53px = pagination, -64px = toolbar
+      rowStyle: (data: Entry) => {
+        const style = {} as React.CSSProperties;
+
+        style.color =
+          data.type === JournalEntryType.Credit ? green[900] : red[900];
+
+        if (
+          data.__typename === "JournalEntry" &&
+          data.items.filter((item) => !item.deleted).length > 0 &&
+          expandedItems.has(data.id)
+        ) {
+          style.backgroundColor = cyan[100];
+        }
+
+        if (data.__typename === "JournalEntryItem") {
+          style.backgroundColor = amber[100];
+        }
+
+        return style;
+      },
       maxBodyHeight: "calc(100vh - 53px - 64px)",
       headerStyle: { position: "sticky", top: 0 },
       pageSize: 25,
@@ -516,8 +807,11 @@ const Journal = (props: {
       showTitle: !!journalTitle,
       selection: mode === JournalMode.Reconcile,
       showSelectAllCheckbox: false,
+      debounceInterval: 500,
+      emptyRowsWhenPaging: false,
+      columnsButton: true,
     }),
-    [journalTitle, mode]
+    [expandedItems, journalTitle, mode]
   );
 
   const actions = useMemo<MaterialTableProps<Entry>["actions"]>(() => {
@@ -558,49 +852,76 @@ const Journal = (props: {
 
     return [
       (rowData) => {
-        const isRefund = rowData.__typename === "JournalEntryRefund";
+        const { tooltip, onClick } = (() => {
+          switch (rowData.__typename) {
+            case "JournalEntry":
+              return {
+                tooltip: "Delete Entry",
+                onClick: (event, rowData) => setDeleteEntry(rowData.id),
+              };
+            case "JournalEntryItem":
+              return {
+                tooltip: "Delete Item",
+                onClick: (event, rowData) => setDeleteItem(rowData.id),
+              };
+            case "JournalEntryRefund":
+              return {
+                tooltip: "Delete Refund",
+                onClick: (event, rowData) => setDeleteRefund(rowData.id),
+              };
+          }
+        })();
+
         return {
           icon: DeleteIcon as any,
-          tooltip: `Delete ${isRefund ? "Refund" : "Entry"}`,
-          onClick: async (event, rowData) => {
-            await Promise.all(
-              (Array.isArray(rowData) ? rowData : [rowData]).map(
-                async (entry) => {
-                  if (entry.deleted) {
-                    return;
-                  } else if (entry.__typename === "JournalEntryRefund") {
-                    setDeleteRefund(entry.id);
-                  } else {
-                    setDeleteEntry(entry.id);
-                  }
-                }
-              )
-            );
-          },
+          tooltip,
+          onClick,
         };
       },
       (rowData) => {
-        const isRefund = rowData.__typename === "JournalEntryRefund";
+        const { tooltip, onClick } = (() => {
+          switch (rowData.__typename) {
+            case "JournalEntry":
+              return {
+                tooltip: "Edit Entry",
+                onClick: (event, rowData) => {
+                  setUpdateEntryOpen(true);
+                  setUpdateEntry((rowData as Entry).id);
+                },
+              };
+            case "JournalEntryItem":
+              return {
+                tooltip: "Edit Item",
+                onClick: (event, rowData) => {
+                  setUpdateItemOpen(true);
+                  setUpdateItem({
+                    entryId: (rowData as Entry).items as string,
+                    itemId: (rowData as Entry).id,
+                  });
+                },
+              };
+            case "JournalEntryRefund":
+              return {
+                tooltip: "Edit Refund",
+                onClick: (event, rowData) => {
+                  setUpdateRefundOpen(true);
+                  setUpdateRefund({
+                    entryId: (rowData as Entry).refunds as string,
+                    refundId: (rowData as Entry).id,
+                  });
+                },
+              };
+          }
+        })();
 
         return {
           icon: Edit as any,
-          tooltip: `Update ${isRefund ? "Refund" : "Entry"}`,
-          onClick: (event, rowData) => {
-            if (isRefund) {
-              setUpdateRefundOpen(true);
-              setUpdateRefund({
-                entryId: (rowData as Entry).refunds as string,
-                refundId: (rowData as Entry).id,
-              });
-            } else {
-              setUpdateEntryOpen(true);
-              setUpdateEntry((rowData as Entry).id);
-            }
-          },
+          tooltip,
+          onClick,
         };
       },
       (rowData) => {
-        if (rowData.__typename === "JournalEntryRefund") {
+        if (rowData.__typename !== "JournalEntry") {
           return null as any;
         }
 
@@ -609,9 +930,9 @@ const Journal = (props: {
         return {
           icon: ((props) =>
             isCredit ? (
-              <BankTransferOut {...props} />
+              <BankTransferOutIcon {...props} />
             ) : (
-              <BankTransferIn {...props} />
+              <BankTransferInIcon {...props} />
             )) as any,
           tooltip: isCredit ? "Give Refund" : "Add Refund",
           iconProps: {
@@ -622,6 +943,20 @@ const Journal = (props: {
           onClick: (event, rowData) => {
             setAddRefundOpen(true);
             setAddRefundToEntry((rowData as JournalEntryFragment).id);
+          },
+        };
+      },
+      (rowData) => {
+        if (rowData.__typename !== "JournalEntry") {
+          return null;
+        }
+
+        return {
+          icon: FileTreeIcon,
+          tooltip: "Itemize",
+          onClick: (event, rowData) => {
+            setAddItemOpen(true);
+            setAddItemToEntry((rowData as JournalEntryFragment).id);
           },
         };
       },
@@ -662,8 +997,32 @@ const Journal = (props: {
             </TableBody>
           )
         : (props) => <MTableBody {...props} />,
+      Row: (props) => {
+        const entry = props?.data as Entry & {
+          tableData?: { isTreeExpanded?: boolean };
+        };
+        if (
+          entry &&
+          entry.__typename === "JournalEntry" &&
+          expandedItems.has(entry.id) &&
+          entry.items.length > 0 &&
+          entry?.tableData?.isTreeExpanded !== true
+        ) {
+          props = {
+            ...props,
+            data: {
+              ...entry,
+              tableData: {
+                ...(entry.tableData || {}),
+                isTreeExpanded: true,
+              },
+            },
+          };
+        }
+        return <MTableBodyRow {...props} />;
+      },
     }),
-    [error, columns, actions]
+    [error, columns.length, actions, expandedItems]
   );
 
   const journalEntries = data?.journalEntries || [];
@@ -675,7 +1034,7 @@ const Journal = (props: {
 
     return journalEntries
       .reduce((entries: Entry[], journalEntry) => {
-        for (const entry of entriesGen(journalEntry)) {
+        for (const entry of entriesGen(journalEntry, mode)) {
           if (filters.every((filter) => filter(entry))) {
             entries.push(entry);
           }
@@ -698,6 +1057,8 @@ const Journal = (props: {
         actions={actions}
         components={components}
         title={journalTitle ?? undefined}
+        parentChildData={parentChildData}
+        onTreeExpandChange={onTreeExpandChange}
       />
       <AddEntry deptId={deptId} open={addEntryOpen} onClose={addEntryOnClose} />
       <UpdateEntry
@@ -721,6 +1082,20 @@ const Journal = (props: {
         onExited={updateRefundOnExited}
       />
       <DeleteRefund refundId={deleteRefund} onClose={deleteRefundOnClose} />
+      <AddItem
+        entryId={addItemToEntry}
+        open={addItemOpen}
+        onClose={addItemOnClose}
+        onExited={addItemOnExited}
+      />
+      <UpdateItem
+        entryId={updateItem?.entryId ?? null}
+        itemId={updateItem?.itemId ?? null}
+        open={updateItemOpen}
+        onClose={updateItemOnClose}
+        onExited={updateItemOnExited}
+      />
+      <DeleteItem itemId={deleteItem} onClose={deleteItemOnClose} />
     </React.Fragment>
   );
 };

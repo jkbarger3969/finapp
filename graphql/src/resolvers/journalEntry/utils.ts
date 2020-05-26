@@ -4,6 +4,7 @@ import {
   JournalEntrySourceType,
   JournalEntry,
   JournalEntryRefund,
+  JournalEntryItem,
   JournalEntryType,
 } from "../../graphTypes";
 import { Context } from "../../types";
@@ -72,7 +73,7 @@ export const entryAddFieldsStage = {
         const obj: {
           [P in keyof Omit<
             JournalEntry,
-            "__typename" | "id" | "refunds" | "lastUpdate"
+            "__typename" | "id" | "refunds" | "items" | "lastUpdate"
           >]-?: null;
         } = {
           type: null,
@@ -95,6 +96,7 @@ export const entryAddFieldsStage = {
         {
           $let: {
             vars: {
+              // Get entry delete status
               entryDeleted: DocHistory.getPresentValueExpression("deleted", {
                 defaultValue: false,
               }),
@@ -127,6 +129,61 @@ export const entryAddFieldsStage = {
                         { asVar: "refund" }
                       ),
                     },
+                    // Override item delete status if entry is deleted
+                    {
+                      $cond: {
+                        if: "$$entryDeleted",
+                        then: { deleted: true },
+                        else: {},
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+        [],
+      ],
+    },
+    items: {
+      $ifNull: [
+        {
+          $let: {
+            vars: {
+              // Get entry delete status
+              entryDeleted: DocHistory.getPresentValueExpression("deleted", {
+                defaultValue: false,
+              }),
+            },
+            in: {
+              $map: {
+                input: "$items",
+                as: "item",
+                in: {
+                  $mergeObjects: [
+                    "$$item",
+                    {
+                      ...DocHistory.getPresentValues(
+                        (() => {
+                          const obj: {
+                            [P in keyof Omit<
+                              JournalEntryItem,
+                              "__typename" | "id" | "lastUpdate"
+                            >]-?: null;
+                          } = {
+                            total: null,
+                            department: null,
+                            category: null,
+                            description: null,
+                            deleted: null,
+                          };
+                          return Object.keys(obj);
+                        })(),
+                        { asVar: "item" }
+                      ),
+                    },
+                    // Override item delete status if entry is deleted
                     {
                       $cond: {
                         if: "$$entryDeleted",
@@ -172,6 +229,22 @@ export const entryTransmutationsStage = {
               id: { $toString: "$$refund.id" },
               date: { $toString: "$$refund.date" },
               lastUpdate: { $toString: "$$refund.lastUpdate" },
+            },
+          ],
+        },
+      },
+    },
+    items: {
+      $map: {
+        input: "$items",
+        as: "item",
+        in: {
+          $mergeObjects: [
+            "$$item",
+            {
+              id: { $toString: "$$item.id" },
+              date: { $toString: "$$item.date" },
+              lastUpdate: { $toString: "$$item.lastUpdate" },
             },
           ],
         },
@@ -240,6 +313,66 @@ export const getRefundTotals = (exclude: (ObjectID | string)[] = []) => {
   } as const;
 };
 
+export const getItemTotals = (exclude: (ObjectID | string)[] = []) => {
+  const $eq = [
+    DocHistory.getPresentValueExpression("deleted", {
+      defaultValue: true,
+      asVar: "this",
+    }),
+    false,
+  ];
+
+  const condition =
+    exclude.length > 0
+      ? {
+          $and: [
+            { $eq },
+            {
+              $not: {
+                $in: ["$$this.id", exclude.map((id) => new ObjectID(id))],
+              },
+            },
+          ],
+        }
+      : { $eq };
+
+  return {
+    $addFields: {
+      itemTotal: {
+        $reduce: {
+          input: "$items",
+          initialValue: 0,
+          in: {
+            $sum: [
+              "$$value",
+              {
+                $let: {
+                  vars: {
+                    total: {
+                      $cond: {
+                        if: condition,
+                        then: DocHistory.getPresentValueExpression("total", {
+                          defaultValue: { num: 0, den: 1 },
+                          asVar: "this",
+                        }),
+                        else: {
+                          num: 0,
+                          den: 1,
+                        },
+                      },
+                    },
+                  },
+                  in: { $divide: ["$$total.num", "$$total.den"] },
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  } as const;
+};
+
 export const stages = {
   entryAddFields: entryAddFieldsStage,
   entryTransmutations: entryTransmutationsStage,
@@ -258,4 +391,5 @@ export const stages = {
     },
   },
   refundTotal: getRefundTotals(),
+  itemTotal: getItemTotals(),
 } as const;

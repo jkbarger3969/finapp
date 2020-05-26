@@ -74,7 +74,7 @@ const renderTags: AutocompleteProps["renderTags"] = (
 const NULLISH = Symbol();
 
 export type CategoryProps = {
-  entryType?: string | null;
+  entryType?: JournalEntryType | null;
   variant?: "filled" | "outlined";
   autoFocus?: boolean;
 } & Omit<TextFieldProps, "value">;
@@ -85,12 +85,14 @@ const Category = function (props: CategoryProps) {
     type?: JournalEntryType;
   }>();
 
-  const { disabled: disabledFromProps = false } = props;
+  const { disabled: disabledFromProps = false, required } = props;
+
+  const { entryType: entryTypeFromProps, ...textFieldProps } = props;
 
   const value = formikContext.values?.category?.value || [];
   const inputValue =
     formikContext.values?.category?.inputValue.trimLeft() || "";
-  const entryType = formikContext.values?.type ?? null;
+  const entryType = entryTypeFromProps ?? formikContext.values?.type ?? null;
 
   const catValue = value[value.length - 1];
 
@@ -152,12 +154,15 @@ const Category = function (props: CategoryProps) {
       const value = values[values.length - 1] || null;
 
       if (!value) {
-        return "Category Required";
+        if (required) {
+          return "Category Required";
+        }
+        return;
       } else if (options.length > 0) {
         return "Sub-category Required";
       }
     },
-    [options]
+    [options, required]
   );
 
   const [field, meta, helpers] = useField<CatValueBeta | null | undefined>({
@@ -207,8 +212,8 @@ const Category = function (props: CategoryProps) {
     (params: RenderInputParams) => {
       return (
         <TextField
-          {...(props as any)}
-          variant={props.variant || "filled"}
+          {...(textFieldProps as any)}
+          variant={textFieldProps.variant || "filled"}
           {...params}
           error={(touched && !!error) || !!gqlError}
           disabled={disabled}
@@ -218,7 +223,7 @@ const Category = function (props: CategoryProps) {
         />
       );
     },
-    [props, touched, error, gqlError, disabled, helperText]
+    [textFieldProps, touched, error, gqlError, disabled, helperText]
   );
 
   const [hasFocus, setHasFocus] = useState(false);

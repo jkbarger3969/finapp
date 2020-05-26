@@ -1,16 +1,15 @@
 import { JournalEntryRefundResolvers } from "../../graphTypes";
-import { nodeFieldResolver } from "../utils/nodeResolver";
-import paymentMethodResolver from "../paymentMethod/paymentMethod";
+import lookupPaymentMethod from "../paymentMethod/paymentMethod";
 
 const paymentMethod: JournalEntryRefundResolvers["paymentMethod"] = async (
-  doc: any,
+  doc,
   args,
   context,
   info
 ) => {
-  const payMethod = doc.paymentMethod ?? doc;
-  if ("node" in payMethod && "id" in payMethod) {
-    return paymentMethodResolver(
+  const payMethod = doc?.paymentMethod as any;
+  if (payMethod && "node" in payMethod && "id" in payMethod) {
+    return lookupPaymentMethod(
       payMethod,
       { id: payMethod.id as string },
       context,
@@ -21,8 +20,8 @@ const paymentMethod: JournalEntryRefundResolvers["paymentMethod"] = async (
   return payMethod;
 };
 
-const JournalEntry: JournalEntryRefundResolvers = {
+const JournalRefundEntry: JournalEntryRefundResolvers = {
   paymentMethod,
 };
 
-export default JournalEntry;
+export default JournalRefundEntry;

@@ -72,7 +72,7 @@ export type DepartmentProps = {
 } & Omit<TextFieldProps, "value">;
 
 const Department = function (props: DepartmentProps) {
-  const { disabled: disabledFromProps = false } = props;
+  const { disabled: disabledFromProps = false, required } = props;
 
   const [formikStatus, setFormikStatus] = useFormikStatus();
 
@@ -104,7 +104,10 @@ const Department = function (props: DepartmentProps) {
   const validate = useCallback(
     (value: DeptValue | null) => {
       if (!value) {
-        return "Department Required";
+        if (required) {
+          return "Department Required";
+        }
+        return;
       } else if (
         depts.some(
           ({ parent }) =>
@@ -114,7 +117,7 @@ const Department = function (props: DepartmentProps) {
         return "Sub-department Required";
       }
     },
-    [depts]
+    [depts, required]
   );
 
   const [field, meta, helpers] = useField<DeptValue | null>({
