@@ -1,53 +1,67 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
+import { Formik, FormikConfig, useFormikContext, FormikProps } from "formik";
 import {
   Dialog,
   DialogTitle,
-  Box,
   DialogContent,
-  DialogContentText,
-  PaperProps,
-  Grid,
   DialogActions,
   Button,
+  PaperProps,
+  Grid,
+  DialogContentText,
   useTheme,
+  Box,
   GridProps,
 } from "@material-ui/core";
+import {
+  useApolloClient,
+  useQuery,
+  QueryHookOptions,
+} from "@apollo/react-hooks";
 import {
   Add as AddIcon,
   Cancel as CancelIcon,
   Queue as QueueIcon,
 } from "@material-ui/icons";
-import { Formik, FormikConfig, FormikProps, useFormikContext } from "formik";
-import { useApolloClient, useQuery } from "@apollo/react-hooks";
 import gql from "graphql-tag";
 
-import {
-  DeptIniValueForAddEntryQuery as DeptIniValueForAddEntry,
-  DeptIniValueForAddEntryQueryVariables as DeptIniValueForAddEntryVars,
-} from "../../../../apollo/graphTypes";
 import submitAdd, { AddValues } from "./submitAdd";
 import {
-  FormikStatusType,
-  FormikStatus,
-  useFormikStatus,
-} from "../../../../formik/utils";
-import { DEPT_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";
-import OverlayLoading from "../../../Utils/OverlayLoading";
-import Overlay from "../../../Utils/Overlay";
-import DateEntry from "../EntryFields/DateEntry";
+  GetEntryItemState_1Query as GetEntryItemState,
+  GetEntryItemState_1QueryVariables as GetEntryItemStateVars,
+} from "../../../../apollo/graphTypes";
 import Description from "../EntryFields/Description";
 import Total from "../EntryFields/Total";
-import Reconcile from "../EntryFields/Reconcile";
-import PaymentMethod from "../EntryFields/PaymentMethod";
 import Category from "../EntryFields/Category";
 import Department from "../EntryFields/Department";
-import Source from "../EntryFields/Source";
-import Type from "../EntryFields/Type";
+import {
+  FormikStatusType,
+  useFormikStatus,
+  FormikStatus,
+} from "../../../../formik/utils";
+import OverlayLoading from "../../../Utils/OverlayLoading";
+import Overlay from "../../../Utils/Overlay";
+import { JOURNAL_FRAGMENT } from "./items.gql";
+import {
+  addRational,
+  subRational,
+  rationalToDecimal,
+} from "../../../../utils/transmutations";
 
-export interface AddEntryProps {
-  deptId?: string | null;
+const ENTRY_ITEM_STATE = gql`
+  query GetEntryItemState_1($id: ID!) {
+    journalEntry(id: $id) {
+      ...JournalEntry_3Fragment
+    }
+  }
+  ${JOURNAL_FRAGMENT}
+`;
+
+export interface AddItemProps {
+  entryId: string | null;
   open: boolean;
   onClose: () => void;
+  onExited: () => void;
 }
 
 const gridEntryResponsiveProps: GridProps = {
@@ -57,27 +71,64 @@ const gridEntryResponsiveProps: GridProps = {
   xs: 12,
 } as const;
 
-const DEPT_INI_VALUE = gql`
-  query DeptIniValueForAddEntry($id: ID!) {
-    department(id: $id) {
-      ...DeptEntryOptFragment
-    }
-  }
-  ${DEPT_ENTRY_OPT_FRAGMENT}
-`;
-
-const AddEntryDialog = (
-  props: AddEntryProps & {
-    loading: boolean;
+// Must be in separate component to access FormikContext.
+const AddItemDialog = (
+  props: AddItemProps & {
+    handleSubmit: FormikProps<AddValues>["handleSubmit"];
   }
 ) => {
-  const { open, onClose, loading } = props;
+  const { entryId, open, onClose, onExited: onExitedCb } = props;
 
   const { resetForm, isSubmitting, isValid, submitForm } = useFormikContext<
     AddValues
   >();
 
   const [formikStatus, setFormikStatus] = useFormikStatus();
+
+  const onError = useCallback<
+    NonNullable<
+      QueryHookOptions<GetEntryItemState, GetEntryItemStateVars>["onError"]
+    >
+  >(
+    (error) =>
+      setFormikStatus({
+        msg: error.message,
+        type: FormikStatusType.FATAL_ERROR,
+      }),
+    [setFormikStatus]
+  );
+
+  const { loading, data } = useQuery<GetEntryItemState, GetEntryItemStateVars>(
+    ENTRY_ITEM_STATE,
+    {
+      skip: !entryId,
+      variables: { id: entryId as string },
+      onError,
+    }
+  );
+
+  const type = data?.journalEntry?.type ?? null;
+
+  const total = data?.journalEntry?.total;
+  const items = data?.journalEntry?.items || [];
+  const maxTotal = useMemo(() => {
+    if (total) {
+      const totalItems = items.reduce(
+        (totalItems, { deleted, total }) => {
+          return deleted ? totalItems : addRational(totalItems, total);
+        },
+        { num: 0, den: 1 }
+      );
+      return rationalToDecimal(subRational(total, totalItems));
+    }
+    return Number.MAX_SAFE_INTEGER;
+  }, [total, items]);
+
+  const onExited = useCallback(() => {
+    onExitedCb();
+    resetForm();
+    setFormikStatus(null);
+  }, [resetForm, onExitedCb, setFormikStatus]);
 
   const [generalError, fatalError] = useMemo<
     [string | null, boolean | null]
@@ -95,21 +146,18 @@ const AddEntryDialog = (
     return [null, null];
   }, [formikStatus]);
 
-  const onExited = useCallback(() => {
-    resetForm();
-    setFormikStatus(null);
-  }, [resetForm, setFormikStatus]);
+  const title = useMemo(() => {
+    const title = "Add Item";
 
-  const title = useMemo<string>(() => {
     if (fatalError) {
       return "Fatal Error";
-    } else if (isSubmitting) {
-      return "Submitting Add Entry...";
     } else if (loading) {
-      return "Loading Add Entry...";
+      return `Loading ${title}...`;
+    } else if (isSubmitting) {
+      return `Submitting ${title}`;
     }
-    return "Add Entry";
-  }, [fatalError, isSubmitting, loading]);
+    return title;
+  }, [loading, fatalError, isSubmitting]);
 
   const theme = useTheme();
 
@@ -166,7 +214,7 @@ const AddEntryDialog = (
         {title}
       </DialogTitle>
       <Box position="relative">
-        {(isSubmitting || loading) && !generalError && (
+        {(loading || isSubmitting) && !generalError && (
           <OverlayLoading zIndex="modal" />
         )}
         {!!generalError && fatalError && (
@@ -179,66 +227,27 @@ const AddEntryDialog = (
             <DialogContentText color="error">{generalError}</DialogContentText>
           )}
           <Grid container spacing={2}>
-            <Grid {...gridEntryResponsiveProps} justify="center" container>
-              <Type
-                style={{ margin: theme.spacing(1) }}
-                label="start"
-                disabled={loading || isSubmitting || !!fatalError}
+            <Grid {...gridEntryResponsiveProps}>
+              <Total
+                disabled={loading || isSubmitting}
+                fullWidth
+                maxTotal={maxTotal}
               />
             </Grid>
             <Grid {...gridEntryResponsiveProps}>
-              <DateEntry
-                disabled={loading || isSubmitting || !!fatalError}
-                fullWidth
-              />
-            </Grid>
-            <Grid {...gridEntryResponsiveProps}>
-              <Source
-                disabled={loading || isSubmitting || !!fatalError}
-                fullWidth
-              />
+              <Description disabled={loading || isSubmitting} fullWidth />
             </Grid>
             <Grid {...gridEntryResponsiveProps}>
               <Category
                 disabled={loading || isSubmitting || !!fatalError}
+                entryType={type}
                 fullWidth
-                required
               />
             </Grid>
             <Grid {...gridEntryResponsiveProps}>
               <Department
                 disabled={loading || isSubmitting || !!fatalError}
                 fullWidth
-                required
-              />
-            </Grid>
-            <Grid {...gridEntryResponsiveProps}>
-              <Description
-                disabled={loading || isSubmitting || !!fatalError}
-                fullWidth
-              />
-            </Grid>
-            <Grid {...gridEntryResponsiveProps}>
-              <PaymentMethod
-                disabled={loading || isSubmitting || !!fatalError}
-                fullWidth
-              />
-            </Grid>
-            <Grid {...gridEntryResponsiveProps}>
-              <Total
-                disabled={loading || isSubmitting || !!fatalError}
-                fullWidth
-              />
-            </Grid>
-            <Grid
-              container
-              justify="center"
-              alignItems="flex-start"
-              {...gridEntryResponsiveProps}
-            >
-              <Reconcile
-                disabled={loading || isSubmitting || !!fatalError}
-                label
               />
             </Grid>
           </Grid>
@@ -269,7 +278,7 @@ const AddEntryDialog = (
           </React.Fragment>
         )}
         <Button
-          disabled={isSubmitting}
+          disabled={loading || isSubmitting}
           color={fatalError ? "primary" : "default"}
           startIcon={!fatalError && <CancelIcon />}
           onClick={onClose}
@@ -281,47 +290,35 @@ const AddEntryDialog = (
   );
 };
 
-const AddEntry = (props: AddEntryProps) => {
-  const { open, onClose, deptId } = props;
+const AddItem = (props: AddItemProps) => {
+  const { entryId, open, onClose, onExited } = props;
 
-  const { loading, error, data } = useQuery<
-    DeptIniValueForAddEntry,
-    DeptIniValueForAddEntryVars
-  >(DEPT_INI_VALUE, {
-    skip: !deptId,
-    variables: {
-      id: deptId as string,
-    },
-  });
-
-  const department = data?.department;
-  const initialValues = useMemo<Partial<AddValues>>(
-    () => (department ? { department } : {}),
-    [department]
-  );
-  const initialStatus = useMemo<FormikStatus | null>(
-    () =>
-      error ? { msg: error.message, type: FormikStatusType.FATAL_ERROR } : null,
-    [error]
-  );
+  const initialValues = useMemo<Partial<AddValues>>(() => ({}), []);
 
   const client = useApolloClient();
   const onSubmit = useCallback<FormikConfig<AddValues>["onSubmit"]>(
-    (values, formikHelpers) => submitAdd(client, values, formikHelpers),
-    [client]
+    (values, formikHelpers) =>
+      submitAdd(client, entryId || "", values, formikHelpers),
+    [client, entryId]
   );
 
   const children = useCallback(
     (props: FormikProps<AddValues>) => (
-      <AddEntryDialog open={open} onClose={onClose} loading={loading} />
+      <AddItemDialog
+        entryId={entryId}
+        open={open}
+        onClose={onClose}
+        onExited={onExited}
+        handleSubmit={props.handleSubmit}
+      />
     ),
-    [open, onClose, loading]
+    [entryId, open, onClose, onExited]
   );
 
   return (
     <Formik
       initialValues={initialValues as AddValues}
-      initialStatus={initialStatus}
+      initialStatus={null}
       enableReinitialize={true}
       onSubmit={onSubmit}
       children={children}
@@ -329,4 +326,4 @@ const AddEntry = (props: AddEntryProps) => {
   );
 };
 
-export default AddEntry;
+export default AddItem;

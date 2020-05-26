@@ -926,17 +926,44 @@ export type SrcEntryOptsQuery = { __typename?: 'Query', businesses: Array<(
     & SrcEntryPersonOptFragment
   )> };
 
-export type GetEntryRefundInfo_1QueryVariables = {
+export type GetEntryItemState_1QueryVariables = {
   id: Scalars['ID'];
 };
 
 
-export type GetEntryRefundInfo_1Query = { __typename?: 'Query', journalEntry?: Maybe<(
+export type GetEntryItemState_1Query = { __typename?: 'Query', journalEntry?: Maybe<(
     { __typename?: 'JournalEntry' }
-    & JournalEntry_2Fragment
+    & JournalEntry_3Fragment
   )> };
 
-export type JournalEntry_3Fragment = { __typename: 'JournalEntry', id: string, total: { __typename?: 'Rational', num: number, den: number }, items: Array<{ __typename: 'JournalEntryItem', id: string, deleted: boolean, total: { __typename?: 'Rational', num: number, den: number } }> };
+export type DeleteItemMutationVariables = {
+  id: Scalars['ID'];
+};
+
+
+export type DeleteItemMutation = { __typename?: 'Mutation', journalEntryDeleteItem: { __typename?: 'JournalEntryItemUpsertResult', journalEntryItem: { __typename: 'JournalEntryItem', id: string, deleted: boolean } } };
+
+export type UpdateItemIniStateQueryVariables = {
+  entryId: Scalars['ID'];
+  itemId: Scalars['ID'];
+};
+
+
+export type UpdateItemIniStateQuery = { __typename?: 'Query', journalEntry?: Maybe<(
+    { __typename?: 'JournalEntry' }
+    & JournalEntry_3Fragment
+  )>, journalEntryItem?: Maybe<{ __typename: 'JournalEntryItem', id: string, description?: Maybe<string>, department?: Maybe<(
+      { __typename?: 'Department' }
+      & DeptEntryOptFragment
+    )>, category?: Maybe<(
+      { __typename?: 'JournalEntryCategory', ancestors: Array<(
+        { __typename?: 'JournalEntryCategory' }
+        & CatEntryOptFragment
+      )> }
+      & CatEntryOptFragment
+    )>, total: { __typename?: 'Rational', num: number, den: number } }> };
+
+export type JournalEntry_3Fragment = { __typename: 'JournalEntry', id: string, type: JournalEntryType, total: { __typename?: 'Rational', num: number, den: number }, items: Array<{ __typename: 'JournalEntryItem', id: string, deleted: boolean, total: { __typename?: 'Rational', num: number, den: number } }> };
 
 export type AddEntryItemMutationVariables = {
   id: Scalars['ID'];
@@ -947,6 +974,17 @@ export type AddEntryItemMutationVariables = {
 export type AddEntryItemMutation = { __typename?: 'Mutation', journalEntryAddItem: { __typename?: 'JournalEntryItemUpsertResult', journalEntry: (
       { __typename?: 'JournalEntry' }
       & JournalEntry_1Fragment
+    ) } };
+
+export type UpdateEntryItemMutationVariables = {
+  id: Scalars['ID'];
+  fields: JournalEntryUpdateItemFields;
+};
+
+
+export type UpdateEntryItemMutation = { __typename?: 'Mutation', journalEntryUpdateItem: { __typename?: 'JournalEntryItemUpsertResult', journalEntryItem: (
+      { __typename?: 'JournalEntryItem' }
+      & JournalEntryItem_1Fragment
     ) } };
 
 export type GetEntryRefundInfo_1QueryVariables = {

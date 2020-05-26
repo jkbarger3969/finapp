@@ -50,7 +50,11 @@ import {
   Typography,
 } from "@material-ui/core";
 import { green, red, amber, cyan } from "@material-ui/core/colors";
-import { BankTransferIn, BankTransferOut } from "mdi-material-ui";
+import {
+  BankTransferIn as BankTransferInIcon,
+  BankTransferOut as BankTransferOutIcon,
+  FileTree as FileTreeIcon,
+} from "mdi-material-ui";
 import gql from "graphql-tag";
 import { format } from "date-fns";
 
@@ -75,6 +79,9 @@ import AddEntry from "../Upsert/Entries/AddEntry";
 import UpdateEntry from "../Upsert/Entries/UpdateEntry";
 import DeleteEntry from "../Upsert/Entries/DeleteEntry";
 import DeleteRefund from "../Upsert/Refunds/DeleteRefund";
+import AddItem from "../Upsert/Items/AddItem";
+import UpdateItem from "../Upsert/Items/UpdateItem";
+import DeleteItem from "../Upsert/Items/DeleteItem";
 
 export enum JournalMode {
   View,
@@ -143,7 +150,8 @@ export type Entry =
       JournalEntryItemFragment & { items: string });
 
 const entriesGen = function* (
-  entry: JournalEntryFragment
+  entry: JournalEntryFragment,
+  mode: JournalMode
 ): IterableIterator<Entry> {
   yield entry;
   const refundType =
@@ -158,6 +166,9 @@ const entriesGen = function* (
       description: refund.description || entry.description,
       refunds: entry.id,
     };
+  }
+  if (mode === JournalMode.Reconcile) {
+    return;
   }
   for (const item of entry.items) {
     yield {
@@ -262,10 +273,41 @@ const Journal = (props: {
     setUpdateRefund,
   ]);
 
-  // Delete Entry
+  // Delete Refund
   const [deleteRefund, setDeleteRefund] = useState<string | null>(null);
   const deleteRefundOnClose = useCallback(() => void setDeleteRefund(null), [
     setDeleteRefund,
+  ]);
+
+  // Add Item
+  const [addItemOpen, setAddItemOpen] = useState<boolean>(false);
+  const [addItemToEntry, setAddItemToEntry] = useState<string | null>(null);
+
+  const addItemOnClose = useCallback(() => void setAddItemOpen(false), [
+    setAddItemOpen,
+  ]);
+  const addItemOnExited = useCallback(() => void setAddItemToEntry(null), [
+    setAddItemToEntry,
+  ]);
+
+  // Update Item
+  const [updateItemOpen, setUpdateItemOpen] = useState<boolean>(false);
+  const [updateItem, setUpdateItem] = useState<{
+    entryId: string;
+    itemId: string;
+  } | null>(null);
+
+  // Delete Item
+  const [deleteItem, setDeleteItem] = useState<string | null>(null);
+  const deleteItemOnClose = useCallback(() => void setDeleteItem(null), [
+    setDeleteItem,
+  ]);
+
+  const updateItemOnClose = useCallback(() => void setUpdateItemOpen(false), [
+    setUpdateItemOpen,
+  ]);
+  const updateItemOnExited = useCallback(() => void setUpdateItem(null), [
+    setUpdateItem,
   ]);
 
   // Reconcile Entry
@@ -721,6 +763,7 @@ const Journal = (props: {
   );
 
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
   const onTreeExpandChange = useCallback<
     NonNullable<MaterialTableProps<Entry>["onTreeExpandChange"]>
   >(
@@ -743,7 +786,11 @@ const Journal = (props: {
         style.color =
           data.type === JournalEntryType.Credit ? green[900] : red[900];
 
-        if (expandedItems.has(data.id)) {
+        if (
+          data.__typename === "JournalEntry" &&
+          data.items.filter((item) => !item.deleted).length > 0 &&
+          expandedItems.has(data.id)
+        ) {
           style.backgroundColor = cyan[100];
         }
 
@@ -805,49 +852,76 @@ const Journal = (props: {
 
     return [
       (rowData) => {
-        const isRefund = rowData.__typename === "JournalEntryRefund";
+        const { tooltip, onClick } = (() => {
+          switch (rowData.__typename) {
+            case "JournalEntry":
+              return {
+                tooltip: "Delete Entry",
+                onClick: (event, rowData) => setDeleteEntry(rowData.id),
+              };
+            case "JournalEntryItem":
+              return {
+                tooltip: "Delete Item",
+                onClick: (event, rowData) => setDeleteItem(rowData.id),
+              };
+            case "JournalEntryRefund":
+              return {
+                tooltip: "Delete Refund",
+                onClick: (event, rowData) => setDeleteRefund(rowData.id),
+              };
+          }
+        })();
+
         return {
           icon: DeleteIcon as any,
-          tooltip: `Delete ${isRefund ? "Refund" : "Entry"}`,
-          onClick: async (event, rowData) => {
-            await Promise.all(
-              (Array.isArray(rowData) ? rowData : [rowData]).map(
-                async (entry) => {
-                  if (entry.deleted) {
-                    return;
-                  } else if (entry.__typename === "JournalEntryRefund") {
-                    setDeleteRefund(entry.id);
-                  } else {
-                    setDeleteEntry(entry.id);
-                  }
-                }
-              )
-            );
-          },
+          tooltip,
+          onClick,
         };
       },
       (rowData) => {
-        const isRefund = rowData.__typename === "JournalEntryRefund";
+        const { tooltip, onClick } = (() => {
+          switch (rowData.__typename) {
+            case "JournalEntry":
+              return {
+                tooltip: "Edit Entry",
+                onClick: (event, rowData) => {
+                  setUpdateEntryOpen(true);
+                  setUpdateEntry((rowData as Entry).id);
+                },
+              };
+            case "JournalEntryItem":
+              return {
+                tooltip: "Edit Item",
+                onClick: (event, rowData) => {
+                  setUpdateItemOpen(true);
+                  setUpdateItem({
+                    entryId: (rowData as Entry).items as string,
+                    itemId: (rowData as Entry).id,
+                  });
+                },
+              };
+            case "JournalEntryRefund":
+              return {
+                tooltip: "Edit Refund",
+                onClick: (event, rowData) => {
+                  setUpdateRefundOpen(true);
+                  setUpdateRefund({
+                    entryId: (rowData as Entry).refunds as string,
+                    refundId: (rowData as Entry).id,
+                  });
+                },
+              };
+          }
+        })();
 
         return {
           icon: Edit as any,
-          tooltip: `Update ${isRefund ? "Refund" : "Entry"}`,
-          onClick: (event, rowData) => {
-            if (isRefund) {
-              setUpdateRefundOpen(true);
-              setUpdateRefund({
-                entryId: (rowData as Entry).refunds as string,
-                refundId: (rowData as Entry).id,
-              });
-            } else {
-              setUpdateEntryOpen(true);
-              setUpdateEntry((rowData as Entry).id);
-            }
-          },
+          tooltip,
+          onClick,
         };
       },
       (rowData) => {
-        if (rowData.__typename === "JournalEntryRefund") {
+        if (rowData.__typename !== "JournalEntry") {
           return null as any;
         }
 
@@ -856,9 +930,9 @@ const Journal = (props: {
         return {
           icon: ((props) =>
             isCredit ? (
-              <BankTransferOut {...props} />
+              <BankTransferOutIcon {...props} />
             ) : (
-              <BankTransferIn {...props} />
+              <BankTransferInIcon {...props} />
             )) as any,
           tooltip: isCredit ? "Give Refund" : "Add Refund",
           iconProps: {
@@ -869,6 +943,20 @@ const Journal = (props: {
           onClick: (event, rowData) => {
             setAddRefundOpen(true);
             setAddRefundToEntry((rowData as JournalEntryFragment).id);
+          },
+        };
+      },
+      (rowData) => {
+        if (rowData.__typename !== "JournalEntry") {
+          return null;
+        }
+
+        return {
+          icon: FileTreeIcon,
+          tooltip: "Itemize",
+          onClick: (event, rowData) => {
+            setAddItemOpen(true);
+            setAddItemToEntry((rowData as JournalEntryFragment).id);
           },
         };
       },
@@ -909,9 +997,32 @@ const Journal = (props: {
             </TableBody>
           )
         : (props) => <MTableBody {...props} />,
-      // Row: JournalRow,
+      Row: (props) => {
+        const entry = props?.data as Entry & {
+          tableData?: { isTreeExpanded?: boolean };
+        };
+        if (
+          entry &&
+          entry.__typename === "JournalEntry" &&
+          expandedItems.has(entry.id) &&
+          entry.items.length > 0 &&
+          entry?.tableData?.isTreeExpanded !== true
+        ) {
+          props = {
+            ...props,
+            data: {
+              ...entry,
+              tableData: {
+                ...(entry.tableData || {}),
+                isTreeExpanded: true,
+              },
+            },
+          };
+        }
+        return <MTableBodyRow {...props} />;
+      },
     }),
-    [error, columns, actions]
+    [error, columns.length, actions, expandedItems]
   );
 
   const journalEntries = data?.journalEntries || [];
@@ -923,7 +1034,7 @@ const Journal = (props: {
 
     return journalEntries
       .reduce((entries: Entry[], journalEntry) => {
-        for (const entry of entriesGen(journalEntry)) {
+        for (const entry of entriesGen(journalEntry, mode)) {
           if (filters.every((filter) => filter(entry))) {
             entries.push(entry);
           }
@@ -971,6 +1082,20 @@ const Journal = (props: {
         onExited={updateRefundOnExited}
       />
       <DeleteRefund refundId={deleteRefund} onClose={deleteRefundOnClose} />
+      <AddItem
+        entryId={addItemToEntry}
+        open={addItemOpen}
+        onClose={addItemOnClose}
+        onExited={addItemOnExited}
+      />
+      <UpdateItem
+        entryId={updateItem?.entryId ?? null}
+        itemId={updateItem?.itemId ?? null}
+        open={updateItemOpen}
+        onClose={updateItemOnClose}
+        onExited={updateItemOnExited}
+      />
+      <DeleteItem itemId={deleteItem} onClose={deleteItemOnClose} />
     </React.Fragment>
   );
 };
