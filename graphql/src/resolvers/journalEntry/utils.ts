@@ -8,7 +8,8 @@ import {
   JournalEntryType,
 } from "../../graphTypes";
 import { Context } from "../../types";
-import DocHistory from "../utils/DocHistory";
+import DocHistory, { PresentValueExpressionOpts } from "../utils/DocHistory";
+import { iterateOwnKeyValues } from "../../utils/iterableFns";
 
 export const addFields = {
   $addFields: {
@@ -165,20 +166,31 @@ export const entryAddFieldsStage = {
                     "$$item",
                     {
                       ...DocHistory.getPresentValues(
-                        (() => {
+                        (function*() {
                           const obj: {
                             [P in keyof Omit<
                               JournalEntryItem,
                               "__typename" | "id" | "lastUpdate"
-                            >]-?: null;
+                            >]-?: unknown;
                           } = {
                             total: null,
                             department: null,
                             category: null,
                             description: null,
                             deleted: null,
+                            units: 1,
                           };
-                          return Object.keys(obj);
+
+                          for (const [key, value] of iterateOwnKeyValues(obj)) {
+                            if (value === null) {
+                              yield key;
+                            } else {
+                              yield [key, { defaultValue: value }] as [
+                                string,
+                                PresentValueExpressionOpts
+                              ];
+                            }
+                          }
                         })(),
                         { asVar: "item" }
                       ),

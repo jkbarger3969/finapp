@@ -12,6 +12,8 @@ import { getUniqueId } from "../utils/mongoUtils";
 import { stages } from "./utils";
 import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 
+const NULLISH = Symbol();
+
 const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
   obj,
   args,
@@ -22,7 +24,7 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
 
   const {
     id,
-    fields: { department: departmentId, category: categoryId, total },
+    fields: { department: departmentId, category: categoryId, total, units },
   } = args;
 
   const description = (args.fields.description ?? "").trim();
@@ -36,10 +38,15 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
   const docBuilder = docHistory.newHistoricalDoc(true).addFields([
     ["total", total],
     ["deleted", false],
+    ["units", units],
   ]);
 
-  if (description) {
-    docBuilder.addField("description", description);
+  if (description?.trim()) {
+    docBuilder.addField("description", description.trim());
+  }
+
+  if (units < 1) {
+    throw new Error("Item units must be greater than 0.");
   }
 
   let itemId: ObjectID;

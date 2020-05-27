@@ -12,6 +12,8 @@ import journalEntry from "./journalEntry";
 import { stages, getItemTotals } from "./utils";
 import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 
+const NULLISH = Symbol();
+
 const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = async (
   obj,
   args,
@@ -31,11 +33,16 @@ const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = asyn
   const updateBuilder = docHistory.updateHistoricalDoc("items.$[item]");
 
   // Description
-  if (fields.description) {
-    const description = fields.description.trim();
-    if (description) {
-      updateBuilder.updateField("description", description);
+  if (fields.description?.trim()) {
+    updateBuilder.updateField("description", fields.description.trim());
+  }
+
+  // Units
+  if ((fields.units ?? NULLISH) !== NULLISH) {
+    if (fields.units < 1) {
+      throw new Error("Item units must be greater than 0.");
     }
+    updateBuilder.updateField("units", fields.units);
   }
 
   let entryId: ObjectID;
@@ -157,6 +164,7 @@ const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = asyn
         category: null,
         description: null,
         total: null,
+        units: null,
       };
 
       return Object.keys(obj);

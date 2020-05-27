@@ -131,6 +131,11 @@ class UpdateHistoricalDoc {
   }
 }
 
+export interface PresentValueExpressionOpts<TDefaultValue = unknown> {
+  defaultValue?: TDefaultValue;
+  asVar?: string;
+}
+
 export default class DocHistory {
   constructor(
     private readonly _by_: CreatedBy,
@@ -230,28 +235,41 @@ export default class DocHistory {
     ];
   }
 
-  static getPresentValueExpression(
+  static getPresentValueExpression<TDefaultValue = unknown>(
     key: string,
-    opts: { defaultValue?: any; asVar?: string } = {}
+    opts: PresentValueExpressionOpts<TDefaultValue> = {}
   ): PresentValueExpression {
     const asVar = opts.asVar ? `$${opts.asVar}.` : "";
     const defaultValue = "defaultValue" in opts ? opts.defaultValue : null;
 
     return {
-      $ifNull: [{ $arrayElemAt: [`$${asVar}${key}.value`, 0] }, defaultValue],
+      $ifNull: [
+        { $arrayElemAt: [`$${asVar}${key}.value`, 0] },
+        defaultValue as any,
+      ],
     };
   }
 
-  static getPresentValues(
-    presentValueMap: Iterable<string>,
-    opts?: { defaultValue?: any; asVar?: string }
+  static getPresentValues<TDefaultValue = unknown>(
+    presentValueMap: Iterable<
+      string | [string, PresentValueExpressionOpts<TDefaultValue>]
+    >,
+    opts: PresentValueExpressionOpts<TDefaultValue> = {}
   ): PresentValueProjection {
     const presentValueProjection = {} as {
       [P in keyof PresentValueProjection]: PresentValueProjection[P];
     };
 
-    for (const key of presentValueMap) {
-      presentValueProjection[key] = this.getPresentValueExpression(key, opts);
+    for (const val of presentValueMap) {
+      if (typeof val === "string") {
+        presentValueProjection[val] = this.getPresentValueExpression(val, opts);
+      } else {
+        const [key, keyOpts] = val;
+        presentValueProjection[key] = this.getPresentValueExpression(key, {
+          ...opts,
+          ...keyOpts,
+        });
+      }
     }
 
     return presentValueProjection;

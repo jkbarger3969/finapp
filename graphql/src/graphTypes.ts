@@ -123,6 +123,7 @@ export type JournalEntryAddItemFields = {
   department?: Maybe<Scalars['ID']>;
   category?: Maybe<Scalars['ID']>;
   description?: Maybe<Scalars['String']>;
+  units: Scalars['Int'];
   total: RationalInput;
 };
 
@@ -179,6 +180,7 @@ export type JournalEntryItem = {
   department?: Maybe<Department>;
   category?: Maybe<JournalEntryCategory>;
   description?: Maybe<Scalars['String']>;
+  units: Scalars['Int'];
   total: Rational;
   lastUpdate: Scalars['String'];
   deleted: Scalars['Boolean'];
@@ -237,6 +239,7 @@ export type JournalEntryUpdateItemFields = {
   department?: Maybe<Scalars['ID']>;
   category?: Maybe<Scalars['ID']>;
   description?: Maybe<Scalars['String']>;
+  units?: Maybe<Scalars['Int']>;
   total?: Maybe<RationalInput>;
 };
 
@@ -837,6 +840,7 @@ export type JournalEntryItemResolvers<ContextType = Context, ParentType extends 
   department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType>,
   category?: Resolver<Maybe<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>,
   description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>,
+  units?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
   total?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>,
   lastUpdate?: Resolver<ResolversTypes['String'], ParentType, ContextType>,
   deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>,
