@@ -27,7 +27,7 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
     fields: { department: departmentId, category: categoryId, total, units },
   } = args;
 
-  const description = (args.fields.description ?? "").trim();
+  const description = args.fields.description?.trim();
 
   const collection = db.collection("journalEntries");
 
@@ -41,8 +41,8 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
     ["units", units],
   ]);
 
-  if (description?.trim()) {
-    docBuilder.addField("description", description.trim());
+  if (description) {
+    docBuilder.addField("description", description);
   }
 
   if (units < 1) {
