@@ -204,8 +204,16 @@ const Category = function (props: CategoryProps) {
       loading ||
       formikStatus?.type === FormikStatusType.FATAL_ERROR ||
       (entryType ?? NULLISH) === NULLISH ||
+      disabledFromProps ||
+      (value.length > 0 && options.length === 0),
+    [
       disabledFromProps,
-    [disabledFromProps, entryType, formikStatus, loading]
+      entryType,
+      formikStatus,
+      loading,
+      options.length,
+      value.length,
+    ]
   );
 
   const renderInput = useCallback(
