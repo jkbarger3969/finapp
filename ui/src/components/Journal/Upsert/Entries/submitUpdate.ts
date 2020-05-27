@@ -250,7 +250,16 @@ const submitUpdate: (
 
     return {
       source: {
-        sourceType: srcType,
+        sourceType: (() => {
+          switch (src.__typename) {
+            case "Business":
+              return JournalEntrySourceType.Business;
+            case "Department":
+              return JournalEntrySourceType.Department;
+            case "Person":
+              return JournalEntrySourceType.Person;
+          }
+        })(),
         id: src.id,
       },
       personAdd: null,
