@@ -955,7 +955,7 @@ export type UpdateItemIniStateQueryVariables = {
 export type UpdateItemIniStateQuery = { __typename?: 'Query', journalEntry?: Maybe<(
     { __typename?: 'JournalEntry' }
     & JournalEntry_3Fragment
-  )>, journalEntryItem?: Maybe<{ __typename: 'JournalEntryItem', id: string, description?: Maybe<string>, department?: Maybe<(
+  )>, journalEntryItem?: Maybe<{ __typename: 'JournalEntryItem', id: string, description?: Maybe<string>, units: number, department?: Maybe<(
       { __typename?: 'Department' }
       & DeptEntryOptFragment
     )>, category?: Maybe<(

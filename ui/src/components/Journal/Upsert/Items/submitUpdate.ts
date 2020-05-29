@@ -76,7 +76,7 @@ const submitUpdate: (
   })();
 
   // Units
-  const units = values.units ?? null;
+  const units = values.units === iniValues.units ? null : values.units;
 
   // Total
   const total =

@@ -21,6 +21,7 @@ export type AddValues = O.Overwrite<
   >,
   {
     total: TransmutationValue<string, JournalEntryAddItemFields["total"]>;
+    units: number;
     category: TransmutationValue<string, CatEntryOptFragment[]> | null;
     department: DeptEntryOptFragment | null;
   }
@@ -56,10 +57,12 @@ const submitAdd: (
     return values.department?.id || null;
   })();
 
+  const units = values.units;
+
   const variables: O.Required<AddItemVars, keyof AddItemVars, "deep"> = {
     id,
     fields: {
-      units: 1,
+      units,
       category,
       department,
       description: values.description?.trim() || null,

@@ -39,6 +39,7 @@ import Description from "../EntryFields/Description";
 import Department from "../EntryFields/Department";
 import Total from "../EntryFields/Total";
 import Category from "../EntryFields/Category";
+import Units from "./ItemFields/Units";
 
 export interface UpdateItemProps {
   entryId: string | null;
@@ -66,6 +67,7 @@ const UPDATE_ITEM_INI_STATE = gql`
         }
       }
       description
+      units
       total {
         num
         den
@@ -206,6 +208,9 @@ const UpdateItemDialog = (
               />
             </Grid>
             <Grid {...gridEntryResponsiveProps}>
+              <Units disabled={loading || isSubmitting} fullWidth />
+            </Grid>
+            <Grid {...gridEntryResponsiveProps}>
               <Description disabled={loading || isSubmitting} fullWidth />
             </Grid>
             <Grid {...gridEntryResponsiveProps}>
@@ -321,8 +326,11 @@ const UpdateItem = (props: UpdateItemProps) => {
 
     const description = journalEntryItem.description ?? null;
 
+    const units = journalEntryItem.units;
+
     return {
       total,
+      units,
       category,
       department,
       description,

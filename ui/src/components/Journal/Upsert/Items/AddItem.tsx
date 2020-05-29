@@ -34,6 +34,7 @@ import Description from "../EntryFields/Description";
 import Total from "../EntryFields/Total";
 import Category from "../EntryFields/Category";
 import Department from "../EntryFields/Department";
+import Units from "./ItemFields/Units";
 import {
   FormikStatusType,
   useFormikStatus,
@@ -233,6 +234,9 @@ const AddItemDialog = (
                 fullWidth
                 maxTotal={maxTotal}
               />
+            </Grid>
+            <Grid {...gridEntryResponsiveProps}>
+              <Units disabled={loading || isSubmitting} fullWidth />
             </Grid>
             <Grid {...gridEntryResponsiveProps}>
               <Description disabled={loading || isSubmitting} fullWidth />

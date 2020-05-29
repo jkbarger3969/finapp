@@ -6,7 +6,7 @@ import MaterialTable, {
 } from "material-table";
 import { capitalCase } from "change-case";
 import numeral from "numeral";
-import { Box } from "@material-ui/core";
+import { Box, useTheme, Divider } from "@material-ui/core";
 
 import {
   JournalEntry_1Fragment as JournalEntryFragment,
@@ -134,11 +134,22 @@ const Items = (props: ItemsProps) => {
   }, [category, description, department]);
 
   const options = useMemo<Options>(
-    () => ({ search: false, emptyRowsWhenPaging: false }),
+    () => ({ search: false, emptyRowsWhenPaging: false /* paging: false */ }),
     []
   );
 
   const data = useMemo(() => items.filter((item) => !item.deleted), [items]);
+
+  const theme = useTheme();
+
+  const tableStyle = useMemo(() => ({ boxShadow: theme.shadows[0] }), [
+    theme.shadows,
+  ]);
+
+  const dividerStyle = useMemo(
+    () => ({ backgroundColor: theme.palette.primary.main }),
+    [theme.palette.primary.main]
+  );
 
   return (
     <Box>
@@ -149,6 +160,7 @@ const Items = (props: ItemsProps) => {
         columns={columns}
         icons={tableIcons}
         data={data}
+        style={tableStyle}
       />
       <AddItem
         entryId={addItemToEntry}
@@ -164,6 +176,7 @@ const Items = (props: ItemsProps) => {
         onExited={updateItemOnExited}
       />
       <DeleteItem itemId={deleteItem} onClose={deleteItemOnClose} />
+      <Divider style={dividerStyle} />
     </Box>
   );
 };
