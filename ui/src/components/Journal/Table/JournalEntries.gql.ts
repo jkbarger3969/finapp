@@ -74,6 +74,7 @@ export const JOURNAL_ENTRY_ITEM = gql`
       num
       den
     }
+    units
     description
     lastUpdate
     deleted

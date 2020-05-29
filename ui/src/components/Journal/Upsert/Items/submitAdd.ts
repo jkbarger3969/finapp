@@ -59,6 +59,7 @@ const submitAdd: (
   const variables: O.Required<AddItemVars, keyof AddItemVars, "deep"> = {
     id,
     fields: {
+      units: 1,
       category,
       department,
       description: values.description?.trim() || null,

@@ -75,6 +75,9 @@ const submitUpdate: (
       : category;
   })();
 
+  // Units
+  const units = values.units ?? null;
+
   // Total
   const total =
     values.total.value.num / values.total.value.den ===
@@ -85,6 +88,7 @@ const submitUpdate: (
   const variables: O.Required<UpdateItemVars, keyof UpdateItemVars, "deep"> = {
     id,
     fields: {
+      units,
       description,
       department,
       category,
