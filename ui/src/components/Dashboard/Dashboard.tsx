@@ -245,15 +245,16 @@ const Dashboard = function (props: { deptId: string }) {
     }
 
     // Format values
-    const budgetFraction = department?.budget
+    const budgetF = department?.budget
       ? rationalToFraction(department.budget.amount)
       : subDeptBudgetAg;
 
-    const totalRemaining = numeral(budgetFraction.sub(spent).valueOf()).format(
+    const totalRemaining = numeral(budgetF.sub(spent).valueOf()).format(
       "$0,0.00"
     );
-    const budget = numeral(budgetFraction.valueOf()).format("$0,0.00");
-    const spentToBudgetRatio = spent.div(budgetFraction);
+    const budget = numeral(budgetF.valueOf()).format("$0,0.00");
+    const spentToBudgetRatio =
+      budgetF.n === 0 ? new Fraction(1) : spent.div(budgetF);
 
     return {
       totalRemaining,

@@ -126,7 +126,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           ])
           .toArray()) as [{ refundDate: Date }];
 
-        if (result && date > result.refundDate) {
+        if (result && result.refundDate && date > result.refundDate) {
           throw new Error(
             "Entry date can not be greater than the earliest refund date."
           );

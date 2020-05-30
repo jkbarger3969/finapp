@@ -291,20 +291,25 @@ export const getRefundTotals = (exclude: (ObjectID | string)[] = []) => {
   return {
     $addFields: {
       refundTotals: {
-        $map: {
-          input: {
-            $filter: {
-              input: "$refunds",
+        $ifNull: [
+          {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$refunds",
+                  as: "refund",
+                  cond: condition,
+                },
+              },
               as: "refund",
-              cond: condition,
+              in: DocHistory.getPresentValueExpression("total", {
+                defaultValue: { s: 1, n: 0, d: 1 },
+                asVar: "refund",
+              }),
             },
           },
-          as: "refund",
-          in: DocHistory.getPresentValueExpression("total", {
-            defaultValue: { s: 1, n: 0, d: 1 },
-            asVar: "refund",
-          }),
-        },
+          [],
+        ],
       },
     },
   } as const;
@@ -336,20 +341,25 @@ export const getItemTotals = (exclude: (ObjectID | string)[] = []) => {
   return {
     $addFields: {
       itemTotals: {
-        $map: {
-          input: {
-            $filter: {
-              input: "$items",
+        $ifNull: [
+          {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$items",
+                  as: "item",
+                  cond: condition,
+                },
+              },
               as: "item",
-              cond: condition,
+              in: DocHistory.getPresentValueExpression("total", {
+                defaultValue: { s: 1, n: 0, d: 1 },
+                asVar: "item",
+              }),
             },
           },
-          as: "item",
-          in: DocHistory.getPresentValueExpression("total", {
-            defaultValue: { s: 1, n: 0, d: 1 },
-            asVar: "item",
-          }),
-        },
+          [],
+        ],
       },
     },
   } as const;
