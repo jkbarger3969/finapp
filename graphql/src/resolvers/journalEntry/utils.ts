@@ -268,8 +268,8 @@ export const entryTransmutationsStage = {
 export const getRefundTotals = (exclude: (ObjectID | string)[] = []) => {
   const $eq = [
     DocHistory.getPresentValueExpression("deleted", {
-      defaultValue: true,
-      asVar: "this",
+      defaultValue: false,
+      asVar: "refund",
     }),
     false,
   ];
@@ -281,7 +281,7 @@ export const getRefundTotals = (exclude: (ObjectID | string)[] = []) => {
             { $eq },
             {
               $not: {
-                $in: ["$$this.id", exclude.map((id) => new ObjectID(id))],
+                $in: ["$$refund.id", exclude.map((id) => new ObjectID(id))],
               },
             },
           ],
@@ -290,35 +290,20 @@ export const getRefundTotals = (exclude: (ObjectID | string)[] = []) => {
 
   return {
     $addFields: {
-      refundTotal: {
-        $reduce: {
-          input: "$refunds",
-          initialValue: 0,
-          in: {
-            $sum: [
-              "$$value",
-              {
-                $let: {
-                  vars: {
-                    total: {
-                      $cond: {
-                        if: condition,
-                        then: DocHistory.getPresentValueExpression("total", {
-                          defaultValue: { num: 0, den: 1 },
-                          asVar: "this",
-                        }),
-                        else: {
-                          num: 0,
-                          den: 1,
-                        },
-                      },
-                    },
-                  },
-                  in: { $divide: ["$$total.num", "$$total.den"] },
-                },
-              },
-            ],
+      refundTotals: {
+        $map: {
+          input: {
+            $filter: {
+              input: "$refunds",
+              as: "refund",
+              cond: condition,
+            },
           },
+          as: "refund",
+          in: DocHistory.getPresentValueExpression("total", {
+            defaultValue: { s: 1, n: 0, d: 1 },
+            asVar: "refund",
+          }),
         },
       },
     },
@@ -329,7 +314,7 @@ export const getItemTotals = (exclude: (ObjectID | string)[] = []) => {
   const $eq = [
     DocHistory.getPresentValueExpression("deleted", {
       defaultValue: true,
-      asVar: "this",
+      asVar: "item",
     }),
     false,
   ];
@@ -341,7 +326,7 @@ export const getItemTotals = (exclude: (ObjectID | string)[] = []) => {
             { $eq },
             {
               $not: {
-                $in: ["$$this.id", exclude.map((id) => new ObjectID(id))],
+                $in: ["$$item.id", exclude.map((id) => new ObjectID(id))],
               },
             },
           ],
@@ -350,35 +335,20 @@ export const getItemTotals = (exclude: (ObjectID | string)[] = []) => {
 
   return {
     $addFields: {
-      itemTotal: {
-        $reduce: {
-          input: "$items",
-          initialValue: 0,
-          in: {
-            $sum: [
-              "$$value",
-              {
-                $let: {
-                  vars: {
-                    total: {
-                      $cond: {
-                        if: condition,
-                        then: DocHistory.getPresentValueExpression("total", {
-                          defaultValue: { num: 0, den: 1 },
-                          asVar: "this",
-                        }),
-                        else: {
-                          num: 0,
-                          den: 1,
-                        },
-                      },
-                    },
-                  },
-                  in: { $divide: ["$$total.num", "$$total.den"] },
-                },
-              },
-            ],
+      itemTotals: {
+        $map: {
+          input: {
+            $filter: {
+              input: "$items",
+              as: "item",
+              cond: condition,
+            },
           },
+          as: "item",
+          in: DocHistory.getPresentValueExpression("total", {
+            defaultValue: { s: 1, n: 0, d: 1 },
+            asVar: "item",
+          }),
         },
       },
     },
@@ -390,18 +360,11 @@ export const stages = {
   entryTransmutations: entryTransmutationsStage,
   entryTotal: {
     $addFields: {
-      entryTotal: {
-        $let: {
-          vars: {
-            total: DocHistory.getPresentValueExpression("total", {
-              defaultValue: { num: 0, den: 1 },
-            }),
-          },
-          in: { $divide: ["$$total.num", "$$total.den"] },
-        },
-      },
+      entryTotal: DocHistory.getPresentValueExpression("total", {
+        defaultValue: { s: 1, n: 0, d: 1 },
+      }),
     },
   },
-  refundTotal: getRefundTotals(),
-  itemTotal: getItemTotals(),
+  refundTotals: getRefundTotals(),
+  itemTotals: getItemTotals(),
 } as const;

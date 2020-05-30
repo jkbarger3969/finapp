@@ -1,14 +1,20 @@
 import { ObjectID } from "mongodb";
+import Fraction from "fraction.js";
 import { isValid } from "date-fns";
 
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
-import { MutationResolvers, PaymentMethod } from "../../graphTypes";
+import {
+  MutationResolvers,
+  PaymentMethod,
+  RationalSign,
+} from "../../graphTypes";
 import journalEntry from "./journalEntry";
 import { getUniqueId } from "../utils/mongoUtils";
 import { stages } from "./utils";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
+import { rationalToFraction } from "../../utils/rational";
 
 const addDate = {
   $addFields: {
@@ -24,18 +30,19 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
 ) => {
   const {
     id,
-    fields: { date: dateStr, total },
+    fields: { date: dateStr, total: totalR },
     paymentMethodAdd,
   } = args;
+
+  const total = rationalToFraction(totalR);
 
   const reconciled = args.fields.reconciled ?? false;
 
   const description = (args.fields.description ?? "").trim();
 
   // Total Cannot be less than or equal to zero
-  const totalDecimal = total.num / total.den;
-  if (totalDecimal <= 0) {
-    throw new Error("Refund total must be greater than 0.");
+  if (totalR.s === RationalSign.Neg || totalR.n === 0) {
+    throw new Error("Entry total must be greater than 0.");
   }
 
   const date = new Date(dateStr);
@@ -72,27 +79,34 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
           { $match: { _id: srcEntryId } },
           addDate,
           stages.entryTotal,
-          stages.refundTotal,
+          stages.refundTotals,
           {
             $project: {
               date: true,
               entryTotal: true,
-              refundTotal: true,
+              refundTotals: true,
             },
           },
         ])
         .toArray()) as [
-        { date: Date; entryTotal: number; refundTotal: number }
+        { date: Date; entryTotal: Fraction; refundTotals: Fraction[] }
       ];
 
       if (!srcEntryState) {
         throw new Error(`Journal entry "${id}" does not exist.`);
       }
 
-      const { date: entryDate, entryTotal, refundTotal } = srcEntryState;
+      const entryDate = srcEntryState.date;
+
+      const entryTotal = new Fraction(srcEntryState.entryTotal);
+
+      const refundTotal = srcEntryState.refundTotals.reduce(
+        (refundTotal, total) => refundTotal.add(total),
+        new Fraction(0)
+      );
 
       // Ensure aggregate refunds do NOT exceed the original transaction amount
-      if (entryTotal < refundTotal + totalDecimal) {
+      if (entryTotal.compare(refundTotal.add(total)) < 0) {
         throw new Error(
           "Refunds cannot total more than original transaction amount."
         );

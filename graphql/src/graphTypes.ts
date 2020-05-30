@@ -543,14 +543,21 @@ export type QueryPeopleArgs = {
 
 export type Rational = {
    __typename?: 'Rational';
-  num: Scalars['Int'];
-  den: Scalars['Int'];
+  n: Scalars['Int'];
+  d: Scalars['Int'];
+  s: RationalSign;
 };
 
 export type RationalInput = {
-  num: Scalars['Int'];
-  den: Scalars['Int'];
+  n: Scalars['Int'];
+  d: Scalars['Int'];
+  s: RationalSign;
 };
+
+export enum RationalSign {
+  Pos = 'POS',
+  Neg = 'NEG'
+}
 
 export enum SortDirection {
   Asc = 'ASC',
@@ -651,6 +658,7 @@ export type ResolversTypes = {
   Budget: ResolverTypeWrapper<Omit<Budget, 'owner'> & { owner: ResolversTypes['BudgetOwner'] }>,
   Rational: ResolverTypeWrapper<Rational>,
   Int: ResolverTypeWrapper<Scalars['Int']>,
+  RationalSign: RationalSign,
   BudgetOwner: ResolversTypes['Department'] | ResolversTypes['Business'],
   Department: ResolverTypeWrapper<Omit<Department, 'parent' | 'ancestors'> & { parent: ResolversTypes['DepartmentAncestor'], ancestors: Array<ResolversTypes['DepartmentAncestor']> }>,
   String: ResolverTypeWrapper<Scalars['String']>,
@@ -714,6 +722,7 @@ export type ResolversParentTypes = {
   Budget: Omit<Budget, 'owner'> & { owner: ResolversParentTypes['BudgetOwner'] },
   Rational: Rational,
   Int: Scalars['Int'],
+  RationalSign: RationalSign,
   BudgetOwner: ResolversParentTypes['Department'] | ResolversParentTypes['Business'],
   Department: Omit<Department, 'parent' | 'ancestors'> & { parent: ResolversParentTypes['DepartmentAncestor'], ancestors: Array<ResolversParentTypes['DepartmentAncestor']> },
   String: Scalars['String'],
@@ -940,8 +949,9 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
 };
 
 export type RationalResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Rational'] = ResolversParentTypes['Rational']> = {
-  num?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
-  den?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
+  n?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
+  d?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
+  s?: Resolver<ResolversTypes['RationalSign'], ParentType, ContextType>,
   __isTypeOf?: isTypeOfResolverFn<ParentType>,
 };
 

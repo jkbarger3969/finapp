@@ -1,4 +1,5 @@
 import { ObjectID } from "mongodb";
+import Fraction from "fraction.js";
 import { isValid } from "date-fns";
 
 import DocHistory from "../utils/DocHistory";
@@ -7,12 +8,14 @@ import {
   MutationResolvers,
   JournalEntryUpdateRefundFields,
   PaymentMethod,
+  RationalSign,
 } from "../../graphTypes";
 import journalEntry from "./journalEntry";
 import { stages, getRefundTotals } from "./utils";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
 import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
+import { rationalToFraction } from "../../utils/rational";
 
 const NULLISH = Symbol();
 
@@ -112,10 +115,12 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
   // Total
   if ((fields.total ?? NULLISH) !== NULLISH) {
     // Total Cannot be less than or equal to zero
-    const totalDecimal = fields.total.num / fields.total.den;
-    if (totalDecimal <= 0) {
+    const totalR = fields.total;
+    if (totalR.s === RationalSign.Neg || totalR.n === 0) {
       throw new Error("Refund total must be greater than 0.");
     }
+
+    const total = rationalToFraction(totalR);
 
     const [result] = (await collection
       .aggregate([
@@ -123,24 +128,29 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
         stages.entryTotal,
         //Excluded the current total from the refund total as it WILL change.
         getRefundTotals([refundId]),
-        { $project: { entryTotal: true, refundTotal: true } },
+        { $project: { entryTotal: true, refundTotals: true } },
       ])
-      .toArray()) as [{ entryTotal: number; refundTotal: number }];
+      .toArray()) as [{ entryTotal: Fraction; refundTotals: Fraction[] }];
 
     if (!result) {
       throw new Error(`Refund "${id}" does not exists.`);
     }
 
-    const { entryTotal, refundTotal } = result;
+    const entryTotal = new Fraction(result.entryTotal);
+
+    const refundTotal = result.refundTotals.reduce(
+      (refundTotal, total) => refundTotal.add(total),
+      new Fraction(0)
+    );
 
     // Ensure aggregate refunds do NOT exceed the original transaction amount
-    if (entryTotal < refundTotal + totalDecimal) {
+    if (entryTotal.compare(refundTotal.add(total)) < 0) {
       throw new Error(
         "Refunds cannot total more than original transaction amount."
       );
     }
 
-    updateBuilder.updateField("total", fields.total);
+    updateBuilder.updateField("total", total);
   }
 
   // Payment method

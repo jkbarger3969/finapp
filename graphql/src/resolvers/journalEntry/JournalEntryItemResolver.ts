@@ -1,6 +1,7 @@
 import { JournalEntryItemResolvers } from "../../graphTypes";
 import { journalEntryCategory as lookUpCategory } from "../journalEntryCategory";
 import { department as lookUpDepartment } from "../departments";
+import { fractionToRational } from "../../utils/rational";
 
 const department: JournalEntryItemResolvers["department"] = async (
   doc,
@@ -45,6 +46,7 @@ const category: JournalEntryItemResolvers["category"] = async (
 const JournalEntryItem: JournalEntryItemResolvers = {
   department,
   category,
+  total: (doc) => fractionToRational((doc.total ?? doc) as any),
 };
 
 export default JournalEntryItem;
