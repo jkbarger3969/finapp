@@ -6,16 +6,18 @@ export const JOURNAL_FRAGMENT = gql`
     id
     type
     total {
-      num
-      den
+      n
+      d
+      s
     }
     items {
       id
       __typename
       deleted
       total {
-        num
-        den
+        n
+        d
+        s
       }
     }
   }

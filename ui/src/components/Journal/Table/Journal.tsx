@@ -55,7 +55,7 @@ import {
 } from "../../../apollo/graphTypes";
 import { JOURNAL_ENTRIES, JOURNAL_ENTRY_FRAGMENT } from "./JournalEntries.gql";
 import { CHECK_ID } from "../constants";
-import tableIcons from "../../Utils/materialTableIcons";
+import tableIcons from "../../utils/materialTableIcons";
 import AddRefund from "../Upsert/Refunds/AddRefund";
 import UpdateRefund from "../Upsert/Refunds/UpdateRefund";
 import AddEntry from "../Upsert/Entries/AddEntry";
@@ -63,6 +63,7 @@ import UpdateEntry from "../Upsert/Entries/UpdateEntry";
 import DeleteEntry from "../Upsert/Entries/DeleteEntry";
 import DeleteRefund from "../Upsert/Refunds/DeleteRefund";
 import ItemsTable from "./Items";
+import { rationalToFraction } from "../../../utils/rational";
 
 export enum JournalMode {
   View,
@@ -297,22 +298,25 @@ const Journal = (props: {
       {
         field: "total",
         title: "Total",
-        render: ({ total: { num, den } }) =>
-          numeral(num / den).format("$0,0.00"),
+        render: ({ total }) =>
+          numeral(rationalToFraction(total).valueOf()).format("$0,0.00"),
         searchable: true,
         filtering: false,
         sorting: true,
         customSort: ({ total: totalA }, { total: totalB }) => {
-          return totalA.num / totalA.den - totalB.num / totalB.den;
+          return rationalToFraction(totalA)
+            .sub(rationalToFraction(totalB))
+            .valueOf();
         },
-        customFilterAndSearch: (filter, { total: { num, den } }) => {
+        customFilterAndSearch: (filter, { total }) => {
+          const totalDec = rationalToFraction(total).valueOf();
           return (
             new Fuse(
               [
                 {
                   total: [
-                    numeral(num / den).format("$0,0.00"),
-                    (num / den).toFixed(2),
+                    numeral(totalDec).format("$0,0.00"),
+                    totalDec.toFixed(2),
                   ],
                 },
               ],

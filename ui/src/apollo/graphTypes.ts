@@ -609,14 +609,21 @@ export type QueryPeopleArgs = {
 
 export type Rational = {
    __typename?: 'Rational';
-  num: Scalars['Int'];
-  den: Scalars['Int'];
+  n: Scalars['Int'];
+  d: Scalars['Int'];
+  s: RationalSign;
 };
 
 export type RationalInput = {
-  num: Scalars['Int'];
-  den: Scalars['Int'];
+  n: Scalars['Int'];
+  d: Scalars['Int'];
+  s: RationalSign;
 };
+
+export enum RationalSign {
+  Pos = 'POS',
+  Neg = 'NEG'
+}
 
 export enum SortDirection {
   Asc = 'ASC',
@@ -673,9 +680,9 @@ export type OnEntryUpsert_2Subscription = { __typename?: 'Subscription', journal
     & GetReportDataEntry_1Fragment
   ) };
 
-export type GetReportDataDept_1Fragment = { __typename: 'Department', id: string, name: string, budget?: Maybe<{ __typename: 'Budget', id: string, amount: { __typename?: 'Rational', num: number, den: number } }> };
+export type GetReportDataDept_1Fragment = { __typename: 'Department', id: string, name: string, budget?: Maybe<{ __typename: 'Budget', id: string, amount: { __typename?: 'Rational', n: number, d: number, s: RationalSign } }> };
 
-export type GetReportDataEntry_1Fragment = { __typename: 'JournalEntry', id: string, type: JournalEntryType, lastUpdate: string, deleted: boolean, category: { __typename: 'JournalEntryCategory', id: string, name: string }, total: { __typename?: 'Rational', num: number, den: number }, department: { __typename: 'Department', id: string, ancestors: Array<{ __typename: 'Department', id: string } | { __typename: 'Business', id: string }> }, refunds: Array<{ __typename: 'JournalEntryRefund', id: string, deleted: boolean, lastUpdate: string, total: { __typename?: 'Rational', num: number, den: number } }> };
+export type GetReportDataEntry_1Fragment = { __typename: 'JournalEntry', id: string, type: JournalEntryType, lastUpdate: string, deleted: boolean, category: { __typename: 'JournalEntryCategory', id: string, name: string }, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign }, department: { __typename: 'Department', id: string, ancestors: Array<{ __typename: 'Department', id: string } | { __typename: 'Business', id: string }> }, refunds: Array<{ __typename: 'JournalEntryRefund', id: string, deleted: boolean, lastUpdate: string, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign } }> };
 
 export type GetReportDataQueryVariables = {
   deptId: Scalars['ID'];
@@ -744,7 +751,7 @@ export type JournalEntryCategory_1Fragment = { __typename: 'JournalEntryCategory
 
 export type JournalEntryDept_1Fragment = { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Department', id: string, deptName: string } | { __typename: 'Business', id: string, bizName: string }> };
 
-export type JournalEntryRefund_1Fragment = { __typename: 'JournalEntryRefund', id: string, date: string, description?: Maybe<string>, reconciled: boolean, lastUpdate: string, deleted: boolean, total: { __typename?: 'Rational', num: number, den: number }, paymentMethod: (
+export type JournalEntryRefund_1Fragment = { __typename: 'JournalEntryRefund', id: string, date: string, description?: Maybe<string>, reconciled: boolean, lastUpdate: string, deleted: boolean, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign }, paymentMethod: (
     { __typename?: 'PaymentMethod' }
     & JournalEntryPayMethod_1Fragment
   ) };
@@ -755,7 +762,7 @@ export type JournalEntryItem_1Fragment = { __typename: 'JournalEntryItem', id: s
   )>, department?: Maybe<(
     { __typename?: 'Department' }
     & JournalEntryDept_1Fragment
-  )>, total: { __typename?: 'Rational', num: number, den: number } };
+  )>, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign } };
 
 export type JournalEntry_1Fragment = { __typename: 'JournalEntry', id: string, date: string, type: JournalEntryType, description?: Maybe<string>, deleted: boolean, lastUpdate: string, reconciled: boolean, department: (
     { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Department', id: string, deptName: string } | { __typename: 'Business', id: string, bizName: string }> }
@@ -766,7 +773,7 @@ export type JournalEntry_1Fragment = { __typename: 'JournalEntry', id: string, d
   ), paymentMethod: (
     { __typename?: 'PaymentMethod' }
     & JournalEntryPayMethod_1Fragment
-  ), source: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } | { __typename: 'Business', id: string, bizName: string } | { __typename: 'Department', id: string, deptName: string }, total: { __typename?: 'Rational', num: number, den: number }, refunds: Array<(
+  ), source: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } | { __typename: 'Business', id: string, bizName: string } | { __typename: 'Department', id: string, deptName: string }, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign }, refunds: Array<(
     { __typename?: 'JournalEntryRefund' }
     & JournalEntryRefund_1Fragment
   )>, items: Array<(
@@ -855,7 +862,7 @@ export type UpdateEntryIniStateQuery = { __typename?: 'Query', journalEntry?: Ma
         & PayMethodEntryOptFragment
       )> }
       & PayMethodEntryOptFragment
-    ), total: { __typename?: 'Rational', num: number, den: number }, refunds: Array<{ __typename: 'JournalEntryRefund', id: string, deleted: boolean, date: string, total: { __typename?: 'Rational', num: number, den: number } }> }> };
+    ), total: { __typename?: 'Rational', n: number, d: number, s: RationalSign }, refunds: Array<{ __typename: 'JournalEntryRefund', id: string, deleted: boolean, date: string, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign } }> }> };
 
 export type AddEntryMutationVariables = {
   fields: JournalEntryAddFields;
@@ -964,9 +971,9 @@ export type UpdateItemIniStateQuery = { __typename?: 'Query', journalEntry?: May
         & CatEntryOptFragment
       )> }
       & CatEntryOptFragment
-    )>, total: { __typename?: 'Rational', num: number, den: number } }> };
+    )>, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign } }> };
 
-export type JournalEntry_3Fragment = { __typename: 'JournalEntry', id: string, type: JournalEntryType, total: { __typename?: 'Rational', num: number, den: number }, items: Array<{ __typename: 'JournalEntryItem', id: string, deleted: boolean, total: { __typename?: 'Rational', num: number, den: number } }> };
+export type JournalEntry_3Fragment = { __typename: 'JournalEntry', id: string, type: JournalEntryType, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign }, items: Array<{ __typename: 'JournalEntryItem', id: string, deleted: boolean, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign } }> };
 
 export type AddEntryItemMutationVariables = {
   id: Scalars['ID'];
@@ -1025,9 +1032,9 @@ export type UpdateRefundIniStateQuery = { __typename?: 'Query', journalEntry?: M
         & PayMethodEntryOptFragment
       )> }
       & PayMethodEntryOptFragment
-    ), total: { __typename?: 'Rational', num: number, den: number } }> };
+    ), total: { __typename?: 'Rational', n: number, d: number, s: RationalSign } }> };
 
-export type JournalEntry_2Fragment = { __typename: 'JournalEntry', id: string, date: string, type: JournalEntryType, total: { __typename?: 'Rational', num: number, den: number }, refunds: Array<{ __typename: 'JournalEntryRefund', id: string, deleted: boolean, total: { __typename?: 'Rational', num: number, den: number } }> };
+export type JournalEntry_2Fragment = { __typename: 'JournalEntry', id: string, date: string, type: JournalEntryType, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign }, refunds: Array<{ __typename: 'JournalEntryRefund', id: string, deleted: boolean, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign } }> };
 
 export type AddEntryRefundMutationVariables = {
   id: Scalars['ID'];
@@ -1073,59 +1080,6 @@ export type DeptsForNav_1QueryVariables = {};
 
 
 export type DeptsForNav_1Query = { __typename?: 'Query', departments: Array<{ __typename: 'Department', id: string, name: string, virtualRoot?: Maybe<boolean>, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } }> };
-
-export type AddPerson_1MutationVariables = {
-  fields: PersonAddFields;
-};
-
-
-export type AddPerson_1Mutation = { __typename?: 'Mutation', addPerson: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } };
-
-export type AddBusiness_1MutationVariables = {
-  fields: BusinessAddFields;
-};
-
-
-export type AddBusiness_1Mutation = { __typename?: 'Mutation', addBusiness: { __typename: 'Business', id: string, name: string } };
-
-export type AddJournalEntry_2MutationVariables = {
-  fields: JournalEntryAddFields;
-};
-
-
-export type AddJournalEntry_2Mutation = { __typename?: 'Mutation', journalEntryAdd: { __typename: 'JournalEntry', id: string } };
-
-export type UpdateJournalEntry_2MutationVariables = {
-  id: Scalars['ID'];
-  fields: JournalEntryUpdateFields;
-};
-
-
-export type UpdateJournalEntry_2Mutation = { __typename?: 'Mutation', journalEntryUpdate: (
-    { __typename?: 'JournalEntry' }
-    & JournalEntry_1Fragment
-  ) };
-
-export type CategoryTypeValidation_1QueryVariables = {
-  id: Scalars['ID'];
-};
-
-
-export type CategoryTypeValidation_1Query = { __typename?: 'Query', journalEntryCategory: { __typename: 'JournalEntryCategory', id: string, type: JournalEntryType } };
-
-export type ValidateDeptIsLeaf_1QueryVariables = {
-  id: Scalars['ID'];
-};
-
-
-export type ValidateDeptIsLeaf_1Query = { __typename?: 'Query', department?: Maybe<{ __typename: 'Department', id: string, descendants: Array<{ __typename: 'Department', id: string }> }> };
-
-export type CheckValidVendor_1QueryVariables = {
-  id: Scalars['ID'];
-};
-
-
-export type CheckValidVendor_1Query = { __typename?: 'Query', business: { __typename: 'Business', id: string, vendor?: Maybe<{ __typename?: 'Vendor', approved: boolean }> } };
 
 
 
@@ -1197,6 +1151,7 @@ export type ResolversTypes = {
   Budget: ResolverTypeWrapper<Omit<Budget, 'owner'> & { owner: ResolversTypes['BudgetOwner'] }>,
   Rational: ResolverTypeWrapper<Rational>,
   Int: ResolverTypeWrapper<Scalars['Int']>,
+  RationalSign: RationalSign,
   BudgetOwner: ResolversTypes['Department'] | ResolversTypes['Business'],
   Department: ResolverTypeWrapper<Omit<Department, 'parent' | 'ancestors'> & { parent: ResolversTypes['DepartmentAncestor'], ancestors: Array<ResolversTypes['DepartmentAncestor']> }>,
   String: ResolverTypeWrapper<Scalars['String']>,
@@ -1269,6 +1224,7 @@ export type ResolversParentTypes = {
   Budget: Omit<Budget, 'owner'> & { owner: ResolversParentTypes['BudgetOwner'] },
   Rational: Rational,
   Int: Scalars['Int'],
+  RationalSign: RationalSign,
   BudgetOwner: ResolversParentTypes['Department'] | ResolversParentTypes['Business'],
   Department: Omit<Department, 'parent' | 'ancestors'> & { parent: ResolversParentTypes['DepartmentAncestor'], ancestors: Array<ResolversParentTypes['DepartmentAncestor']> },
   String: Scalars['String'],
@@ -1552,8 +1508,9 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
 };
 
 export type RationalResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Rational'] = ResolversParentTypes['Rational']> = {
-  num?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
-  den?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
+  n?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
+  d?: Resolver<ResolversTypes['Int'], ParentType, ContextType>,
+  s?: Resolver<ResolversTypes['RationalSign'], ParentType, ContextType>,
   __isTypeOf?: isTypeOfResolverFn<ParentType>,
 };
 

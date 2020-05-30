@@ -12,6 +12,7 @@ import {
 } from "../../../../apollo/graphTypes";
 import { TransmutationValue } from "../../../../formik/utils";
 import { JOURNAL_ENTRY_ITEM } from "../../Table/JournalEntries.gql";
+import { rationalToFraction } from "../../../../utils/rational";
 
 export type UpdateValues = O.NonNullable<
   O.Overwrite<
@@ -80,8 +81,9 @@ const submitUpdate: (
 
   // Total
   const total =
-    values.total.value.num / values.total.value.den ===
-    iniValues.total.value.num / iniValues.total.value.den
+    rationalToFraction(values.total.value).compare(
+      rationalToFraction(iniValues.total.value)
+    ) === 0
       ? null
       : values.total.value;
 

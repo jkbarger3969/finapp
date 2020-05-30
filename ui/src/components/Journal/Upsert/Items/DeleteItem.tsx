@@ -17,7 +17,7 @@ import {
   DeleteItemMutation,
   DeleteItemMutationVariables as DeleteItemVars,
 } from "../../../../apollo/graphTypes";
-import OverlayLoading from "../../../Utils/OverlayLoading";
+import OverlayLoading from "../../../utils/OverlayLoading";
 
 const DELETE_ITEM = gql`
   mutation DeleteItem($id: ID!) {

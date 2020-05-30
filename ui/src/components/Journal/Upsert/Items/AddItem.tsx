@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Formik, FormikConfig, useFormikContext, FormikProps } from "formik";
 import {
   Dialog,
@@ -24,6 +24,7 @@ import {
   Queue as QueueIcon,
 } from "@material-ui/icons";
 import gql from "graphql-tag";
+import Fraction from "fraction.js";
 
 import submitAdd, { AddValues } from "./submitAdd";
 import {
@@ -40,14 +41,10 @@ import {
   useFormikStatus,
   FormikStatus,
 } from "../../../../formik/utils";
-import OverlayLoading from "../../../Utils/OverlayLoading";
-import Overlay from "../../../Utils/Overlay";
+import OverlayLoading from "../../../utils/OverlayLoading";
+import Overlay from "../../../utils/Overlay";
 import { JOURNAL_FRAGMENT } from "./items.gql";
-import {
-  addRational,
-  subRational,
-  rationalToDecimal,
-} from "../../../../utils/transmutations";
+import { rationalToFraction } from "../../../../utils/rational";
 
 const ENTRY_ITEM_STATE = gql`
   query GetEntryItemState_1($id: ID!) {
@@ -114,15 +111,12 @@ const AddItemDialog = (
   const items = data?.journalEntry?.items || [];
   const maxTotal = useMemo(() => {
     if (total) {
-      const totalItems = items.reduce(
-        (totalItems, { deleted, total }) => {
-          return deleted ? totalItems : addRational(totalItems, total);
-        },
-        { num: 0, den: 1 }
-      );
-      return rationalToDecimal(subRational(total, totalItems));
+      const totalItems = items.reduce((totalItems, { deleted, total }) => {
+        return deleted ? totalItems : totalItems.add(rationalToFraction(total));
+      }, new Fraction(0));
+      return rationalToFraction(total).sub(totalItems);
     }
-    return Number.MAX_SAFE_INTEGER;
+    return new Fraction(Number.MAX_SAFE_INTEGER);
   }, [total, items]);
 
   const onExited = useCallback(() => {

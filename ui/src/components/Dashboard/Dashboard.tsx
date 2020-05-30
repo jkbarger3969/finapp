@@ -16,6 +16,7 @@ import CardContent from "@material-ui/core/CardContent";
 import numeral from "numeral";
 import { red, green, orange, grey } from "@material-ui/core/colors";
 import gql from "graphql-tag";
+import Fraction from "fraction.js";
 
 import {
   GetReportDataQuery,
@@ -29,6 +30,7 @@ import {
 } from "./ReportData.gql";
 import { DEPT_ENTRY_OPT_FRAGMENT } from "../Journal/Upsert/upsertEntry.gql";
 import AddEntry from "../Journal/Upsert/Entries/AddEntry";
+import { rationalToFraction } from "../../utils/rational";
 
 const colorMeter = (percentSpent: number, shade = 800) => {
   if (percentSpent < 0.75) {
@@ -61,8 +63,8 @@ const BudgetMeter = (props: { spentPercentage: number; height: number }) => {
 
 interface DeptReportObj {
   name: string;
-  spent: number;
-  budget: number | null;
+  spent: Fraction;
+  budget: Fraction | null;
 }
 
 export const DEPT_FOR_UPSERT_ADD = gql`
@@ -183,43 +185,38 @@ const Dashboard = function (props: { deptId: string }) {
   } = useMemo(() => {
     // Generate department report objects
     const deptReport = new Map<string, DeptReportObj>();
-    let subDeptBudgetAg = 0;
+    let subDeptBudgetAg = new Fraction(0);
 
     if (department) {
-      const budget = (() => {
-        if (department.budget) {
-          const { num, den } = department.budget.amount;
-          return num / den;
-        }
-        return null;
-      })();
+      const budget = department.budget
+        ? rationalToFraction(department.budget.amount)
+        : null;
 
       deptReport.set(department.id, {
         name: department.name,
-        spent: 0,
+        spent: new Fraction(0),
         budget,
       });
 
       for (const subDept of department.descendants) {
-        let budget: null | number = null;
+        let budget: null | Fraction = null;
 
         if (subDept.budget) {
-          const { num, den } = subDept.budget.amount;
-          const subBudgetDec = num / den;
-          subDeptBudgetAg += subBudgetDec;
-          budget = subBudgetDec;
+          const subBudget = rationalToFraction(subDept.budget.amount);
+          subDeptBudgetAg = subDeptBudgetAg.add(subBudget);
+          budget = subBudget;
         }
 
         deptReport.set(subDept.id, {
           name: subDept.name,
-          spent: 0,
+          spent: new Fraction(0),
           budget,
         });
       }
     }
 
     // Calculating aggregate depts and credits
-    let spent = 0;
+    let spent = new Fraction(0);
     for (const entry of entries) {
       if (entry.deleted) {
         continue;
@@ -228,39 +225,35 @@ const Dashboard = function (props: { deptId: string }) {
         entry.department.id
       ) as DeptReportObj;
 
-      let entryTotal = entry.total.num / entry.total.den;
+      let entryTotal = rationalToFraction(entry.total);
 
       // Aggregate refunds
       for (const refund of entry.refunds) {
         if (refund.deleted) {
           continue;
         }
-        entryTotal -= refund.total.num / refund.total.den;
+        entryTotal = entryTotal.sub(rationalToFraction(refund.total));
       }
 
       if (entry.type === JournalEntryType.Credit) {
-        spent -= entryTotal;
-        deptReportObj.spent -= entryTotal;
+        spent = spent.sub(entryTotal);
+        deptReportObj.spent = deptReportObj.spent.sub(entryTotal);
       } else {
-        spent += entryTotal;
-
-        deptReportObj.spent += entryTotal;
+        spent = spent.add(entryTotal);
+        deptReportObj.spent = deptReportObj.spent.add(entryTotal);
       }
     }
 
     // Format values
-    const budgetDec = (() => {
-      if (department?.budget) {
-        const { num, den } = department?.budget?.amount || { num: 0, den: 1 };
-        return num / den;
-      }
+    const budgetFraction = department?.budget
+      ? rationalToFraction(department.budget.amount)
+      : subDeptBudgetAg;
 
-      return subDeptBudgetAg;
-    })();
-
-    const totalRemaining = numeral(budgetDec - spent).format("$0,0.00");
-    const budget = numeral(budgetDec).format("$0,0.00");
-    const spentToBudgetRatio = spent / budgetDec;
+    const totalRemaining = numeral(budgetFraction.sub(spent).valueOf()).format(
+      "$0,0.00"
+    );
+    const budget = numeral(budgetFraction.valueOf()).format("$0,0.00");
+    const spentToBudgetRatio = spent.div(budgetFraction);
 
     return {
       totalRemaining,
@@ -292,27 +285,42 @@ const Dashboard = function (props: { deptId: string }) {
               {(() => {
                 if (budget === null) {
                   return (
-                    <Box color={spent > 0 ? red[900] : green[900]} clone>
+                    <Box
+                      color={
+                        spent.compare(new Fraction(0)) > 0
+                          ? red[900]
+                          : green[900]
+                      }
+                      clone
+                    >
                       <Typography variant="h6">
-                        {`Spent: ${numeral(Math.abs(spent)).format("$0,0.00")}`}
+                        {`Spent: ${numeral(spent.abs().valueOf()).format(
+                          "$0,0.00"
+                        )}`}
                       </Typography>
                     </Box>
                   );
                 }
 
-                const totalRemaining = budget - spent;
+                const totalRemaining = budget.sub(spent);
 
                 return (
                   <React.Fragment>
-                    <Box color={colorMeter(spent / budget, 900)} clone>
+                    <Box
+                      color={colorMeter(spent.div(budget).valueOf(), 900)}
+                      clone
+                    >
                       <Typography variant="h6">{`${numeral(
-                        totalRemaining
+                        totalRemaining.valueOf()
                       ).format("$0,0.00")} Remaining`}</Typography>
                     </Box>
-                    <Typography variant="body1">{`of ${numeral(budget).format(
-                      "$0,0.00"
-                    )}`}</Typography>
-                    <BudgetMeter spentPercentage={spent / budget} height={5} />
+                    <Typography variant="body1">{`of ${numeral(
+                      budget.valueOf()
+                    ).format("$0,0.00")}`}</Typography>
+                    <BudgetMeter
+                      spentPercentage={spent.div(budget).valueOf()}
+                      height={5}
+                    />
                   </React.Fragment>
                 );
               })()}
@@ -385,7 +393,7 @@ const Dashboard = function (props: { deptId: string }) {
               <Typography align="center" variant="h3">
                 {deptName}
               </Typography>
-              <Box color={colorMeter(spentToBudgetRatio)}>
+              <Box color={colorMeter(spentToBudgetRatio.valueOf())}>
                 <Typography align="center" variant="h4">
                   {`${totalRemaining} Remaining`}
                 </Typography>
@@ -393,7 +401,10 @@ const Dashboard = function (props: { deptId: string }) {
               <Typography align="center" variant="subtitle1">
                 {`of ${budget}`}
               </Typography>
-              <BudgetMeter spentPercentage={spentToBudgetRatio} height={10} />
+              <BudgetMeter
+                spentPercentage={spentToBudgetRatio.valueOf()}
+                height={10}
+              />
             </Grid>
             {subDeptCards}
           </Grid>

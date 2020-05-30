@@ -16,6 +16,7 @@ import {
   GridProps,
 } from "@material-ui/core";
 import { Add as AddIcon, Cancel as CancelIcon } from "@material-ui/icons";
+import Fraction from "fraction.js";
 
 import {
   UpdateItemIniStateQuery as UpdateItemIniState,
@@ -33,13 +34,14 @@ import {
   FormikStatusType,
   useFormikStatus,
 } from "../../../../formik/utils";
-import OverlayLoading from "../../../Utils/OverlayLoading";
-import Overlay from "../../../Utils/Overlay";
+import OverlayLoading from "../../../utils/OverlayLoading";
+import Overlay from "../../../utils/Overlay";
 import Description from "../EntryFields/Description";
 import Department from "../EntryFields/Department";
 import Total from "../EntryFields/Total";
 import Category from "../EntryFields/Category";
 import Units from "./ItemFields/Units";
+import { rationalToFraction } from "../../../../utils/rational";
 
 export interface UpdateItemProps {
   entryId: string | null;
@@ -69,8 +71,9 @@ const UPDATE_ITEM_INI_STATE = gql`
       description
       units
       total {
-        num
-        den
+        n
+        d
+        s
       }
     }
   }
@@ -118,12 +121,12 @@ const UpdateItemDialog = (
           // Do NOT include item being updated in max total calculation
           deleted || id === itemId
             ? totalItems
-            : totalItems + total.num / total.den,
-        0
+            : totalItems.add(rationalToFraction(total)),
+        new Fraction(0)
       );
-      return total.num / total.den - totalItems;
+      return rationalToFraction(total).sub(totalItems);
     }
-    return Number.MAX_SAFE_INTEGER;
+    return new Fraction(Number.MAX_SAFE_INTEGER);
   }, [total, items, itemId]);
 
   const onExited = useCallback(() => {
@@ -286,9 +289,9 @@ const UpdateItem = (props: UpdateItemProps) => {
     }
 
     const total = {
-      inputValue: (
-        journalEntryItem.total.num / journalEntryItem.total.den
-      ).toFixed(2),
+      inputValue: rationalToFraction(journalEntryItem.total)
+        .round(2)
+        .toString(),
       value: journalEntryItem.total,
     };
 

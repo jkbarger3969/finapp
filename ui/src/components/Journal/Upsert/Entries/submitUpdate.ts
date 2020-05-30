@@ -18,6 +18,7 @@ import { TransmutationValue } from "../../../../formik/utils";
 import { CHECK_ID } from "../../constants";
 import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/JournalEntries.gql";
 import { SourceValue } from "./submitAdd";
+import { rationalToFraction } from "../../../../utils/rational";
 
 export type UpdateValues = O.NonNullable<
   O.Overwrite<
@@ -128,8 +129,9 @@ const submitUpdate: (
 
   // Total
   const total =
-    values.total.value.num / values.total.value.den ===
-    iniValues.total.value.num / iniValues.total.value.den
+    rationalToFraction(values.total.value).compare(
+      rationalToFraction(iniValues.total.value)
+    ) === 0
       ? null
       : values.total.value;
 

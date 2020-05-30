@@ -16,6 +16,7 @@ import {
   GridProps,
 } from "@material-ui/core";
 import { Add as AddIcon, Cancel as CancelIcon } from "@material-ui/icons";
+import Fraction from "fraction.js";
 
 import {
   UpdateEntryIniStateQuery as UpdateEntryIniState,
@@ -40,8 +41,8 @@ import {
 } from "../upsertEntry.gql";
 import { min } from "date-fns/esm";
 
-import OverlayLoading from "../../../Utils/OverlayLoading";
-import Overlay from "../../../Utils/Overlay";
+import OverlayLoading from "../../../utils/OverlayLoading";
+import Overlay from "../../../utils/Overlay";
 import DateEntry from "../EntryFields/DateEntry";
 import Description from "../EntryFields/Description";
 import Total from "../EntryFields/Total";
@@ -51,6 +52,7 @@ import Category from "../EntryFields/Category";
 import Department from "../EntryFields/Department";
 import Source from "../EntryFields/Source";
 import Type from "../EntryFields/Type";
+import { rationalToFraction } from "../../../../utils/rational";
 
 export interface UpdateEntryProps {
   entryId: string | null;
@@ -94,8 +96,9 @@ const UPDATE_ENTRY_INI_STATE = gql`
       }
       description
       total {
-        num
-        den
+        n
+        d
+        s
       }
       refunds {
         id
@@ -103,8 +106,9 @@ const UPDATE_ENTRY_INI_STATE = gql`
         deleted
         date
         total {
-          num
-          den
+          n
+          d
+          s
         }
       }
       reconciled
@@ -154,10 +158,10 @@ const UpdateEntryDialog = (
     () =>
       refunds.reduce(
         ([minTotal, maxDate], { id, deleted, total, date }) => [
-          deleted ? minTotal : minTotal + total.num / total.den,
+          deleted ? minTotal : minTotal.add(rationalToFraction(total)),
           deleted ? maxDate : min([maxDate, new Date(date)]),
         ],
-        [0, MAX_DATE]
+        [new Fraction(0), MAX_DATE]
       ),
     [refunds]
   );
@@ -415,7 +419,7 @@ const UpdateEntry = (props: UpdateEntryProps) => {
     })();
 
     const total = {
-      inputValue: (journalEntry.total.num / journalEntry.total.den).toFixed(2),
+      inputValue: rationalToFraction(journalEntry.total).round(2).toString(),
       value: journalEntry.total,
     };
 
@@ -479,7 +483,7 @@ const UpdateEntry = (props: UpdateEntryProps) => {
               }
             });
 
-            value.push(...ancestorDepts);
+            value.push(...ancestorDepts, src);
           }
       }
 

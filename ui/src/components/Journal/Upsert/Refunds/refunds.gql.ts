@@ -7,16 +7,18 @@ export const JOURNAL_FRAGMENT = gql`
     date
     type
     total {
-      num
-      den
+      n
+      d
+      s
     }
     refunds {
       id
       __typename
       deleted
       total {
-        num
-        den
+        n
+        d
+        s
       }
     }
   }

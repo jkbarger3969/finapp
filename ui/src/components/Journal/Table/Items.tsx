@@ -12,7 +12,7 @@ import {
   JournalEntry_1Fragment as JournalEntryFragment,
   JournalEntryItem_1Fragment as JournalEntryItemFragment,
 } from "../../../apollo/graphTypes";
-import tableIcons from "../../Utils/materialTableIcons";
+import tableIcons from "../../utils/materialTableIcons";
 import AddItem from "../Upsert/Items/AddItem";
 import UpdateItem from "../Upsert/Items/UpdateItem";
 import DeleteItem from "../Upsert/Items/DeleteItem";
@@ -21,6 +21,7 @@ import {
   AddCircle as AddCircleIcon,
   Edit as EditIcon,
 } from "@material-ui/icons";
+import { rationalToFraction } from "../../../utils/rational";
 
 export interface ItemsProps {
   entry: JournalEntryFragment;
@@ -102,8 +103,8 @@ const Items = (props: ItemsProps) => {
       {
         field: "total",
         title: "Total",
-        render: ({ total: { num, den } }) =>
-          numeral(num / den).format("$0,0.00"),
+        render: ({ total }) =>
+          numeral(rationalToFraction(total).valueOf()).format("$0,0.00"),
       },
       {
         field: "units",
