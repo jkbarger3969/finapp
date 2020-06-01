@@ -1,9 +1,15 @@
+enum RationalSign {
+  POS
+  NEG
+}
 type Rational {
-  num:Int!
-  den:Int!
+  n: Int!
+  d: Int!
+  s: RationalSign!
 }
 
 input RationalInput {
-  num:Int!
-  den:Int!
+  n: Int!
+  d: Int!
+  s: RationalSign!
 }

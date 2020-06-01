@@ -15,6 +15,7 @@ import {
   Button,
 } from "@material-ui/core";
 import { Add as AddIcon, Cancel as CancelIcon } from "@material-ui/icons";
+import Fraction from "fraction.js";
 
 import {
   UpdateRefundIniStateQuery as UpdateRefundIniState,
@@ -29,13 +30,14 @@ import {
   FormikStatusType,
   useFormikStatus,
 } from "../../../../formik/utils";
-import OverlayLoading from "../../../Utils/OverlayLoading";
-import Overlay from "../../../Utils/Overlay";
+import OverlayLoading from "../../../utils/OverlayLoading";
+import Overlay from "../../../utils/Overlay";
 import Description from "../EntryFields/Description";
 import PaymentMethod from "../EntryFields/PaymentMethod";
 import Total from "../EntryFields/Total";
 import DateEntry from "../EntryFields/DateEntry";
 import Reconcile from "../EntryFields/Reconcile";
+import { rationalToFraction } from "../../../../utils/rational";
 
 export interface UpdateRefundProps {
   entryId: string | null;
@@ -62,8 +64,9 @@ const UPDATE_REFUND_INI_STATE = gql`
         }
       }
       total {
-        num
-        den
+        n
+        d
+        s
       }
       reconciled
     }
@@ -102,12 +105,12 @@ const UpdateRefundDialog = (
           // Do NOT include refund being updated in max total calculation
           deleted || id === refundId
             ? totalRefunds
-            : totalRefunds + total.num / total.den,
-        0
+            : totalRefunds.add(rationalToFraction(total)),
+        new Fraction(0)
       );
-      return total.num / total.den - totalRefunds;
+      return rationalToFraction(total).sub(totalRefunds);
     }
-    return Number.MAX_SAFE_INTEGER;
+    return new Fraction(Number.MAX_SAFE_INTEGER);
   }, [total, refunds, refundId]);
 
   const date = journalEntry?.date;
@@ -318,9 +321,9 @@ const UpdateRefund = (props: UpdateRefundProps) => {
     })();
 
     const total = {
-      inputValue: (
-        journalEntryRefund.total.num / journalEntryRefund.total.den
-      ).toFixed(2),
+      inputValue: rationalToFraction(journalEntryRefund.total)
+        .round(2)
+        .toString(),
       value: journalEntryRefund.total,
     };
 

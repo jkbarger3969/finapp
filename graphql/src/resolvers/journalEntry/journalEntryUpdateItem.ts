@@ -1,4 +1,5 @@
 import { ObjectID } from "mongodb";
+import Fraction from "fraction.js";
 
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
@@ -7,10 +8,14 @@ import {
   JournalEntryUpdateItemFields,
   JournalEntryItemUpsertResult,
   JournalEntry,
+  RationalSign,
 } from "../../graphTypes";
 import journalEntry from "./journalEntry";
 import { stages, getItemTotals } from "./utils";
 import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
+import { rationalToFraction } from "../../utils/rational";
+
+const NULLISH = Symbol();
 
 const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = async (
   obj,
@@ -31,11 +36,16 @@ const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = asyn
   const updateBuilder = docHistory.updateHistoricalDoc("items.$[item]");
 
   // Description
-  if (fields.description) {
-    const description = fields.description.trim();
-    if (description) {
-      updateBuilder.updateField("description", description);
+  if (fields.description?.trim()) {
+    updateBuilder.updateField("description", fields.description.trim());
+  }
+
+  // Units
+  if ((fields.units ?? NULLISH) !== NULLISH) {
+    if (fields.units < 1) {
+      throw new Error("Item units must be greater than 0.");
     }
+    updateBuilder.updateField("units", fields.units);
   }
 
   let entryId: ObjectID;
@@ -113,30 +123,42 @@ const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = asyn
     })(),
     // total
     (async () => {
-      const total = fields.total;
+      const totalR = fields.total;
 
-      if (!total) {
+      if (!totalR) {
         return;
       }
 
-      const totalDecimal = total.num / total.den;
-      if (totalDecimal <= 0) {
+      if (totalR.s === RationalSign.Neg || totalR.n === 0) {
         throw new Error("Item total must be greater than 0.");
       }
 
-      const [{ entryTotal, itemTotal }] = (await db
+      const total = rationalToFraction(totalR);
+
+      const [result] = (await db
         .collection("journalEntries")
         .aggregate([
           { $match: { "items.id": itemId } },
           stages.entryTotal,
           //Excluded the current total from the refund total as it WILL change.
           getItemTotals([itemId]),
-          { $project: { entryTotal: true, itemTotal: true } },
+          { $project: { entryTotal: true, itemTotals: true } },
         ])
-        .toArray()) as [{ entryTotal: number; itemTotal: number }];
+        .toArray()) as [{ entryTotal: Fraction; itemTotals: Fraction[] }];
+
+      if (!result) {
+        return;
+      }
+
+      const entryTotal = new Fraction(result.entryTotal);
+
+      const itemTotal = result.itemTotals.reduce(
+        (itemTotal, total) => itemTotal.add(total),
+        new Fraction(0)
+      );
 
       // Ensure aggregate refunds do NOT exceed the original transaction amount
-      if (entryTotal < itemTotal + totalDecimal) {
+      if (entryTotal.compare(itemTotal.add(total)) < 0) {
         throw new Error(
           "Items cannot total more than original transaction amount."
         );
@@ -157,6 +179,7 @@ const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = asyn
         category: null,
         description: null,
         total: null,
+        units: null,
       };
 
       return Object.keys(obj);

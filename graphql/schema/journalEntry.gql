@@ -89,6 +89,7 @@ type JournalEntryItem {
   department: Department
   category: JournalEntryCategory
   description: String
+  units: Int!
   total: Rational!
   lastUpdate: String!
   deleted: Boolean!
@@ -98,6 +99,7 @@ input JournalEntryAddItemFields {
   department: ID
   category: ID
   description: String
+  units: Int!
   total: RationalInput!
 }
 
@@ -105,6 +107,7 @@ input JournalEntryUpdateItemFields {
   department: ID
   category: ID
   description: String
+  units: Int
   total: RationalInput
 }
 

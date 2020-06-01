@@ -9,8 +9,9 @@ export const GET_REPORT_DATA_DEPT_FRAGMENT = gql`
       id
       __typename
       amount {
-        num
-        den
+        n
+        d
+        s
       }
     }
   }
@@ -27,8 +28,9 @@ export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
     }
     type
     total {
-      num
-      den
+      n
+      d
+      s
     }
     department {
       __typename
@@ -47,8 +49,9 @@ export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
       __typename
       id
       total {
-        num
-        den
+        n
+        d
+        s
       }
       deleted
       lastUpdate

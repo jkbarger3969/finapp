@@ -24,6 +24,7 @@ import {
   Queue as QueueIcon,
 } from "@material-ui/icons";
 import gql from "graphql-tag";
+import Fraction from "fraction.js";
 
 import submitAdd, { AddValues } from "./submitAdd";
 import {
@@ -34,19 +35,16 @@ import Description from "../EntryFields/Description";
 import Total from "../EntryFields/Total";
 import Category from "../EntryFields/Category";
 import Department from "../EntryFields/Department";
+import Units from "./ItemFields/Units";
 import {
   FormikStatusType,
   useFormikStatus,
   FormikStatus,
 } from "../../../../formik/utils";
-import OverlayLoading from "../../../Utils/OverlayLoading";
-import Overlay from "../../../Utils/Overlay";
+import OverlayLoading from "../../../utils/OverlayLoading";
+import Overlay from "../../../utils/Overlay";
 import { JOURNAL_FRAGMENT } from "./items.gql";
-import {
-  addRational,
-  subRational,
-  rationalToDecimal,
-} from "../../../../utils/transmutations";
+import { rationalToFraction } from "../../../../utils/rational";
 
 const ENTRY_ITEM_STATE = gql`
   query GetEntryItemState_1($id: ID!) {
@@ -113,15 +111,12 @@ const AddItemDialog = (
   const items = data?.journalEntry?.items || [];
   const maxTotal = useMemo(() => {
     if (total) {
-      const totalItems = items.reduce(
-        (totalItems, { deleted, total }) => {
-          return deleted ? totalItems : addRational(totalItems, total);
-        },
-        { num: 0, den: 1 }
-      );
-      return rationalToDecimal(subRational(total, totalItems));
+      const totalItems = items.reduce((totalItems, { deleted, total }) => {
+        return deleted ? totalItems : totalItems.add(rationalToFraction(total));
+      }, new Fraction(0));
+      return rationalToFraction(total).sub(totalItems);
     }
-    return Number.MAX_SAFE_INTEGER;
+    return new Fraction(Number.MAX_SAFE_INTEGER);
   }, [total, items]);
 
   const onExited = useCallback(() => {
@@ -233,6 +228,9 @@ const AddItemDialog = (
                 fullWidth
                 maxTotal={maxTotal}
               />
+            </Grid>
+            <Grid {...gridEntryResponsiveProps}>
+              <Units disabled={loading || isSubmitting} fullWidth />
             </Grid>
             <Grid {...gridEntryResponsiveProps}>
               <Description disabled={loading || isSubmitting} fullWidth />

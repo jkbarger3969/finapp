@@ -1,5 +1,5 @@
 import { ObjectID } from "mongodb";
-import * as moment from "moment";
+import Fraction from "fraction.js";
 import { isValid } from "date-fns";
 
 import {
@@ -7,6 +7,7 @@ import {
   PaymentMethod,
   JournalEntryUpdateFields,
   JournalEntrySourceType,
+  RationalSign,
 } from "../../graphTypes";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
@@ -16,6 +17,7 @@ import { getSrcCollectionAndNode, stages } from "./utils";
 import { JOURNAL_ENTRY_UPDATED, JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 import { addBusiness } from "../business";
 import { addPerson } from "../person";
+import { rationalToFraction } from "../../utils/rational";
 
 const NULLISH = Symbol();
 
@@ -41,7 +43,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
       paymentMethod: paymentMethodId,
       source,
       description,
-      total,
+      total: totalR,
       reconciled,
     },
     paymentMethodAdd,
@@ -124,7 +126,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
           ])
           .toArray()) as [{ refundDate: Date }];
 
-        if (result && date > result.refundDate) {
+        if (result && result.refundDate && date > result.refundDate) {
           throw new Error(
             "Entry date can not be greater than the earliest refund date."
           );
@@ -146,32 +148,46 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
   }
 
   // Total
-  if (total) {
-    const totalDecimal = total.num / total.den;
-
-    if (totalDecimal <= 0) {
+  if (totalR) {
+    if (totalR.s === RationalSign.Neg || totalR.n === 0) {
       throw new Error("Entry total must be greater than 0.");
     }
+
+    const total = rationalToFraction(totalR);
 
     asyncOps.push(
       // Check that new total is not less than refunds and items
       (async () => {
-        const [{ refundTotal, itemTotal }] = (await db
+        const [result] = (await db
           .collection("journalEntries")
           .aggregate([
             { $match: { _id: new ObjectID(id) } },
-            stages.refundTotal,
-            stages.itemTotal,
+            stages.refundTotals,
+            stages.itemTotals,
           ])
-          .toArray()) as [{ refundTotal: number; itemTotal: number }];
+          .toArray()) as [{ refundTotals: Fraction[]; itemTotals: Fraction[] }];
 
-        if (totalDecimal < refundTotal) {
+        if (!result) {
+          return;
+        }
+
+        const refundTotal = result.refundTotals.reduce(
+          (refundTotal, total) => refundTotal.add(total),
+          new Fraction(0)
+        );
+
+        const itemTotal = result.itemTotals.reduce(
+          (itemTotal, total) => itemTotal.add(total),
+          new Fraction(0)
+        );
+
+        if (total.compare(refundTotal) < 0) {
           throw new Error(
             "Entry total cannot be less than entry's total refunds."
           );
         }
 
-        if (totalDecimal < itemTotal) {
+        if (total.compare(itemTotal) < 0) {
           throw new Error(
             "Entry total cannot be less than entry's total items."
           );

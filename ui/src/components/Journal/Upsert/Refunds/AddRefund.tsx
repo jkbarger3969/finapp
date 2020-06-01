@@ -19,6 +19,7 @@ import {
 } from "@apollo/react-hooks";
 import { Add as AddIcon, Cancel as CancelIcon } from "@material-ui/icons";
 import gql from "graphql-tag";
+import Fraction from "fraction.js";
 
 import submitAdd, { AddValues } from "./submitAdd";
 import {
@@ -36,9 +37,10 @@ import {
   useFormikStatus,
   FormikStatus,
 } from "../../../../formik/utils";
-import OverlayLoading from "../../../Utils/OverlayLoading";
-import Overlay from "../../../Utils/Overlay";
+import OverlayLoading from "../../../utils/OverlayLoading";
+import Overlay from "../../../utils/Overlay";
 import { JOURNAL_FRAGMENT } from "./refunds.gql";
+import { rationalToFraction } from "../../../../utils/rational";
 
 const GET_ENTRY_REFUND_INFO = gql`
   query GetEntryRefundInfo_1($id: ID!) {
@@ -98,12 +100,12 @@ const AddRefundDialog = (
     if (total) {
       const totalRefunds = refunds.reduce(
         (totalRefunds, { deleted, total }) =>
-          deleted ? totalRefunds : totalRefunds + total.num / total.den,
-        0
+          deleted ? totalRefunds : totalRefunds.add(rationalToFraction(total)),
+        new Fraction(0)
       );
-      return total.num / total.den - totalRefunds;
+      return rationalToFraction(total).sub(totalRefunds);
     }
-    return Number.MAX_SAFE_INTEGER;
+    return new Fraction(Number.MAX_SAFE_INTEGER);
   }, [total, refunds]);
 
   const date = data?.journalEntry?.date;

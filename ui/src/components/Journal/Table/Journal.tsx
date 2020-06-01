@@ -1,6 +1,5 @@
 import React, {
   useMemo,
-  forwardRef,
   useState,
   useCallback,
   useEffect,
@@ -13,7 +12,6 @@ import MaterialTable, {
   MaterialTableProps,
   Components,
   MTableBody,
-  MTableBodyRow,
 } from "material-table";
 import { useQuery, useMutation } from "@apollo/react-hooks";
 import numeral from "numeral";
@@ -24,23 +22,7 @@ import {
   Delete as DeleteIcon,
   AddCircle as AddCircleIcon,
   CheckCircle as CheckCircleIcon,
-} from "@material-ui/icons";
-import {
-  AddBox,
-  ArrowDownward,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Clear,
-  DeleteOutline,
-  Edit,
-  FilterList,
-  FirstPage,
-  LastPage,
-  Remove,
-  SaveAlt,
-  Search,
-  ViewColumn,
+  Edit as EditIcon,
 } from "@material-ui/icons";
 import {
   Box,
@@ -49,11 +31,12 @@ import {
   TableCell,
   Typography,
 } from "@material-ui/core";
-import { green, red, amber, cyan } from "@material-ui/core/colors";
+import { green, red } from "@material-ui/core/colors";
 import {
   BankTransferIn as BankTransferInIcon,
   BankTransferOut as BankTransferOutIcon,
   FileTree as FileTreeIcon,
+  FileTreeOutline as FileTreeOutlineIcon,
 } from "mdi-material-ui";
 import gql from "graphql-tag";
 import { format } from "date-fns";
@@ -63,7 +46,6 @@ import {
   JournalEntries_1QueryVariables as JournalEntriesQueryVars,
   JournalEntry_1Fragment as JournalEntryFragment,
   JournalEntryRefund_1Fragment as JournalEntryRefundFragment,
-  JournalEntryItem_1Fragment as JournalEntryItemFragment,
   JournalEntryType,
   OnEntryUpsert_1Subscription as OnEntryUpsert,
   ReconcileEntryMutation as ReconcileEntry,
@@ -73,81 +55,25 @@ import {
 } from "../../../apollo/graphTypes";
 import { JOURNAL_ENTRIES, JOURNAL_ENTRY_FRAGMENT } from "./JournalEntries.gql";
 import { CHECK_ID } from "../constants";
+import tableIcons from "../../utils/materialTableIcons";
 import AddRefund from "../Upsert/Refunds/AddRefund";
 import UpdateRefund from "../Upsert/Refunds/UpdateRefund";
 import AddEntry from "../Upsert/Entries/AddEntry";
 import UpdateEntry from "../Upsert/Entries/UpdateEntry";
 import DeleteEntry from "../Upsert/Entries/DeleteEntry";
 import DeleteRefund from "../Upsert/Refunds/DeleteRefund";
-import AddItem from "../Upsert/Items/AddItem";
-import UpdateItem from "../Upsert/Items/UpdateItem";
-import DeleteItem from "../Upsert/Items/DeleteItem";
+import ItemsTable from "./Items";
+import { rationalToFraction } from "../../../utils/rational";
 
 export enum JournalMode {
   View,
   Reconcile,
 }
 
-const tableIcons = {
-  Add: forwardRef<SVGSVGElement>((props, ref) => (
-    <AddBox {...props} ref={ref} />
-  )),
-  Check: forwardRef<SVGSVGElement>((props, ref) => (
-    <Check {...props} ref={ref} />
-  )),
-  Clear: forwardRef<SVGSVGElement>((props, ref) => (
-    <Clear {...props} ref={ref} />
-  )),
-  Delete: forwardRef<SVGSVGElement>((props, ref) => (
-    <DeleteOutline {...props} ref={ref} />
-  )),
-  DetailPanel: forwardRef<SVGSVGElement>((props, ref) => (
-    <ChevronRight {...props} ref={ref} />
-  )),
-  Edit: forwardRef<SVGSVGElement>((props, ref) => (
-    <Edit {...props} ref={ref} />
-  )),
-  Export: forwardRef<SVGSVGElement>((props, ref) => (
-    <SaveAlt {...props} ref={ref} />
-  )),
-  Filter: forwardRef<SVGSVGElement>((props, ref) => (
-    <FilterList {...props} ref={ref} />
-  )),
-  FirstPage: forwardRef<SVGSVGElement>((props, ref) => (
-    <FirstPage {...props} ref={ref} />
-  )),
-  LastPage: forwardRef<SVGSVGElement>((props, ref) => (
-    <LastPage {...props} ref={ref} />
-  )),
-  NextPage: forwardRef<SVGSVGElement>((props, ref) => (
-    <ChevronRight {...props} ref={ref} />
-  )),
-  PreviousPage: forwardRef<SVGSVGElement>((props, ref) => (
-    <ChevronLeft {...props} ref={ref} />
-  )),
-  ResetSearch: forwardRef<SVGSVGElement>((props, ref) => (
-    <Clear {...props} ref={ref} />
-  )),
-  Search: forwardRef<SVGSVGElement>((props, ref) => (
-    <Search {...props} ref={ref} />
-  )),
-  SortArrow: forwardRef<SVGSVGElement>((props, ref) => (
-    <ArrowDownward {...props} ref={ref} />
-  )),
-  ThirdStateCheck: forwardRef<SVGSVGElement>((props, ref) => (
-    <Remove {...props} ref={ref} />
-  )),
-  ViewColumn: forwardRef<SVGSVGElement>((props, ref) => (
-    <ViewColumn {...props} ref={ref} />
-  )),
-} as const;
-
 export type Entry =
   | JournalEntryFragment
   | (Omit<JournalEntryFragment, "__typename" | "refunds"> &
-      JournalEntryRefundFragment & { refunds: string })
-  | (Omit<JournalEntryFragment, "__typename" | "items"> &
-      JournalEntryItemFragment & { items: string });
+      JournalEntryRefundFragment & { refunds: string });
 
 const entriesGen = function* (
   entry: JournalEntryFragment,
@@ -169,16 +95,6 @@ const entriesGen = function* (
   }
   if (mode === JournalMode.Reconcile) {
     return;
-  }
-  for (const item of entry.items) {
-    yield {
-      ...entry,
-      ...item,
-      category: item.category || entry.category,
-      department: item.department || entry.department,
-      description: item.description || entry.description,
-      items: entry.id,
-    };
   }
 };
 
@@ -277,37 +193,6 @@ const Journal = (props: {
   const [deleteRefund, setDeleteRefund] = useState<string | null>(null);
   const deleteRefundOnClose = useCallback(() => void setDeleteRefund(null), [
     setDeleteRefund,
-  ]);
-
-  // Add Item
-  const [addItemOpen, setAddItemOpen] = useState<boolean>(false);
-  const [addItemToEntry, setAddItemToEntry] = useState<string | null>(null);
-
-  const addItemOnClose = useCallback(() => void setAddItemOpen(false), [
-    setAddItemOpen,
-  ]);
-  const addItemOnExited = useCallback(() => void setAddItemToEntry(null), [
-    setAddItemToEntry,
-  ]);
-
-  // Update Item
-  const [updateItemOpen, setUpdateItemOpen] = useState<boolean>(false);
-  const [updateItem, setUpdateItem] = useState<{
-    entryId: string;
-    itemId: string;
-  } | null>(null);
-
-  // Delete Item
-  const [deleteItem, setDeleteItem] = useState<string | null>(null);
-  const deleteItemOnClose = useCallback(() => void setDeleteItem(null), [
-    setDeleteItem,
-  ]);
-
-  const updateItemOnClose = useCallback(() => void setUpdateItemOpen(false), [
-    setUpdateItemOpen,
-  ]);
-  const updateItemOnExited = useCallback(() => void setUpdateItem(null), [
-    setUpdateItem,
   ]);
 
   // Reconcile Entry
@@ -413,22 +298,25 @@ const Journal = (props: {
       {
         field: "total",
         title: "Total",
-        render: ({ total: { num, den } }) =>
-          numeral(num / den).format("$0,0.00"),
+        render: ({ total }) =>
+          numeral(rationalToFraction(total).valueOf()).format("$0,0.00"),
         searchable: true,
         filtering: false,
         sorting: true,
         customSort: ({ total: totalA }, { total: totalB }) => {
-          return totalA.num / totalA.den - totalB.num / totalB.den;
+          return rationalToFraction(totalA)
+            .sub(rationalToFraction(totalB))
+            .valueOf();
         },
-        customFilterAndSearch: (filter, { total: { num, den } }) => {
+        customFilterAndSearch: (filter, { total }) => {
+          const totalDec = rationalToFraction(total).valueOf();
           return (
             new Fuse(
               [
                 {
                   total: [
-                    numeral(num / den).format("$0,0.00"),
-                    (num / den).toFixed(2),
+                    numeral(totalDec).format("$0,0.00"),
+                    totalDec.toFixed(2),
                   ],
                 },
               ],
@@ -752,32 +640,6 @@ const Journal = (props: {
     []
   );
 
-  const parentChildData = useCallback<
-    NonNullable<MaterialTableProps<Entry>["parentChildData"]>
-  >(
-    (child, parents) =>
-      child.__typename === "JournalEntryItem"
-        ? parents.find((parent) => parent.id === child.items)
-        : undefined,
-    []
-  );
-
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-
-  const onTreeExpandChange = useCallback<
-    NonNullable<MaterialTableProps<Entry>["onTreeExpandChange"]>
-  >(
-    (entry: Entry, isExpanded) => {
-      if (isExpanded) {
-        expandedItems.add(entry.id);
-      } else {
-        expandedItems.delete(entry.id);
-      }
-      setExpandedItems(new Set(expandedItems));
-    },
-    [expandedItems, setExpandedItems]
-  );
-
   const options = useMemo<Options>(
     () => ({
       rowStyle: (data: Entry) => {
@@ -785,18 +647,6 @@ const Journal = (props: {
 
         style.color =
           data.type === JournalEntryType.Credit ? green[900] : red[900];
-
-        if (
-          data.__typename === "JournalEntry" &&
-          data.items.filter((item) => !item.deleted).length > 0 &&
-          expandedItems.has(data.id)
-        ) {
-          style.backgroundColor = cyan[100];
-        }
-
-        if (data.__typename === "JournalEntryItem") {
-          style.backgroundColor = amber[100];
-        }
 
         return style;
       },
@@ -811,7 +661,7 @@ const Journal = (props: {
       emptyRowsWhenPaging: false,
       columnsButton: true,
     }),
-    [expandedItems, journalTitle, mode]
+    [journalTitle, mode]
   );
 
   const actions = useMemo<MaterialTableProps<Entry>["actions"]>(() => {
@@ -859,11 +709,13 @@ const Journal = (props: {
                 tooltip: "Delete Entry",
                 onClick: (event, rowData) => setDeleteEntry(rowData.id),
               };
-            case "JournalEntryItem":
-              return {
-                tooltip: "Delete Item",
-                onClick: (event, rowData) => setDeleteItem(rowData.id),
-              };
+            // case "JournalEntryItem":
+            //   return {
+            //     tooltip: "Delete Item",
+            //     onClick: (event, rowData) => {
+            //       // setDeleteItem(rowData.id)
+            //     },
+            //   };
             case "JournalEntryRefund":
               return {
                 tooltip: "Delete Refund",
@@ -889,17 +741,17 @@ const Journal = (props: {
                   setUpdateEntry((rowData as Entry).id);
                 },
               };
-            case "JournalEntryItem":
-              return {
-                tooltip: "Edit Item",
-                onClick: (event, rowData) => {
-                  setUpdateItemOpen(true);
-                  setUpdateItem({
-                    entryId: (rowData as Entry).items as string,
-                    itemId: (rowData as Entry).id,
-                  });
-                },
-              };
+            // case "JournalEntryItem":
+            //   return {
+            //     tooltip: "Edit Item",
+            //     onClick: (event, rowData) => {
+            //       setUpdateItemOpen(true);
+            //       setUpdateItem({
+            //         entryId: (rowData as Entry).items as string,
+            //         itemId: (rowData as Entry).id,
+            //       });
+            //     },
+            //   };
             case "JournalEntryRefund":
               return {
                 tooltip: "Edit Refund",
@@ -915,7 +767,7 @@ const Journal = (props: {
         })();
 
         return {
-          icon: Edit as any,
+          icon: EditIcon as any,
           tooltip,
           onClick,
         };
@@ -943,20 +795,6 @@ const Journal = (props: {
           onClick: (event, rowData) => {
             setAddRefundOpen(true);
             setAddRefundToEntry((rowData as JournalEntryFragment).id);
-          },
-        };
-      },
-      (rowData) => {
-        if (rowData.__typename !== "JournalEntry") {
-          return null;
-        }
-
-        return {
-          icon: FileTreeIcon,
-          tooltip: "Itemize",
-          onClick: (event, rowData) => {
-            setAddItemOpen(true);
-            setAddItemToEntry((rowData as JournalEntryFragment).id);
           },
         };
       },
@@ -997,45 +835,76 @@ const Journal = (props: {
             </TableBody>
           )
         : (props) => <MTableBody {...props} />,
-      Row: (props) => {
-        const entry = props?.data as Entry & {
-          tableData?: { isTreeExpanded?: boolean };
-        };
-        if (
-          entry &&
-          entry.__typename === "JournalEntry" &&
-          expandedItems.has(entry.id) &&
-          entry.items.length > 0 &&
-          entry?.tableData?.isTreeExpanded !== true
-        ) {
-          props = {
-            ...props,
-            data: {
-              ...entry,
-              tableData: {
-                ...(entry.tableData || {}),
-                isTreeExpanded: true,
-              },
-            },
-          };
-        }
-        return <MTableBodyRow {...props} />;
-      },
     }),
-    [error, columns.length, actions, expandedItems]
+    [error, columns.length, actions]
+  );
+
+  const detailPanel = useMemo<
+    NonNullable<MaterialTableProps<Entry>["detailPanel"]>
+  >(
+    () => [
+      (rowData) => {
+        const isJournalEntry = rowData.__typename === "JournalEntry";
+        const hasItems = isJournalEntry ? rowData.items.length > 0 : false;
+        return {
+          icon: (props) =>
+            isJournalEntry ? (
+              hasItems ? (
+                <FileTreeIcon {...props} />
+              ) : (
+                <FileTreeOutlineIcon {...props} />
+              )
+            ) : null,
+          openIcon: (props) =>
+            hasItems ? (
+              <FileTreeIcon {...props} color="primary" />
+            ) : (
+              <FileTreeOutlineIcon {...props} color="primary" />
+            ),
+          disabled: !isJournalEntry,
+          tooltip: isJournalEntry ? "Itemize" : undefined,
+          render: (rowData) => {
+            if (rowData.__typename !== "JournalEntry") {
+              return null;
+            }
+            return <ItemsTable entry={rowData} />;
+          },
+        };
+      },
+    ],
+    []
   );
 
   const journalEntries = data?.journalEntries || [];
+
+  // https://github.com/mbrn/material-table/issues/563
+  const entryState = useRef(
+    new Map<string, Entry & { tableData?: any; showDetailPanel?: any }>()
+  );
+
   const entries = useMemo(() => {
+    // https://github.com/mbrn/material-table/issues/563
+    const oldEntryState = entryState.current;
+    const newEntryState = new Map<
+      string,
+      Entry & { tableData?: any; showDetailPanel?: any }
+    >();
+
     const filters =
       mode === JournalMode.Reconcile
         ? [(entry: Entry) => !entry.reconciled && !entry.deleted]
         : [(entry: Entry) => !entry.deleted];
 
-    return journalEntries
+    const entries = journalEntries
       .reduce((entries: Entry[], journalEntry) => {
-        for (const entry of entriesGen(journalEntry, mode)) {
+        for (let entry of entriesGen(journalEntry, mode)) {
           if (filters.every((filter) => filter(entry))) {
+            const { tableData } = oldEntryState.get(entry.id) ?? {};
+            entry = {
+              ...entry,
+              tableData,
+            } as any;
+            newEntryState.set(entry.id, entry);
             entries.push(entry);
           }
         }
@@ -1043,7 +912,11 @@ const Journal = (props: {
         return entries;
       }, [])
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [journalEntries, mode]);
+
+    entryState.current = newEntryState;
+
+    return entries;
+  }, [journalEntries, mode, entryState]);
 
   return (
     <React.Fragment>
@@ -1057,8 +930,7 @@ const Journal = (props: {
         actions={actions}
         components={components}
         title={journalTitle ?? undefined}
-        parentChildData={parentChildData}
-        onTreeExpandChange={onTreeExpandChange}
+        detailPanel={detailPanel}
       />
       <AddEntry deptId={deptId} open={addEntryOpen} onClose={addEntryOnClose} />
       <UpdateEntry
@@ -1082,20 +954,6 @@ const Journal = (props: {
         onExited={updateRefundOnExited}
       />
       <DeleteRefund refundId={deleteRefund} onClose={deleteRefundOnClose} />
-      <AddItem
-        entryId={addItemToEntry}
-        open={addItemOpen}
-        onClose={addItemOnClose}
-        onExited={addItemOnExited}
-      />
-      <UpdateItem
-        entryId={updateItem?.entryId ?? null}
-        itemId={updateItem?.itemId ?? null}
-        open={updateItemOpen}
-        onClose={updateItemOnClose}
-        onExited={updateItemOnExited}
-      />
-      <DeleteItem itemId={deleteItem} onClose={deleteItemOnClose} />
     </React.Fragment>
   );
 };

@@ -1,5 +1,6 @@
 import { JournalEntryRefundResolvers } from "../../graphTypes";
 import lookupPaymentMethod from "../paymentMethod/paymentMethod";
+import { fractionToRational } from "../../utils/rational";
 
 const paymentMethod: JournalEntryRefundResolvers["paymentMethod"] = async (
   doc,
@@ -22,6 +23,7 @@ const paymentMethod: JournalEntryRefundResolvers["paymentMethod"] = async (
 
 const JournalRefundEntry: JournalEntryRefundResolvers = {
   paymentMethod,
+  total: (doc) => fractionToRational((doc.total ?? doc) as any),
 };
 
 export default JournalRefundEntry;

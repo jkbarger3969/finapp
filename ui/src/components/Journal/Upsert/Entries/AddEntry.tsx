@@ -32,8 +32,8 @@ import {
   useFormikStatus,
 } from "../../../../formik/utils";
 import { DEPT_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";
-import OverlayLoading from "../../../Utils/OverlayLoading";
-import Overlay from "../../../Utils/Overlay";
+import OverlayLoading from "../../../utils/OverlayLoading";
+import Overlay from "../../../utils/Overlay";
 import DateEntry from "../EntryFields/DateEntry";
 import Description from "../EntryFields/Description";
 import Total from "../EntryFields/Total";

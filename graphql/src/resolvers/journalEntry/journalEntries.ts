@@ -1,4 +1,4 @@
-import { ObjectID, Db, QuerySelector } from "mongodb";
+import { ObjectID, Db } from "mongodb";
 
 import { stages } from "./utils";
 import {

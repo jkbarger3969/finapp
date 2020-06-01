@@ -18,7 +18,7 @@ import {
   DeleteRefundMutation,
   DeleteRefundMutationVariables as DeleteRefundVars,
 } from "../../../../apollo/graphTypes";
-import OverlayLoading from "../../../Utils/OverlayLoading";
+import OverlayLoading from "../../../utils/OverlayLoading";
 
 const DELETE_REFUND = gql`
   mutation DeleteRefund($id: ID!) {

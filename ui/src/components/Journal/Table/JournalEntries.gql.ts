@@ -47,8 +47,9 @@ export const JOURNAL_ENTRY_REFUND = gql`
     date
     description
     total {
-      num
-      den
+      n
+      d
+      s
     }
     paymentMethod {
       ...JournalEntryPayMethod_1Fragment
@@ -71,9 +72,11 @@ export const JOURNAL_ENTRY_ITEM = gql`
       ...JournalEntryDept_1Fragment
     }
     total {
-      num
-      den
+      n
+      d
+      s
     }
+    units
     description
     lastUpdate
     deleted
@@ -133,8 +136,9 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
       }
     }
     total {
-      num
-      den
+      n
+      d
+      s
     }
     refunds {
       ...JournalEntryRefund_1Fragment

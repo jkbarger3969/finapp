@@ -1,4 +1,5 @@
 import { ObjectID } from "mongodb";
+import Fraction from "fraction.js";
 
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
@@ -6,11 +7,13 @@ import {
   MutationResolvers,
   JournalEntryItemUpsertResult,
   JournalEntry,
+  RationalSign,
 } from "../../graphTypes";
 import journalEntry from "./journalEntry";
 import { getUniqueId } from "../utils/mongoUtils";
 import { stages } from "./utils";
 import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
+import { rationalToFraction } from "../../utils/rational";
 
 const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
   obj,
@@ -22,10 +25,17 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
 
   const {
     id,
-    fields: { department: departmentId, category: categoryId, total },
+    fields: {
+      department: departmentId,
+      category: categoryId,
+      total: totalR,
+      units,
+    },
   } = args;
 
-  const description = (args.fields.description ?? "").trim();
+  const total = rationalToFraction(totalR);
+
+  const description = args.fields.description?.trim();
 
   const collection = db.collection("journalEntries");
 
@@ -36,10 +46,15 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
   const docBuilder = docHistory.newHistoricalDoc(true).addFields([
     ["total", total],
     ["deleted", false],
+    ["units", units],
   ]);
 
   if (description) {
     docBuilder.addField("description", description);
+  }
+
+  if (units < 1) {
+    throw new Error("Item units must be greater than 0.");
   }
 
   let itemId: ObjectID;
@@ -48,8 +63,7 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
     // Ensure entry exists and ensure item totals does not exceed entry total
     (async () => {
       // Total Cannot be less than or equal to zero
-      const totalDecimal = total.num / total.den;
-      if (totalDecimal <= 0) {
+      if (totalR.s === RationalSign.Neg || totalR.n === 0) {
         throw new Error("Item total must be greater than 0.");
       }
 
@@ -57,24 +71,29 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
         .aggregate([
           { $match: { _id: srcEntryId } },
           stages.entryTotal,
-          stages.itemTotal,
+          stages.itemTotals,
           {
             $project: {
               entryTotal: true,
-              itemTotal: true,
+              itemTotals: true,
             },
           },
         ])
-        .toArray()) as [{ entryTotal: number; itemTotal: number }];
+        .toArray()) as [{ entryTotal: Fraction; itemTotals: Fraction[] }];
 
       if (!srcEntryState) {
         throw new Error(`Journal entry "${id}" does not exist.`);
       }
 
-      const { entryTotal, itemTotal } = srcEntryState;
+      const entryTotal = new Fraction(srcEntryState.entryTotal);
+
+      const itemTotal = srcEntryState.itemTotals.reduce(
+        (itemTotal, total) => itemTotal.add(total),
+        new Fraction(0)
+      );
 
       // Ensure aggregate refunds do NOT exceed the original transaction amount
-      if (entryTotal < itemTotal + totalDecimal) {
+      if (entryTotal.compare(itemTotal.add(total)) < 0) {
         throw new Error(
           "Items cannot total more than original transaction amount."
         );

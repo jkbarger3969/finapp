@@ -6,6 +6,7 @@ import {
   PaymentMethod,
   JournalEntryType,
   JournalEntrySourceType,
+  RationalSign,
 } from "../../graphTypes";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import DocHistory from "../utils/DocHistory";
@@ -14,6 +15,7 @@ import { getSrcCollectionAndNode, stages } from "./utils";
 import { JOURNAL_ENTRY_ADDED, JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 import { addBusiness } from "../business";
 import { addPerson } from "../person";
+import { rationalToFraction } from "../../utils/rational";
 
 const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
   obj,
@@ -28,12 +30,14 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       type,
       category: categoryId,
       source,
-      total,
+      total: totalR,
     },
     paymentMethodAdd,
     businessAdd,
     personAdd,
   } = args;
+
+  const total = rationalToFraction(totalR);
 
   // "businessAdd" and "personAdd" are mutually exclusive, gql has
   // no concept of this.
@@ -43,9 +47,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
     );
   }
 
-  const totalDecimal = total.num / total.den;
-
-  if (totalDecimal <= 0) {
+  if (totalR.s === RationalSign.Neg || total.n === 0) {
     throw new Error("Entry total must be greater than 0.");
   }
 
