@@ -112,6 +112,7 @@ export declare type JournalEntryAddItemFields = {
     department?: Maybe<Scalars['ID']>;
     category?: Maybe<Scalars['ID']>;
     description?: Maybe<Scalars['String']>;
+    units: Scalars['Int'];
     total: RationalInput;
 };
 export declare type JournalEntryAddRefundFields = {
@@ -161,6 +162,7 @@ export declare type JournalEntryItem = {
     department?: Maybe<Department>;
     category?: Maybe<JournalEntryCategory>;
     description?: Maybe<Scalars['String']>;
+    units: Scalars['Int'];
     total: Rational;
     lastUpdate: Scalars['String'];
     deleted: Scalars['Boolean'];
@@ -211,6 +213,7 @@ export declare type JournalEntryUpdateItemFields = {
     department?: Maybe<Scalars['ID']>;
     category?: Maybe<Scalars['ID']>;
     description?: Maybe<Scalars['String']>;
+    units?: Maybe<Scalars['Int']>;
     total?: Maybe<RationalInput>;
 };
 export declare type JournalEntryUpdatePaymentMethod = {
@@ -439,13 +442,19 @@ export declare type QueryPeopleArgs = {
 };
 export declare type Rational = {
     __typename?: 'Rational';
-    num: Scalars['Int'];
-    den: Scalars['Int'];
+    n: Scalars['Int'];
+    d: Scalars['Int'];
+    s: RationalSign;
 };
 export declare type RationalInput = {
-    num: Scalars['Int'];
-    den: Scalars['Int'];
+    n: Scalars['Int'];
+    d: Scalars['Int'];
+    s: RationalSign;
 };
+export declare enum RationalSign {
+    Pos = "POS",
+    Neg = "NEG"
+}
 export declare enum SortDirection {
     Asc = "ASC",
     Desc = "DESC"
@@ -502,6 +511,7 @@ export declare type ResolversTypes = {
     }>;
     Rational: ResolverTypeWrapper<Rational>;
     Int: ResolverTypeWrapper<Scalars['Int']>;
+    RationalSign: RationalSign;
     BudgetOwner: ResolversTypes['Department'] | ResolversTypes['Business'];
     Department: ResolverTypeWrapper<Omit<Department, 'parent' | 'ancestors'> & {
         parent: ResolversTypes['DepartmentAncestor'];
@@ -573,6 +583,7 @@ export declare type ResolversParentTypes = {
     };
     Rational: Rational;
     Int: Scalars['Int'];
+    RationalSign: RationalSign;
     BudgetOwner: ResolversParentTypes['Department'] | ResolversParentTypes['Business'];
     Department: Omit<Department, 'parent' | 'ancestors'> & {
         parent: ResolversParentTypes['DepartmentAncestor'];
@@ -698,6 +709,7 @@ export declare type JournalEntryItemResolvers<ContextType = Context, ParentType 
     department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType>;
     category?: Resolver<Maybe<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>;
     description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+    units?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
     total?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>;
     lastUpdate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
@@ -786,8 +798,9 @@ export declare type QueryResolvers<ContextType = Context, ParentType extends Res
     people?: Resolver<Array<ResolversTypes['Person']>, ParentType, ContextType, RequireFields<QueryPeopleArgs, never>>;
 };
 export declare type RationalResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Rational'] = ResolversParentTypes['Rational']> = {
-    num?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-    den?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+    n?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+    d?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+    s?: Resolver<ResolversTypes['RationalSign'], ParentType, ContextType>;
     __isTypeOf?: isTypeOfResolverFn<ParentType>;
 };
 export declare type SubscriptionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription']> = {

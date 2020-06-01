@@ -62,6 +62,10 @@ declare class UpdateHistoricalDoc {
     updateFields(fieldValuesMap: Iterable<[string, any]>): this;
     update(): Update;
 }
+export interface PresentValueExpressionOpts<TDefaultValue = unknown> {
+    defaultValue?: TDefaultValue;
+    asVar?: string;
+}
 export default class DocHistory {
     private readonly _by_;
     private readonly _date_;
@@ -125,13 +129,7 @@ export default class DocHistory {
         };
         $replaceRoot?: undefined;
     })[];
-    static getPresentValueExpression(key: string, opts?: {
-        defaultValue?: any;
-        asVar?: string;
-    }): PresentValueExpression;
-    static getPresentValues(presentValueMap: Iterable<string>, opts?: {
-        defaultValue?: any;
-        asVar?: string;
-    }): PresentValueProjection;
+    static getPresentValueExpression<TDefaultValue = unknown>(key: string, opts?: PresentValueExpressionOpts<TDefaultValue>): PresentValueExpression;
+    static getPresentValues<TDefaultValue = unknown>(presentValueMap: Iterable<string | [string, PresentValueExpressionOpts<TDefaultValue>]>, opts?: PresentValueExpressionOpts<TDefaultValue>): PresentValueProjection;
 }
 export {};

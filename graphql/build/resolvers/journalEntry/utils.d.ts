@@ -180,91 +180,67 @@ export declare const entryTransmutationsStage: {
 };
 export declare const getRefundTotals: (exclude?: (string | ObjectID)[]) => {
     readonly $addFields: {
-        readonly refundTotal: {
-            readonly $reduce: {
-                readonly input: "$refunds";
-                readonly initialValue: 0;
-                readonly in: {
-                    readonly $sum: readonly ["$$value", {
-                        readonly $let: {
-                            readonly vars: {
-                                readonly total: {
-                                    readonly $cond: {
-                                        readonly if: {
-                                            $and: ({
-                                                $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
-                                                $not?: undefined;
-                                            } | {
-                                                $not: {
-                                                    $in: (string | ObjectID[])[];
-                                                };
-                                                $eq?: undefined;
-                                            })[];
-                                            $eq?: undefined;
-                                        } | {
-                                            $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
-                                            $and?: undefined;
-                                        };
-                                        readonly then: import("../utils/DocHistory").PresentValueExpression;
-                                        readonly else: {
-                                            readonly num: 0;
-                                            readonly den: 1;
-                                        };
+        readonly refundTotals: {
+            readonly $ifNull: readonly [{
+                readonly $map: {
+                    readonly input: {
+                        readonly $filter: {
+                            readonly input: "$refunds";
+                            readonly as: "refund";
+                            readonly cond: {
+                                $and: ({
+                                    $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
+                                    $not?: undefined;
+                                } | {
+                                    $not: {
+                                        $in: (string | ObjectID[])[];
                                     };
-                                };
-                            };
-                            readonly in: {
-                                readonly $divide: readonly ["$$total.num", "$$total.den"];
+                                    $eq?: undefined;
+                                })[];
+                                $eq?: undefined;
+                            } | {
+                                $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
+                                $and?: undefined;
                             };
                         };
-                    }];
+                    };
+                    readonly as: "refund";
+                    readonly in: import("../utils/DocHistory").PresentValueExpression;
                 };
-            };
+            }, readonly []];
         };
     };
 };
 export declare const getItemTotals: (exclude?: (string | ObjectID)[]) => {
     readonly $addFields: {
-        readonly itemTotal: {
-            readonly $reduce: {
-                readonly input: "$items";
-                readonly initialValue: 0;
-                readonly in: {
-                    readonly $sum: readonly ["$$value", {
-                        readonly $let: {
-                            readonly vars: {
-                                readonly total: {
-                                    readonly $cond: {
-                                        readonly if: {
-                                            $and: ({
-                                                $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
-                                                $not?: undefined;
-                                            } | {
-                                                $not: {
-                                                    $in: (string | ObjectID[])[];
-                                                };
-                                                $eq?: undefined;
-                                            })[];
-                                            $eq?: undefined;
-                                        } | {
-                                            $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
-                                            $and?: undefined;
-                                        };
-                                        readonly then: import("../utils/DocHistory").PresentValueExpression;
-                                        readonly else: {
-                                            readonly num: 0;
-                                            readonly den: 1;
-                                        };
+        readonly itemTotals: {
+            readonly $ifNull: readonly [{
+                readonly $map: {
+                    readonly input: {
+                        readonly $filter: {
+                            readonly input: "$items";
+                            readonly as: "item";
+                            readonly cond: {
+                                $and: ({
+                                    $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
+                                    $not?: undefined;
+                                } | {
+                                    $not: {
+                                        $in: (string | ObjectID[])[];
                                     };
-                                };
-                            };
-                            readonly in: {
-                                readonly $divide: readonly ["$$total.num", "$$total.den"];
+                                    $eq?: undefined;
+                                })[];
+                                $eq?: undefined;
+                            } | {
+                                $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
+                                $and?: undefined;
                             };
                         };
-                    }];
+                    };
+                    readonly as: "item";
+                    readonly in: import("../utils/DocHistory").PresentValueExpression;
                 };
-            };
+            }, readonly []];
         };
     };
 };
@@ -394,105 +370,72 @@ export declare const stages: {
     };
     readonly entryTotal: {
         readonly $addFields: {
-            readonly entryTotal: {
-                readonly $let: {
-                    readonly vars: {
-                        readonly total: import("../utils/DocHistory").PresentValueExpression;
+            readonly entryTotal: import("../utils/DocHistory").PresentValueExpression;
+        };
+    };
+    readonly refundTotals: {
+        readonly $addFields: {
+            readonly refundTotals: {
+                readonly $ifNull: readonly [{
+                    readonly $map: {
+                        readonly input: {
+                            readonly $filter: {
+                                readonly input: "$refunds";
+                                readonly as: "refund";
+                                readonly cond: {
+                                    $and: ({
+                                        $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
+                                        $not?: undefined;
+                                    } | {
+                                        $not: {
+                                            $in: (string | ObjectID[])[];
+                                        };
+                                        $eq?: undefined;
+                                    })[];
+                                    $eq?: undefined;
+                                } | {
+                                    $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
+                                    $and?: undefined;
+                                };
+                            };
+                        };
+                        readonly as: "refund";
+                        readonly in: import("../utils/DocHistory").PresentValueExpression;
                     };
-                    readonly in: {
-                        readonly $divide: readonly ["$$total.num", "$$total.den"];
-                    };
-                };
+                }, readonly []];
             };
         };
     };
-    readonly refundTotal: {
+    readonly itemTotals: {
         readonly $addFields: {
-            readonly refundTotal: {
-                readonly $reduce: {
-                    readonly input: "$refunds";
-                    readonly initialValue: 0;
-                    readonly in: {
-                        readonly $sum: readonly ["$$value", {
-                            readonly $let: {
-                                readonly vars: {
-                                    readonly total: {
-                                        readonly $cond: {
-                                            readonly if: {
-                                                $and: ({
-                                                    $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
-                                                    $not?: undefined;
-                                                } | {
-                                                    $not: {
-                                                        $in: (string | ObjectID[])[];
-                                                    };
-                                                    $eq?: undefined;
-                                                })[];
-                                                $eq?: undefined;
-                                            } | {
-                                                $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
-                                                $and?: undefined;
-                                            };
-                                            readonly then: import("../utils/DocHistory").PresentValueExpression;
-                                            readonly else: {
-                                                readonly num: 0;
-                                                readonly den: 1;
-                                            };
+            readonly itemTotals: {
+                readonly $ifNull: readonly [{
+                    readonly $map: {
+                        readonly input: {
+                            readonly $filter: {
+                                readonly input: "$items";
+                                readonly as: "item";
+                                readonly cond: {
+                                    $and: ({
+                                        $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
+                                        $not?: undefined;
+                                    } | {
+                                        $not: {
+                                            $in: (string | ObjectID[])[];
                                         };
-                                    };
-                                };
-                                readonly in: {
-                                    readonly $divide: readonly ["$$total.num", "$$total.den"];
+                                        $eq?: undefined;
+                                    })[];
+                                    $eq?: undefined;
+                                } | {
+                                    $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
+                                    $and?: undefined;
                                 };
                             };
-                        }];
+                        };
+                        readonly as: "item";
+                        readonly in: import("../utils/DocHistory").PresentValueExpression;
                     };
-                };
-            };
-        };
-    };
-    readonly itemTotal: {
-        readonly $addFields: {
-            readonly itemTotal: {
-                readonly $reduce: {
-                    readonly input: "$items";
-                    readonly initialValue: 0;
-                    readonly in: {
-                        readonly $sum: readonly ["$$value", {
-                            readonly $let: {
-                                readonly vars: {
-                                    readonly total: {
-                                        readonly $cond: {
-                                            readonly if: {
-                                                $and: ({
-                                                    $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
-                                                    $not?: undefined;
-                                                } | {
-                                                    $not: {
-                                                        $in: (string | ObjectID[])[];
-                                                    };
-                                                    $eq?: undefined;
-                                                })[];
-                                                $eq?: undefined;
-                                            } | {
-                                                $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
-                                                $and?: undefined;
-                                            };
-                                            readonly then: import("../utils/DocHistory").PresentValueExpression;
-                                            readonly else: {
-                                                readonly num: 0;
-                                                readonly den: 1;
-                                            };
-                                        };
-                                    };
-                                };
-                                readonly in: {
-                                    readonly $divide: readonly ["$$total.num", "$$total.den"];
-                                };
-                            };
-                        }];
-                    };
-                };
+                }, readonly []];
             };
         };
     };

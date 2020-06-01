@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const fraction_js_1 = require("fraction.js");
+const graphTypes_1 = require("../graphTypes");
+exports.fractionToRational = (fraction) => ({
+    n: Math.abs(fraction.n),
+    d: Math.abs(fraction.d),
+    s: fraction.s === -1 ? graphTypes_1.RationalSign.Neg : graphTypes_1.RationalSign.Pos,
+});
+exports.rationalToFraction = (rational) => new fraction_js_1.default({
+    n: rational.s === graphTypes_1.RationalSign.Neg
+        ? -Math.abs(rational.n)
+        : Math.abs(rational.n),
+    d: Math.abs(rational.d),
+});
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicmF0aW9uYWwuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi9zcmMvdXRpbHMvcmF0aW9uYWwudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7QUFBQSw2Q0FBbUM7QUFFbkMsOENBQXNFO0FBRXpELFFBQUEsa0JBQWtCLEdBQUcsQ0FDaEMsUUFBd0QsRUFDVixFQUFFLENBQUMsQ0FBQztJQUNsRCxDQUFDLEVBQUUsSUFBSSxDQUFDLEdBQUcsQ0FBQyxRQUFRLENBQUMsQ0FBQyxDQUFDO0lBQ3ZCLENBQUMsRUFBRSxJQUFJLENBQUMsR0FBRyxDQUFDLFFBQVEsQ0FBQyxDQUFDLENBQUM7SUFDdkIsQ0FBQyxFQUFFLFFBQVEsQ0FBQyxDQUFDLEtBQUssQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLHlCQUFZLENBQUMsR0FBRyxDQUFDLENBQUMsQ0FBQyx5QkFBWSxDQUFDLEdBQUc7Q0FDM0QsQ0FBQyxDQUFDO0FBRVUsUUFBQSxrQkFBa0IsR0FBRyxDQUFDLFFBQWtDLEVBQUUsRUFBRSxDQUN2RSxJQUFJLHFCQUFRLENBQUM7SUFDWCxDQUFDLEVBQ0MsUUFBUSxDQUFDLENBQUMsS0FBSyx5QkFBWSxDQUFDLEdBQUc7UUFDN0IsQ0FBQyxDQUFDLENBQUMsSUFBSSxDQUFDLEdBQUcsQ0FBQyxRQUFRLENBQUMsQ0FBQyxDQUFDO1FBQ3ZCLENBQUMsQ0FBQyxJQUFJLENBQUMsR0FBRyxDQUFDLFFBQVEsQ0FBQyxDQUFDLENBQUM7SUFDMUIsQ0FBQyxFQUFFLElBQUksQ0FBQyxHQUFHLENBQUMsUUFBUSxDQUFDLENBQUMsQ0FBQztDQUN4QixDQUFDLENBQUMifQ==
