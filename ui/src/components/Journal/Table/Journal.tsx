@@ -40,6 +40,10 @@ import {
 } from "mdi-material-ui";
 import gql from "graphql-tag";
 import { format } from "date-fns";
+import Fraction from "fraction.js";
+import { chain } from "iterable-fns";
+import sift, { Query } from "sift";
+import { U } from "ts-toolbelt";
 
 import {
   JournalEntries_1Query as JournalEntriesQuery,
@@ -64,6 +68,8 @@ import DeleteEntry from "../Upsert/Entries/DeleteEntry";
 import DeleteRefund from "../Upsert/Refunds/DeleteRefund";
 import ItemsTable from "./Items";
 import { rationalToFraction } from "../../../utils/rational";
+import ReconciledFilter from "./FilterFields/Reconciled";
+import CategoryFilter from "./FilterFields/Category";
 
 export enum JournalMode {
   View,
@@ -76,26 +82,52 @@ export type Entry =
       JournalEntryRefundFragment & { refunds: string });
 
 const entriesGen = function* (
-  entry: JournalEntryFragment,
-  mode: JournalMode
+  entries: Iterable<JournalEntryFragment>
 ): IterableIterator<Entry> {
-  yield entry;
-  const refundType =
-    entry.type === JournalEntryType.Credit
-      ? JournalEntryType.Debit
-      : JournalEntryType.Credit;
-  for (const refund of entry.refunds) {
-    yield {
-      ...entry,
-      ...refund,
-      type: refundType,
-      description: refund.description || entry.description,
-      refunds: entry.id,
-    };
+  for (const entry of entries) {
+    yield entry;
+    const refundType =
+      entry.type === JournalEntryType.Credit
+        ? JournalEntryType.Debit
+        : JournalEntryType.Credit;
+    for (const refund of entry.refunds) {
+      yield {
+        ...entry,
+        ...refund,
+        type: refundType,
+        description: refund.description || entry.description,
+        refunds: entry.id,
+      };
+    }
   }
-  if (mode === JournalMode.Reconcile) {
-    return;
-  }
+};
+
+export type EntryFilter = U.Exclude<Query<Entry>, RegExp>;
+
+export const CLEAR_FILTER = Symbol();
+
+const useFilters = (defaultFilters: EntryFilter = {}) => {
+  const [filters, setFilters] = useState<EntryFilter>({
+    ...defaultFilters,
+  });
+
+  return [
+    filters,
+    useCallback(
+      (updateFilters: EntryFilter) => {
+        const newFilter = { ...(filters as any), ...(updateFilters as any) };
+
+        for (const key of Object.keys(newFilter)) {
+          if (newFilter[key] === CLEAR_FILTER) {
+            delete newFilter[key];
+          }
+        }
+
+        setFilters(newFilter);
+      },
+      [filters, setFilters]
+    ),
+  ] as const;
 };
 
 const ON_ENTRY_UPSERT = gql`
@@ -137,8 +169,14 @@ const Journal = (props: {
   journalTitle?: string;
   deptId?: string;
   mode: JournalMode;
+  defaultFilter?: EntryFilter;
 }) => {
-  const { deptId = null, journalTitle = null, mode } = props;
+  const {
+    deptId = null,
+    journalTitle = null,
+    mode,
+    defaultFilter = {},
+  } = props;
 
   // Add Entry
   const [addEntryOpen, setAddEntryOpen] = useState<boolean>(false);
@@ -206,6 +244,13 @@ const Journal = (props: {
     ReconcileRefundVars
   >(RECONCILE_REFUND);
 
+  // Filters
+  const [filter, setFilter] = useFilters({
+    deleted: false,
+    ...defaultFilter,
+    ...(mode === JournalMode.Reconcile ? { reconciled: false } : {}),
+  });
+
   const variables = useMemo<JournalEntriesQueryVars | undefined>(() => {
     return deptId
       ? {
@@ -268,6 +313,63 @@ const Journal = (props: {
     });
   }, [deptId, subscribeToMore]);
 
+  const journalEntries = data?.journalEntries || [];
+
+  // https://github.com/mbrn/material-table/issues/563
+  const entryState = useRef(
+    new Map<string, Entry & { tableData?: any; showDetailPanel?: any }>()
+  );
+
+  const [entries, totalAggregate, catFilterOptions] = useMemo(() => {
+    // https://github.com/mbrn/material-table/issues/563
+    const oldEntryState = entryState.current;
+    const newEntryState = new Map<
+      string,
+      Entry & { tableData?: any; showDetailPanel?: any }
+    >();
+
+    const [entries, totalAggregate, catFilterOptions] = (() => {
+      let totalAggregate = new Fraction(0);
+      const entries: Entry[] = [];
+      const catFilterOptions = new Map<string, Entry["category"]>();
+
+      const entriesIter = chain(entriesGen(journalEntries))
+        .map((entry) => {
+          catFilterOptions.set(entry.category.id, entry.category);
+          return entry;
+        })
+        .filter(sift(filter as any));
+
+      for (let entry of entriesIter) {
+        totalAggregate =
+          entry.type === JournalEntryType.Credit
+            ? totalAggregate.add(rationalToFraction(entry.total))
+            : totalAggregate.sub(rationalToFraction(entry.total));
+
+        const { tableData } = oldEntryState.get(entry.id) ?? {};
+
+        entry = {
+          ...entry,
+          tableData,
+        } as any;
+        newEntryState.set(entry.id, entry);
+        entries.push(entry);
+      }
+
+      return [entries, totalAggregate, catFilterOptions.values()] as const;
+    })();
+
+    entryState.current = newEntryState;
+
+    return [
+      entries.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      ),
+      totalAggregate,
+      catFilterOptions,
+    ];
+  }, [filter, journalEntries]);
+
   const columns = useMemo<Column<Entry>[]>(() => {
     return [
       {
@@ -276,6 +378,9 @@ const Journal = (props: {
         render: ({ reconciled }) => (reconciled ? <DoneIcon /> : null),
         sorting: true,
         searchable: true,
+        filterComponent: () => (
+          <ReconciledFilter filter={filter} setFilter={setFilter} />
+        ),
         customSort: (
           { reconciled: reconciledA },
           { reconciled: reconciledB }
@@ -293,7 +398,7 @@ const Journal = (props: {
           );
         },
         hidden: mode === JournalMode.Reconcile,
-        filtering: false,
+        filtering: true,
       },
       {
         field: "total",
@@ -377,8 +482,16 @@ const Journal = (props: {
           return capitalCase(name);
         },
         searchable: true,
-        filtering: false,
+        filtering: true,
+        filterComponent: () => (
+          <CategoryFilter
+            filter={filter}
+            setFilter={setFilter}
+            options={catFilterOptions}
+          />
+        ),
         sorting: true,
+
         customSort: (dataA, dataB) => {
           const { category: categoryA } = dataA;
           const { category: categoryB } = dataB;
@@ -612,7 +725,7 @@ const Journal = (props: {
         },
       },
     ];
-  }, [mode]);
+  }, [catFilterOptions, filter, mode, setFilter]);
 
   const localization = useMemo<Localization>(
     () => ({
@@ -660,6 +773,7 @@ const Journal = (props: {
       debounceInterval: 500,
       emptyRowsWhenPaging: false,
       columnsButton: true,
+      filtering: true,
     }),
     [journalTitle, mode]
   );
@@ -875,48 +989,28 @@ const Journal = (props: {
     []
   );
 
-  const journalEntries = data?.journalEntries || [];
+  const title = useMemo(() => {
+    const compare = totalAggregate.compare(new Fraction(0));
 
-  // https://github.com/mbrn/material-table/issues/563
-  const entryState = useRef(
-    new Map<string, Entry & { tableData?: any; showDetailPanel?: any }>()
-  );
+    const totalAggregateSpan = (
+      <Box
+        color={compare === 0 ? undefined : compare > 0 ? green[900] : red[900]}
+        component="span"
+      >
+        {numeral(totalAggregate.valueOf()).format("$0,0.00")}
+      </Box>
+    );
 
-  const entries = useMemo(() => {
-    // https://github.com/mbrn/material-table/issues/563
-    const oldEntryState = entryState.current;
-    const newEntryState = new Map<
-      string,
-      Entry & { tableData?: any; showDetailPanel?: any }
-    >();
-
-    const filters =
-      mode === JournalMode.Reconcile
-        ? [(entry: Entry) => !entry.reconciled && !entry.deleted]
-        : [(entry: Entry) => !entry.deleted];
-
-    const entries = journalEntries
-      .reduce((entries: Entry[], journalEntry) => {
-        for (let entry of entriesGen(journalEntry, mode)) {
-          if (filters.every((filter) => filter(entry))) {
-            const { tableData } = oldEntryState.get(entry.id) ?? {};
-            entry = {
-              ...entry,
-              tableData,
-            } as any;
-            newEntryState.set(entry.id, entry);
-            entries.push(entry);
-          }
-        }
-
-        return entries;
-      }, [])
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    entryState.current = newEntryState;
-
-    return entries;
-  }, [journalEntries, mode, entryState]);
+    if (journalTitle) {
+      return (
+        <Typography variant="h6">
+          {`${journalTitle}: `}
+          {totalAggregateSpan}
+        </Typography>
+      );
+    }
+    return <Typography variant="h6">{totalAggregateSpan}</Typography>;
+  }, [journalTitle, totalAggregate]);
 
   return (
     <React.Fragment>
@@ -929,7 +1023,7 @@ const Journal = (props: {
         localization={localization}
         actions={actions}
         components={components}
-        title={journalTitle ?? undefined}
+        title={title}
         detailPanel={detailPanel}
       />
       <AddEntry deptId={deptId} open={addEntryOpen} onClose={addEntryOnClose} />

@@ -2,6 +2,13 @@ import Fraction from "fraction.js";
 
 import { RationalSign, Rational, RationalInput } from "../apollo/graphTypes";
 
+export const isRational = (rational) =>
+  typeof rational === "object" &&
+  rational !== null &&
+  "s" in rational &&
+  "n" in rational &&
+  "d" in rational;
+
 export const fractionToRational = (
   fraction: Fraction | { s: number; n: number; d: number }
 ): Omit<Rational & RationalInput, "__typename"> => ({

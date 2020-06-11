@@ -21,3 +21,22 @@ input WhereRegexInput {
   pattern: String!
   flags: String
 }
+
+input WhereDate {
+  eq: String
+  ne: String
+  gt: String
+  gte: String
+  lt: String
+  lte: String
+  ignoreTime: Boolean
+}
+
+input WhereRational {
+  eq: RationalInput
+  ne: RationalInput
+  gt: RationalInput
+  gte: RationalInput
+  lt: RationalInput
+  lte: RationalInput
+}
