@@ -87,6 +87,7 @@
     "lodash.mergewith": "^4.6.2",
     "material-table": "^1.57.2",
     "mdi-material-ui": "^6.15.0",
+    "mingo": "^3.0.2",
     "moment": "^2.24.0",
     "namecase": "^1.1.2",
     "numeral": "^2.0.6",

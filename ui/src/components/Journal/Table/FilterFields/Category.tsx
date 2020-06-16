@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState } from "react";
 import {
   Select,
   MenuItem,
@@ -6,86 +6,77 @@ import {
   Input,
   Checkbox,
   InputAdornment,
+  Box,
 } from "@material-ui/core";
 import { FilterList as FilterListIcon } from "@material-ui/icons";
-import sift from "sift";
 
-import { EntryFilter, Entry, CLEAR_FILTER } from "../Journal";
+import { Entry } from "../Journal";
 
 const Category = (props: {
-  filter: EntryFilter;
-  setFilter: (filter: EntryFilter) => void;
   options: Iterable<Entry["category"]>;
+  setFilter: (filter: any) => void;
 }) => {
-  const { filter, setFilter, options } = props;
+  const { setFilter, options } = props;
 
-  const { value, values, items } = useMemo<{
-    value: string[];
-    values: Map<string, Entry["category"]>;
-    items: JSX.Element[];
-  }>(() => {
-    const isChecked = filter["category.id"]
-      ? sift({ ["category.id"]: filter["category.id"] as any })
-      : (v) => false;
+  const [value, setValue] = useState<string[]>([]);
 
-    const value: string[] = [];
-    const values = new Map<string, Entry["category"]>();
+  const [items, idNameMap] = useMemo(() => {
     const items: JSX.Element[] = [];
+    const idNameMap = new Map<string, string>();
 
     for (const category of options) {
-      const checked = isChecked({ category });
-
-      if (checked) {
-        value.push(category.id);
-        values.set(category.id, category);
-      }
+      idNameMap.set(category.id, category.name);
 
       items.push(
         <MenuItem key={category.id} value={category.id}>
-          <Checkbox checked={checked} />
+          <Checkbox checked={value.includes(category.id)} />
           <ListItemText primary={category.name} />
         </MenuItem>
       );
     }
 
-    return { value, values, items };
-  }, [filter, options]);
+    return [items, idNameMap] as const;
+  }, [options, value]);
 
   const renderValue = useCallback(
     (renderValues: string[]) =>
-      renderValues.map((v) => values.get(v)?.name).join(", "),
-    [values]
+      renderValues.map((v) => idNameMap.get(v) ?? "").join(", "),
+    [idNameMap]
   );
 
   const onChange = useCallback(
     (event) => {
       const values = event.target.value || ([] as string[]);
       if (values.length === 0) {
-        setFilter({ "category.id": CLEAR_FILTER } as any);
+        setFilter({});
       } else {
-        setFilter({ "category.id": { $in: values } } as any);
+        setFilter({
+          "category.id": { $in: values },
+        });
       }
+      setValue(values);
     },
     [setFilter]
   );
 
   return (
-    <Select
-      startAdornment={
-        <InputAdornment disablePointerEvents position="start">
-          <FilterListIcon />
-        </InputAdornment>
-      }
-      fullWidth
-      multiple
-      value={value}
-      onChange={onChange}
-      input={<Input />}
-      renderValue={renderValue as any}
-      // MenuProps={MenuProps}
-    >
-      {items}
-    </Select>
+    <Box maxWidth={250}>
+      <Select
+        startAdornment={
+          <InputAdornment disablePointerEvents position="start">
+            <FilterListIcon />
+          </InputAdornment>
+        }
+        fullWidth
+        multiple
+        value={value}
+        onChange={onChange}
+        input={<Input />}
+        renderValue={renderValue as any}
+      >
+        {items}
+      </Select>
+    </Box>
   );
 };
 

@@ -12,6 +12,8 @@ import MaterialTable, {
   MaterialTableProps,
   Components,
   MTableBody,
+  QueryResult,
+  Query as MTQuery,
 } from "material-table";
 import { useQuery, useMutation } from "@apollo/react-hooks";
 import numeral from "numeral";
@@ -41,9 +43,12 @@ import {
 import gql from "graphql-tag";
 import { format } from "date-fns";
 import Fraction from "fraction.js";
-import { chain } from "iterable-fns";
+import { filter as iterableFilter } from "iterable-fns";
 import sift, { Query } from "sift";
-import { U } from "ts-toolbelt";
+import { U, Any } from "ts-toolbelt";
+import "mingo/init/system"; // Loads all operators.  Should config later.
+import { Aggregator } from "mingo/aggregator";
+import "../../../utils/mingoUtils";
 
 import {
   JournalEntries_1Query as JournalEntriesQuery,
@@ -320,55 +325,33 @@ const Journal = (props: {
     new Map<string, Entry & { tableData?: any; showDetailPanel?: any }>()
   );
 
-  const [entries, totalAggregate, catFilterOptions] = useMemo(() => {
-    // https://github.com/mbrn/material-table/issues/563
-    const oldEntryState = entryState.current;
-    const newEntryState = new Map<
-      string,
-      Entry & { tableData?: any; showDetailPanel?: any }
-    >();
+  const [entries, filterOptions] = useMemo(() => {
+    const filterOptions = {
+      category: new Map<string, Entry["category"]>(),
+    };
 
-    const [entries, totalAggregate, catFilterOptions] = (() => {
-      let totalAggregate = new Fraction(0);
-      const entries: Entry[] = [];
-      const catFilterOptions = new Map<string, Entry["category"]>();
+    const entries: Entry[] = [];
 
-      const entriesIter = chain(entriesGen(journalEntries))
-        .map((entry) => {
-          catFilterOptions.set(entry.category.id, entry.category);
-          return entry;
-        })
-        .filter(sift(filter as any));
-
-      for (let entry of entriesIter) {
-        totalAggregate =
-          entry.type === JournalEntryType.Credit
-            ? totalAggregate.add(rationalToFraction(entry.total))
-            : totalAggregate.sub(rationalToFraction(entry.total));
-
-        const { tableData } = oldEntryState.get(entry.id) ?? {};
-
-        entry = {
-          ...entry,
-          tableData,
-        } as any;
-        newEntryState.set(entry.id, entry);
-        entries.push(entry);
+    for (let entry of entriesGen(journalEntries)) {
+      if (
+        entry.deleted ||
+        (mode === JournalMode.Reconcile && entry.reconciled)
+      ) {
+        continue;
       }
 
-      return [entries, totalAggregate, catFilterOptions.values()] as const;
-    })();
+      filterOptions.category.set(entry.category.id, entry.category);
 
-    entryState.current = newEntryState;
+      entries.push(entry);
+    }
 
     return [
-      entries.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      ),
-      totalAggregate,
-      catFilterOptions,
-    ];
-  }, [filter, journalEntries]);
+      entries,
+      {
+        category: [...filterOptions.category.values()],
+      },
+    ] as const;
+  }, [journalEntries, mode]);
 
   const columns = useMemo<Column<Entry>[]>(() => {
     return [
@@ -377,26 +360,27 @@ const Journal = (props: {
         title: "Reconciled",
         render: ({ reconciled }) => (reconciled ? <DoneIcon /> : null),
         sorting: true,
-        searchable: true,
+        searchable: false,
         filterComponent: () => (
           <ReconciledFilter filter={filter} setFilter={setFilter} />
         ),
-        customSort: (
+        customSort: () => 0,
+        /* customSort: (
           { reconciled: reconciledA },
           { reconciled: reconciledB }
         ) => {
           return +reconciledA - +reconciledB;
-        },
-        customFilterAndSearch: (filter, { reconciled }) => {
-          if (reconciled) {
-            return (
-              ((filter as string) || "").trim().toLowerCase() === "reconciled"
-            );
-          }
-          return (
-            ((filter as string) || "").trim().toLowerCase() === "!reconciled"
-          );
-        },
+        }, */
+        // customFilterAndSearch: (filter, { reconciled }) => {
+        //   if (reconciled) {
+        //     return (
+        //       ((filter as string) || "").trim().toLowerCase() === "reconciled"
+        //     );
+        //   }
+        //   return (
+        //     ((filter as string) || "").trim().toLowerCase() === "!reconciled"
+        //   );
+        // },
         hidden: mode === JournalMode.Reconcile,
         filtering: true,
       },
@@ -405,71 +389,68 @@ const Journal = (props: {
         title: "Total",
         render: ({ total }) =>
           numeral(rationalToFraction(total).valueOf()).format("$0,0.00"),
-        searchable: true,
+        searchable: false,
         filtering: false,
         sorting: true,
-        customSort: ({ total: totalA }, { total: totalB }) => {
-          return rationalToFraction(totalA)
-            .sub(rationalToFraction(totalB))
-            .valueOf();
-        },
-        customFilterAndSearch: (filter, { total }) => {
-          const totalDec = rationalToFraction(total).valueOf();
-          return (
-            new Fuse(
-              [
-                {
-                  total: [
-                    numeral(totalDec).format("$0,0.00"),
-                    totalDec.toFixed(2),
-                  ],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["total"],
-              }
-            ).search(filter).length > 0
-          );
-        },
+        customSort: () => 0,
+        // customFilterAndSearch: (filter, { total }) => {
+        //   const totalDec = rationalToFraction(total).valueOf();
+        //   return (
+        //     new Fuse(
+        //       [
+        //         {
+        //           total: [
+        //             numeral(totalDec).format("$0,0.00"),
+        //             totalDec.toFixed(2),
+        //           ],
+        //         },
+        //       ],
+        //       {
+        //         threshold: 0.4,
+        //         useExtendedSearch: true,
+        //         keys: ["total"],
+        //       }
+        //     ).search(filter).length > 0
+        //   );
+        // },
       },
       {
         field: "date",
         title: "Date",
         render: ({ date }) => format(new Date(date), "MMM dd, yyyy"),
-        searchable: true,
+        searchable: false,
         filtering: false,
         sorting: true,
         defaultSort: "desc",
-        customSort: ({ date: dateA }, { date: dateB }) => {
-          return new Date(dateA).getTime() - new Date(dateB).getTime();
-        },
-        customFilterAndSearch: (filter, { date: dateStr }) => {
-          const date = new Date(dateStr);
+        customSort: () => 0,
+        // ({ date: dateA }, { date: dateB }) => {
+        //   return new Date(dateA).getTime() - new Date(dateB).getTime();
+        // },
+        // customFilterAndSearch: (filter, { date: dateStr }) => {
+        //   const date = new Date(dateStr);
 
-          return (
-            new Fuse(
-              [
-                {
-                  date: [
-                    dateStr,
-                    format(date, "M/d/yy"),
-                    format(date, "MM/d/yy"),
-                    format(date, "M/d/yyyy"),
-                    format(date, "MM/d/yyyy"),
-                    format(date, "MMM dd, yyyy"),
-                  ],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["date"],
-              }
-            ).search(filter).length > 0
-          );
-        },
+        //   return (
+        //     new Fuse(
+        //       [
+        //         {
+        //           date: [
+        //             dateStr,
+        //             format(date, "M/d/yy"),
+        //             format(date, "MM/d/yy"),
+        //             format(date, "M/d/yyyy"),
+        //             format(date, "MM/d/yyyy"),
+        //             format(date, "MMM dd, yyyy"),
+        //           ],
+        //         },
+        //       ],
+        //       {
+        //         threshold: 0.4,
+        //         useExtendedSearch: true,
+        //         keys: ["date"],
+        //       }
+        //     ).search(filter).length > 0
+        //   );
+        // },
       },
       {
         field: "category",
@@ -481,18 +462,19 @@ const Journal = (props: {
               : data.category.name;
           return capitalCase(name);
         },
-        searchable: true,
+        searchable: false,
         filtering: true,
-        filterComponent: () => (
+        sorting: true,
+        filterComponent: ({ columnDef, onFilterChanged }) => (
           <CategoryFilter
-            filter={filter}
-            setFilter={setFilter}
-            options={catFilterOptions}
+            options={filterOptions.category}
+            setFilter={(filter) =>
+              onFilterChanged((columnDef as any).tableData?.id ?? "3", filter)
+            }
           />
         ),
-        sorting: true,
-
-        customSort: (dataA, dataB) => {
+        customSort: () => 0,
+        /* customSort: (dataA, dataB) => {
           const { category: categoryA } = dataA;
           const { category: categoryB } = dataB;
 
@@ -507,23 +489,31 @@ const Journal = (props: {
 
           // names must be equal
           return 0;
-        },
-        customFilterAndSearch: (filter, { category: { name } }) => {
-          return (
-            new Fuse(
-              [
+        }, */
+        /* customFilterAndSearch: (filter, entry) => {
+          const type = typeof entry;
+
+          if (type === "string") {
+            return (
+              new Fuse(
+                [
+                  {
+                    category: [entry.category.name],
+                  },
+                ],
                 {
-                  category: [name],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["category"],
-              }
-            ).search(filter).length > 0
-          );
-        },
+                  threshold: 0.4,
+                  useExtendedSearch: true,
+                  keys: ["category"],
+                }
+              ).search(filter).length > 0
+            );
+          } else if (type === "object" && filter !== null) {
+            return sift(filter)(entry);
+          }
+
+          return false;
+        }, */
       },
       {
         field: "source",
@@ -538,10 +528,10 @@ const Journal = (props: {
               return source.deptName;
           }
         },
-        searchable: true,
-        filtering: false,
+        searchable: false,
+        filtering: true,
         sorting: true,
-        customSort: ({ source: sourceA }, { source: sourceB }) => {
+        /* customSort: ({ source: sourceA }, { source: sourceB }) => {
           const nameA = (() => {
             switch (sourceA.__typename) {
               case "Person":
@@ -572,34 +562,35 @@ const Journal = (props: {
 
           // names must be equal
           return 0;
-        },
-        customFilterAndSearch: (filter, { source }) => {
-          return (
-            new Fuse(
-              [
-                {
-                  source: [
-                    (() => {
-                      switch (source.__typename) {
-                        case "Person":
-                          return `${source.name.first} ${source.name.last}`;
-                        case "Business":
-                          return source.bizName;
-                        case "Department":
-                          return source.deptName;
-                      }
-                    })(),
-                  ],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["source"],
-              }
-            ).search(filter).length > 0
-          );
-        },
+        }, */
+        customSort: () => 0,
+        // customFilterAndSearch: (filter, { source }) => {
+        //   return (
+        //     new Fuse(
+        //       [
+        //         {
+        //           source: [
+        //             (() => {
+        //               switch (source.__typename) {
+        //                 case "Person":
+        //                   return `${source.name.first} ${source.name.last}`;
+        //                 case "Business":
+        //                   return source.bizName;
+        //                 case "Department":
+        //                   return source.deptName;
+        //               }
+        //             })(),
+        //           ],
+        //         },
+        //       ],
+        //       {
+        //         threshold: 0.4,
+        //         useExtendedSearch: true,
+        //         keys: ["source"],
+        //       }
+        //     ).search(filter).length > 0
+        //   );
+        // },
       },
       {
         field: "paymentMethod",
@@ -608,89 +599,90 @@ const Journal = (props: {
           paymentMethod.parent?.id === CHECK_ID
             ? `CK-${paymentMethod.name}`
             : paymentMethod.name,
-        searchable: true,
+        searchable: false,
         filtering: false,
         sorting: true,
-        customSort: (
-          { paymentMethod: paymentMethodA },
-          { paymentMethod: paymentMethodB }
-        ) => {
-          const nameA = (() => {
-            return (paymentMethodA.parent?.id === CHECK_ID
-              ? `CK-${paymentMethodA.name}`
-              : paymentMethodA.name
-            ).toUpperCase();
-          })();
+        customSort: () => 0,
+        // customSort: (
+        //   { paymentMethod: paymentMethodA },
+        //   { paymentMethod: paymentMethodB }
+        // ) => {
+        //   const nameA = (() => {
+        //     return (paymentMethodA.parent?.id === CHECK_ID
+        //       ? `CK-${paymentMethodA.name}`
+        //       : paymentMethodA.name
+        //     ).toUpperCase();
+        //   })();
 
-          const nameB = (() => {
-            return (paymentMethodB.parent?.id === CHECK_ID
-              ? `CK-${paymentMethodB.name}`
-              : paymentMethodB.name
-            ).toUpperCase();
-          })();
-          if (nameA < nameB) {
-            return -1;
-          }
-          if (nameA > nameB) {
-            return 1;
-          }
+        //   const nameB = (() => {
+        //     return (paymentMethodB.parent?.id === CHECK_ID
+        //       ? `CK-${paymentMethodB.name}`
+        //       : paymentMethodB.name
+        //     ).toUpperCase();
+        //   })();
+        //   if (nameA < nameB) {
+        //     return -1;
+        //   }
+        //   if (nameA > nameB) {
+        //     return 1;
+        //   }
 
-          // names must be equal
-          return 0;
-        },
-        customFilterAndSearch: (filter, { paymentMethod }) => {
-          return (
-            new Fuse(
-              [
-                {
-                  paymentMethod: [
-                    paymentMethod.parent?.id === CHECK_ID
-                      ? `CK-${paymentMethod.name}`
-                      : paymentMethod.name,
-                  ],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["paymentMethod"],
-              }
-            ).search(filter).length > 0
-          );
-        },
+        //   // names must be equal
+        //   return 0;
+        // },
+        // customFilterAndSearch: (filter, { paymentMethod }) => {
+        //   return (
+        //     new Fuse(
+        //       [
+        //         {
+        //           paymentMethod: [
+        //             paymentMethod.parent?.id === CHECK_ID
+        //               ? `CK-${paymentMethod.name}`
+        //               : paymentMethod.name,
+        //           ],
+        //         },
+        //       ],
+        //       {
+        //         threshold: 0.4,
+        //         useExtendedSearch: true,
+        //         keys: ["paymentMethod"],
+        //       }
+        //     ).search(filter).length > 0
+        //   );
+        // },
       },
       {
         field: "description",
         title: "Description",
         render: ({ description }) => description,
-        searchable: true,
+        searchable: false,
         filtering: false,
         sorting: false,
-        customFilterAndSearch: (filter, { description }) => {
-          return (
-            new Fuse(
-              [
-                {
-                  description: [description?.trim() || ""],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["description"],
-              }
-            ).search(filter).length > 0
-          );
-        },
+        // customFilterAndSearch: (filter, { description }) => {
+        //   return (
+        //     new Fuse(
+        //       [
+        //         {
+        //           description: [description?.trim() || ""],
+        //         },
+        //       ],
+        //       {
+        //         threshold: 0.4,
+        //         useExtendedSearch: true,
+        //         keys: ["description"],
+        //       }
+        //     ).search(filter).length > 0
+        //   );
+        // },
       },
       {
         field: "department",
         title: "Department",
         render: ({ department }) => capitalCase(department.name),
-        searchable: true,
+        searchable: false,
         filtering: false,
         sorting: true,
-        customSort: (
+        /* customSort: (
           { department: departmentA },
           { department: departmentB }
         ) => {
@@ -706,26 +698,56 @@ const Journal = (props: {
 
           // names must be equal
           return 0;
-        },
-        customFilterAndSearch: (filter, { department }) => {
-          return (
-            new Fuse(
-              [
-                {
-                  department: [department.name],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["department"],
-              }
-            ).search(filter).length > 0
-          );
-        },
+        }, */
+        customSort: () => 0,
+        // customFilterAndSearch: (filter, entry) => {
+        //   switch (typeof filter) {
+        //     case "string": {
+        //       return (
+        //         new Fuse(
+        //           [
+        //             {
+        //               department: [entry.department.name],
+        //             },
+        //           ],
+        //           {
+        //             threshold: 0.4,
+        //             useExtendedSearch: true,
+        //             keys: ["department"],
+        //           }
+        //         ).search(filter).length > 0
+        //       );
+        //     }
+        //     case "object":
+        //       if (filter !== null) {
+        //         return sift(filter)(entry);
+        //       }
+        //   }
+
+        //   return false;
+
+        //   /* if (typeof filter === "string") {
+        //     return (
+        //       new Fuse(
+        //         [
+        //           {
+        //             department: [department.name],
+        //           },
+        //         ],
+        //         {
+        //           threshold: 0.4,
+        //           useExtendedSearch: true,
+        //           keys: ["department"],
+        //         }
+        //       ).search(filter).length > 0
+        //     );
+        //   } else if(filter === )
+
+        //   return true; */
+        // },
       },
     ];
-  }, [catFilterOptions, filter, mode, setFilter]);
+  }, [filter, filterOptions.category, mode, setFilter]);
 
   const localization = useMemo<Localization>(
     () => ({
@@ -989,15 +1011,17 @@ const Journal = (props: {
     []
   );
 
-  const title = useMemo(() => {
-    const compare = totalAggregate.compare(new Fraction(0));
+  const [aggregate, setAggregate] = useState<Fraction>(new Fraction(0));
 
-    const totalAggregateSpan = (
+  const title = useMemo(() => {
+    const compare = aggregate.compare(new Fraction(0));
+
+    const aggregateSpan = (
       <Box
         color={compare === 0 ? undefined : compare > 0 ? green[900] : red[900]}
         component="span"
       >
-        {numeral(totalAggregate.valueOf()).format("$0,0.00")}
+        {numeral(aggregate.valueOf()).format("$0,0.00")}
       </Box>
     );
 
@@ -1005,26 +1029,240 @@ const Journal = (props: {
       return (
         <Typography variant="h6">
           {`${journalTitle}: `}
-          {totalAggregateSpan}
+          {aggregateSpan}
         </Typography>
       );
     }
-    return <Typography variant="h6">{totalAggregateSpan}</Typography>;
-  }, [journalTitle, totalAggregate]);
+    return <Typography variant="h6">{aggregateSpan}</Typography>;
+  }, [aggregate, journalTitle]);
 
+  const tableRef = useRef<any>(null);
+
+  const mTData = useCallback(
+    async (query: MTQuery<Entry>): Promise<QueryResult<Entry>> => {
+      const { filters, page, pageSize, orderBy, orderDirection } = query;
+
+      const search = query.search?.trim();
+
+      const collection = (() => {
+        if (!search) {
+          return entries;
+        }
+
+        return new Fuse(entries, {
+          keys: [
+            "date",
+            "total",
+            "description",
+            "department",
+            "category",
+            "paymentMethod",
+            "source",
+          ],
+          threshold: 0.4,
+          useExtendedSearch: true,
+          getFn: (entry, key) => {
+            switch (key) {
+              case "date": {
+                const date = new Date(entry.date);
+
+                return [
+                  entry.date,
+                  format(date, "M/d/yy"),
+                  format(date, "MM/d/yy"),
+                  format(date, "M/d/yyyy"),
+                  format(date, "MM/d/yyyy"),
+                  format(date, "MMM dd, yyyy"),
+                ];
+              }
+              case "total": {
+                const total = rationalToFraction(entry.total).valueOf();
+
+                return [numeral(total).format("$0,0.00"), total.toFixed(2)];
+              }
+              case "description":
+                return entry.description?.trim() || "";
+              case "department":
+                return entry.department.name;
+              case "category":
+                return entry.category.name;
+              case "paymentMethod":
+                return entry.paymentMethod.name;
+              case "source":
+                switch (entry.source.__typename) {
+                  case "Person":
+                    return [entry.source.name.first, entry.source.name.last];
+                  case "Business":
+                    return entry.source.bizName;
+                  case "Department":
+                    return entry.source.deptName;
+                }
+                break;
+              default:
+                return "";
+            }
+          },
+        })
+          .search(search)
+          .map((result) => result.item);
+      })();
+
+      const pipeline: Object[] = [];
+
+      const $match: object = {};
+
+      if (filters.length > 0) {
+        for (const filter of filters) {
+          Object.assign($match, filter.value ?? {});
+        }
+      }
+
+      if (Object.keys($match).length > 0) {
+        pipeline.push({ $match });
+      }
+
+      const $facet = {
+        data: [] as object[],
+        raw: [],
+      };
+
+      // Sorting
+      if (orderBy) {
+        const { field } = orderBy;
+
+        switch (field) {
+          case "date":
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: { $toDate: "$date" },
+              },
+            });
+            break;
+          case "total":
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: {
+                  $expressionCb: (entry: Entry) =>
+                    rationalToFraction(entry.total).valueOf(),
+                },
+              },
+            });
+            break;
+          case "reconciled":
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: "$reconciled",
+              },
+            });
+            break;
+          case "department":
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: "$department.name",
+              },
+            });
+            break;
+          case "category":
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: "$category.name",
+              },
+            });
+            break;
+          case "paymentMethod":
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: "$paymentMethod.name",
+              },
+            });
+            break;
+          case "source":
+            // var t:Entry;
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: {
+                  $cond: {
+                    if: {
+                      $eq: [{ $ifNull: ["$source.name.first", null] }, null],
+                    },
+                    then: "$source.name",
+                    else: {
+                      $concat: ["$source.name.first", " ", "$source.name.last"],
+                    },
+                  },
+                },
+              },
+            });
+            break;
+          default:
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: { $toDate: "$date" },
+              },
+            });
+        }
+
+        $facet.data.push(
+          {
+            $sort: {
+              _sortBy_: orderDirection === "asc" ? 1 : -1,
+            },
+          },
+          {
+            $project: { _sortBy_: false },
+          }
+        );
+      }
+
+      // paging
+      $facet.data.push({ $skip: page * pageSize }, { $limit: pageSize });
+
+      pipeline.push({ $facet });
+
+      const [{ data, raw }] = new Aggregator(pipeline).run(collection);
+
+      const totalCount = raw.length;
+
+      const newAggregate = raw.reduce(
+        (aggregate: Fraction, entry: Entry) =>
+          entry.type === JournalEntryType.Credit
+            ? aggregate.add(rationalToFraction(entry.total))
+            : aggregate.sub(rationalToFraction(entry.total)),
+        new Fraction(0)
+      );
+
+      if (aggregate.compare(newAggregate) !== 0) {
+        setAggregate(newAggregate);
+      }
+
+      return {
+        data,
+        page,
+        totalCount,
+      };
+    },
+    [entries, aggregate]
+  );
+
+  useEffect(() => {
+    if (tableRef.current) {
+      tableRef.current.onQueryChange(null);
+    }
+  }, [tableRef, entries]);
   return (
     <React.Fragment>
       <MaterialTable
         icons={tableIcons}
         isLoading={isLoading || reconcilingEntry || reconcilingRefund}
         columns={columns}
-        data={entries}
+        data={mTData}
         options={options}
         localization={localization}
         actions={actions}
         components={components}
         title={title}
         detailPanel={detailPanel}
+        tableRef={tableRef}
       />
       <AddEntry deptId={deptId} open={addEntryOpen} onClose={addEntryOnClose} />
       <UpdateEntry
