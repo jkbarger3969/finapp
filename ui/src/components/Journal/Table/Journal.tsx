@@ -14,6 +14,7 @@ import MaterialTable, {
   MTableBody,
   QueryResult,
   Query as MTQuery,
+  MTableBodyRow,
 } from "material-table";
 import { useQuery, useMutation } from "@apollo/react-hooks";
 import numeral from "numeral";
@@ -41,14 +42,10 @@ import {
   FileTreeOutline as FileTreeOutlineIcon,
 } from "mdi-material-ui";
 import gql from "graphql-tag";
-import { format } from "date-fns";
+import { format, startOfDay } from "date-fns";
 import Fraction from "fraction.js";
-import { filter as iterableFilter } from "iterable-fns";
-import sift, { Query } from "sift";
-import { U, Any } from "ts-toolbelt";
 import "mingo/init/system"; // Loads all operators.  Should config later.
 import { Aggregator } from "mingo/aggregator";
-import "../../../utils/mingoUtils";
 
 import {
   JournalEntries_1Query as JournalEntriesQuery,
@@ -75,6 +72,12 @@ import ItemsTable from "./Items";
 import { rationalToFraction } from "../../../utils/rational";
 import ReconciledFilter from "./FilterFields/Reconciled";
 import CategoryFilter from "./FilterFields/Category";
+import PaymentMethodFilter from "./FilterFields/PaymentMethod";
+import DepartmentFilter from "./FilterFields/Department";
+import SourceFilter from "./FilterFields/Source";
+import DateFilter from "./FilterFields/Date";
+import TotalFilter from "./FilterFields/Total";
+import "../../../utils/mingoUtils";
 
 export enum JournalMode {
   View,
@@ -107,33 +110,9 @@ const entriesGen = function* (
   }
 };
 
-export type EntryFilter = U.Exclude<Query<Entry>, RegExp>;
+// export type EntryFilter = U.Exclude<Query<Entry>, RegExp>;
 
 export const CLEAR_FILTER = Symbol();
-
-const useFilters = (defaultFilters: EntryFilter = {}) => {
-  const [filters, setFilters] = useState<EntryFilter>({
-    ...defaultFilters,
-  });
-
-  return [
-    filters,
-    useCallback(
-      (updateFilters: EntryFilter) => {
-        const newFilter = { ...(filters as any), ...(updateFilters as any) };
-
-        for (const key of Object.keys(newFilter)) {
-          if (newFilter[key] === CLEAR_FILTER) {
-            delete newFilter[key];
-          }
-        }
-
-        setFilters(newFilter);
-      },
-      [filters, setFilters]
-    ),
-  ] as const;
-};
 
 const ON_ENTRY_UPSERT = gql`
   subscription OnEntryUpsert_1 {
@@ -174,14 +153,8 @@ const Journal = (props: {
   journalTitle?: string;
   deptId?: string;
   mode: JournalMode;
-  defaultFilter?: EntryFilter;
 }) => {
-  const {
-    deptId = null,
-    journalTitle = null,
-    mode,
-    defaultFilter = {},
-  } = props;
+  const { deptId = null, journalTitle = null, mode } = props;
 
   // Add Entry
   const [addEntryOpen, setAddEntryOpen] = useState<boolean>(false);
@@ -249,13 +222,6 @@ const Journal = (props: {
     ReconcileRefundVars
   >(RECONCILE_REFUND);
 
-  // Filters
-  const [filter, setFilter] = useFilters({
-    deleted: false,
-    ...defaultFilter,
-    ...(mode === JournalMode.Reconcile ? { reconciled: false } : {}),
-  });
-
   const variables = useMemo<JournalEntriesQueryVars | undefined>(() => {
     return deptId
       ? {
@@ -320,14 +286,12 @@ const Journal = (props: {
 
   const journalEntries = data?.journalEntries || [];
 
-  // https://github.com/mbrn/material-table/issues/563
-  const entryState = useRef(
-    new Map<string, Entry & { tableData?: any; showDetailPanel?: any }>()
-  );
-
   const [entries, filterOptions] = useMemo(() => {
     const filterOptions = {
       category: new Map<string, Entry["category"]>(),
+      paymentMethod: new Map<string, Entry["paymentMethod"]>(),
+      source: new Map<string, Entry["source"]>(),
+      department: new Map<string, Entry["department"]>(),
     };
 
     const entries: Entry[] = [];
@@ -341,6 +305,15 @@ const Journal = (props: {
       }
 
       filterOptions.category.set(entry.category.id, entry.category);
+      filterOptions.department.set(entry.department.id, entry.department);
+      filterOptions.paymentMethod.set(
+        entry.paymentMethod.id,
+        entry.paymentMethod
+      );
+      filterOptions.source.set(
+        `${entry.source.__typename}-${entry.source.id}`,
+        entry.source
+      );
 
       entries.push(entry);
     }
@@ -349,6 +322,12 @@ const Journal = (props: {
       entries,
       {
         category: [...filterOptions.category.values()],
+        department: [...filterOptions.department.values()],
+        // Do not include individual check numbers
+        paymentMethod: [...filterOptions.paymentMethod.values()].filter(
+          (p) => p.parent?.id !== "5dc46d0af74afb2c2805bd54"
+        ),
+        source: [...filterOptions.source.values()],
       },
     ] as const;
   }, [journalEntries, mode]);
@@ -359,28 +338,14 @@ const Journal = (props: {
         field: "reconciled",
         title: "Reconciled",
         render: ({ reconciled }) => (reconciled ? <DoneIcon /> : null),
-        sorting: true,
         searchable: false,
-        filterComponent: () => (
-          <ReconciledFilter filter={filter} setFilter={setFilter} />
+        filterComponent: ({ columnDef, onFilterChanged }) => (
+          <ReconciledFilter
+            setFilter={(filter) =>
+              onFilterChanged((columnDef as any).tableData?.id ?? "0", filter)
+            }
+          />
         ),
-        customSort: () => 0,
-        /* customSort: (
-          { reconciled: reconciledA },
-          { reconciled: reconciledB }
-        ) => {
-          return +reconciledA - +reconciledB;
-        }, */
-        // customFilterAndSearch: (filter, { reconciled }) => {
-        //   if (reconciled) {
-        //     return (
-        //       ((filter as string) || "").trim().toLowerCase() === "reconciled"
-        //     );
-        //   }
-        //   return (
-        //     ((filter as string) || "").trim().toLowerCase() === "!reconciled"
-        //   );
-        // },
         hidden: mode === JournalMode.Reconcile,
         filtering: true,
       },
@@ -390,67 +355,27 @@ const Journal = (props: {
         render: ({ total }) =>
           numeral(rationalToFraction(total).valueOf()).format("$0,0.00"),
         searchable: false,
-        filtering: false,
-        sorting: true,
-        customSort: () => 0,
-        // customFilterAndSearch: (filter, { total }) => {
-        //   const totalDec = rationalToFraction(total).valueOf();
-        //   return (
-        //     new Fuse(
-        //       [
-        //         {
-        //           total: [
-        //             numeral(totalDec).format("$0,0.00"),
-        //             totalDec.toFixed(2),
-        //           ],
-        //         },
-        //       ],
-        //       {
-        //         threshold: 0.4,
-        //         useExtendedSearch: true,
-        //         keys: ["total"],
-        //       }
-        //     ).search(filter).length > 0
-        //   );
-        // },
+        filterComponent: ({ columnDef, onFilterChanged }) => (
+          <TotalFilter
+            setFilter={(filter) => {
+              onFilterChanged((columnDef as any).tableData?.id ?? "1", filter);
+            }}
+          />
+        ),
       },
       {
         field: "date",
         title: "Date",
         render: ({ date }) => format(new Date(date), "MMM dd, yyyy"),
         searchable: false,
-        filtering: false,
-        sorting: true,
+        filterComponent: ({ columnDef, onFilterChanged }) => (
+          <DateFilter
+            setFilter={(filter) => {
+              onFilterChanged((columnDef as any).tableData?.id ?? "2", filter);
+            }}
+          />
+        ),
         defaultSort: "desc",
-        customSort: () => 0,
-        // ({ date: dateA }, { date: dateB }) => {
-        //   return new Date(dateA).getTime() - new Date(dateB).getTime();
-        // },
-        // customFilterAndSearch: (filter, { date: dateStr }) => {
-        //   const date = new Date(dateStr);
-
-        //   return (
-        //     new Fuse(
-        //       [
-        //         {
-        //           date: [
-        //             dateStr,
-        //             format(date, "M/d/yy"),
-        //             format(date, "MM/d/yy"),
-        //             format(date, "M/d/yyyy"),
-        //             format(date, "MM/d/yyyy"),
-        //             format(date, "MMM dd, yyyy"),
-        //           ],
-        //         },
-        //       ],
-        //       {
-        //         threshold: 0.4,
-        //         useExtendedSearch: true,
-        //         keys: ["date"],
-        //       }
-        //     ).search(filter).length > 0
-        //   );
-        // },
       },
       {
         field: "category",
@@ -463,8 +388,6 @@ const Journal = (props: {
           return capitalCase(name);
         },
         searchable: false,
-        filtering: true,
-        sorting: true,
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <CategoryFilter
             options={filterOptions.category}
@@ -473,47 +396,6 @@ const Journal = (props: {
             }
           />
         ),
-        customSort: () => 0,
-        /* customSort: (dataA, dataB) => {
-          const { category: categoryA } = dataA;
-          const { category: categoryB } = dataB;
-
-          const nameA = categoryA.name.toUpperCase(); // ignore upper and lowercase
-          const nameB = categoryB.name.toUpperCase(); // ignore upper and lowercase
-          if (nameA < nameB) {
-            return -1;
-          }
-          if (nameA > nameB) {
-            return 1;
-          }
-
-          // names must be equal
-          return 0;
-        }, */
-        /* customFilterAndSearch: (filter, entry) => {
-          const type = typeof entry;
-
-          if (type === "string") {
-            return (
-              new Fuse(
-                [
-                  {
-                    category: [entry.category.name],
-                  },
-                ],
-                {
-                  threshold: 0.4,
-                  useExtendedSearch: true,
-                  keys: ["category"],
-                }
-              ).search(filter).length > 0
-            );
-          } else if (type === "object" && filter !== null) {
-            return sift(filter)(entry);
-          }
-
-          return false;
-        }, */
       },
       {
         field: "source",
@@ -529,68 +411,14 @@ const Journal = (props: {
           }
         },
         searchable: false,
-        filtering: true,
-        sorting: true,
-        /* customSort: ({ source: sourceA }, { source: sourceB }) => {
-          const nameA = (() => {
-            switch (sourceA.__typename) {
-              case "Person":
-                return sourceA.name.last.toUpperCase();
-              case "Business":
-                return sourceA.bizName.toUpperCase();
-              case "Department":
-                return sourceA.deptName.toUpperCase();
+        filterComponent: ({ columnDef, onFilterChanged }) => (
+          <SourceFilter
+            options={filterOptions.source}
+            setFilter={(filter) =>
+              onFilterChanged((columnDef as any).tableData?.id ?? "4", filter)
             }
-          })();
-
-          const nameB = (() => {
-            switch (sourceB.__typename) {
-              case "Person":
-                return sourceB.name.last.toUpperCase();
-              case "Business":
-                return sourceB.bizName.toUpperCase();
-              case "Department":
-                return sourceB.deptName.toUpperCase();
-            }
-          })();
-          if (nameA < nameB) {
-            return -1;
-          }
-          if (nameA > nameB) {
-            return 1;
-          }
-
-          // names must be equal
-          return 0;
-        }, */
-        customSort: () => 0,
-        // customFilterAndSearch: (filter, { source }) => {
-        //   return (
-        //     new Fuse(
-        //       [
-        //         {
-        //           source: [
-        //             (() => {
-        //               switch (source.__typename) {
-        //                 case "Person":
-        //                   return `${source.name.first} ${source.name.last}`;
-        //                 case "Business":
-        //                   return source.bizName;
-        //                 case "Department":
-        //                   return source.deptName;
-        //               }
-        //             })(),
-        //           ],
-        //         },
-        //       ],
-        //       {
-        //         threshold: 0.4,
-        //         useExtendedSearch: true,
-        //         keys: ["source"],
-        //       }
-        //     ).search(filter).length > 0
-        //   );
-        // },
+          />
+        ),
       },
       {
         field: "paymentMethod",
@@ -600,56 +428,14 @@ const Journal = (props: {
             ? `CK-${paymentMethod.name}`
             : paymentMethod.name,
         searchable: false,
-        filtering: false,
-        sorting: true,
-        customSort: () => 0,
-        // customSort: (
-        //   { paymentMethod: paymentMethodA },
-        //   { paymentMethod: paymentMethodB }
-        // ) => {
-        //   const nameA = (() => {
-        //     return (paymentMethodA.parent?.id === CHECK_ID
-        //       ? `CK-${paymentMethodA.name}`
-        //       : paymentMethodA.name
-        //     ).toUpperCase();
-        //   })();
-
-        //   const nameB = (() => {
-        //     return (paymentMethodB.parent?.id === CHECK_ID
-        //       ? `CK-${paymentMethodB.name}`
-        //       : paymentMethodB.name
-        //     ).toUpperCase();
-        //   })();
-        //   if (nameA < nameB) {
-        //     return -1;
-        //   }
-        //   if (nameA > nameB) {
-        //     return 1;
-        //   }
-
-        //   // names must be equal
-        //   return 0;
-        // },
-        // customFilterAndSearch: (filter, { paymentMethod }) => {
-        //   return (
-        //     new Fuse(
-        //       [
-        //         {
-        //           paymentMethod: [
-        //             paymentMethod.parent?.id === CHECK_ID
-        //               ? `CK-${paymentMethod.name}`
-        //               : paymentMethod.name,
-        //           ],
-        //         },
-        //       ],
-        //       {
-        //         threshold: 0.4,
-        //         useExtendedSearch: true,
-        //         keys: ["paymentMethod"],
-        //       }
-        //     ).search(filter).length > 0
-        //   );
-        // },
+        filterComponent: ({ columnDef, onFilterChanged }) => (
+          <PaymentMethodFilter
+            options={filterOptions.paymentMethod}
+            setFilter={(filter) =>
+              onFilterChanged((columnDef as any).tableData?.id ?? "5", filter)
+            }
+          />
+        ),
       },
       {
         field: "description",
@@ -658,96 +444,29 @@ const Journal = (props: {
         searchable: false,
         filtering: false,
         sorting: false,
-        // customFilterAndSearch: (filter, { description }) => {
-        //   return (
-        //     new Fuse(
-        //       [
-        //         {
-        //           description: [description?.trim() || ""],
-        //         },
-        //       ],
-        //       {
-        //         threshold: 0.4,
-        //         useExtendedSearch: true,
-        //         keys: ["description"],
-        //       }
-        //     ).search(filter).length > 0
-        //   );
-        // },
       },
       {
         field: "department",
         title: "Department",
         render: ({ department }) => capitalCase(department.name),
         searchable: false,
-        filtering: false,
-        sorting: true,
-        /* customSort: (
-          { department: departmentA },
-          { department: departmentB }
-        ) => {
-          const nameA = departmentA.name.toUpperCase();
-          const nameB = departmentB.name.toUpperCase();
-
-          if (nameA < nameB) {
-            return -1;
-          }
-          if (nameA > nameB) {
-            return 1;
-          }
-
-          // names must be equal
-          return 0;
-        }, */
-        customSort: () => 0,
-        // customFilterAndSearch: (filter, entry) => {
-        //   switch (typeof filter) {
-        //     case "string": {
-        //       return (
-        //         new Fuse(
-        //           [
-        //             {
-        //               department: [entry.department.name],
-        //             },
-        //           ],
-        //           {
-        //             threshold: 0.4,
-        //             useExtendedSearch: true,
-        //             keys: ["department"],
-        //           }
-        //         ).search(filter).length > 0
-        //       );
-        //     }
-        //     case "object":
-        //       if (filter !== null) {
-        //         return sift(filter)(entry);
-        //       }
-        //   }
-
-        //   return false;
-
-        //   /* if (typeof filter === "string") {
-        //     return (
-        //       new Fuse(
-        //         [
-        //           {
-        //             department: [department.name],
-        //           },
-        //         ],
-        //         {
-        //           threshold: 0.4,
-        //           useExtendedSearch: true,
-        //           keys: ["department"],
-        //         }
-        //       ).search(filter).length > 0
-        //     );
-        //   } else if(filter === )
-
-        //   return true; */
-        // },
+        filterComponent: ({ columnDef, onFilterChanged }) => (
+          <DepartmentFilter
+            options={filterOptions.department}
+            setFilter={(filter) =>
+              onFilterChanged((columnDef as any).tableData?.id ?? "5", filter)
+            }
+          />
+        ),
       },
     ];
-  }, [filter, filterOptions.category, mode, setFilter]);
+  }, [
+    filterOptions.category,
+    filterOptions.department,
+    filterOptions.paymentMethod,
+    filterOptions.source,
+    mode,
+  ]);
 
   const localization = useMemo<Localization>(
     () => ({
@@ -796,6 +515,8 @@ const Journal = (props: {
       emptyRowsWhenPaging: false,
       columnsButton: true,
       filtering: true,
+      sorting: true,
+      thirdSortClick: false,
     }),
     [journalTitle, mode]
   );
@@ -949,6 +670,9 @@ const Journal = (props: {
     ];
   }, [mode, reconcileRefund, reconcileEntry, setDeleteRefund, setDeleteEntry]);
 
+  // https://github.com/mbrn/material-table/issues/563
+  const detailPanelState = useMemo(() => new Map<string, any>(), []);
+
   const components = useMemo<Components>(
     () => ({
       Body: error
@@ -971,8 +695,22 @@ const Journal = (props: {
             </TableBody>
           )
         : (props) => <MTableBody {...props} />,
+      Row: (p) => {
+        const props = {
+          ...p,
+          onToggleDetailPanel: (path, render, ...args) => {
+            if (detailPanelState.has(p.data.id)) {
+              detailPanelState.delete(p.data.id);
+            } else {
+              detailPanelState.set(p.data.id, render);
+            }
+            return p.onToggleDetailPanel(path, render, ...args);
+          },
+        };
+        return <MTableBodyRow {...props} />;
+      },
     }),
-    [error, columns.length, actions]
+    [error, columns.length, actions, detailPanelState]
   );
 
   const detailPanel = useMemo<
@@ -1109,16 +847,52 @@ const Journal = (props: {
 
       const pipeline: Object[] = [];
 
-      const $match: object = {};
+      const $match = { $and: [] as object[] };
 
       if (filters.length > 0) {
+        const { $and } = $match;
         for (const filter of filters) {
-          Object.assign($match, filter.value ?? {});
+          if (Object.keys(filter.value).length > 0) {
+            $and.push(filter.value);
+          }
+          // Object.assign($match, filter.value ?? {});
         }
       }
 
-      if (Object.keys($match).length > 0) {
-        pipeline.push({ $match });
+      if ($match.$and.length > 0) {
+        pipeline.push(
+          // Convert fields for filtering
+          {
+            $addFields: {
+              // Cache date as string
+              _dateStr_: "$date",
+              date: {
+                $expressionCb: (obj: Entry) => startOfDay(new Date(obj.date)),
+              },
+              // Cache total as rational
+              _totalRational_: "$total",
+              total: {
+                $expressionCb: (obj: Entry) =>
+                  rationalToFraction(obj.total).valueOf(),
+              },
+            },
+          },
+          { $match },
+          // Replace with original values from cached keys
+          {
+            $addFields: {
+              date: "$_dateStr_",
+              total: "$_totalRational_",
+            },
+          },
+          // Remove cache keys
+          {
+            $project: {
+              _dateStr_: false,
+              _totalRational_: false,
+            },
+          }
+        );
       }
 
       const $facet = {
@@ -1219,7 +993,35 @@ const Journal = (props: {
 
       pipeline.push({ $facet });
 
-      const [{ data, raw }] = new Aggregator(pipeline).run(collection);
+      const [result] = new Aggregator(pipeline).run(collection);
+
+      // https://github.com/mbrn/material-table/issues/563
+      const data = result.data.map((entry: Entry) => {
+        if (detailPanelState.has(entry.id)) {
+          return {
+            ...entry,
+            tableData: {
+              showDetailPanel: detailPanelState.get(entry.id),
+            },
+          } as any;
+        }
+
+        return entry;
+      });
+
+      const raw = result.raw;
+
+      // Cleanup detailPanelState
+      // https://github.com/mbrn/material-table/issues/563
+      (() => {
+        const copyShowDetailPanel = new Map(detailPanelState);
+        detailPanelState.clear();
+        for (const { id } of raw as Entry[]) {
+          if (copyShowDetailPanel.has(id)) {
+            detailPanelState.set(id, copyShowDetailPanel.get(id));
+          }
+        }
+      })();
 
       const totalCount = raw.length;
 
@@ -1241,7 +1043,7 @@ const Journal = (props: {
         totalCount,
       };
     },
-    [entries, aggregate]
+    [aggregate, entries, detailPanelState]
   );
 
   useEffect(() => {

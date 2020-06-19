@@ -13,8 +13,8 @@ import { FilterList as FilterListIcon } from "@material-ui/icons";
 
 import { Entry } from "../Journal";
 
-const Category = (props: {
-  options: Iterable<Entry["category"]>;
+const Source = (props: {
+  options: Iterable<Entry["source"]>;
   setFilter: (filter: any) => void;
 }) => {
   const { setFilter, options } = props;
@@ -25,13 +25,26 @@ const Category = (props: {
     const items: JSX.Element[] = [];
     const idNameMap = new Map<string, string>();
 
-    for (const category of options) {
-      idNameMap.set(category.id, category.name);
+    for (const source of options) {
+      const name = (() => {
+        switch (source.__typename) {
+          case "Person":
+            return `${source.name.first} ${source.name.last}`;
+          case "Business":
+            return source.bizName;
+          case "Department":
+            return source.deptName;
+        }
+      })();
+
+      const id = `${source.__typename}-${source.id}`;
+
+      idNameMap.set(id, name);
 
       items.push(
-        <MenuItem key={category.id} value={category.id}>
-          <Checkbox checked={value.includes(category.id)} />
-          <ListItemText primary={category.name} />
+        <MenuItem key={id} value={id}>
+          <Checkbox checked={value.includes(id)} />
+          <ListItemText primary={name} />
         </MenuItem>
       );
     }
@@ -47,12 +60,19 @@ const Category = (props: {
 
   const onChange = useCallback(
     (event) => {
-      const values = event.target.value || ([] as string[]);
+      const values = (event.target.value || []) as string[];
       if (values.length === 0) {
         setFilter({});
       } else {
         setFilter({
-          "category.id": { $in: values },
+          $or: values.map((v) => {
+            const [type, id] = v.split("-");
+
+            return {
+              "source.id": id,
+              "source.__typename": type,
+            };
+          }),
         });
       }
       setValue(values);
@@ -83,4 +103,4 @@ const Category = (props: {
   );
 };
 
-export default Category;
+export default Source;

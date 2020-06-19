@@ -13,8 +13,8 @@ import { FilterList as FilterListIcon } from "@material-ui/icons";
 
 import { Entry } from "../Journal";
 
-const Category = (props: {
-  options: Iterable<Entry["category"]>;
+const Department = (props: {
+  options: Iterable<Entry["department"]>;
   setFilter: (filter: any) => void;
 }) => {
   const { setFilter, options } = props;
@@ -25,13 +25,13 @@ const Category = (props: {
     const items: JSX.Element[] = [];
     const idNameMap = new Map<string, string>();
 
-    for (const category of options) {
-      idNameMap.set(category.id, category.name);
+    for (const department of options) {
+      idNameMap.set(department.id, department.name);
 
       items.push(
-        <MenuItem key={category.id} value={category.id}>
-          <Checkbox checked={value.includes(category.id)} />
-          <ListItemText primary={category.name} />
+        <MenuItem key={department.id} value={department.id}>
+          <Checkbox checked={value.includes(department.id)} />
+          <ListItemText primary={department.name} />
         </MenuItem>
       );
     }
@@ -52,7 +52,7 @@ const Category = (props: {
         setFilter({});
       } else {
         setFilter({
-          "category.id": { $in: values },
+          "department.id": { $in: values },
         });
       }
       setValue(values);
@@ -83,4 +83,4 @@ const Category = (props: {
   );
 };
 
-export default Category;
+export default Department;

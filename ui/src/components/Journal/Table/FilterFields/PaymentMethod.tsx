@@ -13,8 +13,8 @@ import { FilterList as FilterListIcon } from "@material-ui/icons";
 
 import { Entry } from "../Journal";
 
-const Category = (props: {
-  options: Iterable<Entry["category"]>;
+const PaymentMethod = (props: {
+  options: Iterable<Entry["paymentMethod"]>;
   setFilter: (filter: any) => void;
 }) => {
   const { setFilter, options } = props;
@@ -25,13 +25,13 @@ const Category = (props: {
     const items: JSX.Element[] = [];
     const idNameMap = new Map<string, string>();
 
-    for (const category of options) {
-      idNameMap.set(category.id, category.name);
+    for (const paymentMethod of options) {
+      idNameMap.set(paymentMethod.id, paymentMethod.name);
 
       items.push(
-        <MenuItem key={category.id} value={category.id}>
-          <Checkbox checked={value.includes(category.id)} />
-          <ListItemText primary={category.name} />
+        <MenuItem key={paymentMethod.id} value={paymentMethod.id}>
+          <Checkbox checked={value.includes(paymentMethod.id)} />
+          <ListItemText primary={paymentMethod.name} />
         </MenuItem>
       );
     }
@@ -52,7 +52,10 @@ const Category = (props: {
         setFilter({});
       } else {
         setFilter({
-          "category.id": { $in: values },
+          $or: [
+            { "paymentMethod.id": { $in: values } },
+            { "paymentMethod.parent.id": { $in: values } },
+          ],
         });
       }
       setValue(values);
@@ -83,4 +86,4 @@ const Category = (props: {
   );
 };
 
-export default Category;
+export default PaymentMethod;
