@@ -125,20 +125,42 @@ input JournalEntriesWhereDepartment {
   matchDecedentTree: Boolean
 }
 
-input JournalEntriesWhereLastUpdate {
-  gt: String
-  lt: String
-  gte: String
-  lte: String
+input JournalEntriesWhereCategory {
+  eq: ID
+  ne: ID
+  in: [ID]
+  nin: [ID]
+  matchDecedentTree: Boolean
+}
+
+input JournalEntriesWhereSource {
+  sourceType: JournalEntrySourceType!
+  eq: ID
+  ne: ID
+  in: [ID]
+  nin: [ID]
+}
+
+input JournalEntriesWherePaymentMethod {
+  eq: ID
+  ne: ID
+  in: [ID]
+  nin: [ID]
+  matchDecedentTree: Boolean
 }
 
 input JournalEntiresWhereInput {
+  date: WhereDate
   department: JournalEntriesWhereDepartment
+  category: JournalEntriesWhereCategory
+  source: JournalEntriesWhereSource
+  paymentMethod: JournalEntriesWherePaymentMethod
+  total: WhereRational
   reconciled: Boolean
   deleted: Boolean
-  lastUpdate: JournalEntriesWhereLastUpdate
-  lastUpdateRefund: JournalEntriesWhereLastUpdate
-  lastUpdateItem: JournalEntriesWhereLastUpdate
+  lastUpdate: WhereDate
+  lastUpdateRefund: WhereDate
+  lastUpdateItem: WhereDate
   or: [JournalEntiresWhereInput]
   and: [JournalEntiresWhereInput]
 }

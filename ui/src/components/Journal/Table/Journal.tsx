@@ -12,6 +12,9 @@ import MaterialTable, {
   MaterialTableProps,
   Components,
   MTableBody,
+  QueryResult,
+  Query as MTQuery,
+  MTableBodyRow,
 } from "material-table";
 import { useQuery, useMutation } from "@apollo/react-hooks";
 import numeral from "numeral";
@@ -39,7 +42,10 @@ import {
   FileTreeOutline as FileTreeOutlineIcon,
 } from "mdi-material-ui";
 import gql from "graphql-tag";
-import { format } from "date-fns";
+import { format, startOfDay } from "date-fns";
+import Fraction from "fraction.js";
+import "mingo/init/system"; // Loads all operators.  Should config later.
+import { Aggregator } from "mingo/aggregator";
 
 import {
   JournalEntries_1Query as JournalEntriesQuery,
@@ -64,6 +70,14 @@ import DeleteEntry from "../Upsert/Entries/DeleteEntry";
 import DeleteRefund from "../Upsert/Refunds/DeleteRefund";
 import ItemsTable from "./Items";
 import { rationalToFraction } from "../../../utils/rational";
+import ReconciledFilter from "./FilterFields/Reconciled";
+import CategoryFilter from "./FilterFields/Category";
+import PaymentMethodFilter from "./FilterFields/PaymentMethod";
+import DepartmentFilter from "./FilterFields/Department";
+import SourceFilter from "./FilterFields/Source";
+import DateFilter from "./FilterFields/Date";
+import TotalFilter from "./FilterFields/Total";
+import "../../../utils/mingoUtils";
 
 export enum JournalMode {
   View,
@@ -76,27 +90,29 @@ export type Entry =
       JournalEntryRefundFragment & { refunds: string });
 
 const entriesGen = function* (
-  entry: JournalEntryFragment,
-  mode: JournalMode
+  entries: Iterable<JournalEntryFragment>
 ): IterableIterator<Entry> {
-  yield entry;
-  const refundType =
-    entry.type === JournalEntryType.Credit
-      ? JournalEntryType.Debit
-      : JournalEntryType.Credit;
-  for (const refund of entry.refunds) {
-    yield {
-      ...entry,
-      ...refund,
-      type: refundType,
-      description: refund.description || entry.description,
-      refunds: entry.id,
-    };
-  }
-  if (mode === JournalMode.Reconcile) {
-    return;
+  for (const entry of entries) {
+    yield entry;
+    const refundType =
+      entry.type === JournalEntryType.Credit
+        ? JournalEntryType.Debit
+        : JournalEntryType.Credit;
+    for (const refund of entry.refunds) {
+      yield {
+        ...entry,
+        ...refund,
+        type: refundType,
+        description: refund.description || entry.description,
+        refunds: entry.id,
+      };
+    }
   }
 };
+
+// export type EntryFilter = U.Exclude<Query<Entry>, RegExp>;
+
+export const CLEAR_FILTER = Symbol();
 
 const ON_ENTRY_UPSERT = gql`
   subscription OnEntryUpsert_1 {
@@ -268,103 +284,98 @@ const Journal = (props: {
     });
   }, [deptId, subscribeToMore]);
 
+  const journalEntries = data?.journalEntries || [];
+
+  const [entries, filterOptions] = useMemo(() => {
+    const filterOptions = {
+      category: new Map<string, Entry["category"]>(),
+      paymentMethod: new Map<string, Entry["paymentMethod"]>(),
+      source: new Map<string, Entry["source"]>(),
+      department: new Map<string, Entry["department"]>(),
+    };
+
+    const entries: Entry[] = [];
+
+    for (let entry of entriesGen(journalEntries)) {
+      if (
+        entry.deleted ||
+        (mode === JournalMode.Reconcile && entry.reconciled)
+      ) {
+        continue;
+      }
+
+      filterOptions.category.set(entry.category.id, entry.category);
+      filterOptions.department.set(entry.department.id, entry.department);
+      filterOptions.paymentMethod.set(
+        entry.paymentMethod.id,
+        entry.paymentMethod
+      );
+      filterOptions.source.set(
+        `${entry.source.__typename}-${entry.source.id}`,
+        entry.source
+      );
+
+      entries.push(entry);
+    }
+
+    return [
+      entries,
+      {
+        category: [...filterOptions.category.values()],
+        department: [...filterOptions.department.values()],
+        // Do not include individual check numbers
+        paymentMethod: [...filterOptions.paymentMethod.values()].filter(
+          (p) => p.parent?.id !== "5dc46d0af74afb2c2805bd54"
+        ),
+        source: [...filterOptions.source.values()],
+      },
+    ] as const;
+  }, [journalEntries, mode]);
+
   const columns = useMemo<Column<Entry>[]>(() => {
     return [
       {
         field: "reconciled",
         title: "Reconciled",
         render: ({ reconciled }) => (reconciled ? <DoneIcon /> : null),
-        sorting: true,
-        searchable: true,
-        customSort: (
-          { reconciled: reconciledA },
-          { reconciled: reconciledB }
-        ) => {
-          return +reconciledA - +reconciledB;
-        },
-        customFilterAndSearch: (filter, { reconciled }) => {
-          if (reconciled) {
-            return (
-              ((filter as string) || "").trim().toLowerCase() === "reconciled"
-            );
-          }
-          return (
-            ((filter as string) || "").trim().toLowerCase() === "!reconciled"
-          );
-        },
+        searchable: false,
+        filterComponent: ({ columnDef, onFilterChanged }) => (
+          <ReconciledFilter
+            setFilter={(filter) =>
+              onFilterChanged((columnDef as any).tableData?.id ?? "0", filter)
+            }
+          />
+        ),
         hidden: mode === JournalMode.Reconcile,
-        filtering: false,
+        filtering: true,
       },
       {
         field: "total",
         title: "Total",
         render: ({ total }) =>
           numeral(rationalToFraction(total).valueOf()).format("$0,0.00"),
-        searchable: true,
-        filtering: false,
-        sorting: true,
-        customSort: ({ total: totalA }, { total: totalB }) => {
-          return rationalToFraction(totalA)
-            .sub(rationalToFraction(totalB))
-            .valueOf();
-        },
-        customFilterAndSearch: (filter, { total }) => {
-          const totalDec = rationalToFraction(total).valueOf();
-          return (
-            new Fuse(
-              [
-                {
-                  total: [
-                    numeral(totalDec).format("$0,0.00"),
-                    totalDec.toFixed(2),
-                  ],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["total"],
-              }
-            ).search(filter).length > 0
-          );
-        },
+        searchable: false,
+        filterComponent: ({ columnDef, onFilterChanged }) => (
+          <TotalFilter
+            setFilter={(filter) => {
+              onFilterChanged((columnDef as any).tableData?.id ?? "1", filter);
+            }}
+          />
+        ),
       },
       {
         field: "date",
         title: "Date",
         render: ({ date }) => format(new Date(date), "MMM dd, yyyy"),
-        searchable: true,
-        filtering: false,
-        sorting: true,
+        searchable: false,
+        filterComponent: ({ columnDef, onFilterChanged }) => (
+          <DateFilter
+            setFilter={(filter) => {
+              onFilterChanged((columnDef as any).tableData?.id ?? "2", filter);
+            }}
+          />
+        ),
         defaultSort: "desc",
-        customSort: ({ date: dateA }, { date: dateB }) => {
-          return new Date(dateA).getTime() - new Date(dateB).getTime();
-        },
-        customFilterAndSearch: (filter, { date: dateStr }) => {
-          const date = new Date(dateStr);
-
-          return (
-            new Fuse(
-              [
-                {
-                  date: [
-                    dateStr,
-                    format(date, "M/d/yy"),
-                    format(date, "MM/d/yy"),
-                    format(date, "M/d/yyyy"),
-                    format(date, "MM/d/yyyy"),
-                    format(date, "MMM dd, yyyy"),
-                  ],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["date"],
-              }
-            ).search(filter).length > 0
-          );
-        },
       },
       {
         field: "category",
@@ -376,41 +387,15 @@ const Journal = (props: {
               : data.category.name;
           return capitalCase(name);
         },
-        searchable: true,
-        filtering: false,
-        sorting: true,
-        customSort: (dataA, dataB) => {
-          const { category: categoryA } = dataA;
-          const { category: categoryB } = dataB;
-
-          const nameA = categoryA.name.toUpperCase(); // ignore upper and lowercase
-          const nameB = categoryB.name.toUpperCase(); // ignore upper and lowercase
-          if (nameA < nameB) {
-            return -1;
-          }
-          if (nameA > nameB) {
-            return 1;
-          }
-
-          // names must be equal
-          return 0;
-        },
-        customFilterAndSearch: (filter, { category: { name } }) => {
-          return (
-            new Fuse(
-              [
-                {
-                  category: [name],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["category"],
-              }
-            ).search(filter).length > 0
-          );
-        },
+        searchable: false,
+        filterComponent: ({ columnDef, onFilterChanged }) => (
+          <CategoryFilter
+            options={filterOptions.category}
+            setFilter={(filter) =>
+              onFilterChanged((columnDef as any).tableData?.id ?? "3", filter)
+            }
+          />
+        ),
       },
       {
         field: "source",
@@ -425,68 +410,15 @@ const Journal = (props: {
               return source.deptName;
           }
         },
-        searchable: true,
-        filtering: false,
-        sorting: true,
-        customSort: ({ source: sourceA }, { source: sourceB }) => {
-          const nameA = (() => {
-            switch (sourceA.__typename) {
-              case "Person":
-                return sourceA.name.last.toUpperCase();
-              case "Business":
-                return sourceA.bizName.toUpperCase();
-              case "Department":
-                return sourceA.deptName.toUpperCase();
+        searchable: false,
+        filterComponent: ({ columnDef, onFilterChanged }) => (
+          <SourceFilter
+            options={filterOptions.source}
+            setFilter={(filter) =>
+              onFilterChanged((columnDef as any).tableData?.id ?? "4", filter)
             }
-          })();
-
-          const nameB = (() => {
-            switch (sourceB.__typename) {
-              case "Person":
-                return sourceB.name.last.toUpperCase();
-              case "Business":
-                return sourceB.bizName.toUpperCase();
-              case "Department":
-                return sourceB.deptName.toUpperCase();
-            }
-          })();
-          if (nameA < nameB) {
-            return -1;
-          }
-          if (nameA > nameB) {
-            return 1;
-          }
-
-          // names must be equal
-          return 0;
-        },
-        customFilterAndSearch: (filter, { source }) => {
-          return (
-            new Fuse(
-              [
-                {
-                  source: [
-                    (() => {
-                      switch (source.__typename) {
-                        case "Person":
-                          return `${source.name.first} ${source.name.last}`;
-                        case "Business":
-                          return source.bizName;
-                        case "Department":
-                          return source.deptName;
-                      }
-                    })(),
-                  ],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["source"],
-              }
-            ).search(filter).length > 0
-          );
-        },
+          />
+        ),
       },
       {
         field: "paymentMethod",
@@ -495,124 +427,46 @@ const Journal = (props: {
           paymentMethod.parent?.id === CHECK_ID
             ? `CK-${paymentMethod.name}`
             : paymentMethod.name,
-        searchable: true,
-        filtering: false,
-        sorting: true,
-        customSort: (
-          { paymentMethod: paymentMethodA },
-          { paymentMethod: paymentMethodB }
-        ) => {
-          const nameA = (() => {
-            return (paymentMethodA.parent?.id === CHECK_ID
-              ? `CK-${paymentMethodA.name}`
-              : paymentMethodA.name
-            ).toUpperCase();
-          })();
-
-          const nameB = (() => {
-            return (paymentMethodB.parent?.id === CHECK_ID
-              ? `CK-${paymentMethodB.name}`
-              : paymentMethodB.name
-            ).toUpperCase();
-          })();
-          if (nameA < nameB) {
-            return -1;
-          }
-          if (nameA > nameB) {
-            return 1;
-          }
-
-          // names must be equal
-          return 0;
-        },
-        customFilterAndSearch: (filter, { paymentMethod }) => {
-          return (
-            new Fuse(
-              [
-                {
-                  paymentMethod: [
-                    paymentMethod.parent?.id === CHECK_ID
-                      ? `CK-${paymentMethod.name}`
-                      : paymentMethod.name,
-                  ],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["paymentMethod"],
-              }
-            ).search(filter).length > 0
-          );
-        },
+        searchable: false,
+        filterComponent: ({ columnDef, onFilterChanged }) => (
+          <PaymentMethodFilter
+            options={filterOptions.paymentMethod}
+            setFilter={(filter) =>
+              onFilterChanged((columnDef as any).tableData?.id ?? "5", filter)
+            }
+          />
+        ),
       },
       {
         field: "description",
         title: "Description",
         render: ({ description }) => description,
-        searchable: true,
+        searchable: false,
         filtering: false,
         sorting: false,
-        customFilterAndSearch: (filter, { description }) => {
-          return (
-            new Fuse(
-              [
-                {
-                  description: [description?.trim() || ""],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["description"],
-              }
-            ).search(filter).length > 0
-          );
-        },
       },
       {
         field: "department",
         title: "Department",
         render: ({ department }) => capitalCase(department.name),
-        searchable: true,
-        filtering: false,
-        sorting: true,
-        customSort: (
-          { department: departmentA },
-          { department: departmentB }
-        ) => {
-          const nameA = departmentA.name.toUpperCase();
-          const nameB = departmentB.name.toUpperCase();
-
-          if (nameA < nameB) {
-            return -1;
-          }
-          if (nameA > nameB) {
-            return 1;
-          }
-
-          // names must be equal
-          return 0;
-        },
-        customFilterAndSearch: (filter, { department }) => {
-          return (
-            new Fuse(
-              [
-                {
-                  department: [department.name],
-                },
-              ],
-              {
-                threshold: 0.4,
-                useExtendedSearch: true,
-                keys: ["department"],
-              }
-            ).search(filter).length > 0
-          );
-        },
+        searchable: false,
+        filterComponent: ({ columnDef, onFilterChanged }) => (
+          <DepartmentFilter
+            options={filterOptions.department}
+            setFilter={(filter) =>
+              onFilterChanged((columnDef as any).tableData?.id ?? "5", filter)
+            }
+          />
+        ),
       },
     ];
-  }, [mode]);
+  }, [
+    filterOptions.category,
+    filterOptions.department,
+    filterOptions.paymentMethod,
+    filterOptions.source,
+    mode,
+  ]);
 
   const localization = useMemo<Localization>(
     () => ({
@@ -660,6 +514,9 @@ const Journal = (props: {
       debounceInterval: 500,
       emptyRowsWhenPaging: false,
       columnsButton: true,
+      filtering: true,
+      sorting: true,
+      thirdSortClick: false,
     }),
     [journalTitle, mode]
   );
@@ -813,6 +670,9 @@ const Journal = (props: {
     ];
   }, [mode, reconcileRefund, reconcileEntry, setDeleteRefund, setDeleteEntry]);
 
+  // https://github.com/mbrn/material-table/issues/563
+  const detailPanelState = useMemo(() => new Map<string, any>(), []);
+
   const components = useMemo<Components>(
     () => ({
       Body: error
@@ -835,8 +695,22 @@ const Journal = (props: {
             </TableBody>
           )
         : (props) => <MTableBody {...props} />,
+      Row: (p) => {
+        const props = {
+          ...p,
+          onToggleDetailPanel: (path, render, ...args) => {
+            if (detailPanelState.has(p.data.id)) {
+              detailPanelState.delete(p.data.id);
+            } else {
+              detailPanelState.set(p.data.id, render);
+            }
+            return p.onToggleDetailPanel(path, render, ...args);
+          },
+        };
+        return <MTableBodyRow {...props} />;
+      },
     }),
-    [error, columns.length, actions]
+    [error, columns.length, actions, detailPanelState]
   );
 
   const detailPanel = useMemo<
@@ -875,62 +749,322 @@ const Journal = (props: {
     []
   );
 
-  const journalEntries = data?.journalEntries || [];
+  const [aggregate, setAggregate] = useState<Fraction>(new Fraction(0));
 
-  // https://github.com/mbrn/material-table/issues/563
-  const entryState = useRef(
-    new Map<string, Entry & { tableData?: any; showDetailPanel?: any }>()
-  );
+  const title = useMemo(() => {
+    const compare = aggregate.compare(new Fraction(0));
 
-  const entries = useMemo(() => {
-    // https://github.com/mbrn/material-table/issues/563
-    const oldEntryState = entryState.current;
-    const newEntryState = new Map<
-      string,
-      Entry & { tableData?: any; showDetailPanel?: any }
-    >();
+    const aggregateSpan = (
+      <Box
+        color={compare === 0 ? undefined : compare > 0 ? green[900] : red[900]}
+        component="span"
+      >
+        {numeral(aggregate.valueOf()).format("$0,0.00")}
+      </Box>
+    );
 
-    const filters =
-      mode === JournalMode.Reconcile
-        ? [(entry: Entry) => !entry.reconciled && !entry.deleted]
-        : [(entry: Entry) => !entry.deleted];
+    if (journalTitle) {
+      return (
+        <Typography variant="h6">
+          {`${journalTitle}: `}
+          {aggregateSpan}
+        </Typography>
+      );
+    }
+    return <Typography variant="h6">{aggregateSpan}</Typography>;
+  }, [aggregate, journalTitle]);
 
-    const entries = journalEntries
-      .reduce((entries: Entry[], journalEntry) => {
-        for (let entry of entriesGen(journalEntry, mode)) {
-          if (filters.every((filter) => filter(entry))) {
-            const { tableData } = oldEntryState.get(entry.id) ?? {};
-            entry = {
-              ...entry,
-              tableData,
-            } as any;
-            newEntryState.set(entry.id, entry);
-            entries.push(entry);
-          }
+  const tableRef = useRef<any>(null);
+
+  const mTData = useCallback(
+    async (query: MTQuery<Entry>): Promise<QueryResult<Entry>> => {
+      const { filters, page, pageSize, orderBy, orderDirection } = query;
+
+      const search = query.search?.trim();
+
+      const collection = (() => {
+        if (!search) {
+          return entries;
         }
 
-        return entries;
-      }, [])
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return new Fuse(entries, {
+          keys: [
+            "date",
+            "total",
+            "description",
+            "department",
+            "category",
+            "paymentMethod",
+            "source",
+          ],
+          threshold: 0.4,
+          useExtendedSearch: true,
+          getFn: (entry, key) => {
+            switch (key) {
+              case "date": {
+                const date = new Date(entry.date);
 
-    entryState.current = newEntryState;
+                return [
+                  entry.date,
+                  format(date, "M/d/yy"),
+                  format(date, "MM/d/yy"),
+                  format(date, "M/d/yyyy"),
+                  format(date, "MM/d/yyyy"),
+                  format(date, "MMM dd, yyyy"),
+                ];
+              }
+              case "total": {
+                const total = rationalToFraction(entry.total).valueOf();
 
-    return entries;
-  }, [journalEntries, mode, entryState]);
+                return [numeral(total).format("$0,0.00"), total.toFixed(2)];
+              }
+              case "description":
+                return entry.description?.trim() || "";
+              case "department":
+                return entry.department.name;
+              case "category":
+                return entry.category.name;
+              case "paymentMethod":
+                return entry.paymentMethod.name;
+              case "source":
+                switch (entry.source.__typename) {
+                  case "Person":
+                    return [entry.source.name.first, entry.source.name.last];
+                  case "Business":
+                    return entry.source.bizName;
+                  case "Department":
+                    return entry.source.deptName;
+                }
+                break;
+              default:
+                return "";
+            }
+          },
+        })
+          .search(search)
+          .map((result) => result.item);
+      })();
 
+      const pipeline: Object[] = [];
+
+      const $match = { $and: [] as object[] };
+
+      if (filters.length > 0) {
+        const { $and } = $match;
+        for (const filter of filters) {
+          if (Object.keys(filter.value).length > 0) {
+            $and.push(filter.value);
+          }
+          // Object.assign($match, filter.value ?? {});
+        }
+      }
+
+      if ($match.$and.length > 0) {
+        pipeline.push(
+          // Convert fields for filtering
+          {
+            $addFields: {
+              // Cache date as string
+              _dateStr_: "$date",
+              date: {
+                $expressionCb: (obj: Entry) => startOfDay(new Date(obj.date)),
+              },
+              // Cache total as rational
+              _totalRational_: "$total",
+              total: {
+                $expressionCb: (obj: Entry) =>
+                  rationalToFraction(obj.total).valueOf(),
+              },
+            },
+          },
+          { $match },
+          // Replace with original values from cached keys
+          {
+            $addFields: {
+              date: "$_dateStr_",
+              total: "$_totalRational_",
+            },
+          },
+          // Remove cache keys
+          {
+            $project: {
+              _dateStr_: false,
+              _totalRational_: false,
+            },
+          }
+        );
+      }
+
+      const $facet = {
+        data: [] as object[],
+        raw: [],
+      };
+
+      // Sorting
+      if (orderBy) {
+        const { field } = orderBy;
+
+        switch (field) {
+          case "date":
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: { $toDate: "$date" },
+              },
+            });
+            break;
+          case "total":
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: {
+                  $expressionCb: (entry: Entry) =>
+                    rationalToFraction(entry.total).valueOf(),
+                },
+              },
+            });
+            break;
+          case "reconciled":
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: "$reconciled",
+              },
+            });
+            break;
+          case "department":
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: "$department.name",
+              },
+            });
+            break;
+          case "category":
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: "$category.name",
+              },
+            });
+            break;
+          case "paymentMethod":
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: "$paymentMethod.name",
+              },
+            });
+            break;
+          case "source":
+            // var t:Entry;
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: {
+                  $cond: {
+                    if: {
+                      $eq: [{ $ifNull: ["$source.name.first", null] }, null],
+                    },
+                    then: "$source.name",
+                    else: {
+                      $concat: ["$source.name.first", " ", "$source.name.last"],
+                    },
+                  },
+                },
+              },
+            });
+            break;
+          default:
+            $facet.data.push({
+              $addFields: {
+                _sortBy_: { $toDate: "$date" },
+              },
+            });
+        }
+
+        $facet.data.push(
+          {
+            $sort: {
+              _sortBy_: orderDirection === "asc" ? 1 : -1,
+            },
+          },
+          {
+            $project: { _sortBy_: false },
+          }
+        );
+      }
+
+      // paging
+      $facet.data.push({ $skip: page * pageSize }, { $limit: pageSize });
+
+      pipeline.push({ $facet });
+
+      const [result] = new Aggregator(pipeline).run(collection);
+
+      // https://github.com/mbrn/material-table/issues/563
+      const data = result.data.map((entry: Entry) => {
+        if (detailPanelState.has(entry.id)) {
+          return {
+            ...entry,
+            tableData: {
+              showDetailPanel: detailPanelState.get(entry.id),
+            },
+          } as any;
+        }
+
+        return entry;
+      });
+
+      const raw = result.raw;
+
+      // Cleanup detailPanelState
+      // https://github.com/mbrn/material-table/issues/563
+      (() => {
+        const copyShowDetailPanel = new Map(detailPanelState);
+        detailPanelState.clear();
+        for (const { id } of raw as Entry[]) {
+          if (copyShowDetailPanel.has(id)) {
+            detailPanelState.set(id, copyShowDetailPanel.get(id));
+          }
+        }
+      })();
+
+      const totalCount = raw.length;
+
+      const newAggregate = raw.reduce(
+        (aggregate: Fraction, entry: Entry) =>
+          entry.type === JournalEntryType.Credit
+            ? aggregate.add(rationalToFraction(entry.total))
+            : aggregate.sub(rationalToFraction(entry.total)),
+        new Fraction(0)
+      );
+
+      if (aggregate.compare(newAggregate) !== 0) {
+        setAggregate(newAggregate);
+      }
+
+      return {
+        data,
+        page,
+        totalCount,
+      };
+    },
+    [aggregate, entries, detailPanelState]
+  );
+
+  useEffect(() => {
+    if (tableRef.current) {
+      tableRef.current.onQueryChange(null);
+    }
+  }, [tableRef, entries]);
   return (
     <React.Fragment>
       <MaterialTable
         icons={tableIcons}
         isLoading={isLoading || reconcilingEntry || reconcilingRefund}
         columns={columns}
-        data={entries}
+        data={mTData}
         options={options}
         localization={localization}
         actions={actions}
         components={components}
-        title={journalTitle ?? undefined}
+        title={title}
         detailPanel={detailPanel}
+        tableRef={tableRef}
       />
       <AddEntry deptId={deptId} open={addEntryOpen} onClose={addEntryOnClose} />
       <UpdateEntry
