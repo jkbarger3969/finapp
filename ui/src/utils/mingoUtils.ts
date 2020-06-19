@@ -17,7 +17,7 @@ addOperators(OperatorType.EXPRESSION, (helpers: CustomOperatorHelpers) => ({
   ) => expr(obj, options, helpers),
 }));
 
-addOperators(OperatorType.QUERY, (helpers: CustomOperatorHelper) => ({
+addOperators(OperatorType.QUERY, (helpers: CustomOperatorHelpers) => ({
   $queryCb: (
     selector: string,
     lhs: unknown,
