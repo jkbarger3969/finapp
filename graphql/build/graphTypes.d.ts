@@ -57,14 +57,26 @@ export declare enum FilterType {
     Exclude = "EXCLUDE"
 }
 export declare type JournalEntiresWhereInput = {
+    date?: Maybe<WhereDate>;
     department?: Maybe<JournalEntriesWhereDepartment>;
+    category?: Maybe<JournalEntriesWhereCategory>;
+    source?: Maybe<JournalEntriesWhereSource>;
+    paymentMethod?: Maybe<JournalEntriesWherePaymentMethod>;
+    total?: Maybe<WhereRational>;
     reconciled?: Maybe<Scalars['Boolean']>;
     deleted?: Maybe<Scalars['Boolean']>;
-    lastUpdate?: Maybe<JournalEntriesWhereLastUpdate>;
-    lastUpdateRefund?: Maybe<JournalEntriesWhereLastUpdate>;
-    lastUpdateItem?: Maybe<JournalEntriesWhereLastUpdate>;
+    lastUpdate?: Maybe<WhereDate>;
+    lastUpdateRefund?: Maybe<WhereDate>;
+    lastUpdateItem?: Maybe<WhereDate>;
     or?: Maybe<Array<Maybe<JournalEntiresWhereInput>>>;
     and?: Maybe<Array<Maybe<JournalEntiresWhereInput>>>;
+};
+export declare type JournalEntriesWhereCategory = {
+    eq?: Maybe<Scalars['ID']>;
+    ne?: Maybe<Scalars['ID']>;
+    in?: Maybe<Array<Maybe<Scalars['ID']>>>;
+    nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
+    matchDecedentTree?: Maybe<Scalars['Boolean']>;
 };
 /** Where */
 export declare type JournalEntriesWhereDepartment = {
@@ -74,11 +86,19 @@ export declare type JournalEntriesWhereDepartment = {
     nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
     matchDecedentTree?: Maybe<Scalars['Boolean']>;
 };
-export declare type JournalEntriesWhereLastUpdate = {
-    gt?: Maybe<Scalars['String']>;
-    lt?: Maybe<Scalars['String']>;
-    gte?: Maybe<Scalars['String']>;
-    lte?: Maybe<Scalars['String']>;
+export declare type JournalEntriesWherePaymentMethod = {
+    eq?: Maybe<Scalars['ID']>;
+    ne?: Maybe<Scalars['ID']>;
+    in?: Maybe<Array<Maybe<Scalars['ID']>>>;
+    nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
+    matchDecedentTree?: Maybe<Scalars['Boolean']>;
+};
+export declare type JournalEntriesWhereSource = {
+    sourceType: JournalEntrySourceType;
+    eq?: Maybe<Scalars['ID']>;
+    ne?: Maybe<Scalars['ID']>;
+    in?: Maybe<Array<Maybe<Scalars['ID']>>>;
+    nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
 };
 export declare type JournalEntry = {
     __typename?: 'JournalEntry';
@@ -475,6 +495,23 @@ export declare type Vendor = {
     approved: Scalars['Boolean'];
     vendorId?: Maybe<Scalars['ID']>;
 };
+export declare type WhereDate = {
+    eq?: Maybe<Scalars['String']>;
+    ne?: Maybe<Scalars['String']>;
+    gt?: Maybe<Scalars['String']>;
+    gte?: Maybe<Scalars['String']>;
+    lt?: Maybe<Scalars['String']>;
+    lte?: Maybe<Scalars['String']>;
+    ignoreTime?: Maybe<Scalars['Boolean']>;
+};
+export declare type WhereRational = {
+    eq?: Maybe<RationalInput>;
+    ne?: Maybe<RationalInput>;
+    gt?: Maybe<RationalInput>;
+    gte?: Maybe<RationalInput>;
+    lt?: Maybe<RationalInput>;
+    lte?: Maybe<RationalInput>;
+};
 export declare type WhereRegexInput = {
     pattern: Scalars['String'];
     flags?: Maybe<Scalars['String']>;
@@ -523,8 +560,14 @@ export declare type ResolversTypes = {
     Boolean: ResolverTypeWrapper<Scalars['Boolean']>;
     DepartmentAncestor: ResolversTypes['Department'] | ResolversTypes['Business'];
     JournalEntiresWhereInput: JournalEntiresWhereInput;
+    WhereDate: WhereDate;
     JournalEntriesWhereDepartment: JournalEntriesWhereDepartment;
-    JournalEntriesWhereLastUpdate: JournalEntriesWhereLastUpdate;
+    JournalEntriesWhereCategory: JournalEntriesWhereCategory;
+    JournalEntriesWhereSource: JournalEntriesWhereSource;
+    JournalEntrySourceType: JournalEntrySourceType;
+    JournalEntriesWherePaymentMethod: JournalEntriesWherePaymentMethod;
+    WhereRational: WhereRational;
+    RationalInput: RationalInput;
     JournalEntry: ResolverTypeWrapper<Omit<JournalEntry, 'source'> & {
         source: ResolversTypes['JournalEntrySource'];
     }>;
@@ -553,9 +596,7 @@ export declare type ResolversTypes = {
     BusinessAddFields: BusinessAddFields;
     PersonAddFields: PersonAddFields;
     JournalEntryAddFields: JournalEntryAddFields;
-    RationalInput: RationalInput;
     JournalEntrySourceInput: JournalEntrySourceInput;
-    JournalEntrySourceType: JournalEntrySourceType;
     PaymentMethodAddFields: PaymentMethodAddFields;
     JournalEntryAddItemFields: JournalEntryAddItemFields;
     JournalEntryItemUpsertResult: ResolverTypeWrapper<JournalEntryItemUpsertResult>;
@@ -595,8 +636,14 @@ export declare type ResolversParentTypes = {
     Boolean: Scalars['Boolean'];
     DepartmentAncestor: ResolversParentTypes['Department'] | ResolversParentTypes['Business'];
     JournalEntiresWhereInput: JournalEntiresWhereInput;
+    WhereDate: WhereDate;
     JournalEntriesWhereDepartment: JournalEntriesWhereDepartment;
-    JournalEntriesWhereLastUpdate: JournalEntriesWhereLastUpdate;
+    JournalEntriesWhereCategory: JournalEntriesWhereCategory;
+    JournalEntriesWhereSource: JournalEntriesWhereSource;
+    JournalEntrySourceType: JournalEntrySourceType;
+    JournalEntriesWherePaymentMethod: JournalEntriesWherePaymentMethod;
+    WhereRational: WhereRational;
+    RationalInput: RationalInput;
     JournalEntry: Omit<JournalEntry, 'source'> & {
         source: ResolversParentTypes['JournalEntrySource'];
     };
@@ -625,9 +672,7 @@ export declare type ResolversParentTypes = {
     BusinessAddFields: BusinessAddFields;
     PersonAddFields: PersonAddFields;
     JournalEntryAddFields: JournalEntryAddFields;
-    RationalInput: RationalInput;
     JournalEntrySourceInput: JournalEntrySourceInput;
-    JournalEntrySourceType: JournalEntrySourceType;
     PaymentMethodAddFields: PaymentMethodAddFields;
     JournalEntryAddItemFields: JournalEntryAddItemFields;
     JournalEntryItemUpsertResult: JournalEntryItemUpsertResult;
