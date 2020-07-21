@@ -121,17 +121,17 @@ const renderTags: AutocompleteProps["renderTags"] = (values, getTagProps) => {
 const PaymentMethod = (
   props: {
     variant?: "filled" | "outlined";
-  } & {} & Omit<
-      TextFieldProps,
-      | "value"
-      | "variant"
-      | "error"
-      | "helperText"
-      | "name"
-      | "label"
-      | keyof FieldInputProps<any>
-      | keyof Omit<RenderInputParams, "id" | "disabled">
-    >
+  } & Omit<
+    TextFieldProps,
+    | "value"
+    | "variant"
+    | "error"
+    | "helperText"
+    | "name"
+    | "label"
+    | keyof FieldInputProps<any>
+    | keyof Omit<RenderInputParams, "id" | "disabled">
+  >
 ) => {
   const { disabled = false, ...textFieldProps } = props;
 

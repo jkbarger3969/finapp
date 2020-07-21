@@ -1,14 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "outDir": "dist",
+    "inlineSourceMap": true,
+    "target": "ES2019",
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
-    "downlevelIteration":true,
-    "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
@@ -17,15 +13,8 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "noImplicitAny":false,
-    "jsx": "preserve"
+    "jsx": "react"
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx"
-  ],
-  "exclude": [
-    "Ledger.BAK"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["Ledger.BAK"]
 }

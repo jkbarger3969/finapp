@@ -10,7 +10,7 @@ import { useQuery } from "@apollo/react-hooks";
 import { DepartmentName_1Query as DepartmentName } from "./apollo/graphTypes";
 import gql from "graphql-tag";
 
-const DashBoardRender = (props) => {
+const DashBoardRender = () => {
   const { id } = useParams();
   return id ? <Dashboard deptId={id} /> : <div>Error: No Dept ID!</div>;
 };
@@ -25,9 +25,9 @@ const DEPARTMENT_NAME = gql`
   }
 `;
 
-const JournalViewRender = (props) => {
+const JournalViewRender = () => {
   const { id } = useParams();
-  const { loading, error, data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
+  const { data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
     variables: { id },
   });
   const journalTitle = data?.department?.name
@@ -38,9 +38,9 @@ const JournalViewRender = (props) => {
   );
 };
 
-const JournalReconcileRender = (props) => {
+const JournalReconcileRender = () => {
   const { id } = useParams();
-  const { loading, error, data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
+  const { data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
     variables: { id },
   });
   const journalTitle = data?.department?.name
@@ -55,7 +55,7 @@ const JournalReconcileRender = (props) => {
   );
 };
 
-const Routes = (props) => {
+const Routes = (): JSX.Element => {
   return (
     <Switch>
       <Route exact path="/" component={TopNav} />

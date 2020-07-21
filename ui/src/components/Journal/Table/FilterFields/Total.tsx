@@ -71,7 +71,7 @@ const TotalInputProps = {
   startAdornment: <InputAdornment position="start">$</InputAdornment>,
 } as const;
 
-const Total = (props: { setFilter: (filter) => void }) => {
+const Total = (props: { setFilter: (filter: unknown) => void }) => {
   const { setFilter: setFilterCb } = props;
 
   const [value, setValue] = useState("");
@@ -104,7 +104,7 @@ const Total = (props: { setFilter: (filter) => void }) => {
         return;
       }
 
-      const $and: object[] = [];
+      const $and: Record<string, unknown>[] = [];
 
       const values: string[] = [];
 
@@ -121,6 +121,8 @@ const Total = (props: { setFilter: (filter) => void }) => {
               return ["$lt", "<"];
             case Op.LessThanOrEqual:
               return ["$lte", "<="];
+            case Op.None:
+              return ["", ""];
           }
         })();
         $and.push({

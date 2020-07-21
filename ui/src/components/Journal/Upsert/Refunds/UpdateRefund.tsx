@@ -402,8 +402,9 @@ const UpdateRefund = (props: UpdateRefundProps) => {
       // isInitialValid={false}
       enableReinitialize={true}
       onSubmit={onSubmit}
-      children={children}
-    />
+    >
+      {children}
+    </Formik>
   );
 };
 

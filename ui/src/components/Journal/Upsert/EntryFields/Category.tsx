@@ -33,7 +33,7 @@ const CAT_OPTS_QUERY = gql`
   ${CAT_ENTRY_OPT_FRAGMENT}
 `;
 
-type CatValueBeta = TransmutationValue<String, CatEntryOptFragment[]>;
+type CatValueBeta = TransmutationValue<string, CatEntryOptFragment[]>;
 
 type AutocompleteProps = AutocompletePropsRaw<CatValue> &
   UseAutocompleteMultipleProps<CatValue>;
@@ -193,7 +193,7 @@ const Category = function (props: CategoryProps) {
       return error;
     } else if ((entryType ?? NULLISH) === NULLISH) {
       return "Category requires entry type.";
-    } else if (!!gqlError) {
+    } else if (gqlError) {
       return gqlError.message;
     }
     return "";

@@ -296,7 +296,7 @@ const Journal = (props: {
 
     const entries: Entry[] = [];
 
-    for (let entry of entriesGen(journalEntries)) {
+    for (const entry of entriesGen(journalEntries)) {
       if (
         entry.deleted ||
         (mode === JournalMode.Reconcile && entry.reconciled)
@@ -337,11 +337,14 @@ const Journal = (props: {
       {
         field: "reconciled",
         title: "Reconciled",
+        // eslint-disable-next-line react/display-name, react/prop-types
         render: ({ reconciled }) => (reconciled ? <DoneIcon /> : null),
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <ReconciledFilter
             setFilter={(filter) =>
+              // eslint-disable-next-line react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "0", filter)
             }
           />
@@ -355,9 +358,11 @@ const Journal = (props: {
         render: ({ total }) =>
           numeral(rationalToFraction(total).valueOf()).format("$0,0.00"),
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <TotalFilter
             setFilter={(filter) => {
+              // eslint-disable-next-line react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "1", filter);
             }}
           />
@@ -368,9 +373,11 @@ const Journal = (props: {
         title: "Date",
         render: ({ date }) => format(new Date(date), "MMM dd, yyyy"),
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <DateFilter
             setFilter={(filter) => {
+              // eslint-disable-next-line react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "2", filter);
             }}
           />
@@ -388,10 +395,12 @@ const Journal = (props: {
           return capitalCase(name);
         },
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <CategoryFilter
             options={filterOptions.category}
             setFilter={(filter) =>
+              // eslint-disable-next-line react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "3", filter)
             }
           />
@@ -411,10 +420,12 @@ const Journal = (props: {
           }
         },
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <SourceFilter
             options={filterOptions.source}
             setFilter={(filter) =>
+              // eslint-disable-next-line react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "4", filter)
             }
           />
@@ -428,10 +439,12 @@ const Journal = (props: {
             ? `CK-${paymentMethod.name}`
             : paymentMethod.name,
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <PaymentMethodFilter
             options={filterOptions.paymentMethod}
             setFilter={(filter) =>
+              // eslint-disable-next-line react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "5", filter)
             }
           />
@@ -450,10 +463,12 @@ const Journal = (props: {
         title: "Department",
         render: ({ department }) => capitalCase(department.name),
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <DepartmentFilter
             options={filterOptions.department}
             setFilter={(filter) =>
+              // eslint-disable-next-line react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "5", filter)
             }
           />
@@ -473,19 +488,19 @@ const Journal = (props: {
       toolbar: {
         searchTooltip: (
           <Box fontSize={12} component="span">
-            [abc] | [efg] = "abc" OR "efg"
+            {`[abc] | [efg] = "abc" OR "efg"`}
             <br />
-            '[abc] = EXACTLY "abc"
+            {`'[abc] = EXACTLY "abc"`}
             <br />
-            ![abc] = NOT "abc"
+            {`![abc] = NOT "abc"`}
             <br />
-            ^[abc] = STARTS WITH "abc"
+            {`^[abc] = STARTS WITH "abc"`}
             <br />
-            !^[abc] = DOES NOT START WITH "abc"
+            {`!^[abc] = DOES NOT START WITH "abc"`}
             <br />
-            [abc]$ = ENDS WITH "abc"
+            {`[abc]$ = ENDS WITH "abc"`}
             <br />
-            ![abc]$ = DOES NOT END WITH "abc"
+            {`![abc]$ = DOES NOT END WITH "abc"`}
           </Box>
         ) as any,
         nRowsSelected: "Reconcile {0} Entry(s)",
@@ -525,14 +540,16 @@ const Journal = (props: {
     if (mode === JournalMode.Reconcile) {
       return [
         {
-          icon: ((props) => <CheckCircleIcon {...props} />) as any,
+          icon: ((props: Record<string, unknown>) => (
+            <CheckCircleIcon {...props} />
+          )) as any,
           tooltip: "Reconcile Selected",
           position: "toolbarOnSelect",
           iconProps: {
             color: "secondary",
             fontSize: "large",
           },
-          onClick: async (event, rowData) => {
+          onClick: async (event: unknown, rowData: Entry | unknown) => {
             await Promise.all(
               (Array.isArray(rowData) ? rowData : [rowData]).map(
                 async (entry) => {
@@ -564,19 +581,21 @@ const Journal = (props: {
             case "JournalEntry":
               return {
                 tooltip: "Delete Entry",
-                onClick: (event, rowData) => setDeleteEntry(rowData.id),
+                onClick: (event: unknown, rowData: Entry | unknown) =>
+                  setDeleteEntry((rowData as Entry).id),
               };
             // case "JournalEntryItem":
             //   return {
             //     tooltip: "Delete Item",
-            //     onClick: (event, rowData) => {
-            //       // setDeleteItem(rowData.id)
+            //     onClick: (event:unknown, rowData:Entry | unknown) => {
+            //       // setDeleteItem((rowData as Entry).id)
             //     },
             //   };
             case "JournalEntryRefund":
               return {
                 tooltip: "Delete Refund",
-                onClick: (event, rowData) => setDeleteRefund(rowData.id),
+                onClick: (event: unknown, rowData: Entry | unknown) =>
+                  setDeleteRefund((rowData as Entry).id),
               };
           }
         })();
@@ -593,7 +612,7 @@ const Journal = (props: {
             case "JournalEntry":
               return {
                 tooltip: "Edit Entry",
-                onClick: (event, rowData) => {
+                onClick: (event: unknown, rowData: Entry | unknown) => {
                   setUpdateEntryOpen(true);
                   setUpdateEntry((rowData as Entry).id);
                 },
@@ -601,7 +620,7 @@ const Journal = (props: {
             // case "JournalEntryItem":
             //   return {
             //     tooltip: "Edit Item",
-            //     onClick: (event, rowData) => {
+            //     onClick: (event:unknown, rowData:Entry | unknown) => {
             //       setUpdateItemOpen(true);
             //       setUpdateItem({
             //         entryId: (rowData as Entry).items as string,
@@ -612,7 +631,7 @@ const Journal = (props: {
             case "JournalEntryRefund":
               return {
                 tooltip: "Edit Refund",
-                onClick: (event, rowData) => {
+                onClick: (event: unknown, rowData: Entry | unknown) => {
                   setUpdateRefundOpen(true);
                   setUpdateRefund({
                     entryId: (rowData as Entry).refunds as string,
@@ -637,7 +656,7 @@ const Journal = (props: {
         const isCredit = rowData.type === JournalEntryType.Credit;
 
         return {
-          icon: ((props) =>
+          icon: ((props: Record<string, unknown>) =>
             isCredit ? (
               <BankTransferOutIcon {...props} />
             ) : (
@@ -649,14 +668,16 @@ const Journal = (props: {
             // color: "secondary",
             // fontSize: "large",
           } as any,
-          onClick: (event, rowData) => {
+          onClick: (event: unknown, rowData: Entry | unknown) => {
             setAddRefundOpen(true);
             setAddRefundToEntry((rowData as JournalEntryFragment).id);
           },
         };
       },
       {
-        icon: ((props) => <AddCircleIcon {...props} />) as any,
+        icon: ((props: Record<string, unknown>) => (
+          <AddCircleIcon {...props} />
+        )) as any,
         iconProps: {
           color: "secondary",
           fontSize: "large",
@@ -676,7 +697,7 @@ const Journal = (props: {
   const components = useMemo<Components>(
     () => ({
       Body: error
-        ? (props) => (
+        ? (props: Record<string, unknown>) => (
             <TableBody {...props}>
               <TableRow>
                 <TableCell
@@ -694,11 +715,11 @@ const Journal = (props: {
               </TableRow>
             </TableBody>
           )
-        : (props) => <MTableBody {...props} />,
-      Row: (p) => {
+        : (props: Record<string, unknown>) => <MTableBody {...props} />,
+      Row: function RowDetailPanelHack(p: any) {
         const props = {
           ...p,
-          onToggleDetailPanel: (path, render, ...args) => {
+          onToggleDetailPanel: (path: any, render: any, ...args: any) => {
             if (detailPanelState.has(p.data.id)) {
               detailPanelState.delete(p.data.id);
             } else {
@@ -721,7 +742,7 @@ const Journal = (props: {
         const isJournalEntry = rowData.__typename === "JournalEntry";
         const hasItems = isJournalEntry ? rowData.items.length > 0 : false;
         return {
-          icon: (props) =>
+          icon: (props: Record<string, unknown>) =>
             isJournalEntry ? (
               hasItems ? (
                 <FileTreeIcon {...props} />
@@ -729,7 +750,8 @@ const Journal = (props: {
                 <FileTreeOutlineIcon {...props} />
               )
             ) : null,
-          openIcon: (props) =>
+          // eslint-disable-next-line react/display-name
+          openIcon: (props: Record<string, unknown>) =>
             hasItems ? (
               <FileTreeIcon {...props} color="primary" />
             ) : (
@@ -737,6 +759,7 @@ const Journal = (props: {
             ),
           disabled: !isJournalEntry,
           tooltip: isJournalEntry ? "Itemize" : undefined,
+          // eslint-disable-next-line react/display-name
           render: (rowData) => {
             if (rowData.__typename !== "JournalEntry") {
               return null;
@@ -845,9 +868,9 @@ const Journal = (props: {
           .map((result) => result.item);
       })();
 
-      const pipeline: Object[] = [];
+      const pipeline: Record<string, unknown>[] = [];
 
-      const $match = { $and: [] as object[] };
+      const $match = { $and: [] as Record<string, unknown>[] };
 
       if (filters.length > 0) {
         const { $and } = $match;
@@ -896,7 +919,7 @@ const Journal = (props: {
       }
 
       const $facet = {
-        data: [] as object[],
+        data: [] as Record<string, unknown>[],
         raw: [],
       };
 

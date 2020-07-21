@@ -15,6 +15,7 @@ import CardHeader from "@material-ui/core/CardHeader";
 import CardContent from "@material-ui/core/CardContent";
 import numeral from "numeral";
 import { red, green, orange, grey } from "@material-ui/core/colors";
+import { Color } from "@material-ui/core";
 import gql from "graphql-tag";
 import Fraction from "fraction.js";
 
@@ -32,7 +33,7 @@ import { DEPT_ENTRY_OPT_FRAGMENT } from "../Journal/Upsert/upsertEntry.gql";
 import AddEntry from "../Journal/Upsert/Entries/AddEntry";
 import { rationalToFraction } from "../../utils/rational";
 
-const colorMeter = (percentSpent: number, shade = 800) => {
+const colorMeter = (percentSpent: number, shade: keyof Color = 800) => {
   if (percentSpent < 0.75) {
     return green[shade];
   } else if (percentSpent < 0.9) {
@@ -336,7 +337,7 @@ const Dashboard = function (props: { deptId: string }) {
     return subDeptCards;
   }, [deptReport, department]);
 
-  const onClickAddEntry = useCallback((event?) => setAddEntryOpen(true), [
+  const onClickAddEntry = useCallback(() => setAddEntryOpen(true), [
     setAddEntryOpen,
   ]);
 
@@ -357,9 +358,10 @@ const Dashboard = function (props: { deptId: string }) {
                 variant="contained"
                 color="secondary"
                 startIcon={<AddIcon />}
-                children={"New Entry"}
                 onClick={onClickAddEntry}
-              />
+              >
+                New Entry
+              </Button>
             </Grid>
             <Grid item>
               <Button
@@ -367,15 +369,14 @@ const Dashboard = function (props: { deptId: string }) {
                 to={`/journal/${deptId}/reconcile`}
                 variant="contained"
                 startIcon={<DoneAllIcon />}
-                children={"Reconcile"}
-              />
+              >
+                Reconcile
+              </Button>
             </Grid>
             <Grid item>
-              <Button
-                variant="contained"
-                startIcon={<AssessmentIcon />}
-                children={"Reports"}
-              />
+              <Button variant="contained" startIcon={<AssessmentIcon />}>
+                Reports
+              </Button>
             </Grid>
             <Grid item>
               <Button
@@ -383,8 +384,9 @@ const Dashboard = function (props: { deptId: string }) {
                 to={`/journal/${deptId}`}
                 variant="contained"
                 startIcon={<TableChartIcon />}
-                children={"Journal"}
-              />
+              >
+                Journal
+              </Button>
             </Grid>
           </Grid>
         </Box>
