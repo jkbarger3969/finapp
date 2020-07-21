@@ -83,7 +83,9 @@ const Items = (props: ItemsProps) => {
         },
       },
       {
-        icon: ((props) => <AddCircleIcon {...props} />) as any,
+        icon: ((props: Record<string, unknown>) => (
+          <AddCircleIcon {...props} />
+        )) as any,
         iconProps: {
           color: "secondary",
           fontSize: "large",

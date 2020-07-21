@@ -37,7 +37,9 @@ export const useFormikStatus = <Values = any>() => {
       if (status) {
         if (
           !args ||
-          Object.keys(args).some((key) => args[key] !== status[key])
+          Object.keys(args).some(
+            (key) => (args as Record<string, any>)[key] !== status[key]
+          )
         ) {
           setStatusNative(args);
         }

@@ -9,6 +9,8 @@ import { useQuery, QueryHookOptions } from "@apollo/react-hooks";
 import { TextFieldProps, TextField, Box, Chip } from "@material-ui/core";
 import { ChevronRight } from "@material-ui/icons";
 import { parseName } from "humanparser";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: namecase has no type defs.
 import * as namecase from "namecase";
 import gql from "graphql-tag";
 

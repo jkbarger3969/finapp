@@ -172,7 +172,7 @@ const Department = function (props: DepartmentProps) {
   const helperText = useMemo(() => {
     if (!!error && touched) {
       return error;
-    } else if (!!gqlError) {
+    } else if (gqlError) {
       return gqlError.message;
     }
     return "";

@@ -443,7 +443,7 @@ const UpdateEntry = (props: UpdateEntryProps) => {
         case "Business":
           value.push(JournalEntrySourceType.Business, src);
           break;
-        case "Department":
+        case "Department": {
           // The source type is the root, for Dept is always a business.
           value.push(JournalEntrySourceType.Business);
           const ancestorDeptQueue: string[] = [];
@@ -485,6 +485,7 @@ const UpdateEntry = (props: UpdateEntryProps) => {
 
             value.push(...ancestorDepts, src);
           }
+        }
       }
 
       return {
@@ -554,8 +555,9 @@ const UpdateEntry = (props: UpdateEntryProps) => {
       loading={loading}
       onSubmit={onSubmit}
       enableReinitialize={true}
-      children={children}
-    />
+    >
+      {children}
+    </Formik>
   );
 };
 

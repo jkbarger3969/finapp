@@ -319,8 +319,9 @@ const AddItem = (props: AddItemProps) => {
       initialStatus={null}
       enableReinitialize={true}
       onSubmit={onSubmit}
-      children={children}
-    />
+    >
+      {children}
+    </Formik>
   );
 };
 

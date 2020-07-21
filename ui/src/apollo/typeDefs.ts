@@ -1,8 +1,5 @@
+import { DocumentNode } from "graphql";
 
-import {DocumentNode} from 'graphql';
+import upsertJournalEntry from "./schema/upsertJournalEntry.gql";
 
-import upsertJournalEntry from './schema/upsertJournalEntry.gql';
-
-export default <DocumentNode[]>[
-  upsertJournalEntry
-];
+export default [upsertJournalEntry] as DocumentNode[];

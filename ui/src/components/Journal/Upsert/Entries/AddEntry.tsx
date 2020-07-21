@@ -324,8 +324,9 @@ const AddEntry = (props: AddEntryProps) => {
       initialStatus={initialStatus}
       enableReinitialize={true}
       onSubmit={onSubmit}
-      children={children}
-    />
+    >
+      {children}
+    </Formik>
   );
 };
 

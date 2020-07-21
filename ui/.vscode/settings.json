@@ -6,5 +6,9 @@
     "refetch",
     "toolbelt",
     "upserted"
-  ]
+  ],
+  "eslint.enable": true,
+  "editor.formatOnSave": false,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": ["source.fixAll.format", "source.fixAll.eslint"]
 }

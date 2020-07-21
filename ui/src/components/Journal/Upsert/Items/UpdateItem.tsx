@@ -401,8 +401,9 @@ const UpdateItem = (props: UpdateItemProps) => {
       initialStatus={initialStatus}
       enableReinitialize={true}
       onSubmit={onSubmit}
-      children={children}
-    />
+    >
+      {children}
+    </Formik>
   );
 };
 

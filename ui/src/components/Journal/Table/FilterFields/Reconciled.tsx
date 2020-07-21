@@ -10,7 +10,9 @@ import { FilterList as FilterListIcon } from "@material-ui/icons";
 
 type Values = "None" | "Reconciled" | "Unreconciled";
 
-const Reconciled = (props: { setFilter: (filter: object) => void }) => {
+const Reconciled = (props: {
+  setFilter: (filter: Record<string, unknown>) => void;
+}) => {
   const { setFilter } = props;
 
   const [value, setValue] = useState<Values>("None");
