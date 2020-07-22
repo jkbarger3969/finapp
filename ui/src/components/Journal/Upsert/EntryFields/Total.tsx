@@ -9,7 +9,7 @@ import {
   TransmutationValue,
   useFormikStatus,
   FormikStatusType,
-} from "../../../../formik/utils";
+} from "../../../../utils/formik";
 import { RationalInput } from "../../../../apollo/graphTypes";
 import {
   fractionToRational,

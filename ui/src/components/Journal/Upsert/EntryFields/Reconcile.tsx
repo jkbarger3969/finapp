@@ -6,7 +6,7 @@ import {
   CheckboxProps,
 } from "@material-ui/core";
 import { useField, FieldInputProps } from "formik";
-import { useFormikStatus, FormikStatusType } from "../../../../formik/utils";
+import { useFormikStatus, FormikStatusType } from "../../../../utils/formik";
 
 const inputProps = {
   type: "checkbox",

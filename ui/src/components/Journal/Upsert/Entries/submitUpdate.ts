@@ -14,7 +14,7 @@ import {
   UpdateEntryMutation as UpdateEntry,
   UpdateEntryMutationVariables as UpdateEntryVars,
 } from "../../../../apollo/graphTypes";
-import { TransmutationValue } from "../../../../formik/utils";
+import { TransmutationValue } from "../../../../utils/formik";
 import { CHECK_ID } from "../../constants";
 import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/JournalEntries.gql";
 import { SourceValue } from "./submitAdd";

@@ -29,7 +29,7 @@ import {
   FormikStatus,
   FormikStatusType,
   useFormikStatus,
-} from "../../../../formik/utils";
+} from "../../../../utils/formik";
 import submitUpdate, { UpdateValues, IniUpdateValues } from "./submitUpdate";
 import {
   PAY_METHOD_ENTRY_OPT_FRAGMENT,

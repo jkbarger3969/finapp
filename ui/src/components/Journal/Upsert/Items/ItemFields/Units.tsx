@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import { TextField, TextFieldProps } from "@material-ui/core";
 import { useField, FieldInputProps } from "formik";
 
-import { useFormikStatus, FormikStatusType } from "../../../../../formik/utils";
+import { useFormikStatus, FormikStatusType } from "../../../../../utils/formik";
 
 const inputProps = {
   min: "1",

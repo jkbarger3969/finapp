@@ -31,7 +31,7 @@ import {
   TransmutationValue,
   useFormikStatus,
   FormikStatusType,
-} from "../../../../formik/utils";
+} from "../../../../utils/formik";
 
 const SRC_ENTRY_OPTS_QUERY = gql`
   query SrcEntryOpts($name: String!, $isBiz: Boolean!) {
