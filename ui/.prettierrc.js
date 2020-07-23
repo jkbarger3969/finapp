@@ -1,3 +1,3 @@
-module.exports = {
-  trailingComma: "es5",
-};
+// Ensure defaults
+// https://prettier.io/docs/en/options.html
+module.exports = {};
