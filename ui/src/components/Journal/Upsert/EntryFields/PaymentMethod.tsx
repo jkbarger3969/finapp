@@ -21,7 +21,7 @@ import {
   TransmutationValue,
   useFormikStatus,
   FormikStatusType,
-} from "../../../../formik/utils";
+} from "../../../../utils/formik";
 
 type Value = PayMethodEntryOptFragment | string;
 

@@ -16,7 +16,7 @@ import {
   AddEntryMutation as AddEntry,
   AddEntryMutationVariables as AddEntryVars,
 } from "../../../../apollo/graphTypes";
-import { TransmutationValue } from "../../../../formik/utils";
+import { TransmutationValue } from "../../../../utils/formik";
 import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/JournalEntries.gql";
 
 export type SourceValue =

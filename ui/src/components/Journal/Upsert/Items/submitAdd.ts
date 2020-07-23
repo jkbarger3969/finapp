@@ -10,7 +10,7 @@ import {
   AddEntryItemMutation as AddItem,
   AddEntryItemMutationVariables as AddItemVars,
 } from "../../../../apollo/graphTypes";
-import { TransmutationValue } from "../../../../formik/utils";
+import { TransmutationValue } from "../../../../utils/formik";
 import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/JournalEntries.gql";
 
 export type AddValues = O.Overwrite<

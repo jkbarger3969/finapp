@@ -20,7 +20,7 @@ import {
   // TransmutationValue,
   useFormikStatus,
   FormikStatusType,
-} from "../../../../formik/utils";
+} from "../../../../utils/formik";
 
 const DEPT_OPTS_QUERY = gql`
   query DeptEntryOpts($fromParent: ID) {

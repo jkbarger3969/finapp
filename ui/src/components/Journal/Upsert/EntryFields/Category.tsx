@@ -22,7 +22,7 @@ import {
   TransmutationValue,
   useFormikStatus,
   FormikStatusType,
-} from "../../../../formik/utils";
+} from "../../../../utils/formik";
 
 const CAT_OPTS_QUERY = gql`
   query CatEntryOpts($where: JournalEntryCategoryWhereInput!) {

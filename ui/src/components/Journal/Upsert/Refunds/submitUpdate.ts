@@ -10,7 +10,7 @@ import {
   UpdateRefundMutation as UpdateRefund,
   UpdateRefundMutationVariables as UpdateRefundVars,
 } from "../../../../apollo/graphTypes";
-import { TransmutationValue } from "../../../../formik/utils";
+import { TransmutationValue } from "../../../../utils/formik";
 import { JOURNAL_ENTRY_REFUND } from "../../Table/JournalEntries.gql";
 import { CHECK_ID } from "../../constants";
 import { rationalToFraction } from "../../../../utils/rational";

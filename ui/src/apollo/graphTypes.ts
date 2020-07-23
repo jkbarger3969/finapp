@@ -286,64 +286,6 @@ export type JournalEntryUpdateRefundFields = {
   reconciled?: Maybe<Scalars['Boolean']>;
 };
 
-export type Lc_JournalEntryUpsert = {
-  __typename?: 'LC_JournalEntryUpsert';
-  id: Scalars['ID'];
-  valid: Scalars['Boolean'];
-  type: Lc_JournalEntryUpsertType;
-  submitStatus: Lc_JournalEntryUpsertSubmitStatus;
-  submitError?: Maybe<Scalars['String']>;
-  inputValues: Lc_JournalEntryUpsertInputValues;
-  inputErrors: Lc_JournalEntryUpsertInputErrors;
-  fields: Lc_JournalEntryUpsertFields;
-};
-
-export type Lc_JournalEntryUpsertFields = {
-  __typename?: 'LC_JournalEntryUpsertFields';
-  id?: Maybe<Scalars['ID']>;
-  date?: Maybe<Scalars['String']>;
-  department: Array<Scalars['ID']>;
-  type?: Maybe<Scalars['ID']>;
-  paymentMethod?: Maybe<Scalars['ID']>;
-  total?: Maybe<Rational>;
-  source: Array<Lc_JournalEntryUpsertSource>;
-};
-
-export type Lc_JournalEntryUpsertInputErrors = {
-  __typename?: 'LC_JournalEntryUpsertInputErrors';
-  dateError?: Maybe<Scalars['String']>;
-  deptError?: Maybe<Scalars['String']>;
-  typeError?: Maybe<Scalars['String']>;
-  payMethodError?: Maybe<Scalars['String']>;
-  totalError?: Maybe<Scalars['String']>;
-  srcError?: Maybe<Scalars['String']>;
-};
-
-export type Lc_JournalEntryUpsertInputValues = {
-  __typename?: 'LC_JournalEntryUpsertInputValues';
-  deptInput?: Maybe<Scalars['String']>;
-  totalInput?: Maybe<Scalars['String']>;
-  srcInput?: Maybe<Scalars['String']>;
-  srcType?: Maybe<JournalEntrySourceType>;
-};
-
-export type Lc_JournalEntryUpsertSource = {
-  __typename?: 'LC_JournalEntryUpsertSource';
-  sourceType: JournalEntrySourceType;
-  id: Scalars['ID'];
-};
-
-export enum Lc_JournalEntryUpsertSubmitStatus {
-  NotSubmitted = 'NOT_SUBMITTED',
-  Submitting = 'SUBMITTING',
-  Submitted = 'SUBMITTED'
-}
-
-export enum Lc_JournalEntryUpsertType {
-  Update = 'UPDATE',
-  Add = 'ADD'
-}
-
 export type Mutation = {
   __typename?: 'Mutation';
   addBusiness: Business;
@@ -535,22 +477,21 @@ export type PersonNameInput = {
 
 export type Query = {
   __typename?: 'Query';
-  budget: Budget;
   budgets: Array<Budget>;
-  business: Business;
+  budget: Budget;
   businesses: Array<Business>;
-  department?: Maybe<Department>;
+  business: Business;
   departments: Array<Department>;
+  department?: Maybe<Department>;
   journalEntries: Array<JournalEntry>;
   journalEntry?: Maybe<JournalEntry>;
+  journalEntryRefund?: Maybe<JournalEntryRefund>;
+  journalEntryItem?: Maybe<JournalEntryItem>;
   journalEntryCategories: Array<JournalEntryCategory>;
   journalEntryCategory: JournalEntryCategory;
-  journalEntryItem?: Maybe<JournalEntryItem>;
-  journalEntryRefund?: Maybe<JournalEntryRefund>;
   journalEntrySources: Array<JournalEntrySource>;
-  lc_journalEntryUpserts: Array<Lc_JournalEntryUpsert>;
-  paymentMethod?: Maybe<PaymentMethod>;
   paymentMethods: Array<PaymentMethod>;
+  paymentMethod?: Maybe<PaymentMethod>;
   people: Array<Person>;
 };
 
@@ -560,17 +501,12 @@ export type QueryBudgetArgs = {
 };
 
 
-export type QueryBusinessArgs = {
-  id: Scalars['ID'];
-};
-
-
 export type QueryBusinessesArgs = {
   searchByName?: Maybe<Scalars['String']>;
 };
 
 
-export type QueryDepartmentArgs = {
+export type QueryBusinessArgs = {
   id: Scalars['ID'];
 };
 
@@ -581,12 +517,27 @@ export type QueryDepartmentsArgs = {
 };
 
 
+export type QueryDepartmentArgs = {
+  id: Scalars['ID'];
+};
+
+
 export type QueryJournalEntriesArgs = {
   where?: Maybe<JournalEntiresWhereInput>;
 };
 
 
 export type QueryJournalEntryArgs = {
+  id: Scalars['ID'];
+};
+
+
+export type QueryJournalEntryRefundArgs = {
+  id: Scalars['ID'];
+};
+
+
+export type QueryJournalEntryItemArgs = {
   id: Scalars['ID'];
 };
 
@@ -601,28 +552,18 @@ export type QueryJournalEntryCategoryArgs = {
 };
 
 
-export type QueryJournalEntryItemArgs = {
-  id: Scalars['ID'];
-};
-
-
-export type QueryJournalEntryRefundArgs = {
-  id: Scalars['ID'];
-};
-
-
 export type QueryJournalEntrySourcesArgs = {
   searchByName: Scalars['String'];
 };
 
 
-export type QueryPaymentMethodArgs = {
-  id: Scalars['ID'];
+export type QueryPaymentMethodsArgs = {
+  where?: Maybe<PaymentMethodWhereInput>;
 };
 
 
-export type QueryPaymentMethodsArgs = {
-  where?: Maybe<PaymentMethodWhereInput>;
+export type QueryPaymentMethodArgs = {
+  id: Scalars['ID'];
 };
 
 
@@ -1189,8 +1130,8 @@ export type DirectiveResolverFn<TResult = {}, TParent = {}, TContext = {}, TArgs
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
   Query: ResolverTypeWrapper<{}>;
-  ID: ResolverTypeWrapper<Scalars['ID']>;
   Budget: ResolverTypeWrapper<Omit<Budget, 'owner'> & { owner: ResolversTypes['BudgetOwner'] }>;
+  ID: ResolverTypeWrapper<Scalars['ID']>;
   Rational: ResolverTypeWrapper<Rational>;
   Int: ResolverTypeWrapper<Scalars['Int']>;
   RationalSign: RationalSign;
@@ -1225,13 +1166,6 @@ export type ResolversTypes = {
   JournalEntryCategoryWhereNameInput: JournalEntryCategoryWhereNameInput;
   JournalEntryCategoryWhereTypeInput: JournalEntryCategoryWhereTypeInput;
   JournalEntryCategoryWhereParentInput: JournalEntryCategoryWhereParentInput;
-  LC_JournalEntryUpsert: ResolverTypeWrapper<Lc_JournalEntryUpsert>;
-  LC_JournalEntryUpsertType: Lc_JournalEntryUpsertType;
-  LC_JournalEntryUpsertSubmitStatus: Lc_JournalEntryUpsertSubmitStatus;
-  LC_JournalEntryUpsertInputValues: ResolverTypeWrapper<Lc_JournalEntryUpsertInputValues>;
-  LC_JournalEntryUpsertInputErrors: ResolverTypeWrapper<Lc_JournalEntryUpsertInputErrors>;
-  LC_JournalEntryUpsertFields: ResolverTypeWrapper<Lc_JournalEntryUpsertFields>;
-  LC_JournalEntryUpsertSource: ResolverTypeWrapper<Lc_JournalEntryUpsertSource>;
   PaymentMethodWhereInput: PaymentMethodWhereInput;
   PaymentMethodWhereRefIdInput: PaymentMethodWhereRefIdInput;
   PaymentMethodWhereNameInput: PaymentMethodWhereNameInput;
@@ -1266,8 +1200,8 @@ export type ResolversTypes = {
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
   Query: {};
-  ID: Scalars['ID'];
   Budget: Omit<Budget, 'owner'> & { owner: ResolversParentTypes['BudgetOwner'] };
+  ID: Scalars['ID'];
   Rational: Rational;
   Int: Scalars['Int'];
   BudgetOwner: ResolversParentTypes['Department'] | ResolversParentTypes['Business'];
@@ -1299,11 +1233,6 @@ export type ResolversParentTypes = {
   JournalEntryCategoryWhereNameInput: JournalEntryCategoryWhereNameInput;
   JournalEntryCategoryWhereTypeInput: JournalEntryCategoryWhereTypeInput;
   JournalEntryCategoryWhereParentInput: JournalEntryCategoryWhereParentInput;
-  LC_JournalEntryUpsert: Lc_JournalEntryUpsert;
-  LC_JournalEntryUpsertInputValues: Lc_JournalEntryUpsertInputValues;
-  LC_JournalEntryUpsertInputErrors: Lc_JournalEntryUpsertInputErrors;
-  LC_JournalEntryUpsertFields: Lc_JournalEntryUpsertFields;
-  LC_JournalEntryUpsertSource: Lc_JournalEntryUpsertSource;
   PaymentMethodWhereInput: PaymentMethodWhereInput;
   PaymentMethodWhereRefIdInput: PaymentMethodWhereRefIdInput;
   PaymentMethodWhereNameInput: PaymentMethodWhereNameInput;
@@ -1431,53 +1360,6 @@ export type JournalEntrySourceResolvers<ContextType = Context, ParentType extend
   __resolveType: TypeResolveFn<'Person' | 'Business' | 'Department', ParentType, ContextType>;
 };
 
-export type Lc_JournalEntryUpsertResolvers<ContextType = Context, ParentType extends ResolversParentTypes['LC_JournalEntryUpsert'] = ResolversParentTypes['LC_JournalEntryUpsert']> = {
-  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  valid?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
-  type?: Resolver<ResolversTypes['LC_JournalEntryUpsertType'], ParentType, ContextType>;
-  submitStatus?: Resolver<ResolversTypes['LC_JournalEntryUpsertSubmitStatus'], ParentType, ContextType>;
-  submitError?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  inputValues?: Resolver<ResolversTypes['LC_JournalEntryUpsertInputValues'], ParentType, ContextType>;
-  inputErrors?: Resolver<ResolversTypes['LC_JournalEntryUpsertInputErrors'], ParentType, ContextType>;
-  fields?: Resolver<ResolversTypes['LC_JournalEntryUpsertFields'], ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType>;
-};
-
-export type Lc_JournalEntryUpsertFieldsResolvers<ContextType = Context, ParentType extends ResolversParentTypes['LC_JournalEntryUpsertFields'] = ResolversParentTypes['LC_JournalEntryUpsertFields']> = {
-  id?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
-  date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  department?: Resolver<Array<ResolversTypes['ID']>, ParentType, ContextType>;
-  type?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
-  paymentMethod?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
-  total?: Resolver<Maybe<ResolversTypes['Rational']>, ParentType, ContextType>;
-  source?: Resolver<Array<ResolversTypes['LC_JournalEntryUpsertSource']>, ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType>;
-};
-
-export type Lc_JournalEntryUpsertInputErrorsResolvers<ContextType = Context, ParentType extends ResolversParentTypes['LC_JournalEntryUpsertInputErrors'] = ResolversParentTypes['LC_JournalEntryUpsertInputErrors']> = {
-  dateError?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  deptError?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  typeError?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  payMethodError?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  totalError?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  srcError?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType>;
-};
-
-export type Lc_JournalEntryUpsertInputValuesResolvers<ContextType = Context, ParentType extends ResolversParentTypes['LC_JournalEntryUpsertInputValues'] = ResolversParentTypes['LC_JournalEntryUpsertInputValues']> = {
-  deptInput?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  totalInput?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  srcInput?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  srcType?: Resolver<Maybe<ResolversTypes['JournalEntrySourceType']>, ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType>;
-};
-
-export type Lc_JournalEntryUpsertSourceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['LC_JournalEntryUpsertSource'] = ResolversParentTypes['LC_JournalEntryUpsertSource']> = {
-  sourceType?: Resolver<ResolversTypes['JournalEntrySourceType'], ParentType, ContextType>;
-  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType>;
-};
-
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   addBusiness?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<MutationAddBusinessArgs, 'fields'>>;
   journalEntryUpdate?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryUpdateArgs, 'id' | 'fields'>>;
@@ -1530,22 +1412,21 @@ export type PersonNameResolvers<ContextType = Context, ParentType extends Resolv
 };
 
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
-  budget?: Resolver<ResolversTypes['Budget'], ParentType, ContextType, RequireFields<QueryBudgetArgs, 'id'>>;
   budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType>;
-  business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>;
+  budget?: Resolver<ResolversTypes['Budget'], ParentType, ContextType, RequireFields<QueryBudgetArgs, 'id'>>;
   businesses?: Resolver<Array<ResolversTypes['Business']>, ParentType, ContextType, RequireFields<QueryBusinessesArgs, never>>;
-  department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
+  business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>;
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentsArgs, never>>;
+  department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
   journalEntries?: Resolver<Array<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntriesArgs, never>>;
   journalEntry?: Resolver<Maybe<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntryArgs, 'id'>>;
+  journalEntryRefund?: Resolver<Maybe<ResolversTypes['JournalEntryRefund']>, ParentType, ContextType, RequireFields<QueryJournalEntryRefundArgs, 'id'>>;
+  journalEntryItem?: Resolver<Maybe<ResolversTypes['JournalEntryItem']>, ParentType, ContextType, RequireFields<QueryJournalEntryItemArgs, 'id'>>;
   journalEntryCategories?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType, RequireFields<QueryJournalEntryCategoriesArgs, never>>;
   journalEntryCategory?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType, RequireFields<QueryJournalEntryCategoryArgs, 'id'>>;
-  journalEntryItem?: Resolver<Maybe<ResolversTypes['JournalEntryItem']>, ParentType, ContextType, RequireFields<QueryJournalEntryItemArgs, 'id'>>;
-  journalEntryRefund?: Resolver<Maybe<ResolversTypes['JournalEntryRefund']>, ParentType, ContextType, RequireFields<QueryJournalEntryRefundArgs, 'id'>>;
   journalEntrySources?: Resolver<Array<ResolversTypes['JournalEntrySource']>, ParentType, ContextType, RequireFields<QueryJournalEntrySourcesArgs, 'searchByName'>>;
-  lc_journalEntryUpserts?: Resolver<Array<ResolversTypes['LC_JournalEntryUpsert']>, ParentType, ContextType>;
-  paymentMethod?: Resolver<Maybe<ResolversTypes['PaymentMethod']>, ParentType, ContextType, RequireFields<QueryPaymentMethodArgs, 'id'>>;
   paymentMethods?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType, RequireFields<QueryPaymentMethodsArgs, never>>;
+  paymentMethod?: Resolver<Maybe<ResolversTypes['PaymentMethod']>, ParentType, ContextType, RequireFields<QueryPaymentMethodArgs, 'id'>>;
   people?: Resolver<Array<ResolversTypes['Person']>, ParentType, ContextType, RequireFields<QueryPeopleArgs, never>>;
 };
 
@@ -1590,11 +1471,6 @@ export type Resolvers<ContextType = Context> = {
   JournalEntryItemUpsertResult?: JournalEntryItemUpsertResultResolvers<ContextType>;
   JournalEntryRefund?: JournalEntryRefundResolvers<ContextType>;
   JournalEntrySource?: JournalEntrySourceResolvers;
-  LC_JournalEntryUpsert?: Lc_JournalEntryUpsertResolvers<ContextType>;
-  LC_JournalEntryUpsertFields?: Lc_JournalEntryUpsertFieldsResolvers<ContextType>;
-  LC_JournalEntryUpsertInputErrors?: Lc_JournalEntryUpsertInputErrorsResolvers<ContextType>;
-  LC_JournalEntryUpsertInputValues?: Lc_JournalEntryUpsertInputValuesResolvers<ContextType>;
-  LC_JournalEntryUpsertSource?: Lc_JournalEntryUpsertSourceResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   PaymentMethod?: PaymentMethodResolvers<ContextType>;
   PaymentMethodAuthorization?: PaymentMethodAuthorizationResolvers<ContextType>;

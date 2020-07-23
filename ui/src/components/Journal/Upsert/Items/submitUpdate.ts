@@ -10,7 +10,7 @@ import {
   UpdateEntryItemMutation as UpdateItem,
   UpdateEntryItemMutationVariables as UpdateItemVars,
 } from "../../../../apollo/graphTypes";
-import { TransmutationValue } from "../../../../formik/utils";
+import { TransmutationValue } from "../../../../utils/formik";
 import { JOURNAL_ENTRY_ITEM } from "../../Table/JournalEntries.gql";
 import { rationalToFraction } from "../../../../utils/rational";
 

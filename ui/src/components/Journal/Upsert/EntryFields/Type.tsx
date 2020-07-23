@@ -14,7 +14,7 @@ import {
   FormHelperText,
 } from "@material-ui/core";
 import { JournalEntryType } from "../../../../apollo/graphTypes";
-import { useFormikStatus, FormikStatusType } from "../../../../formik/utils";
+import { useFormikStatus, FormikStatusType } from "../../../../utils/formik";
 
 const NULLISH: unique symbol = Symbol();
 
