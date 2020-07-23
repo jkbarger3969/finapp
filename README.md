@@ -81,11 +81,11 @@ The commit style implements the [Conventional Commits](https://www.conventionalc
 - `description` REQUIRED.
   - MUST immediately follow the colon and space after the type/scope prefix.
   - Is a short summary of the code changes. e.g., `fix: array parsing issue when multiple spaces were contained in string.`
-  - MAY contain a [story reference number](#srn-id).
+  - MAY contain a [story reference number](#story-reference-number).
 - `body` OPTIONAL.
   - Free-form.
   - MAY consist of any number of newline separated paragraphs.
-  - MAY contain one or more [story reference numbers](#srn-id).
+  - MAY contain one or more [story reference numbers](#story-reference-number).
 - `footer(s)` OPTIONAL.
   - One or more footers MAY be provided one blank line after the body.
   - Each footer MUST consist of a word token, followed by either a `:<space>` or `<space>#` separator, followed by a string value.
@@ -98,7 +98,7 @@ Breaking changes MUST be listed in the footer in the `BREAKING CHANGE: <descript
 
 The [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#specification) breaking change type/scope prefix `!` format SHALL NOT be used.
 
-###### Story Reference Number {#srn-id}
+###### Story Reference Number
 
 Format: `[ch<number>]` or with [Commit Verb](https://help.clubhouse.io/hc/en-us/articles/360024588331-Changing-Your-Workflow-State-with-Commit-Messages) `[<verb> ch<number>]`.
 
@@ -126,7 +126,7 @@ The Typescript code style is defined and enforced by:
 
 #### React
 
-The React code style is defined and enforced by the [ESLint](https://eslint.org/) plugin [plugin:react/recommended](https://github.com/yannickcr/eslint-plugin-react#recommended)
+The React code style is defined and enforced by the [ESLint](https://eslint.org/) plugin [plugin:react/recommended](https://github.com/yannickcr/eslint-plugin-react#recommended).
 
 #### Auto Formatting
 
