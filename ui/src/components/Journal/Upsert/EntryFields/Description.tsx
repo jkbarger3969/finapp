@@ -15,9 +15,9 @@ const Description = (
     | "label"
     | "name"
     | "InputProps"
-    | keyof FieldInputProps<any>
+    | keyof FieldInputProps<unknown>
   >
-) => {
+): JSX.Element => {
   const {
     autoFocus = false,
     disabled = false,
@@ -51,7 +51,7 @@ const Description = (
       disabled={disabled || formikStatus?.type === FormikStatusType.FATAL_ERROR}
       onChange={onChange}
       value={field.value ?? ""}
-      variant={variant as any}
+      variant={variant as TextFieldProps["variant"]}
       label={"Description"}
       name={"description"}
       InputProps={InputProps}

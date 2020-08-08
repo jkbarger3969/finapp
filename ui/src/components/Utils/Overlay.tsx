@@ -24,7 +24,7 @@ const Overlay = (
     | "paddingX"
     | "paddingY"
   >
-) => {
+): JSX.Element => {
   const theme = useTheme();
 
   const { opacity = 0.62, ...boxProps } = props;

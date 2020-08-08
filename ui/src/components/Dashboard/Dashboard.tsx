@@ -94,7 +94,7 @@ const ON_ENTRY_UPSERT = gql`
   ${GET_REPORT_DATA_ENTRY_FRAGMENT}
 `;
 
-const Dashboard = function (props: { deptId: string }) {
+const Dashboard = (props: { deptId: string }): JSX.Element => {
   const { deptId } = props;
 
   const [addEntryOpen, setAddEntryOpen] = useState<boolean>(false);
@@ -139,7 +139,9 @@ const Dashboard = function (props: { deptId: string }) {
         if (
           deptId &&
           upsertEntry.department.id !== deptId &&
-          ancestors.every((dept) => (dept as any).id !== deptId)
+          ancestors.every(
+            (dept) => dept.__typename === "Department" && dept.id !== deptId
+          )
         ) {
           // Filter entry out of query results if department changes.
           const journalEntriesFiltered = prev.journalEntries.filter(

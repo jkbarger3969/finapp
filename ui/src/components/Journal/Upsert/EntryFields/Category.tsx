@@ -45,13 +45,13 @@ const renderTags: AutocompleteProps["renderTags"] = (
 ) => {
   const lastIndex = values.length - 1;
 
-  return values.map((dept: any, index: number) => {
+  return values.map((dept, index: number) => {
     const isLastIndex = lastIndex === index;
-    const { key, ...props } = getTagProps({ index }) as any;
+    const { key, ...props } = getTagProps({ index }) as Record<string, unknown>;
 
     return (
       <Box
-        key={key}
+        key={key as string}
         display="flex"
         flexDirection="row"
         alignItems="center"
@@ -79,7 +79,7 @@ export type CategoryProps = {
   autoFocus?: boolean;
 } & Omit<TextFieldProps, "value">;
 
-const Category = function (props: CategoryProps) {
+const Category = (props: CategoryProps): JSX.Element => {
   const formikContext = useFormikContext<{
     category?: CatValueBeta;
     type?: JournalEntryType;
@@ -220,7 +220,7 @@ const Category = function (props: CategoryProps) {
     (params: RenderInputParams) => {
       return (
         <TextField
-          {...(textFieldProps as any)}
+          {...textFieldProps}
           variant={textFieldProps.variant || "filled"}
           {...params}
           error={(touched && !!error) || !!gqlError}
@@ -236,7 +236,7 @@ const Category = function (props: CategoryProps) {
 
   const [hasFocus, setHasFocus] = useState(false);
 
-  const onFocus = useCallback((event?) => setHasFocus(true), [setHasFocus]);
+  const onFocus = useCallback(() => setHasFocus(true), [setHasFocus]);
   const onBlur = useCallback(
     (event) => {
       setHasFocus(false);
@@ -257,7 +257,7 @@ const Category = function (props: CategoryProps) {
   const onInputChange = useCallback<
     NonNullable<AutocompleteProps["onInputChange"]>
   >(
-    (event, inputValue: string, reason) => {
+    (event, inputValue: string) => {
       inputValue = (inputValue || "").trimStart();
       setValue({
         inputValue,

@@ -288,7 +288,7 @@ const AddItemDialog = (
   );
 };
 
-const AddItem = (props: AddItemProps) => {
+const AddItem = (props: AddItemProps): JSX.Element => {
   const { entryId, open, onClose, onExited } = props;
 
   const initialValues = useMemo<Partial<AddValues>>(() => ({}), []);

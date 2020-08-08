@@ -40,41 +40,45 @@ const DateField = (
     variant?: "filled" | "outlined";
     maxDate?: Date;
     minDate?: Date;
-  } & Omit<
-    TextFieldProps,
-    | "value"
-    | "variant"
-    | "error"
-    | "helperText"
-    | "animateYearScrolling"
-    | "disableToolbar"
-    | "disableFuture"
-    | "inputVariant"
-    | "variant"
-    | "format"
-    | "margin"
-    | "label"
-    | "maxDate"
-    | "initialFocusedDate"
-    | "autoOk"
-    | "InputProps"
-    | "inputProps"
-    | "placeholder"
-    | "KeyboardButtonProps"
-    | "onBlur"
-    | "onOpen"
-    | "onClose"
-    | "onChange"
-    | keyof FieldInputProps<any>
+  } & Partial<
+    Omit<
+      TextFieldProps,
+      | "value"
+      | "variant"
+      | "error"
+      | "helperText"
+      | "animateYearScrolling"
+      | "disableToolbar"
+      | "disableFuture"
+      | "inputVariant"
+      | "variant"
+      | "format"
+      | "margin"
+      | "label"
+      | "maxDate"
+      | "initialFocusedDate"
+      | "autoOk"
+      | "InputProps"
+      | "inputProps"
+      | "placeholder"
+      | "KeyboardButtonProps"
+      | "onBlur"
+      | "onError"
+      | "onOpen"
+      | "onClose"
+      | "onChange"
+      | keyof FieldInputProps<unknown>
+    >
   >
-) => {
+): JSX.Element => {
   const {
-    variant: inputVariant = "filled",
     autoFocus = false,
     disabled = false,
     maxDate = new Date(),
     minDate,
   } = props;
+
+  const { variant: inputVariant = "filled", ...textFieldProps } = props;
 
   const { isSubmitting } = useFormikContext();
 
@@ -210,7 +214,7 @@ const DateField = (
     <MuiPickersUtilsProvider utils={DateFnsUtils}>
       <KeyboardDatePicker
         maxDate={maxDate}
-        {...(props as any)}
+        {...textFieldProps}
         {...dataPickerProps}
       />
     </MuiPickersUtilsProvider>

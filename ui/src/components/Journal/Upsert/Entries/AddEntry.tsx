@@ -281,7 +281,7 @@ const AddEntryDialog = (
   );
 };
 
-const AddEntry = (props: AddEntryProps) => {
+const AddEntry = (props: AddEntryProps): JSX.Element => {
   const { open, onClose, deptId } = props;
 
   const { loading, error, data } = useQuery<
@@ -312,7 +312,7 @@ const AddEntry = (props: AddEntryProps) => {
   );
 
   const children = useCallback(
-    (props: FormikProps<AddValues>) => (
+    (/* props: FormikProps<AddValues> */) => (
       <AddEntryDialog open={open} onClose={onClose} loading={loading} />
     ),
     [open, onClose, loading]

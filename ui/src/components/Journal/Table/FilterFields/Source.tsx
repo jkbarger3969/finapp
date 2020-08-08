@@ -8,6 +8,7 @@ import {
   InputAdornment,
   Box,
   Tooltip,
+  SelectProps,
 } from "@material-ui/core";
 import { FilterList as FilterListIcon } from "@material-ui/icons";
 
@@ -15,8 +16,8 @@ import { Entry } from "../Journal";
 
 const Source = (props: {
   options: Iterable<Entry["source"]>;
-  setFilter: (filter: any) => void;
-}) => {
+  setFilter: (filter: unknown) => void;
+}): JSX.Element => {
   const { setFilter, options } = props;
 
   const [value, setValue] = useState<string[]>([]);
@@ -94,7 +95,7 @@ const Source = (props: {
           value={value}
           onChange={onChange}
           input={<Input />}
-          renderValue={renderValue as any}
+          renderValue={renderValue as SelectProps["renderValue"]}
         >
           {items}
         </Select>

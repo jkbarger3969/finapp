@@ -42,7 +42,7 @@ const UPDATE_ITEM = gql`
 `;
 
 const submitUpdate: (
-  client: ApolloClient<any>,
+  client: ApolloClient<unknown>,
   iniValues: UpdateValues,
   id: string,
   ...rest: Parameters<FormikConfig<UpdateValues>["onSubmit"]>

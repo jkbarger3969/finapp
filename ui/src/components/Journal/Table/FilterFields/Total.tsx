@@ -71,7 +71,9 @@ const TotalInputProps = {
   startAdornment: <InputAdornment position="start">$</InputAdornment>,
 } as const;
 
-const Total = (props: { setFilter: (filter: unknown) => void }) => {
+const Total = (props: {
+  setFilter: (filter: unknown) => void;
+}): JSX.Element => {
   const { setFilter: setFilterCb } = props;
 
   const [value, setValue] = useState("");
@@ -346,7 +348,7 @@ const Total = (props: { setFilter: (filter: unknown) => void }) => {
     []
   );
 
-  const onClose = useCallback((event) => void setAnchorEl(null), []);
+  const onClose = useCallback(() => void setAnchorEl(null), []);
 
   return (
     <Box>

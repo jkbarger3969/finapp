@@ -157,7 +157,7 @@ const UpdateEntryDialog = (
   const [minTotal, maxDate] = useMemo(
     () =>
       refunds.reduce(
-        ([minTotal, maxDate], { id, deleted, total, date }) => [
+        ([minTotal, maxDate], { deleted, total, date }) => [
           deleted ? minTotal : minTotal.add(rationalToFraction(total)),
           deleted ? maxDate : min([maxDate, new Date(date)]),
         ],
@@ -332,7 +332,7 @@ const UpdateEntryDialog = (
   );
 };
 
-const UpdateEntry = (props: UpdateEntryProps) => {
+const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
   const { entryId, open, onClose, onExited } = props;
 
   const { loading, error, data } = useQuery<
@@ -364,7 +364,7 @@ const UpdateEntry = (props: UpdateEntryProps) => {
   const journalEntry = data?.journalEntry;
   const initialValues = useMemo<IniUpdateValues>(() => {
     if (!journalEntry) {
-      return {} as any;
+      return {} as IniUpdateValues;
     }
 
     const date = {

@@ -81,7 +81,9 @@ const op2ValidOptions = (
 const MAX_DATE = new Date(8640000000000000);
 const MIN_DATE = new Date(-8640000000000000);
 
-const DateFilter = (props: { setFilter: (filter: unknown) => void }) => {
+const DateFilter = (props: {
+  setFilter: (filter: unknown) => void;
+}): JSX.Element => {
   const { setFilter: setFilterCb } = props;
 
   const [value, setValue] = useState("");
@@ -209,7 +211,7 @@ const DateFilter = (props: { setFilter: (filter: unknown) => void }) => {
   );
 
   const onChangeDate1 = useCallback<KeyboardDatePickerProps["onChange"]>(
-    (date, value) => {
+    (date) => {
       if (date && !isDateValid(date)) {
         return;
       }
@@ -258,7 +260,7 @@ const DateFilter = (props: { setFilter: (filter: unknown) => void }) => {
   );
 
   const onChangeDate2 = useCallback<KeyboardDatePickerProps["onChange"]>(
-    (date, value) => {
+    (date) => {
       if (date && !isDateValid(date)) {
         return;
       }
@@ -320,7 +322,7 @@ const DateFilter = (props: { setFilter: (filter: unknown) => void }) => {
     []
   );
 
-  const onClose = useCallback((event) => void setAnchorEl(null), []);
+  const onClose = useCallback(() => void setAnchorEl(null), []);
 
   return (
     <Box>

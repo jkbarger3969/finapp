@@ -261,7 +261,7 @@ const UpdateRefundDialog = (
   );
 };
 
-const UpdateRefund = (props: UpdateRefundProps) => {
+const UpdateRefund = (props: UpdateRefundProps): JSX.Element => {
   const { entryId, refundId, open, onClose, onExited } = props;
 
   const { loading, error, data } = useQuery<
@@ -289,7 +289,7 @@ const UpdateRefund = (props: UpdateRefundProps) => {
   const journalEntryRefund = data?.journalEntryRefund;
   const initialValues = useMemo<IniUpdateValues>(() => {
     if (!journalEntryRefund) {
-      return {} as any;
+      return {} as IniUpdateValues;
     }
 
     const date = {

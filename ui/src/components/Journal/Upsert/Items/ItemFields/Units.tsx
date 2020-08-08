@@ -30,9 +30,9 @@ const Units = (
     | "inputProps"
     | "InputProps"
     | "onChange"
-    | keyof FieldInputProps<any>
+    | keyof FieldInputProps<unknown>
   >
-) => {
+): JSX.Element => {
   const {
     autoFocus = false,
     disabled = false,
@@ -94,7 +94,7 @@ const Units = (
       label={"Units"}
       name={"units"}
       required
-      variant={variant as any}
+      variant={variant as TextFieldProps["variant"]}
       inputProps={inputProps}
       InputProps={InputProps}
       onChange={onChange}

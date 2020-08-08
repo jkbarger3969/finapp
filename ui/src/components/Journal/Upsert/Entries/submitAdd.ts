@@ -63,7 +63,7 @@ const ADD_ENTRY = gql`
 `;
 
 const submitAdd: (
-  client: ApolloClient<any>,
+  client: ApolloClient<unknown>,
   ...rest: Parameters<FormikConfig<AddValues>["onSubmit"]>
 ) => ReturnType<FormikConfig<AddValues>["onSubmit"]> = async (
   client,

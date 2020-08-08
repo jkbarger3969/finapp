@@ -32,7 +32,7 @@ const DELETE_ENTRY = gql`
 const DeleteEntry = (props: {
   entryId: string | null;
   onClose: () => void;
-}) => {
+}): JSX.Element => {
   const { entryId, onClose } = props;
 
   const [deleteEntry, { loading, error }] = useMutation<
@@ -42,14 +42,9 @@ const DeleteEntry = (props: {
 
   const hasError = !!error;
 
-  const onDelete = useCallback(
-    (event) => {
-      deleteEntry({ variables: { id: entryId as string } }).then(() =>
-        onClose()
-      );
-    },
-    [entryId, deleteEntry, onClose]
-  );
+  const onDelete = useCallback(() => {
+    deleteEntry({ variables: { id: entryId as string } }).then(() => onClose());
+  }, [entryId, deleteEntry, onClose]);
 
   const title = useMemo(() => {
     if (hasError) {

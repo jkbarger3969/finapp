@@ -15,6 +15,7 @@ import MaterialTable, {
   QueryResult,
   Query as MTQuery,
   MTableBodyRow,
+  Action,
 } from "material-table";
 import { useQuery, useMutation } from "@apollo/react-hooks";
 import numeral from "numeral";
@@ -33,6 +34,7 @@ import {
   TableRow,
   TableCell,
   Typography,
+  IconProps,
 } from "@material-ui/core";
 import { green, red } from "@material-ui/core/colors";
 import {
@@ -153,7 +155,7 @@ const Journal = (props: {
   journalTitle?: string;
   deptId?: string;
   mode: JournalMode;
-}) => {
+}): JSX.Element => {
   const { deptId = null, journalTitle = null, mode } = props;
 
   // Add Entry
@@ -256,7 +258,9 @@ const Journal = (props: {
         if (
           deptId &&
           upsertEntry.department.id !== deptId &&
-          ancestors.every((dept) => (dept as any).id !== deptId)
+          ancestors.every(
+            (dept) => dept.__typename === "Department" && dept.id !== deptId
+          )
         ) {
           // Filter entry out of query results if department changes.
           const journalEntriesFiltered = prev.journalEntries.filter(
@@ -344,7 +348,7 @@ const Journal = (props: {
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <ReconciledFilter
             setFilter={(filter) =>
-              // eslint-disable-next-line react/prop-types
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "0", filter)
             }
           />
@@ -362,7 +366,7 @@ const Journal = (props: {
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <TotalFilter
             setFilter={(filter) => {
-              // eslint-disable-next-line react/prop-types
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "1", filter);
             }}
           />
@@ -377,7 +381,7 @@ const Journal = (props: {
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <DateFilter
             setFilter={(filter) => {
-              // eslint-disable-next-line react/prop-types
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "2", filter);
             }}
           />
@@ -390,7 +394,7 @@ const Journal = (props: {
         render: (data, type) => {
           const name =
             type === "group"
-              ? ((data as any) as JournalEntryFragment["category"]).name
+              ? ((data as unknown) as JournalEntryFragment["category"]).name
               : data.category.name;
           return capitalCase(name);
         },
@@ -400,7 +404,7 @@ const Journal = (props: {
           <CategoryFilter
             options={filterOptions.category}
             setFilter={(filter) =>
-              // eslint-disable-next-line react/prop-types
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "3", filter)
             }
           />
@@ -425,7 +429,7 @@ const Journal = (props: {
           <SourceFilter
             options={filterOptions.source}
             setFilter={(filter) =>
-              // eslint-disable-next-line react/prop-types
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "4", filter)
             }
           />
@@ -444,7 +448,7 @@ const Journal = (props: {
           <PaymentMethodFilter
             options={filterOptions.paymentMethod}
             setFilter={(filter) =>
-              // eslint-disable-next-line react/prop-types
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "5", filter)
             }
           />
@@ -468,7 +472,7 @@ const Journal = (props: {
           <DepartmentFilter
             options={filterOptions.department}
             setFilter={(filter) =>
-              // eslint-disable-next-line react/prop-types
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "5", filter)
             }
           />
@@ -501,7 +505,7 @@ const Journal = (props: {
             {`[abc]$ = ENDS WITH "abc"`}
             <br />
             {`![abc]$ = DOES NOT END WITH "abc"`}
-          </Box>
+          </Box> // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ) as any,
         nRowsSelected: "Reconcile {0} Entry(s)",
       },
@@ -542,7 +546,7 @@ const Journal = (props: {
         {
           icon: ((props: Record<string, unknown>) => (
             <CheckCircleIcon {...props} />
-          )) as any,
+          )) as Action<Entry>["icon"],
           tooltip: "Reconcile Selected",
           position: "toolbarOnSelect",
           iconProps: {
@@ -601,7 +605,7 @@ const Journal = (props: {
         })();
 
         return {
-          icon: DeleteIcon as any,
+          icon: DeleteIcon as Action<Entry>["icon"],
           tooltip,
           onClick,
         };
@@ -643,13 +647,14 @@ const Journal = (props: {
         })();
 
         return {
-          icon: EditIcon as any,
+          icon: EditIcon as Action<Entry>["icon"],
           tooltip,
           onClick,
         };
       },
       (rowData) => {
         if (rowData.__typename !== "JournalEntry") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return null as any;
         }
 
@@ -661,13 +666,13 @@ const Journal = (props: {
               <BankTransferOutIcon {...props} />
             ) : (
               <BankTransferInIcon {...props} />
-            )) as any,
+            )) as Action<Entry>["icon"],
           tooltip: isCredit ? "Give Refund" : "Add Refund",
           iconProps: {
             style: { color: isCredit ? red[900] : green[900] },
             // color: "secondary",
             // fontSize: "large",
-          } as any,
+          } as IconProps,
           onClick: (event: unknown, rowData: Entry | unknown) => {
             setAddRefundOpen(true);
             setAddRefundToEntry((rowData as JournalEntryFragment).id);
@@ -677,7 +682,7 @@ const Journal = (props: {
       {
         icon: ((props: Record<string, unknown>) => (
           <AddCircleIcon {...props} />
-        )) as any,
+        )) as Action<Entry>["icon"],
         iconProps: {
           color: "secondary",
           fontSize: "large",
@@ -692,7 +697,7 @@ const Journal = (props: {
   }, [mode, reconcileRefund, reconcileEntry, setDeleteRefund, setDeleteEntry]);
 
   // https://github.com/mbrn/material-table/issues/563
-  const detailPanelState = useMemo(() => new Map<string, any>(), []);
+  const detailPanelState = useMemo(() => new Map<string, unknown>(), []);
 
   const components = useMemo<Components>(
     () => ({
@@ -716,16 +721,24 @@ const Journal = (props: {
             </TableBody>
           )
         : (props: Record<string, unknown>) => <MTableBody {...props} />,
-      Row: function RowDetailPanelHack(p: any) {
+      Row: function RowDetailPanelHack(p: Record<string, unknown>) {
         const props = {
           ...p,
-          onToggleDetailPanel: (path: any, render: any, ...args: any) => {
-            if (detailPanelState.has(p.data.id)) {
-              detailPanelState.delete(p.data.id);
+          onToggleDetailPanel: (
+            path: unknown,
+            render: unknown,
+            ...args: unknown[]
+          ) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (detailPanelState.has((p.data as any).id)) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              detailPanelState.delete((p.data as any).id);
             } else {
-              detailPanelState.set(p.data.id, render);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              detailPanelState.set((p.data as any).id, render);
             }
-            return p.onToggleDetailPanel(path, render, ...args);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return (p.onToggleDetailPanel as any)(path, render, ...args);
           },
         };
         return <MTableBodyRow {...props} />;
@@ -797,6 +810,7 @@ const Journal = (props: {
     return <Typography variant="h6">{aggregateSpan}</Typography>;
   }, [aggregate, journalTitle]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tableRef = useRef<any>(null);
 
   const mTData = useCallback(
@@ -1026,7 +1040,7 @@ const Journal = (props: {
             tableData: {
               showDetailPanel: detailPanelState.get(entry.id),
             },
-          } as any;
+          } as unknown;
         }
 
         return entry;

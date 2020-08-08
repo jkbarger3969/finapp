@@ -12,7 +12,7 @@ type Values = "None" | "Reconciled" | "Unreconciled";
 
 const Reconciled = (props: {
   setFilter: (filter: Record<string, unknown>) => void;
-}) => {
+}): JSX.Element => {
   const { setFilter } = props;
 
   const [value, setValue] = useState<Values>("None");

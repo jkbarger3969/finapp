@@ -42,12 +42,12 @@ const renderTags: AutocompleteProps["renderTags"] = (
   getTagProps
 ) => {
   const lastIndex = values.length - 1;
-  return values.map((dept: any, index: number) => {
+  return values.map((dept, index: number) => {
     const isLastIndex = lastIndex === index;
-    const { key, ...props } = getTagProps({ index }) as any;
+    const { key, ...props } = getTagProps({ index }) as Record<string, unknown>;
     return (
       <Box
-        key={key}
+        key={key as string}
         display="flex"
         flexDirection="row"
         alignItems="center"
@@ -71,7 +71,7 @@ export type DepartmentProps = {
   autoFocus?: boolean;
 } & Omit<TextFieldProps, "value">;
 
-const Department = function (props: DepartmentProps) {
+const Department = (props: DepartmentProps): JSX.Element => {
   const { disabled: disabledFromProps = false, required } = props;
 
   const [formikStatus, setFormikStatus] = useFormikStatus();
@@ -191,7 +191,7 @@ const Department = function (props: DepartmentProps) {
     (params: RenderInputParams) => {
       return (
         <TextField
-          {...(props as any)}
+          {...props}
           variant={props.variant || "filled"}
           {...params}
           error={touched && !!error}
@@ -205,7 +205,7 @@ const Department = function (props: DepartmentProps) {
     [props, touched, error, helperText, disabled]
   );
 
-  const onFocus = useCallback((event?) => setHasFocus(true), [setHasFocus]);
+  const onFocus = useCallback(() => setHasFocus(true), [setHasFocus]);
   const onBlur = useCallback(
     (event) => {
       setHasFocus(false);
@@ -231,7 +231,7 @@ const Department = function (props: DepartmentProps) {
   const onInputChange = useCallback<
     NonNullable<AutocompleteProps["onInputChange"]>
   >(
-    (event, value: string, reason) => {
+    (event, value: string) => {
       setInputValue((value || "").trimStart());
     },
     [setInputValue]

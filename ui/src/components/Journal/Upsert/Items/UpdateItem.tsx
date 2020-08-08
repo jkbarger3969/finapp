@@ -257,7 +257,7 @@ const UpdateItemDialog = (
   );
 };
 
-const UpdateItem = (props: UpdateItemProps) => {
+const UpdateItem = (props: UpdateItemProps): JSX.Element => {
   const { entryId, itemId, open, onClose, onExited } = props;
 
   const { loading, error, data } = useQuery<
@@ -285,7 +285,7 @@ const UpdateItem = (props: UpdateItemProps) => {
   const journalEntryItem = data?.journalEntryItem;
   const initialValues = useMemo<UpdateValues>(() => {
     if (!journalEntryItem) {
-      return {} as any;
+      return {} as UpdateValues;
     }
 
     const total = {

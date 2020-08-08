@@ -3,6 +3,7 @@ import MaterialTable, {
   Column,
   Options,
   MaterialTableProps,
+  Action,
 } from "material-table";
 import { capitalCase } from "change-case";
 import numeral from "numeral";
@@ -27,7 +28,7 @@ export interface ItemsProps {
   entry: JournalEntryFragment;
 }
 
-const Items = (props: ItemsProps) => {
+const Items = (props: ItemsProps): JSX.Element => {
   const { items, category, description, department, id: entryId } = props.entry;
 
   // Add Item
@@ -66,13 +67,13 @@ const Items = (props: ItemsProps) => {
   >(() => {
     return [
       {
-        icon: DeleteIcon as any,
+        icon: DeleteIcon as Action<JournalEntryItemFragment>["icon"],
         tooltip: "Delete Item",
         onClick: (event, rowData) =>
           setDeleteItem((rowData as JournalEntryItemFragment).id),
       },
       {
-        icon: EditIcon as any,
+        icon: EditIcon as Action<JournalEntryItemFragment>["icon"],
         tooltip: "Edit Item",
         onClick: (event, rowData) => {
           setUpdateItemOpen(true);
@@ -85,7 +86,7 @@ const Items = (props: ItemsProps) => {
       {
         icon: ((props: Record<string, unknown>) => (
           <AddCircleIcon {...props} />
-        )) as any,
+        )) as Action<JournalEntryItemFragment>["icon"],
         iconProps: {
           color: "secondary",
           fontSize: "large",
@@ -120,7 +121,7 @@ const Items = (props: ItemsProps) => {
       {
         field: "category",
         title: "Category",
-        render: (data, type) => {
+        render: (data) => {
           const name = data.category?.name ?? category.name;
           return capitalCase(name);
         },

@@ -32,7 +32,9 @@ const DEPTS_FOR_NAV = gql`
   }
 `;
 
-const TopNav = function (props: Record<string, unknown>) {
+// JSX requires a props argument
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const TopNav = (props: Record<string, unknown>): JSX.Element => {
   const { loading, error, data } = useQuery<DeptsForNavQuery>(DEPTS_FOR_NAV);
 
   const [value, setValue] = useState<string | null>(null);

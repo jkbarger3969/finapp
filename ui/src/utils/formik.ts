@@ -9,10 +9,13 @@ export type TransmutationValue<TinputValue, Tvalue> = {
 export const createValueTransmutator = <
   TinputValue,
   Tvalue,
-  Trest extends any[]
+  Trest extends unknown[]
 >(
   transMutator: (inputValue: TinputValue, ...rest: Trest) => Tvalue
-) => (inputValue: TinputValue, ...rest: Trest) =>
+) => (
+  inputValue: TinputValue,
+  ...rest: Trest
+): TransmutationValue<TinputValue, Tvalue> =>
   ({
     inputValue,
     value: transMutator(inputValue, ...rest),
@@ -29,7 +32,10 @@ export interface FormikStatus {
   type: FormikStatusType;
 }
 
-export const useFormikStatus = <Values = any>() => {
+export const useFormikStatus = <Values = unknown>(): [
+  FormikStatus | null,
+  typeof setStatus
+] => {
   const { setStatus: setStatusNative, status } = useFormikContext<Values>();
 
   const setStatus = useCallback(
@@ -38,7 +44,7 @@ export const useFormikStatus = <Values = any>() => {
         if (
           !args ||
           Object.keys(args).some(
-            (key) => (args as Record<string, any>)[key] !== status[key]
+            (key) => args[key as keyof FormikStatus] !== status[key]
           )
         ) {
           setStatusNative(args);

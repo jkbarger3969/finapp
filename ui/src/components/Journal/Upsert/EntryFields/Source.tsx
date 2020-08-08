@@ -61,7 +61,7 @@ export type FieldValue = TransmutationValue<string, Value[]>;
 type AutocompleteProps = AutocompletePropsRaw<Value> &
   UseAutocompleteMultipleProps<Value>;
 
-export const isFreeSoloOpt = (opt: Value) => {
+export const isFreeSoloOpt = (opt: Value): boolean | JournalEntrySourceType => {
   switch (opt) {
     case JournalEntrySourceType.Business:
     case JournalEntrySourceType.Department:
@@ -98,7 +98,7 @@ const renderTags: AutocompleteProps["renderTags"] = (values, getTagProps) => {
   const lastIndex = values.length - 1;
   return values.map((value: Value, index: number) => {
     const isLastIndex = lastIndex === index;
-    const { key, ...props } = getTagProps({ index }) as any;
+    const { key, ...props } = getTagProps({ index }) as Record<string, unknown>;
 
     if (isFreeSoloOpt(value)) {
       return value;
@@ -106,7 +106,7 @@ const renderTags: AutocompleteProps["renderTags"] = (values, getTagProps) => {
 
     return (
       <Box
-        key={key}
+        key={key as string}
         display="flex"
         flexDirection="row"
         alignItems="center"
@@ -154,7 +154,7 @@ const validate = (transmutationVal?: FieldValue) => {
   }
 };
 
-const Source = function (props: SourceProps) {
+const Source = function (props: SourceProps): JSX.Element {
   const { disabled: disabledFromProps = false } = props;
 
   const [hasFocus, setHasFocus] = useState(false);
@@ -298,7 +298,7 @@ const Source = function (props: SourceProps) {
 
       return (
         <TextField
-          {...(props as any)}
+          {...props}
           variant={props.variant || "filled"}
           {...params}
           error={touched && !!error}
@@ -312,7 +312,7 @@ const Source = function (props: SourceProps) {
     [srcValue, options.length, props, touched, error, label, disabled]
   );
 
-  const onFocus = useCallback((event?) => setHasFocus(true), [setHasFocus]);
+  const onFocus = useCallback(() => setHasFocus(true), [setHasFocus]);
   const onBlur = useCallback<NonNullable<AutocompleteProps["onBlur"]>>(
     (event) => {
       setHasFocus(false);
@@ -353,7 +353,7 @@ const Source = function (props: SourceProps) {
   const onInputChange = useCallback<
     NonNullable<AutocompleteProps["onInputChange"]>
   >(
-    (event, inputValue: string, reason) => {
+    (event, inputValue: string) => {
       inputValue = (inputValue || "").trimStart();
 
       if (!disableTextInput) {

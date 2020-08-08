@@ -32,7 +32,7 @@ const DELETE_REFUND = gql`
 const DeleteRefund = (props: {
   refundId: string | null;
   onClose: () => void;
-}) => {
+}): JSX.Element => {
   const { refundId, onClose } = props;
 
   const [deleteRefund, { loading, error }] = useMutation<
@@ -41,14 +41,11 @@ const DeleteRefund = (props: {
   >(DELETE_REFUND);
   const hasError = !!error;
 
-  const onDelete = useCallback(
-    (event) => {
-      deleteRefund({ variables: { id: refundId as string } }).then(() =>
-        onClose()
-      );
-    },
-    [refundId, deleteRefund, onClose]
-  );
+  const onDelete = useCallback(() => {
+    deleteRefund({ variables: { id: refundId as string } }).then(() =>
+      onClose()
+    );
+  }, [refundId, deleteRefund, onClose]);
 
   const title = useMemo(() => {
     if (hasError) {

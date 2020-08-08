@@ -31,7 +31,10 @@ const DELETE_ITEM = gql`
   }
 `;
 
-const DeleteItem = (props: { itemId: string | null; onClose: () => void }) => {
+const DeleteItem = (props: {
+  itemId: string | null;
+  onClose: () => void;
+}): JSX.Element => {
   const { itemId, onClose } = props;
 
   const [deleteItem, { loading, error }] = useMutation<
@@ -40,12 +43,9 @@ const DeleteItem = (props: { itemId: string | null; onClose: () => void }) => {
   >(DELETE_ITEM);
   const hasError = !!error;
 
-  const onDelete = useCallback(
-    (event) => {
-      deleteItem({ variables: { id: itemId as string } }).then(() => onClose());
-    },
-    [itemId, deleteItem, onClose]
-  );
+  const onDelete = useCallback(() => {
+    deleteItem({ variables: { id: itemId as string } }).then(() => onClose());
+  }, [itemId, deleteItem, onClose]);
 
   const title = useMemo(() => {
     if (hasError) {

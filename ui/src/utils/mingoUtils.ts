@@ -1,13 +1,13 @@
 import { addOperators, OperatorType, Options } from "mingo/core";
 
 export interface CustomOperatorHelpers {
-  resolve(obj: Record<string, unknown>, selector: string): any;
+  resolve(obj: Record<string, unknown>, selector: string): unknown;
   computeValue(
     obj: Record<string, unknown>,
-    expr: any,
+    expr: unknown,
     operator: string,
     options: Options
-  ): any;
+  ): unknown;
 }
 
 addOperators(OperatorType.EXPRESSION, (helpers: CustomOperatorHelpers) => ({

@@ -54,9 +54,9 @@ const Total = (
     | "inputProps"
     | "InputProps"
     | "onChange"
-    | keyof FieldInputProps<any>
+    | keyof FieldInputProps<unknown>
   >
-) => {
+): JSX.Element => {
   const {
     autoFocus = false,
     disabled = false,
@@ -159,7 +159,7 @@ const Total = (
       label={"Total"}
       name={"total"}
       required
-      variant={variant as any}
+      variant={variant as TextFieldProps["variant"]}
       inputProps={inputProps}
       InputProps={InputProps}
       onChange={onChange}

@@ -67,7 +67,7 @@ const UPDATE_REFUND = gql`
 `;
 
 const submitUpdate: (
-  client: ApolloClient<any>,
+  client: ApolloClient<unknown>,
   iniValues: IniUpdateValues,
   id: string,
   ...rest: Parameters<FormikConfig<UpdateValues>["onSubmit"]>

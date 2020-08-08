@@ -251,7 +251,7 @@ const AddRefundDialog = (
   );
 };
 
-const AddRefund = (props: AddRefundProps) => {
+const AddRefund = (props: AddRefundProps): JSX.Element => {
   const { entryId, open, onClose, onExited } = props;
 
   const initialValues = useMemo<Partial<AddValues>>(() => ({}), []);
