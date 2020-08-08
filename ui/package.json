@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "npm run build:webpack-config-ts && npm run build:gql-gen && webpack -p --env.production --env.NODE_ENV=production",
-    "build:gql-gen": "node_modules/@graphql-codegen/cli/bin.js",
+    "build:gql-gen": "graphql-codegen",
     "build:webpack-config-ts": "tsc -p webpack.tsconfig.json",
     "start": "npm run build:webpack-config-ts && concurrently \"npm run build:gql-gen -- --watch\" \"webpack-dev-server  --open --env.development --env.NODE_ENV=development\""
   },
