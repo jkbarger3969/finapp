@@ -19,7 +19,7 @@ input ByIdFilter {
 
 input WhereRegexInput {
   pattern: String!
-  flags: String
+  options: String
 }
 
 input WhereDate {

@@ -2,10 +2,7 @@ import { FilterQuery, Condition } from "mongodb";
 
 import {
   AsyncIterableIteratorFns,
-  IterableFns,
   AsyncIterableFns,
-  generatorChain,
-  IterableIteratorFns,
   iterateOwnKeyValues,
 } from "../../../utils/iterableFns";
 
@@ -22,14 +19,6 @@ export interface FieldAndCondition<T = unknown> {
   condition: Condition<T>;
 }
 
-// export type FieldAndConditionGenerator<
-//   TWhere extends LogicOperators<TWhere>,
-//   Toptions extends object | undefined = undefined
-// > = (
-//   key: Exclude<keyof TWhere, keyof LogicOperators<TWhere>>,
-//   val: TWhere[Exclude<keyof TWhere, keyof LogicOperators<TWhere>>],
-//   options?: Toptions
-// ) => AsyncIterableIteratorFns<FieldAndCondition>;
 export type FieldAndConditionGenerator<
   TWhere extends LogicOperators<TWhere>,
   Toptions = unknown
