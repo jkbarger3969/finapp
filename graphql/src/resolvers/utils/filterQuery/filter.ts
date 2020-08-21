@@ -1,6 +1,13 @@
 import { FilterQuery, Condition } from "mongodb";
 
-import { AsyncIterableIteratorFns } from "../../../utils/iterableFns";
+import {
+  AsyncIterableIteratorFns,
+  IterableFns,
+  AsyncIterableFns,
+  generatorChain,
+  IterableIteratorFns,
+  iterateOwnKeyValues,
+} from "../../../utils/iterableFns";
 
 const NULLISH = Symbol();
 
@@ -15,32 +22,42 @@ export interface FieldAndCondition<T = unknown> {
   condition: Condition<T>;
 }
 
+// export type FieldAndConditionGenerator<
+//   TWhere extends LogicOperators<TWhere>,
+//   Toptions extends object | undefined = undefined
+// > = (
+//   key: Exclude<keyof TWhere, keyof LogicOperators<TWhere>>,
+//   val: TWhere[Exclude<keyof TWhere, keyof LogicOperators<TWhere>>],
+//   options?: Toptions
+// ) => AsyncIterableIteratorFns<FieldAndCondition>;
 export type FieldAndConditionGenerator<
   TWhere extends LogicOperators<TWhere>,
-  TOpts extends object | undefined = undefined
+  Toptions = unknown
 > = (
-  key: Exclude<keyof TWhere, keyof LogicOperators<TWhere>>,
-  val: TWhere[Exclude<keyof TWhere, keyof LogicOperators<TWhere>>],
-  opts?: TOpts
+  keyValues: AsyncIterableFns<
+    [
+      Exclude<keyof TWhere, keyof LogicOperators<TWhere>>,
+      TWhere[Exclude<keyof TWhere, keyof LogicOperators<TWhere>>]
+    ]
+  >,
+  options?: Toptions
 ) => AsyncIterableIteratorFns<FieldAndCondition>;
 
-const filterQueryCreator = async <
+const _logicOpParser_ = async function* <
   TWhere extends LogicOperators<TWhere>,
-  TOpts extends object | undefined
+  Toptions = unknown
 >(
+  filterQuery: FilterQuery<any>,
   where: TWhere,
-  fieldAndConditionGenerator: FieldAndConditionGenerator<TWhere, TOpts>,
-  opts?: TOpts
-): Promise<FilterQuery<any>> => {
-  const filterQuery: FilterQuery<any> = {};
-  const promises: Promise<void>[] = [];
-
-  for (const key in where) {
+  fieldAndConditionGenerator: FieldAndConditionGenerator<TWhere, Toptions>,
+  options?: Toptions
+): AsyncIterableIteratorFns<[
+  Exclude<keyof TWhere, keyof LogicOperators<TWhere>>,
+  TWhere[Exclude<keyof TWhere, keyof LogicOperators<TWhere>>]
+]> {
+  for (const [key, value] of iterateOwnKeyValues(where)) {
     // skip non-own prop and null or undefined filters
-    if (
-      !Object.prototype.hasOwnProperty.call(where, key) ||
-      (where[key] ?? NULLISH) === NULLISH
-    ) {
+    if ((value ?? NULLISH) === NULLISH || typeof key !== "string") {
       continue;
     }
 
@@ -49,14 +66,14 @@ const filterQueryCreator = async <
       case "or":
         filterQuery.$or = await Promise.all(
           where[key as "or"].map((where) =>
-            filterQueryCreator(where, fieldAndConditionGenerator, opts)
+            filterQueryCreator(where, fieldAndConditionGenerator, options)
           )
         );
         break;
       case "and":
         filterQuery.$and = await Promise.all(
           where[key as "and"].map((where) =>
-            filterQueryCreator(where, fieldAndConditionGenerator, opts)
+            filterQueryCreator(where, fieldAndConditionGenerator, options)
           )
         );
         break;
@@ -64,27 +81,35 @@ const filterQueryCreator = async <
       case "nor":
         filterQuery.$nor = await Promise.all(
           where[key as "nor"].map((where) =>
-            filterQueryCreator(where, fieldAndConditionGenerator, opts)
+            filterQueryCreator(where, fieldAndConditionGenerator, options)
           )
         );
         break;
       default: {
-        for await (const result of fieldAndConditionGenerator(
-          (key as unknown) as Exclude<
-            Extract<keyof TWhere, string>,
-            keyof LogicOperators<TWhere>
-          >,
-          (where[key] as unknown) as TWhere[Exclude<
-            Extract<keyof TWhere, string>,
-            keyof LogicOperators<TWhere>
-          >],
-          opts
-        )) {
-          const { field, condition } = result;
-          filterQuery[field] = condition;
-        }
+        yield [
+          key as Exclude<keyof TWhere, keyof LogicOperators<TWhere>>,
+          value as TWhere[Exclude<keyof TWhere, keyof LogicOperators<TWhere>>],
+        ];
       }
     }
+  }
+};
+
+const filterQueryCreator = async <
+  TWhere extends LogicOperators<TWhere>,
+  Toptions = unknown
+>(
+  where: TWhere,
+  fieldAndConditionGenerator: FieldAndConditionGenerator<TWhere, Toptions>,
+  options?: Toptions
+): Promise<FilterQuery<any>> => {
+  const filterQuery: FilterQuery<any> = {};
+
+  for await (const { field, condition } of fieldAndConditionGenerator(
+    _logicOpParser_(filterQuery, where, fieldAndConditionGenerator, options),
+    options
+  )) {
+    filterQuery[field] = condition;
   }
 
   return filterQuery;

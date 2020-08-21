@@ -3,7 +3,7 @@ import { QuerySelector } from "mongodb";
 import { AsyncIterableIteratorFns } from "../../../../utils/iterableFns";
 
 export type ValidMongoOps = Exclude<
-  keyof QuerySelector<unknown>,
+  keyof QuerySelector<Toptions>,
   "$expr" | "$jsonSchema" //These are typed "any"
 >;
 
@@ -21,13 +21,35 @@ export type MongoOpValue<
   TMongoOpsMap extends MongoOpsMap<{ [op: string]: ValidMongoOps }>
 > = QuerySelector<TReturn>[TMongoOpsMap[TOp]];
 
-export type OpsParser = (
-  opValues: AsyncIterable<[string, unknown]>,
+export type OpsParser<
+  TopValsDef extends Record<string, unknown>,
+  Toption = unknown
+> = (
+  opValues: AsyncIterable<[keyof TopValsDef, TopValsDef[keyof TopValsDef]]>,
   querySelector: QuerySelector<unknown>,
-  opts?: unknown
-) => AsyncIterableIteratorFns<[string, unknown], QuerySelector<unknown>>;
+  opts?: Toption
+) => AsyncIterableIteratorFns<
+  [keyof TopValsDef, TopValsDef[keyof TopValsDef]],
+  QuerySelector<unknown>
+>;
 
-export type OpValueParser<T = unknown, Top extends string = string> =
-  | ((opVal: unknown, op?: Top, opts?: unknown) => T)
-  | ((opVal: unknown, op?: Top, opts?: unknown) => Promise<T>)
-  | ((opVal: unknown, op?: Top, opts?: unknown) => T | Promise<T>);
+export type OpValueParser<
+  T = unknown,
+  TopValsDef extends Record<string, unknown> = Record<string, unknown>,
+  Toptions = unknown
+> =
+  | ((
+      opVal: TopValsDef[keyof TopValsDef],
+      op?: keyof TopValsDef,
+      options?: Toptions
+    ) => T)
+  | ((
+      opVal: TopValsDef[keyof TopValsDef],
+      op?: keyof TopValsDef,
+      options?: Toptions
+    ) => Promise<T>)
+  | ((
+      opVal: TopValsDef[keyof TopValsDef],
+      op?: keyof TopValsDef,
+      options?: Toptions
+    ) => T | Promise<T>);

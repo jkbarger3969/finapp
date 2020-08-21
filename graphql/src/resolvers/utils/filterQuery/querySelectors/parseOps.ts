@@ -10,11 +10,19 @@ import {
 } from "../../../../utils/iterableFns";
 
 // NOTE: Yields unmatched op and OpValues
-export const parseOpsGenerator = async function*(
-  opValues: AsyncIterable<[string, unknown]> | Iterable<[string, unknown]>,
-  opsParsers: Iterable<OpsParser>,
-  opts?: unknown
-): AsyncIterableIteratorFns<[string, unknown], QuerySelector<unknown>> {
+export const parseOpsGenerator = async function* <
+  TopValsDef extends Record<string, unknown>,
+  Toptions = unknown
+>(
+  opValues:
+    | AsyncIterable<[keyof TopValsDef, TopValsDef[keyof TopValsDef]]>
+    | Iterable<[keyof TopValsDef, TopValsDef[keyof TopValsDef]]>,
+  opsParsers: Iterable<OpsParser<TopValsDef, Toptions>>,
+  options?: Toptions
+): AsyncIterableIteratorFns<
+  [keyof TopValsDef, TopValsDef[keyof TopValsDef]],
+  QuerySelector<unknown>
+> {
   const querySelector: QuerySelector<unknown> = {};
 
   const [asyncIterator, returnPromise] = resolveWithAsyncReturn(
@@ -22,7 +30,7 @@ export const parseOpsGenerator = async function*(
       iterableToAsyncIterable(opValues),
       opsParsers,
       querySelector,
-      opts
+      options
     )
   );
 
@@ -38,11 +46,22 @@ export const parseOpsGenerator = async function*(
   return Object.assign(querySelector, ...returnValues.slice(1));
 };
 
-export const parseOpsIgnoreUnmatched = async (
-  ...args: Parameters<typeof parseOpsGenerator>
-) => {
+export const parseOpsIgnoreUnmatched = async <
+  TopValsDef extends Record<string, unknown>,
+  Toptions = unknown
+>(
+  opValues:
+    | AsyncIterable<[keyof TopValsDef, TopValsDef[keyof TopValsDef]]>
+    | Iterable<[keyof TopValsDef, TopValsDef[keyof TopValsDef]]>,
+  opsParsers: Iterable<OpsParser<TopValsDef, Toptions>>,
+  options?: Toptions
+): Promise<QuerySelector<unknown>> => {
   for await (const result of iterateAsyncIteratorResults(
-    parseOpsGenerator(...args)
+    parseOpsGenerator<keyof TopValsDef, TopValsDef[keyof TopValsDef], Toptions>(
+      opValues,
+      opsParsers,
+      options
+    )
   )) {
     if (result.done) {
       return result.value;
@@ -50,21 +69,48 @@ export const parseOpsIgnoreUnmatched = async (
   }
 };
 
-export default function parseOps(
+export default function parseOps<
+  TopValsDef extends Record<string, unknown>,
+  Toptions = unknown
+>(
   yieldUnmatched: true,
-  ...args: Parameters<typeof parseOpsGenerator>
-): ReturnType<typeof parseOpsGenerator>;
-export default function parseOps(
+  opValues:
+    | AsyncIterable<[keyof TopValsDef, TopValsDef[keyof TopValsDef]]>
+    | Iterable<[keyof TopValsDef, TopValsDef[keyof TopValsDef]]>,
+  opsParsers: Iterable<OpsParser<TopValsDef, Toptions>>,
+  options?: Toptions
+): AsyncIterableIteratorFns<
+  [keyof TopValsDef, TopValsDef[keyof TopValsDef]],
+  QuerySelector<unknown>
+>;
+export default function parseOps<
+  TopValsDef extends Record<string, unknown>,
+  Toptions = unknown
+>(
   yieldUnmatched: false,
-  ...args: Parameters<typeof parseOpsGenerator>
-): ReturnType<typeof parseOpsIgnoreUnmatched>;
-export default function parseOps(
+  opValues:
+    | AsyncIterable<[keyof TopValsDef, TopValsDef[keyof TopValsDef]]>
+    | Iterable<[keyof TopValsDef, TopValsDef[keyof TopValsDef]]>,
+  opsParsers: Iterable<OpsParser<TopValsDef, Toptions>>,
+  options?: Toptions
+): Promise<QuerySelector<unknown>>;
+export default function parseOps<
+  TopValsDef extends Record<string, unknown>,
+  Toptions = unknown
+>(
   yieldUnmatched: boolean,
-  ...args: Parameters<typeof parseOpsGenerator>
+  opValues:
+    | AsyncIterable<[keyof TopValsDef, TopValsDef[keyof TopValsDef]]>
+    | Iterable<[keyof TopValsDef, TopValsDef[keyof TopValsDef]]>,
+  opsParsers: Iterable<OpsParser<TopValsDef, Toptions>>,
+  options?: Toptions
 ):
-  | ReturnType<typeof parseOpsGenerator>
-  | ReturnType<typeof parseOpsIgnoreUnmatched> {
+  | AsyncIterableIteratorFns<
+      [keyof TopValsDef, TopValsDef[keyof TopValsDef]],
+      QuerySelector<unknown>
+    >
+  | Promise<QuerySelector<unknown>> {
   return yieldUnmatched
-    ? parseOpsGenerator(...args)
-    : parseOpsIgnoreUnmatched(...args);
+    ? parseOpsGenerator(opValues, opsParsers, options)
+    : parseOpsIgnoreUnmatched(opValues, opsParsers, options);
 }

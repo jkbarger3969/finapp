@@ -16,19 +16,27 @@ export type ComparisonOpsMap = MongoOpsMap<{
 
 export type ComparisonOps = keyof ComparisonOpsMap;
 
-const parseComparisonOps = (
-  opValueParser: OpValueParser<unknown, ComparisonOps> = (val, op) => {
+const parseComparisonOps = <
+  TopValsDef extends Record<string, unknown>,
+  Toptions = unknown
+>(
+  opValueParser: OpValueParser<unknown, TopValsDef, Toptions> = (val, op) => {
     if (op === "in" || op === "nin") {
       return Array.isArray(val) ? val : [val];
     }
     return val;
   }
-): OpsParser =>
-  async function*(
-    opValues: AsyncIterable<[ComparisonOps | string, unknown]>,
+): OpsParser<TopValsDef, Toptions> =>
+  async function* (
+    opValues: AsyncIterable<
+      [ComparisonOps | keyof TopValsDef, TopValsDef[keyof TopValsDef]]
+    >,
     querySelector: QuerySelector<unknown>,
-    opts?: unknown
-  ): AsyncIterableIteratorFns<[string, unknown], QuerySelector<unknown>> {
+    opts?: Toptions
+  ): AsyncIterableIteratorFns<
+    [keyof TopValsDef, TopValsDef[keyof TopValsDef]],
+    QuerySelector<unknown>
+  > {
     for await (const [op, opVal] of opValues) {
       switch (op as ComparisonOps) {
         case "eq":
@@ -96,7 +104,7 @@ const parseComparisonOps = (
           break;
 
         default:
-          yield [op, opVal];
+          yield [op as keyof TopValsDef, opVal];
       }
     }
 
