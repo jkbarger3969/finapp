@@ -1,4 +1,4 @@
-import { ObjectID, FilterQuery } from "mongodb";
+import { ObjectId, FilterQuery } from "mongodb";
 
 import {
   QueryResolvers,
@@ -30,7 +30,7 @@ const filedAndConditionCreator: FieldAndConditionCreator<Omit<
         field: `${key}.id`,
         condition: await mapComparisonOperators(
           value as JournalEntryCategoryWhereParentInput,
-          (id) => (id ? new ObjectID(id) : id)
+          (id) => (id ? new ObjectId(id) : id)
         ),
       };
     case "type":

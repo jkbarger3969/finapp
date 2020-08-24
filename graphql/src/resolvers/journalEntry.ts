@@ -1,4 +1,4 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 import * as moment from "moment";
 
 import { SortDirection } from "./shared";
@@ -13,7 +13,6 @@ import {
 import { nodeFieldResolver } from "./utils/nodeResolver";
 import { NodeValue } from "../types";
 import { project, addFields } from "./journalEntry/utils";
-import { getDescendants as deptDescendants } from "./departments";
 import {
   JOURNAL_ENTRY_ADDED,
   JOURNAL_ENTRY_UPDATED,
@@ -21,7 +20,7 @@ import {
 } from "./journalEntry/pubSubs";
 import journalEntry from "./journalEntry/journalEntry";
 
-const userNodeType = new ObjectID("5dca0427bccd5c6f26b0cde2");
+const userNodeType = new ObjectId("5dca0427bccd5c6f26b0cde2");
 
 export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
   parent,
@@ -90,7 +89,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
 
     const { id: sourceId, sourceType } = source;
 
-    const id = new ObjectID(sourceId);
+    const id = new ObjectId(sourceId);
 
     const value = { id } as NodeValue;
 
@@ -100,33 +99,28 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
         if (nodeMap.typename.has("Business")) {
           const nodeInfo = nodeMap.typename.get("Business");
           collection = nodeInfo.collection;
-          value.node = new ObjectID(nodeInfo.id);
+          value.node = new ObjectId(nodeInfo.id);
         }
         break;
       case JournalEntrySourceType.Department:
         if (nodeMap.typename.has("Department")) {
           const nodeInfo = nodeMap.typename.get("Department");
           collection = nodeInfo.collection;
-          value.node = new ObjectID(nodeInfo.id);
+          value.node = new ObjectId(nodeInfo.id);
         }
         break;
       case JournalEntrySourceType.Person:
         if (nodeMap.typename.has("Person")) {
           const nodeInfo = nodeMap.typename.get("Person");
           collection = nodeInfo.collection;
-          value.node = new ObjectID(nodeInfo.id);
+          value.node = new ObjectId(nodeInfo.id);
         }
         break;
     }
 
     // Confirm id exists in node
     if (
-      0 ===
-      (await db
-        .collection(collection)
-        .find({ _id: id })
-        .limit(1)
-        .count())
+      0 === (await db.collection(collection).find({ _id: id }).limit(1).count())
     ) {
       throw new Error(
         `Mutation "journalEntryUpdate" source type "${sourceType}" with id ${sourceId} does not exist.`
@@ -154,15 +148,10 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
 
     const { collection, id: node } = nodeMap.typename.get("Department");
 
-    const id = new ObjectID(departmentId);
+    const id = new ObjectId(departmentId);
 
     if (
-      0 ===
-      (await db
-        .collection(collection)
-        .find({ _id: id })
-        .limit(1)
-        .count())
+      0 === (await db.collection(collection).find({ _id: id }).limit(1).count())
     ) {
       throw new Error(
         `Mutation "journalEntryUpdate" type "Department" with id ${departmentId} does not exist.`
@@ -173,7 +162,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
       $each: [
         {
           value: {
-            node: new ObjectID(node),
+            node: new ObjectId(node),
             id,
           },
           createdBy,
@@ -219,7 +208,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
       const cats = await db
         .collection("journalEntries")
         .aggregate([
-          { $match: { _id: new ObjectID(id) } },
+          { $match: { _id: new ObjectId(id) } },
           {
             $addFields: { catId: { $arrayElemAt: ["$category.value.id", 0] } },
           },
@@ -250,7 +239,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
       "JournalEntryCategory"
     );
 
-    const catObjId = new ObjectID(categoryId);
+    const catObjId = new ObjectId(categoryId);
 
     const category = await db.collection(collection).findOne(
       { _id: catObjId },
@@ -269,7 +258,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
       $each: [
         {
           value: {
-            node: new ObjectID(node),
+            node: new ObjectId(node),
             id: catObjId,
           },
           createdBy,
@@ -284,7 +273,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
       const entry = await db
         .collection("journalEntries")
         .aggregate([
-          { $match: { _id: new ObjectID(id) } },
+          { $match: { _id: new ObjectId(id) } },
           { $addFields: { type: { $arrayElemAt: ["$type.value", 0] } } },
           { $project: { type: true } },
         ])
@@ -307,15 +296,10 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
 
     const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
 
-    const id = new ObjectID(paymentMethodId);
+    const id = new ObjectId(paymentMethodId);
 
     if (
-      0 ===
-      (await db
-        .collection(collection)
-        .find({ _id: id })
-        .limit(1)
-        .count())
+      0 === (await db.collection(collection).find({ _id: id }).limit(1).count())
     ) {
       throw new Error(
         `Mutation "journalEntryUpdate" type "PaymentMethod" with id ${paymentMethodId} does not exist.`
@@ -326,7 +310,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
       $each: [
         {
           value: {
-            node: new ObjectID(node),
+            node: new ObjectId(node),
             id,
           },
           createdBy,
@@ -375,7 +359,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
 
   const { modifiedCount } = await db
     .collection("journalEntries")
-    .updateOne({ _id: new ObjectID(id) }, updateQuery);
+    .updateOne({ _id: new ObjectId(id) }, updateQuery);
 
   if (modifiedCount === 0) {
     throw new Error(
@@ -387,7 +371,7 @@ export const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async
 
   const doc = await db
     .collection("journalEntries")
-    .aggregate([{ $match: { _id: new ObjectID(id) } }, addFields, project])
+    .aggregate([{ $match: { _id: new ObjectId(id) } }, addFields, project])
     .toArray();
 
   pubSub
@@ -493,15 +477,10 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
   {
     const { collection, id: node } = nodeMap.typename.get("Department");
 
-    const id = new ObjectID(departmentId);
+    const id = new ObjectId(departmentId);
 
     if (
-      0 ===
-      (await db
-        .collection(collection)
-        .find({ _id: id })
-        .limit(1)
-        .count())
+      0 === (await db.collection(collection).find({ _id: id }).limit(1).count())
     ) {
       throw new Error(
         `Mutation "journalEntryAdd" type "Department" with id ${departmentId} does not exist.`
@@ -511,7 +490,7 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
     insertDoc["department"] = [
       {
         value: {
-          node: new ObjectID(node),
+          node: new ObjectId(node),
           id,
         },
         createdBy,
@@ -526,15 +505,10 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       "JournalEntryCategory"
     );
 
-    const id = new ObjectID(categoryId);
+    const id = new ObjectId(categoryId);
 
     if (
-      0 ===
-      (await db
-        .collection(collection)
-        .find({ _id: id })
-        .limit(1)
-        .count())
+      0 === (await db.collection(collection).find({ _id: id }).limit(1).count())
     ) {
       throw new Error(
         `Mutation "journalEntryAdd" type "JournalEntryCategory" with id ${categoryId} does not exist.`
@@ -544,7 +518,7 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
     insertDoc["category"] = [
       {
         value: {
-          node: new ObjectID(node),
+          node: new ObjectId(node),
           id,
         },
         createdBy,
@@ -555,7 +529,7 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
   // JournalEntrySource
   {
-    const id = new ObjectID(sourceId);
+    const id = new ObjectId(sourceId);
 
     const value = { id } as NodeValue;
 
@@ -565,33 +539,28 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
         if (nodeMap.typename.has("Business")) {
           const nodeInfo = nodeMap.typename.get("Business");
           collection = nodeInfo.collection;
-          value.node = new ObjectID(nodeInfo.id);
+          value.node = new ObjectId(nodeInfo.id);
         }
         break;
       case JournalEntrySourceType.Department:
         if (nodeMap.typename.has("Department")) {
           const nodeInfo = nodeMap.typename.get("Department");
           collection = nodeInfo.collection;
-          value.node = new ObjectID(nodeInfo.id);
+          value.node = new ObjectId(nodeInfo.id);
         }
         break;
       case JournalEntrySourceType.Person:
         if (nodeMap.typename.has("Person")) {
           const nodeInfo = nodeMap.typename.get("Person");
           collection = nodeInfo.collection;
-          value.node = new ObjectID(nodeInfo.id);
+          value.node = new ObjectId(nodeInfo.id);
         }
         break;
     }
 
     // Confirm id exists in node
     if (
-      0 ===
-      (await db
-        .collection(collection)
-        .find({ _id: id })
-        .limit(1)
-        .count())
+      0 === (await db.collection(collection).find({ _id: id }).limit(1).count())
     ) {
       throw new Error(
         `Mutation "journalEntryAdd" source type "${sourceType}" with id ${sourceId} does not exist.`
@@ -615,15 +584,10 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
   {
     const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
 
-    const id = new ObjectID(paymentMethodId);
+    const id = new ObjectId(paymentMethodId);
 
     if (
-      0 ===
-      (await db
-        .collection(collection)
-        .find({ _id: id })
-        .limit(1)
-        .count())
+      0 === (await db.collection(collection).find({ _id: id }).limit(1).count())
     ) {
       throw new Error(
         `Mutation "journalEntryAdd" type "PaymentMethod" with id ${paymentMethodId} does not exist.`
@@ -633,7 +597,7 @@ export const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
     insertDoc["paymentMethod"] = [
       {
         value: {
-          node: new ObjectID(node),
+          node: new ObjectId(node),
           id,
         },
         createdBy,
@@ -699,7 +663,7 @@ export const journalEntryDelete: MutationResolvers["journalEntryDelete"] = async
     },
   };
 
-  const _id = new ObjectID(id);
+  const _id = new ObjectId(id);
 
   const { modifiedCount } = await db
     .collection("journalEntries")

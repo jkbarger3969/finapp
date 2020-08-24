@@ -120,25 +120,27 @@ type JournalEntryItemUpsertResult {
 input JournalEntriesWhereDepartment {
   eq: ID
   ne: ID
-  in: [ID]
-  nin: [ID]
-  matchDecedentTree: Boolean
+  in: [ID!]
+  nin: [ID!]
 }
 
 input JournalEntriesWhereCategory {
   eq: ID
   ne: ID
-  in: [ID]
-  nin: [ID]
-  matchDecedentTree: Boolean
+  in: [ID!]
+  nin: [ID!]
+}
+
+input JournalEntriesSourceInput {
+  id: ID!
+  type: JournalEntrySourceType!
 }
 
 input JournalEntriesWhereSource {
-  sourceType: JournalEntrySourceType!
-  eq: ID
-  ne: ID
-  in: [ID]
-  nin: [ID]
+  eq: JournalEntriesSourceInput
+  ne: JournalEntriesSourceInput
+  in: [JournalEntriesSourceInput!]
+  nin: [JournalEntriesSourceInput!]
 }
 
 input JournalEntriesWherePaymentMethod {
@@ -146,10 +148,13 @@ input JournalEntriesWherePaymentMethod {
   ne: ID
   in: [ID]
   nin: [ID]
-  matchDecedentTree: Boolean
 }
 
 input JournalEntiresWhereInput {
+  eq: ID
+  ne: ID
+  in: [ID!]
+  nin: [ID!]
   date: WhereDate
   department: JournalEntriesWhereDepartment
   category: JournalEntriesWhereCategory
@@ -161,8 +166,8 @@ input JournalEntiresWhereInput {
   lastUpdate: WhereDate
   lastUpdateRefund: WhereDate
   lastUpdateItem: WhereDate
-  or: [JournalEntiresWhereInput]
-  and: [JournalEntiresWhereInput]
+  or: [JournalEntiresWhereInput!]
+  and: [JournalEntiresWhereInput!]
 }
 
 type Query {

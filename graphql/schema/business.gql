@@ -6,7 +6,7 @@ type Vendor {
 type Business {
   id: ID!
   name: String!
-  budget: Budget
+  budgets: [Budget!]!
   departments: [Department!]!
   vendor: Vendor
 }
@@ -15,8 +15,19 @@ input BusinessAddFields {
   name: String!
 }
 
+input BusinessesWhereInput {
+  eq: ID
+  ne: ID
+  in: [ID!]
+  nin: [ID!]
+  name: WhereRegexInput
+  and: [BusinessesWhereInput!]
+  or: [BusinessesWhereInput!]
+  nor: [BusinessesWhereInput!]
+}
+
 extend type Query {
-  businesses(searchByName: String): [Business!]!
+  businesses(where: BusinessesWhereInput): [Business!]!
   business(id: ID!): Business!
 }
 

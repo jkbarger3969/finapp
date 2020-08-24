@@ -1,4 +1,4 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 
 import {
   QueryResolvers,
@@ -37,7 +37,7 @@ export const journalEntryCategory: QueryResolvers["journalEntryCategory"] = asyn
 
   const result = await db
     .collection("journalEntryCategories")
-    .aggregate([{ $match: { _id: new ObjectID(id) } }, addId])
+    .aggregate([{ $match: { _id: new ObjectId(id) } }, addId])
     .toArray();
 
   return result[0];
@@ -62,7 +62,7 @@ export const ancestors: JournalEntryCategoryResolvers["ancestors"] = async (
   const results = await db
     .collection("journalEntryCategories")
     .aggregate([
-      { $match: { _id: new ObjectID(id) } },
+      { $match: { _id: new ObjectId(id) } },
       {
         $graphLookup: {
           from: "journalEntryCategories",
@@ -103,7 +103,7 @@ const children: JournalEntryCategoryResolvers["children"] = async (
   const results = await db
     .collection("journalEntryCategories")
     .aggregate([
-      { $match: { "parent.id": new ObjectID(id) } },
+      { $match: { "parent.id": new ObjectId(id) } },
       { $addFields: { id: { $toString: "$_id" } } },
     ])
     .toArray();

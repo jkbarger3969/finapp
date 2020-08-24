@@ -57,11 +57,7 @@ export const parseOpsIgnoreUnmatched = async <
   options?: Toptions
 ): Promise<QuerySelector<unknown>> => {
   for await (const result of iterateAsyncIteratorResults(
-    parseOpsGenerator<keyof TopValsDef, TopValsDef[keyof TopValsDef], Toptions>(
-      opValues,
-      opsParsers,
-      options
-    )
+    parseOpsGenerator<TopValsDef, Toptions>(opValues, opsParsers, options)
   )) {
     if (result.done) {
       return result.value;

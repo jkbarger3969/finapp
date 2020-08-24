@@ -1,16 +1,17 @@
 {
   "schema": "./schema/**/*.gql",
   "overwrite": true,
-  "generates":{
-    "./src/graphTypes.ts":{
-      "plugins":["typescript", "typescript-resolvers"],
-      "config":{
-        "noSchemaStitching":true,
-        "contextType": "./types#Context"
+  "generates": {
+    "./src/graphTypes.ts": {
+      "plugins": ["typescript", "typescript-resolvers"],
+      "config": {
+        "noSchemaStitching": true,
+        "contextType": "./types#Context",
+        "allowParentTypeOverride": true
       }
     },
-    "./public/fragmentTypes.json":{
-      "plugins":["fragment-matcher"]
+    "./public/fragmentTypes.json": {
+      "plugins": ["fragment-matcher"]
     }
   }
 }

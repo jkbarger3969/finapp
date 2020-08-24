@@ -1,16 +1,15 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 
 import {
   QueryResolvers,
   MutationResolvers,
-  BusinessResolvers
+  BusinessResolvers,
 } from "../graphTypes";
-import { departments as departmentsResolver } from "./departments";
 import { nodeFieldResolver } from "./utils/nodeResolver";
 
 const addId = { $addFields: { id: { $toString: "$_id" } } };
 
-export const businesses: QueryResolvers["businesses"] = async (
+/* export const businesses: QueryResolvers["businesses"] = async (
   parent,
   args,
   context,
@@ -24,7 +23,7 @@ export const businesses: QueryResolvers["businesses"] = async (
       .collection("businesses")
       .aggregate([
         { $match: { name: new RegExp(`(^|\\s)${searchByName}`, "i") } },
-        addId
+        addId,
       ])
       .toArray();
 
@@ -51,7 +50,7 @@ export const business: QueryResolvers["business"] = async (
 
   const result = await db
     .collection("businesses")
-    .aggregate([{ $match: { _id: new ObjectID(id) } }, { $limit: 1 }, addId])
+    .aggregate([{ $match: { _id: new ObjectId(id) } }, { $limit: 1 }, addId])
     .toArray();
 
   return result[0];
@@ -66,7 +65,7 @@ export const departments: BusinessResolvers["departments"] = async (
   const { id } = parent;
 
   return departmentsResolver({}, { fromParent: id }, context, info);
-};
+}; */
 
 export const addBusiness: MutationResolvers["addBusiness"] = async (
   parent,
@@ -77,7 +76,7 @@ export const addBusiness: MutationResolvers["addBusiness"] = async (
   const { db } = context;
 
   const {
-    fields: { name }
+    fields: { name },
   } = args;
 
   if (!name.trim()) {
@@ -97,16 +96,16 @@ export const addBusiness: MutationResolvers["addBusiness"] = async (
   const newBusiness = await db
     .collection("businesses")
     .aggregate([
-      { $match: { _id: new ObjectID(insertedId) } },
+      { $match: { _id: new ObjectId(insertedId) } },
       { $limit: 1 },
-      { $addFields: { id: { $toString: "$_id" } } }
+      { $addFields: { id: { $toString: "$_id" } } },
     ])
     .toArray();
 
   return newBusiness[0];
 };
 
-export const Business: BusinessResolvers = {
+/* export const Business: BusinessResolvers = {
   budget: nodeFieldResolver,
-  departments
-};
+  departments,
+}; */

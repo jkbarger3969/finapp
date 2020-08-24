@@ -1,12 +1,54 @@
 union BudgetOwner = Department | Business
 
 type Budget {
-  id:ID!
-  amount:Rational!
+  id: ID!
+  amount: Rational!
   owner: BudgetOwner!
+  year: Int!
+}
+
+enum BudgetOwnerType {
+  BUSINESS
+  DEPARTMENT
+}
+
+input BudgetOwnerInput {
+  id: ID!
+  type: BudgetOwnerType!
+}
+
+input BudgetsWhereOwner {
+  eq: BudgetOwnerInput
+  ne: BudgetOwnerInput
+  in: [BudgetOwnerInput!]
+  nin: [BudgetOwnerInput!]
+}
+
+input BudgetsWhereYear {
+  eq: Int
+  ne: Int
+  in: [Int!]
+  nin: [Int!]
+  gt: Int
+  lt: Int
+  gte: Int
+  lte: Int
+}
+
+input BudgetsWhereInput {
+  eq: ID
+  ne: ID
+  in: [ID!]
+  nin: [ID!]
+  and: [BudgetsWhereInput!]
+  or: [BudgetsWhereInput!]
+  nor: [BudgetsWhereInput!]
+  amount: WhereRational
+  owner: BudgetsWhereOwner
+  year: BudgetsWhereYear
 }
 
 extend type Query {
-  budgets:[Budget!]!
-  budget(id:ID!):Budget!
+  budgets(where: BudgetsWhereInput): [Budget!]!
+  budget(id: ID!): Budget!
 }

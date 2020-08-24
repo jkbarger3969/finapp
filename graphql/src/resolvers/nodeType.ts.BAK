@@ -1,5 +1,5 @@
 import { GraphQLResolveInfo } from 'graphql';
-import {ObjectID} from "mongodb";
+import {ObjectId} from "mongodb";
 
 import {QueryResolvers, NodeTypeInput} from "../graphTypes";
 import {Context, INodeType} from "../types";
@@ -62,7 +62,7 @@ export const nodeTypeDocResolver =
   const {collection, typename} = nodeTypes.id.get(node.toString());
 
   const docLookUp = await db.collection(collection).aggregate([
-    {$match:{_id:new ObjectID(id.toString())}},
+    {$match:{_id:new ObjectId(id.toString())}},
     {$limit:1},
     {$addFields: {
       id:{$toString: "$_id"}

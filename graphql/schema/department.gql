@@ -4,7 +4,7 @@ type Department {
   id: ID!
   name: String!
   code: String
-  budget: [Budget!]!
+  budgets: [Budget!]!
   business: Business!
   parent: DepartmentAncestor!
   ancestors: [DepartmentAncestor!]!
@@ -22,23 +22,23 @@ input DepartmentAncestorInput {
   type: DepartmentAncestorType!
 }
 
-input DepartmentWhereParent {
+input DepartmentsWhereAncestor {
   eq: DepartmentAncestorInput
   ne: DepartmentAncestorInput
   in: [DepartmentAncestorInput!]
   nin: [DepartmentAncestorInput!]
 }
 
-input DepartmentWhereInput {
+input DepartmentsWhereInput {
   eq: ID
   ne: ID
   in: [ID!]
   nin: [ID!]
   name: WhereRegexInput
-  parent: DepartmentWhereParent
-  and: [DepartmentWhereInput!]
-  or: [DepartmentWhereInput!]
-  nor: [DepartmentWhereInput!]
+  parent: DepartmentsWhereAncestor
+  and: [DepartmentsWhereInput!]
+  or: [DepartmentsWhereInput!]
+  nor: [DepartmentsWhereInput!]
 }
 
 input DepartmentAddFields {
@@ -46,6 +46,6 @@ input DepartmentAddFields {
 }
 
 type Query {
-  departments(where: DepartmentWhereInput): [Department!]!
+  departments(where: DepartmentsWhereInput): [Department!]!
   department(id: ID!): Department
 }

@@ -1,9 +1,9 @@
-import { ObjectID, Db } from "mongodb";
+import { ObjectId, Db } from "mongodb";
 
 import {
   Department as IDepartment,
   QueryResolvers,
-  DepartmentResolvers
+  DepartmentResolvers,
 } from "../graphTypes";
 import { NodeValue } from "../types";
 import { nodeFieldResolver, nodeDocResolver } from "./utils/nodeResolver";
@@ -26,7 +26,7 @@ export const departments: QueryResolvers["departments"] = async (
   const deptsPromises: Promise<IDepartment[]>[] = [];
 
   if (fromParent) {
-    const fromMatch = { $match: { "parent.id": new ObjectID(fromParent) } };
+    const fromMatch = { $match: { "parent.id": new ObjectId(fromParent) } };
 
     const parentPromise = db
       .collection("departments")
@@ -34,7 +34,7 @@ export const departments: QueryResolvers["departments"] = async (
         searchByNameRegex
           ? { $match: { ...fromMatch.$match, name: searchByNameRegex } }
           : fromMatch,
-        addId
+        addId,
       ])
       .toArray();
 
@@ -50,8 +50,8 @@ export const departments: QueryResolvers["departments"] = async (
           connectFromField: "_id",
           connectToField: "parent.id",
           as: "subDepartments",
-          restrictSearchWithMatch: { name: searchByNameRegex }
-        }
+          restrictSearchWithMatch: { name: searchByNameRegex },
+        },
       });
     } else {
       descendentPipeline.push({
@@ -60,8 +60,8 @@ export const departments: QueryResolvers["departments"] = async (
           startWith: "$_id",
           connectFromField: "_id",
           connectToField: "parent.id",
-          as: "subDepartments"
-        }
+          as: "subDepartments",
+        },
       });
     }
 
@@ -69,8 +69,8 @@ export const departments: QueryResolvers["departments"] = async (
       {
         $unwind: {
           path: "$subDepartments",
-          preserveNullAndEmptyArrays: false
-        }
+          preserveNullAndEmptyArrays: false,
+        },
       },
       { $replaceRoot: { newRoot: "$subDepartments" } },
       addId
@@ -113,13 +113,13 @@ export const department: QueryResolvers["department"] = async (
 ) => {
   const { db } = context;
   const { id } = args;
-  const _id = new ObjectID(id);
+  const _id = new ObjectId(id);
   const result = db
     .collection("departments")
     .aggregate([
       { $match: { _id } },
       { $limit: 1 },
-      { $addFields: { id: { $toString: "$_id" } } }
+      { $addFields: { id: { $toString: "$_id" } } },
     ]);
 
   if (await result.hasNext()) {
@@ -146,25 +146,25 @@ const ancestors: DepartmentResolvers["ancestors"] = async (
     const results = await db
       .collection("departments")
       .aggregate([
-        { $match: { _id: new ObjectID(id) } },
+        { $match: { _id: new ObjectId(id) } },
         {
           $graphLookup: {
             from: "departments",
             startWith: "$parent.id",
             connectFromField: "parent.id",
             connectToField: "_id",
-            as: "ancestors"
-          }
+            as: "ancestors",
+          },
         },
         {
           $unwind: {
             path: "$ancestors",
-            preserveNullAndEmptyArrays: false
-          }
+            preserveNullAndEmptyArrays: false,
+          },
         },
         { $replaceRoot: { newRoot: "$ancestors" } },
         { $addFields: { __typename: "Department" } },
-        { $addFields: { id: { $toString: "$_id" } } }
+        { $addFields: { id: { $toString: "$_id" } } },
       ])
       .toArray();
 
@@ -185,7 +185,7 @@ const ancestors: DepartmentResolvers["ancestors"] = async (
 
 export const getDescendants = async (
   db: Db,
-  id: ObjectID,
+  id: ObjectId,
   projection: object | null = null
 ) => {
   const decedentIds = [id];
@@ -194,7 +194,7 @@ export const getDescendants = async (
   while (decedentIds.length > 0) {
     const pipeline = [
       { $match: { "parent.id": { $in: decedentIds } } },
-      addId
+      addId,
     ] as any[];
 
     if (projection !== null) {
@@ -210,7 +210,7 @@ export const getDescendants = async (
 
     for (const decedent of results) {
       descendants.push(decedent);
-      decedentIds.push(new ObjectID(decedent.id));
+      decedentIds.push(new ObjectId(decedent.id));
     }
   }
 
@@ -226,10 +226,10 @@ const descendants: DepartmentResolvers["descendants"] = (
   const { db } = context;
   const { id } = parent;
 
-  return getDescendants(db, new ObjectID(id));
+  return getDescendants(db, new ObjectId(id));
 };
 
-const departmentNode = new ObjectID("5dc4addacf96e166daaa008f");
+const departmentNode = new ObjectId("5dc4addacf96e166daaa008f");
 
 const budget: DepartmentResolvers["budget"] = async (
   parent,
@@ -248,11 +248,11 @@ const budget: DepartmentResolvers["budget"] = async (
         $match: {
           owner: {
             node: departmentNode,
-            id: new ObjectID(id)
-          }
-        }
+            id: new ObjectId(id),
+          },
+        },
       },
-      addId
+      addId,
     ])
     .toArray();
 
@@ -263,5 +263,5 @@ export const Department: DepartmentResolvers = {
   budget,
   parent: nodeFieldResolver,
   ancestors,
-  descendants
+  descendants,
 };

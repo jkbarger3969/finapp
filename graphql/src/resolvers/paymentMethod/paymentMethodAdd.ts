@@ -1,4 +1,4 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 import { MutationResolvers } from "../../graphTypes";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
@@ -21,7 +21,7 @@ const paymentMethodAdd: MutationResolvers["paymentMethodAdd"] = async (
     context.ephemeral?.docHistoryDate
   );
 
-  const parent = new ObjectID(parentId);
+  const parent = new ObjectId(parentId);
 
   const collection = db.collection("paymentMethods");
 

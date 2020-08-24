@@ -3,7 +3,7 @@ import { QuerySelector } from "mongodb";
 import { AsyncIterableIteratorFns } from "../../../../utils/iterableFns";
 
 export type ValidMongoOps = Exclude<
-  keyof QuerySelector<Toptions>,
+  keyof QuerySelector<unknown>,
   "$expr" | "$jsonSchema" //These are typed "any"
 >;
 

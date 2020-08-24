@@ -1,12 +1,16 @@
 import { Resolvers } from "./graphTypes";
-import { Budget, budgets } from "./resolvers/budget";
-import {
-  Business,
-  business,
-  businesses,
-  addBusiness,
-} from "./resolvers/business";
-import { Department, departments, department } from "./resolvers/departments";
+// import { Budget, budgets } from "./resolvers/budget";
+import budget from "./resolvers/budget/budget";
+import budgets from "./resolvers/budget/budgets";
+import Budget from "./resolvers/budget/BudgetResolvers";
+import { addBusiness } from "./resolvers/business";
+import business from "./resolvers/business/business";
+import businesses from "./resolvers/business/businesses";
+import Business from "./resolvers/business/BusinessResolvers";
+// import { Department, departments, department } from "./resolvers/departments";
+import department from "./resolvers/department/department";
+import departments from "./resolvers/department/departments";
+import Department from "./resolvers/department/DepartmentResolvers";
 import {
   journalEntryAdded,
   journalEntryUpdated,
@@ -54,6 +58,7 @@ const resolvers: Resolvers = {
   JournalEntryCategory,
   User,
   Query: {
+    budget,
     businesses,
     business,
     budgets,

@@ -1,4 +1,4 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 
 import { QueryResolvers } from "../../graphTypes";
 import { stages } from "./utils";
@@ -24,7 +24,7 @@ const journalEntryItem: QueryResolvers["journalEntryItem"] = async (
 
   const { db } = context;
 
-  const itemId = new ObjectID(id);
+  const itemId = new ObjectId(id);
 
   const [itemEntry] = await db
     .collection("journalEntries")

@@ -36,7 +36,7 @@ const _logicOpParser_ = async function* <
   TWhere extends LogicOperators<TWhere>,
   Toptions = unknown
 >(
-  filterQuery: FilterQuery<any>,
+  filterQuery: FilterQuery<unknown>,
   where: TWhere,
   fieldAndConditionGenerator: FieldAndConditionGenerator<TWhere, Toptions>,
   options?: Toptions
@@ -91,17 +91,24 @@ const filterQueryCreator = async <
   where: TWhere,
   fieldAndConditionGenerator: FieldAndConditionGenerator<TWhere, Toptions>,
   options?: Toptions
-): Promise<FilterQuery<any>> => {
-  const filterQuery: FilterQuery<any> = {};
+): Promise<FilterQuery<unknown>> => {
+  const filterQuery: FilterQuery<unknown> & { $expr?: unknown } = {};
 
   for await (const { field, condition } of fieldAndConditionGenerator(
     _logicOpParser_(filterQuery, where, fieldAndConditionGenerator, options),
     options
   )) {
-    filterQuery[field] = condition;
+    // Handle multiple "$expr" queries.
+    if (field === "$expr" && filterQuery.$expr) {
+      filterQuery.$expr = {
+        $allElementsTrue: [[filterQuery.$expr, condition]],
+      };
+    } else {
+      filterQuery[field] = condition;
+    }
   }
 
-  return filterQuery;
+  return filterQuery as FilterQuery<unknown>;
 };
 
 export default filterQueryCreator;

@@ -27,6 +27,29 @@ export type MongoComparisonOperators = keyof Pick<
   "$eq" | "$gt" | "$gte" | "$in" | "$lt" | "$lte" | "$ne" | "$nin"
 >; // Using keyof Pick ensures keys actually exists on QuerySelector
 
+export const comparisonOpsMapper = (
+  op: ComparisonOperators
+): ComparisonMongoOpsMap[typeof op] => {
+  switch (op) {
+    case "eq":
+      return "$eq";
+    case "gt":
+      return "$gt";
+    case "gte":
+      return "$gte";
+    case "in":
+      return "$in";
+    case "lt":
+      return "$lt";
+    case "lte":
+      return "$lte";
+    case "ne":
+      return "$ne";
+    case "nin":
+      return "$nin";
+  }
+};
+
 const comparisonQueryGenerator = <TOpValue, TReturn>(
   opValueTransmutator: OperatorValueTransmutator<
     TOpValue,
@@ -35,7 +58,7 @@ const comparisonQueryGenerator = <TOpValue, TReturn>(
     ComparisonOperators
   > = (arg: any) => arg
 ): QuerySelectorGenerator<ComparisonOperators | string, TOpValue, TReturn> =>
-  function*(opValues, querySelector) {
+  function* (opValues, querySelector) {
     const promises: Promise<void>[] = [];
 
     for (const [op, opValue] of opValues) {

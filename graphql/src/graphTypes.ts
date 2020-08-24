@@ -23,17 +23,69 @@ export type Budget = {
 
 export type BudgetOwner = Department | Business;
 
+export type BudgetOwnerInput = {
+  id: Scalars['ID'];
+  type: BudgetOwnerType;
+};
+
+export enum BudgetOwnerType {
+  Business = 'BUSINESS',
+  Department = 'DEPARTMENT'
+}
+
+export type BudgetsWhereInput = {
+  eq?: Maybe<Scalars['ID']>;
+  ne?: Maybe<Scalars['ID']>;
+  in?: Maybe<Array<Scalars['ID']>>;
+  nin?: Maybe<Array<Scalars['ID']>>;
+  and?: Maybe<Array<BudgetsWhereInput>>;
+  or?: Maybe<Array<BudgetsWhereInput>>;
+  nor?: Maybe<Array<BudgetsWhereInput>>;
+  amount?: Maybe<WhereRational>;
+  owner?: Maybe<BudgetsWhereOwner>;
+  year?: Maybe<BudgetsWhereYear>;
+};
+
+export type BudgetsWhereOwner = {
+  eq?: Maybe<BudgetOwnerInput>;
+  ne?: Maybe<BudgetOwnerInput>;
+  in?: Maybe<Array<BudgetOwnerInput>>;
+  nin?: Maybe<Array<BudgetOwnerInput>>;
+};
+
+export type BudgetsWhereYear = {
+  eq?: Maybe<Scalars['Int']>;
+  ne?: Maybe<Scalars['Int']>;
+  in?: Maybe<Array<Scalars['Int']>>;
+  nin?: Maybe<Array<Scalars['Int']>>;
+  gt?: Maybe<Scalars['Int']>;
+  lt?: Maybe<Scalars['Int']>;
+  gte?: Maybe<Scalars['Int']>;
+  lte?: Maybe<Scalars['Int']>;
+};
+
 export type Business = {
   __typename?: 'Business';
   id: Scalars['ID'];
   name: Scalars['String'];
-  budget?: Maybe<Budget>;
+  budgets: Array<Budget>;
   departments: Array<Department>;
   vendor?: Maybe<Vendor>;
 };
 
 export type BusinessAddFields = {
   name: Scalars['String'];
+};
+
+export type BusinessesWhereInput = {
+  eq?: Maybe<Scalars['ID']>;
+  ne?: Maybe<Scalars['ID']>;
+  in?: Maybe<Array<Scalars['ID']>>;
+  nin?: Maybe<Array<Scalars['ID']>>;
+  name?: Maybe<WhereRegexInput>;
+  and?: Maybe<Array<BusinessesWhereInput>>;
+  or?: Maybe<Array<BusinessesWhereInput>>;
+  nor?: Maybe<Array<BusinessesWhereInput>>;
 };
 
 export type ByIdFilter = {
@@ -45,7 +97,7 @@ export type Department = {
   id: Scalars['ID'];
   name: Scalars['String'];
   code?: Maybe<Scalars['String']>;
-  budget: Array<Budget>;
+  budgets: Array<Budget>;
   business: Business;
   parent: DepartmentAncestor;
   ancestors: Array<DepartmentAncestor>;
@@ -69,23 +121,23 @@ export enum DepartmentAncestorType {
   Department = 'DEPARTMENT'
 }
 
-export type DepartmentWhereInput = {
+export type DepartmentsWhereAncestor = {
+  eq?: Maybe<DepartmentAncestorInput>;
+  ne?: Maybe<DepartmentAncestorInput>;
+  in?: Maybe<Array<DepartmentAncestorInput>>;
+  nin?: Maybe<Array<DepartmentAncestorInput>>;
+};
+
+export type DepartmentsWhereInput = {
   eq?: Maybe<Scalars['ID']>;
   ne?: Maybe<Scalars['ID']>;
   in?: Maybe<Array<Scalars['ID']>>;
   nin?: Maybe<Array<Scalars['ID']>>;
   name?: Maybe<WhereRegexInput>;
-  parent?: Maybe<DepartmentWhereParent>;
-  and?: Maybe<Array<DepartmentWhereInput>>;
-  or?: Maybe<Array<DepartmentWhereInput>>;
-  nor?: Maybe<Array<DepartmentWhereInput>>;
-};
-
-export type DepartmentWhereParent = {
-  eq?: Maybe<DepartmentAncestorInput>;
-  ne?: Maybe<DepartmentAncestorInput>;
-  in?: Maybe<Array<DepartmentAncestorInput>>;
-  nin?: Maybe<Array<DepartmentAncestorInput>>;
+  parent?: Maybe<DepartmentsWhereAncestor>;
+  and?: Maybe<Array<DepartmentsWhereInput>>;
+  or?: Maybe<Array<DepartmentsWhereInput>>;
+  nor?: Maybe<Array<DepartmentsWhereInput>>;
 };
 
 export enum FilterType {
@@ -94,6 +146,10 @@ export enum FilterType {
 }
 
 export type JournalEntiresWhereInput = {
+  eq?: Maybe<Scalars['ID']>;
+  ne?: Maybe<Scalars['ID']>;
+  in?: Maybe<Array<Scalars['ID']>>;
+  nin?: Maybe<Array<Scalars['ID']>>;
   date?: Maybe<WhereDate>;
   department?: Maybe<JournalEntriesWhereDepartment>;
   category?: Maybe<JournalEntriesWhereCategory>;
@@ -105,24 +161,27 @@ export type JournalEntiresWhereInput = {
   lastUpdate?: Maybe<WhereDate>;
   lastUpdateRefund?: Maybe<WhereDate>;
   lastUpdateItem?: Maybe<WhereDate>;
-  or?: Maybe<Array<Maybe<JournalEntiresWhereInput>>>;
-  and?: Maybe<Array<Maybe<JournalEntiresWhereInput>>>;
+  or?: Maybe<Array<JournalEntiresWhereInput>>;
+  and?: Maybe<Array<JournalEntiresWhereInput>>;
+};
+
+export type JournalEntriesSourceInput = {
+  id: Scalars['ID'];
+  type: JournalEntrySourceType;
 };
 
 export type JournalEntriesWhereCategory = {
   eq?: Maybe<Scalars['ID']>;
   ne?: Maybe<Scalars['ID']>;
-  in?: Maybe<Array<Maybe<Scalars['ID']>>>;
-  nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
-  matchDescendantTree?: Maybe<Scalars['Boolean']>;
+  in?: Maybe<Array<Scalars['ID']>>;
+  nin?: Maybe<Array<Scalars['ID']>>;
 };
 
 export type JournalEntriesWhereDepartment = {
   eq?: Maybe<Scalars['ID']>;
   ne?: Maybe<Scalars['ID']>;
-  in?: Maybe<Array<Maybe<Scalars['ID']>>>;
-  nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
-  matchDescendantTree?: Maybe<Scalars['Boolean']>;
+  in?: Maybe<Array<Scalars['ID']>>;
+  nin?: Maybe<Array<Scalars['ID']>>;
 };
 
 export type JournalEntriesWherePaymentMethod = {
@@ -130,15 +189,13 @@ export type JournalEntriesWherePaymentMethod = {
   ne?: Maybe<Scalars['ID']>;
   in?: Maybe<Array<Maybe<Scalars['ID']>>>;
   nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
-  matchDescendantTree?: Maybe<Scalars['Boolean']>;
 };
 
 export type JournalEntriesWhereSource = {
-  sourceType: JournalEntrySourceType;
-  eq?: Maybe<Scalars['ID']>;
-  ne?: Maybe<Scalars['ID']>;
-  in?: Maybe<Array<Maybe<Scalars['ID']>>>;
-  nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
+  eq?: Maybe<JournalEntriesSourceInput>;
+  ne?: Maybe<JournalEntriesSourceInput>;
+  in?: Maybe<Array<JournalEntriesSourceInput>>;
+  nin?: Maybe<Array<JournalEntriesSourceInput>>;
 };
 
 export type JournalEntry = {
@@ -521,13 +578,18 @@ export type QueryBudgetArgs = {
 };
 
 
+export type QueryBudgetsArgs = {
+  where?: Maybe<BudgetsWhereInput>;
+};
+
+
 export type QueryBusinessArgs = {
   id: Scalars['ID'];
 };
 
 
 export type QueryBusinessesArgs = {
-  searchByName?: Maybe<Scalars['String']>;
+  where?: Maybe<BusinessesWhereInput>;
 };
 
 
@@ -537,7 +599,7 @@ export type QueryDepartmentArgs = {
 
 
 export type QueryDepartmentsArgs = {
-  where?: Maybe<DepartmentWhereInput>;
+  where?: Maybe<DepartmentsWhereInput>;
 };
 
 
@@ -608,6 +670,17 @@ export enum RationalSign {
   Neg = 'NEG'
 }
 
+export enum RegexOptions {
+  CaseInsensitive = 'CaseInsensitive',
+  Multiline = 'Multiline',
+  Extended = 'Extended',
+  DotAll = 'DotAll',
+  I = 'I',
+  M = 'M',
+  X = 'X',
+  S = 'S'
+}
+
 export enum SortDirection {
   Asc = 'ASC',
   Desc = 'DESC'
@@ -633,27 +706,33 @@ export type Vendor = {
 };
 
 export type WhereDate = {
-  eq?: Maybe<Scalars['String']>;
-  ne?: Maybe<Scalars['String']>;
-  gt?: Maybe<Scalars['String']>;
-  gte?: Maybe<Scalars['String']>;
-  lt?: Maybe<Scalars['String']>;
-  lte?: Maybe<Scalars['String']>;
+  eq?: Maybe<WhereDateTime>;
+  ne?: Maybe<WhereDateTime>;
+  gt?: Maybe<WhereDateTime>;
+  gte?: Maybe<WhereDateTime>;
+  lt?: Maybe<WhereDateTime>;
+  lte?: Maybe<WhereDateTime>;
+};
+
+export type WhereDateTime = {
+  date: Scalars['String'];
   ignoreTime?: Maybe<Scalars['Boolean']>;
 };
 
 export type WhereRational = {
   eq?: Maybe<RationalInput>;
   ne?: Maybe<RationalInput>;
+  in?: Maybe<Array<RationalInput>>;
+  nin?: Maybe<Array<RationalInput>>;
   gt?: Maybe<RationalInput>;
-  gte?: Maybe<RationalInput>;
   lt?: Maybe<RationalInput>;
+  gte?: Maybe<RationalInput>;
   lte?: Maybe<RationalInput>;
 };
 
 export type WhereRegexInput = {
   pattern: Scalars['String'];
-  options?: Maybe<Scalars['String']>;
+  options?: Maybe<Array<RegexOptions>>;
 };
 
 
@@ -734,20 +813,29 @@ export type ResolversTypes = {
   Vendor: ResolverTypeWrapper<Vendor>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']>;
   DepartmentAncestor: ResolversTypes['Department'] | ResolversTypes['Business'];
-  DepartmentWhereInput: DepartmentWhereInput;
+  BudgetsWhereInput: BudgetsWhereInput;
+  WhereRational: WhereRational;
+  RationalInput: RationalInput;
+  BudgetsWhereOwner: BudgetsWhereOwner;
+  BudgetOwnerInput: BudgetOwnerInput;
+  BudgetOwnerType: BudgetOwnerType;
+  BudgetsWhereYear: BudgetsWhereYear;
+  BusinessesWhereInput: BusinessesWhereInput;
   WhereRegexInput: WhereRegexInput;
-  DepartmentWhereParent: DepartmentWhereParent;
+  RegexOptions: RegexOptions;
+  DepartmentsWhereInput: DepartmentsWhereInput;
+  DepartmentsWhereAncestor: DepartmentsWhereAncestor;
   DepartmentAncestorInput: DepartmentAncestorInput;
   DepartmentAncestorType: DepartmentAncestorType;
   JournalEntiresWhereInput: JournalEntiresWhereInput;
   WhereDate: WhereDate;
+  WhereDateTime: WhereDateTime;
   JournalEntriesWhereDepartment: JournalEntriesWhereDepartment;
   JournalEntriesWhereCategory: JournalEntriesWhereCategory;
   JournalEntriesWhereSource: JournalEntriesWhereSource;
+  JournalEntriesSourceInput: JournalEntriesSourceInput;
   JournalEntrySourceType: JournalEntrySourceType;
   JournalEntriesWherePaymentMethod: JournalEntriesWherePaymentMethod;
-  WhereRational: WhereRational;
-  RationalInput: RationalInput;
   JournalEntry: ResolverTypeWrapper<Omit<JournalEntry, 'source'> & { source: ResolversTypes['JournalEntrySource'] }>;
   JournalEntryRefund: ResolverTypeWrapper<JournalEntryRefund>;
   PaymentMethod: ResolverTypeWrapper<PaymentMethod>;
@@ -805,18 +893,25 @@ export type ResolversParentTypes = {
   Vendor: Vendor;
   Boolean: Scalars['Boolean'];
   DepartmentAncestor: ResolversParentTypes['Department'] | ResolversParentTypes['Business'];
-  DepartmentWhereInput: DepartmentWhereInput;
+  BudgetsWhereInput: BudgetsWhereInput;
+  WhereRational: WhereRational;
+  RationalInput: RationalInput;
+  BudgetsWhereOwner: BudgetsWhereOwner;
+  BudgetOwnerInput: BudgetOwnerInput;
+  BudgetsWhereYear: BudgetsWhereYear;
+  BusinessesWhereInput: BusinessesWhereInput;
   WhereRegexInput: WhereRegexInput;
-  DepartmentWhereParent: DepartmentWhereParent;
+  DepartmentsWhereInput: DepartmentsWhereInput;
+  DepartmentsWhereAncestor: DepartmentsWhereAncestor;
   DepartmentAncestorInput: DepartmentAncestorInput;
   JournalEntiresWhereInput: JournalEntiresWhereInput;
   WhereDate: WhereDate;
+  WhereDateTime: WhereDateTime;
   JournalEntriesWhereDepartment: JournalEntriesWhereDepartment;
   JournalEntriesWhereCategory: JournalEntriesWhereCategory;
   JournalEntriesWhereSource: JournalEntriesWhereSource;
+  JournalEntriesSourceInput: JournalEntriesSourceInput;
   JournalEntriesWherePaymentMethod: JournalEntriesWherePaymentMethod;
-  WhereRational: WhereRational;
-  RationalInput: RationalInput;
   JournalEntry: Omit<JournalEntry, 'source'> & { source: ResolversParentTypes['JournalEntrySource'] };
   JournalEntryRefund: JournalEntryRefund;
   PaymentMethod: PaymentMethod;
@@ -857,7 +952,7 @@ export type ResolversParentTypes = {
   User: User;
 };
 
-export type BudgetResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Budget'] = ResolversParentTypes['Budget']> = {
+export type BudgetResolvers<ContextType = Context, ParentType = ResolversParentTypes['Budget']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   amount?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>;
   owner?: Resolver<ResolversTypes['BudgetOwner'], ParentType, ContextType>;
@@ -865,24 +960,24 @@ export type BudgetResolvers<ContextType = Context, ParentType extends ResolversP
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type BudgetOwnerResolvers<ContextType = Context, ParentType extends ResolversParentTypes['BudgetOwner'] = ResolversParentTypes['BudgetOwner']> = {
+export type BudgetOwnerResolvers<ContextType = Context, ParentType = ResolversParentTypes['BudgetOwner']> = {
   __resolveType: TypeResolveFn<'Department' | 'Business', ParentType, ContextType>;
 };
 
-export type BusinessResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Business'] = ResolversParentTypes['Business']> = {
+export type BusinessResolvers<ContextType = Context, ParentType = ResolversParentTypes['Business']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  budget?: Resolver<Maybe<ResolversTypes['Budget']>, ParentType, ContextType>;
+  budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType>;
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>;
   vendor?: Resolver<Maybe<ResolversTypes['Vendor']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type DepartmentResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Department'] = ResolversParentTypes['Department']> = {
+export type DepartmentResolvers<ContextType = Context, ParentType = ResolversParentTypes['Department']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   code?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  budget?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType>;
+  budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType>;
   business?: Resolver<ResolversTypes['Business'], ParentType, ContextType>;
   parent?: Resolver<ResolversTypes['DepartmentAncestor'], ParentType, ContextType>;
   ancestors?: Resolver<Array<ResolversTypes['DepartmentAncestor']>, ParentType, ContextType>;
@@ -891,11 +986,11 @@ export type DepartmentResolvers<ContextType = Context, ParentType extends Resolv
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type DepartmentAncestorResolvers<ContextType = Context, ParentType extends ResolversParentTypes['DepartmentAncestor'] = ResolversParentTypes['DepartmentAncestor']> = {
+export type DepartmentAncestorResolvers<ContextType = Context, ParentType = ResolversParentTypes['DepartmentAncestor']> = {
   __resolveType: TypeResolveFn<'Department' | 'Business', ParentType, ContextType>;
 };
 
-export type JournalEntryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntry'] = ResolversParentTypes['JournalEntry']> = {
+export type JournalEntryResolvers<ContextType = Context, ParentType = ResolversParentTypes['JournalEntry']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   refunds?: Resolver<Array<ResolversTypes['JournalEntryRefund']>, ParentType, ContextType>;
   items?: Resolver<Array<ResolversTypes['JournalEntryItem']>, ParentType, ContextType>;
@@ -913,7 +1008,7 @@ export type JournalEntryResolvers<ContextType = Context, ParentType extends Reso
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type JournalEntryCategoryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntryCategory'] = ResolversParentTypes['JournalEntryCategory']> = {
+export type JournalEntryCategoryResolvers<ContextType = Context, ParentType = ResolversParentTypes['JournalEntryCategory']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   type?: Resolver<ResolversTypes['JournalEntryType'], ParentType, ContextType>;
@@ -923,7 +1018,7 @@ export type JournalEntryCategoryResolvers<ContextType = Context, ParentType exte
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type JournalEntryItemResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntryItem'] = ResolversParentTypes['JournalEntryItem']> = {
+export type JournalEntryItemResolvers<ContextType = Context, ParentType = ResolversParentTypes['JournalEntryItem']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType>;
   category?: Resolver<Maybe<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>;
@@ -935,13 +1030,13 @@ export type JournalEntryItemResolvers<ContextType = Context, ParentType extends 
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type JournalEntryItemUpsertResultResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntryItemUpsertResult'] = ResolversParentTypes['JournalEntryItemUpsertResult']> = {
+export type JournalEntryItemUpsertResultResolvers<ContextType = Context, ParentType = ResolversParentTypes['JournalEntryItemUpsertResult']> = {
   journalEntryItem?: Resolver<ResolversTypes['JournalEntryItem'], ParentType, ContextType>;
   journalEntry?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type JournalEntryRefundResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntryRefund'] = ResolversParentTypes['JournalEntryRefund']> = {
+export type JournalEntryRefundResolvers<ContextType = Context, ParentType = ResolversParentTypes['JournalEntryRefund']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -953,11 +1048,11 @@ export type JournalEntryRefundResolvers<ContextType = Context, ParentType extend
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type JournalEntrySourceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntrySource'] = ResolversParentTypes['JournalEntrySource']> = {
+export type JournalEntrySourceResolvers<ContextType = Context, ParentType = ResolversParentTypes['JournalEntrySource']> = {
   __resolveType: TypeResolveFn<'Person' | 'Business' | 'Department', ParentType, ContextType>;
 };
 
-export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
+export type MutationResolvers<ContextType = Context, ParentType = ResolversParentTypes['Mutation']> = {
   addBusiness?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<MutationAddBusinessArgs, 'fields'>>;
   addPerson?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<MutationAddPersonArgs, 'fields'>>;
   journalEntryAdd?: Resolver<ResolversTypes['JournalEntry'], ParentType, ContextType, RequireFields<MutationJournalEntryAddArgs, 'fields'>>;
@@ -973,7 +1068,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   paymentMethodUpdate?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType, RequireFields<MutationPaymentMethodUpdateArgs, 'id' | 'fields'>>;
 };
 
-export type PaymentMethodResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethod'] = ResolversParentTypes['PaymentMethod']> = {
+export type PaymentMethodResolvers<ContextType = Context, ParentType = ResolversParentTypes['PaymentMethod']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   refId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -986,31 +1081,31 @@ export type PaymentMethodResolvers<ContextType = Context, ParentType extends Res
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type PaymentMethodAuthorizationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethodAuthorization'] = ResolversParentTypes['PaymentMethodAuthorization']> = {
+export type PaymentMethodAuthorizationResolvers<ContextType = Context, ParentType = ResolversParentTypes['PaymentMethodAuthorization']> = {
   owner?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   entity?: Resolver<Maybe<ResolversTypes['PaymentMethodAuthorizedEntity']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type PaymentMethodAuthorizedEntityResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethodAuthorizedEntity'] = ResolversParentTypes['PaymentMethodAuthorizedEntity']> = {
+export type PaymentMethodAuthorizedEntityResolvers<ContextType = Context, ParentType = ResolversParentTypes['PaymentMethodAuthorizedEntity']> = {
   __resolveType: TypeResolveFn<'Person' | 'Business' | 'Department', ParentType, ContextType>;
 };
 
-export type PersonResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Person'] = ResolversParentTypes['Person']> = {
+export type PersonResolvers<ContextType = Context, ParentType = ResolversParentTypes['Person']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['PersonName'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type PersonNameResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PersonName'] = ResolversParentTypes['PersonName']> = {
+export type PersonNameResolvers<ContextType = Context, ParentType = ResolversParentTypes['PersonName']> = {
   first?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   last?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
+export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTypes['Query']> = {
   budget?: Resolver<ResolversTypes['Budget'], ParentType, ContextType, RequireFields<QueryBudgetArgs, 'id'>>;
-  budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType>;
+  budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType, RequireFields<QueryBudgetsArgs, never>>;
   business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>;
   businesses?: Resolver<Array<ResolversTypes['Business']>, ParentType, ContextType, RequireFields<QueryBusinessesArgs, never>>;
   department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
@@ -1027,26 +1122,26 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   people?: Resolver<Array<ResolversTypes['Person']>, ParentType, ContextType, RequireFields<QueryPeopleArgs, never>>;
 };
 
-export type RationalResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Rational'] = ResolversParentTypes['Rational']> = {
+export type RationalResolvers<ContextType = Context, ParentType = ResolversParentTypes['Rational']> = {
   n?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   d?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   s?: Resolver<ResolversTypes['RationalSign'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type SubscriptionResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription']> = {
+export type SubscriptionResolvers<ContextType = Context, ParentType = ResolversParentTypes['Subscription']> = {
   journalEntryAdded?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryAdded", ParentType, ContextType>;
   journalEntryUpdated?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryUpdated", ParentType, ContextType>;
   journalEntryUpserted?: SubscriptionResolver<ResolversTypes['JournalEntry'], "journalEntryUpserted", ParentType, ContextType>;
 };
 
-export type UserResolvers<ContextType = Context, ParentType extends ResolversParentTypes['User'] = ResolversParentTypes['User']> = {
+export type UserResolvers<ContextType = Context, ParentType = ResolversParentTypes['User']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   user?: Resolver<ResolversTypes['Person'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
-export type VendorResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Vendor'] = ResolversParentTypes['Vendor']> = {
+export type VendorResolvers<ContextType = Context, ParentType = ResolversParentTypes['Vendor']> = {
   approved?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   vendorId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;

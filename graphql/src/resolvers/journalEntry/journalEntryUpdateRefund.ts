@@ -1,4 +1,4 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 import Fraction from "fraction.js";
 import { isValid } from "date-fns";
 
@@ -37,13 +37,13 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
 
   const collection = db.collection("journalEntries");
 
-  const refundId = new ObjectID(id);
+  const refundId = new ObjectId(id);
 
   const docHistory = new DocHistory({ node: userNodeType, id: user.id });
 
   const updateBuilder = docHistory.updateHistoricalDoc("refunds.$[refund]");
 
-  let entryId: ObjectID;
+  let entryId: ObjectId;
   const asyncOps = [
     (async () => {
       const [result] = (await collection
@@ -56,7 +56,7 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
             },
           },
         ])
-        .toArray()) as [{ entryId: ObjectID } | undefined];
+        .toArray()) as [{ entryId: ObjectId } | undefined];
 
       if (!result) {
         throw new Error(`Refund "${id}" does not exists.`);
@@ -160,7 +160,7 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
       Promise.all(asyncOps.splice(0)).then(async () => {
         const { id: node } = nodeMap.typename.get("PaymentMethod");
 
-        const id = new ObjectID(
+        const id = new ObjectId(
           await (paymentMethodAddMutation(
             obj,
             { fields: paymentMethodAdd },
@@ -176,7 +176,7 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
         );
 
         updateBuilder.updateField("paymentMethod", {
-          node: new ObjectID(node),
+          node: new ObjectId(node),
           id,
         });
       })
@@ -185,7 +185,7 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
     // Ensure other checks finish before creating updating method
     asyncOps.push(
       Promise.all(asyncOps.splice(0)).then(async () => {
-        const id = new ObjectID(paymentMethodUpdate.id);
+        const id = new ObjectId(paymentMethodUpdate.id);
 
         // Update payment method
         await paymentMethodUpdateMutation(
@@ -207,7 +207,7 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
         const { id: node } = nodeMap.typename.get("PaymentMethod");
 
         updateBuilder.updateField("paymentMethod", {
-          node: new ObjectID(node),
+          node: new ObjectId(node),
           id,
         });
       })
@@ -215,7 +215,7 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
   } else if (fields.paymentMethod) {
     asyncOps.push(
       (async () => {
-        const id = new ObjectID(fields.paymentMethod);
+        const id = new ObjectId(fields.paymentMethod);
 
         const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
 
@@ -230,7 +230,7 @@ const journalEntryUpdateRefund: MutationResolvers["journalEntryUpdateRefund"] = 
         }
 
         updateBuilder.updateField("paymentMethod", {
-          node: new ObjectID(node),
+          node: new ObjectId(node),
           id,
         });
       })()

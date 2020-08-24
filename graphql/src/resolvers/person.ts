@@ -1,4 +1,4 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 
 import { QueryResolvers, MutationResolvers } from "../graphTypes";
 
@@ -87,7 +87,7 @@ export const addPerson: MutationResolvers["addPerson"] = async (
   const [newPerson] = await db
     .collection("people")
     .aggregate([
-      { $match: { _id: new ObjectID(insertedId) } },
+      { $match: { _id: new ObjectId(insertedId) } },
       { $limit: 1 },
       { $addFields: { id: { $toString: "$_id" } } },
     ])

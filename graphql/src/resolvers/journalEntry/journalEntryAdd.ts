@@ -1,4 +1,4 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 import * as moment from "moment";
 
 import {
@@ -81,7 +81,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
     // Department
     (async () => {
       const { collection, id: node } = nodeMap.typename.get("Department");
-      const id = new ObjectID(departmentId);
+      const id = new ObjectId(departmentId);
 
       if (
         !(await db
@@ -92,7 +92,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       }
 
       docBuilder.addField("department", {
-        node: new ObjectID(node),
+        node: new ObjectId(node),
         id,
       });
     })(),
@@ -103,7 +103,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
         "JournalEntryCategory"
       );
 
-      const id = new ObjectID(categoryId);
+      const id = new ObjectId(categoryId);
 
       if (
         !(await db
@@ -113,7 +113,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
         throw new Error(`Category with id ${categoryId} does not exist.`);
       }
 
-      docBuilder.addField("category", { node: new ObjectID(node), id });
+      docBuilder.addField("category", { node: new ObjectId(node), id });
     })(),
   ];
 
@@ -124,7 +124,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       Promise.all(asyncOps.splice(0)).then(async () => {
         const { id: node } = nodeMap.typename.get("PaymentMethod");
 
-        const id = new ObjectID(
+        const id = new ObjectId(
           await (paymentMethodAddMutation(
             obj,
             { fields: paymentMethodAdd },
@@ -140,7 +140,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
         );
 
         docBuilder.addField("paymentMethod", {
-          node: new ObjectID(node),
+          node: new ObjectId(node),
           id,
         });
       })
@@ -151,7 +151,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
       (async () => {
         const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
 
-        const id = new ObjectID(args.fields.paymentMethod);
+        const id = new ObjectId(args.fields.paymentMethod);
 
         if (
           !(await db
@@ -164,7 +164,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
         }
 
         docBuilder.addField("paymentMethod", {
-          node: new ObjectID(node),
+          node: new ObjectId(node),
           id,
         });
       })()
@@ -191,7 +191,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
         docBuilder.addField("source", {
           node,
-          id: new ObjectID(id),
+          id: new ObjectId(id),
         });
       })
     );
@@ -214,7 +214,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
 
         docBuilder.addField("source", {
           node,
-          id: new ObjectID(id),
+          id: new ObjectId(id),
         });
       })
     );
@@ -228,7 +228,7 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = async (
           nodeMap
         );
 
-        const id = new ObjectID(sourceId);
+        const id = new ObjectId(sourceId);
 
         if (
           !(await collection.findOne(
