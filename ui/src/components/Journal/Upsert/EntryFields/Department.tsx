@@ -23,9 +23,13 @@ import {
 } from "../../../../utils/formik";
 
 const DEPT_OPTS_QUERY = gql`
-  query DeptEntryOpts($fromParent: ID) {
-    deptOpts: departments(fromParent: $fromParent) {
-      ...DeptEntryOptFragment
+  query DeptEntryOpts($bizId: ID!) {
+    deptOpts: business(id: $bizId) {
+      __typename
+      id
+      departments {
+        ...DeptEntryOptFragment
+      }
     }
   }
   ${DEPT_ENTRY_OPT_FRAGMENT}
@@ -92,9 +96,9 @@ const Department = (props: DepartmentProps): JSX.Element => {
   const { loading, error: gqlError, data } = useQuery<
     DeptEntryOptsQuery,
     DeptEntryOptsQueryVars
-  >(DEPT_OPTS_QUERY, { onError, variables: { fromParent: businessId } });
+  >(DEPT_OPTS_QUERY, { onError, variables: { bizId: businessId } });
 
-  const depts = data?.deptOpts || [];
+  const depts = data?.deptOpts.departments || [];
 
   const [hasFocus, setHasFocus] = useState(false);
 

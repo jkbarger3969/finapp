@@ -35,10 +35,18 @@ import {
 
 const SRC_ENTRY_OPTS_QUERY = gql`
   query SrcEntryOpts($name: String!, $isBiz: Boolean!) {
-    businesses(searchByName: $name) @include(if: $isBiz) {
+    businesses(where: { name: { pattern: $name, options: I } })
+      @include(if: $isBiz) {
       ...SrcEntryBizOptFragment
     }
-    people(searchByName: { first: $name, last: $name }) @skip(if: $isBiz) {
+    people(
+      where: {
+        or: [
+          { firstName: { pattern: $name, options: I } }
+          { lastName: { pattern: $name, options: I } }
+        ]
+      }
+    ) @skip(if: $isBiz) {
       ...SrcEntryPersonOptFragment
     }
   }

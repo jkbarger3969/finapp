@@ -9,6 +9,7 @@ import {
 import { Context, NodeValue } from "../../types";
 import filterQueryCreator, {
   FieldAndConditionGenerator,
+  FieldAndCondition,
 } from "../utils/filterQuery/filter";
 import parseOps from "../utils/filterQuery/querySelectors/parseOps";
 import parseComparisonOps from "../utils/filterQuery/querySelectors/parseComparisonOps";
@@ -20,66 +21,119 @@ import {
 import { addId } from "../utils/mongoUtils";
 import { Returns as DeptReturns } from "./department";
 import gqlMongoRegex from "../utils/filterQuery/gqlMongoRegex";
+import { comparisonOpsMapper } from "../utils/filterQuery/operatorMapping/comparison";
 
 const deptNode = new ObjectId("5dc4addacf96e166daaa008f");
 const bizNode = new ObjectId("5dc476becf96e166daa9fd0b");
 
-const parseWhereParentDeptOpValues: Readonly<
-  OpsParser<DepartmentsWhereAncestor>[]
-> = [
-  // Convert "eq" and "ne" to NodeValue and "in" and "nin" to NodeValue[]
-  async function* (opValues, querySelector) {
-    for await (const [op, opVal] of opValues) {
-      switch (op) {
-        case "eq":
-        case "ne":
-          if (opVal) {
-            yield [
-              op,
+const parseWhereParentDept = function* (
+  whereBudgetOwnerIter: Iterable<
+    [
+      keyof DepartmentsWhereAncestor,
+      DepartmentsWhereAncestor[keyof DepartmentsWhereAncestor]
+    ]
+  >
+): IterableIterator<FieldAndCondition<unknown>> {
+  for (const [op, opValue] of whereBudgetOwnerIter) {
+    switch (op) {
+      case "eq":
+        if (opValue) {
+          const mongoOp = comparisonOpsMapper(op);
+          yield {
+            field: "$and",
+            condition: [
               {
-                id: new ObjectId(
-                  (opVal as NonNullable<DepartmentsWhereAncestor[typeof op]>).id
-                ),
-                node:
-                  (opVal as NonNullable<DepartmentsWhereAncestor[typeof op]>)
-                    .type === DepartmentAncestorType.Business
-                    ? bizNode
-                    : deptNode,
-              } as NodeValue,
-            ];
-          }
-          break;
-        case "in":
-        case "nin":
-          if (opVal) {
-            yield [
-              op,
-              (opVal as NonNullable<DepartmentsWhereAncestor[typeof op]>).map(
-                ({ id, type }) =>
-                  ({
-                    id: new ObjectId(id),
-                    node:
-                      type === DepartmentAncestorType.Business
-                        ? bizNode
-                        : deptNode,
-                  } as NodeValue)
-              ),
-            ];
-          }
-          break;
-        default:
-          yield [op, opVal];
-      }
-    }
+                "parent.node": {
+                  [mongoOp]:
+                    (opValue as DepartmentsWhereAncestor[typeof op]).type ===
+                    DepartmentAncestorType.Business
+                      ? bizNode
+                      : deptNode,
+                },
+              },
+              {
+                "parent.id": {
+                  [mongoOp]: new ObjectId(
+                    (opValue as DepartmentsWhereAncestor[typeof op]).id
+                  ),
+                },
+              },
+            ],
+          };
+        }
+        break;
+      case "ne":
+        if (opValue) {
+          const mongoOp = comparisonOpsMapper(op);
+          yield {
+            field: "$or",
+            condition: [
+              {
+                "parent.node": {
+                  [mongoOp]:
+                    (opValue as DepartmentsWhereAncestor[typeof op]).type ===
+                    DepartmentAncestorType.Business
+                      ? bizNode
+                      : deptNode,
+                },
+              },
+              {
+                "parent.id": {
+                  [mongoOp]: new ObjectId(
+                    (opValue as DepartmentsWhereAncestor[typeof op]).id
+                  ),
+                },
+              },
+            ],
+          };
+        }
+        break;
+      case "in":
+        if (opValue) {
+          const orArr: unknown[] = [];
 
-    return querySelector;
-  } as OpsParser<DepartmentsWhereAncestor>,
-  // Parse the comparison ops and add to querySelector
-  parseComparisonOps<DepartmentsWhereAncestor>(),
-] as const;
+          for (const { field, condition } of parseWhereParentDept(
+            (function* () {
+              for (const opV of opValue as DepartmentsWhereAncestor[typeof op]) {
+                yield ["eq", opV] as [
+                  keyof DepartmentsWhereAncestor,
+                  DepartmentsWhereAncestor[keyof DepartmentsWhereAncestor]
+                ];
+              }
+            })()
+          )) {
+            orArr.push({ [field]: condition });
+          }
+
+          yield { field: "$or", condition: orArr };
+        }
+        break;
+      case "nin":
+        if (opValue) {
+          const andArr: unknown[] = [];
+
+          for (const { field, condition } of parseWhereParentDept(
+            (function* () {
+              for (const opV of opValue as DepartmentsWhereAncestor[typeof op]) {
+                yield ["ne", opV] as [
+                  keyof DepartmentsWhereAncestor,
+                  DepartmentsWhereAncestor[keyof DepartmentsWhereAncestor]
+                ];
+              }
+            })()
+          )) {
+            andArr.push({ [field]: condition });
+          }
+
+          yield { field: "$and", condition: andArr };
+        }
+        break;
+    }
+  }
+};
 
 const parseWhereDeptId: Readonly<OpsParser<Where>[]> = [
-  // Convert "eq" and "ne" to NodeValue and "in" and "nin" to NodeValue[]
+  // Convert "eq" and "ne" to ObjectId and "in" and "nin" to ObjectId[]
   async function* (opValues, querySelector) {
     for await (const [op, opVal] of opValues) {
       switch (op) {
@@ -131,16 +185,9 @@ const fieldAndConditionGenerator: FieldAndConditionGenerator<
         break;
       case "parent":
         if (value) {
-          const condition = await parseOps(
-            false,
-            iterateOwnKeyValues(value as Where[typeof key]),
-            parseWhereParentDeptOpValues,
-            opts
+          yield* parseWhereParentDept(
+            iterateOwnKeyValues(value as Where[typeof key])
           );
-          yield {
-            field: "parent",
-            condition,
-          };
         }
         break;
     }

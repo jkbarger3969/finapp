@@ -47,5 +47,5 @@ input DepartmentAddFields {
 
 type Query {
   departments(where: DepartmentsWhereInput): [Department!]!
-  department(id: ID!): Department
+  department(id: ID!): Department!
 }

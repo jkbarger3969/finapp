@@ -7,9 +7,10 @@ import {
   QueryResolvers,
   BudgetOwnerType,
 } from "../../graphTypes";
-import { Context, NodeValue } from "../../types";
+import { Context } from "../../types";
 import filterQueryCreator, {
   FieldAndConditionGenerator,
+  FieldAndCondition,
 } from "../utils/filterQuery/filter";
 import parseOps from "../utils/filterQuery/querySelectors/parseOps";
 import parseComparisonOps from "../utils/filterQuery/querySelectors/parseComparisonOps";
@@ -21,6 +22,7 @@ import {
 } from "../../utils/iterableFns";
 import { addId } from "../utils/mongoUtils";
 import { Returns as BudgetReturns } from "./budget";
+import { comparisonOpsMapper } from "../utils/filterQuery/operatorMapping/comparison";
 
 const deptNode = new ObjectId("5dc4addacf96e166daaa008f");
 const bizNode = new ObjectId("5dc476becf96e166daa9fd0b");
@@ -31,26 +33,108 @@ const parseWhereBudgetYear: Readonly<OpsParser<BudgetsWhereYear, Context>[]> = [
 
 export type Returns = BudgetReturns[];
 
-const parseWhereBudgetOwner: Readonly<
-  OpsParser<BudgetsWhereOwner, Context>[]
-> = [
-  // Convert all BudgetOwnerInput(s) to NodeValue(s)
-  parseComparisonOps<BudgetsWhereOwner, Context>((opVal):
-    | NodeValue
-    | NodeValue[] => {
-    if (opVal) {
-      return Array.isArray(opVal)
-        ? opVal.map((opVal) => ({
-            id: new ObjectId(opVal.id),
-            node: opVal.type === BudgetOwnerType.Business ? bizNode : deptNode,
-          }))
-        : {
-            id: new ObjectId(opVal.id),
-            node: opVal.type === BudgetOwnerType.Business ? bizNode : deptNode,
+const parseWhereBudgetOwner = function* (
+  whereBudgetOwnerIter: Iterable<
+    [keyof BudgetsWhereOwner, BudgetsWhereOwner[keyof BudgetsWhereOwner]]
+  >
+): IterableIterator<FieldAndCondition<unknown>> {
+  for (const [op, opValue] of whereBudgetOwnerIter) {
+    switch (op) {
+      case "eq":
+        if (opValue) {
+          const mongoOp = comparisonOpsMapper(op);
+          yield {
+            field: "$and",
+            condition: [
+              {
+                "owner.node": {
+                  [mongoOp]:
+                    (opValue as BudgetsWhereOwner[typeof op]).type ===
+                    BudgetOwnerType.Business
+                      ? bizNode
+                      : deptNode,
+                },
+              },
+              {
+                "owner.id": {
+                  [mongoOp]: new ObjectId(
+                    (opValue as BudgetsWhereOwner[typeof op]).id
+                  ),
+                },
+              },
+            ],
           };
+        }
+        break;
+      case "ne":
+        if (opValue) {
+          const mongoOp = comparisonOpsMapper(op);
+          yield {
+            field: "$or",
+            condition: [
+              {
+                "owner.node": {
+                  [mongoOp]:
+                    (opValue as BudgetsWhereOwner[typeof op]).type ===
+                    BudgetOwnerType.Business
+                      ? bizNode
+                      : deptNode,
+                },
+              },
+              {
+                "owner.id": {
+                  [mongoOp]: new ObjectId(
+                    (opValue as BudgetsWhereOwner[typeof op]).id
+                  ),
+                },
+              },
+            ],
+          };
+        }
+        break;
+      case "in":
+        if (opValue) {
+          const orArr: unknown[] = [];
+
+          for (const { field, condition } of parseWhereBudgetOwner(
+            (function* () {
+              for (const opV of opValue as BudgetsWhereOwner[typeof op]) {
+                yield ["eq", opV] as [
+                  keyof BudgetsWhereOwner,
+                  BudgetsWhereOwner[keyof BudgetsWhereOwner]
+                ];
+              }
+            })()
+          )) {
+            orArr.push({ [field]: condition });
+          }
+
+          yield { field: "$or", condition: orArr };
+        }
+        break;
+      case "nin":
+        if (opValue) {
+          const andArr: unknown[] = [];
+
+          for (const { field, condition } of parseWhereBudgetOwner(
+            (function* () {
+              for (const opV of opValue as BudgetsWhereOwner[typeof op]) {
+                yield ["ne", opV] as [
+                  keyof BudgetsWhereOwner,
+                  BudgetsWhereOwner[keyof BudgetsWhereOwner]
+                ];
+              }
+            })()
+          )) {
+            andArr.push({ [field]: condition });
+          }
+
+          yield { field: "$and", condition: andArr };
+        }
+        break;
     }
-  }),
-] as const;
+  }
+};
 
 const parseWhereBudgetId: Readonly<OpsParser<Where, Context>[]> = [
   parseComparisonOps<Where, Context>((opVal, op) => {
@@ -88,19 +172,13 @@ const fieldConditionGenerator: FieldAndConditionGenerator<
           }
         }
         break;
-      case "owner": {
-        const condition = await parseOps(
-          false,
-          iterateOwnKeyValues(value as Where[typeof key]),
-          parseWhereBudgetOwner,
-          opts
-        );
-        yield {
-          field: "owner",
-          condition,
-        };
+      case "owner":
+        if (value) {
+          yield* parseWhereBudgetOwner(
+            iterateOwnKeyValues(value as Where[typeof key])
+          );
+        }
         break;
-      }
       case "year": {
         const condition = await parseOps(
           false,
@@ -147,7 +225,6 @@ const budgets: QueryResolvers["budgets"] = async (
         fieldConditionGenerator,
         context
       );
-
       pipeline.push({ $match });
     })(),
   ]);

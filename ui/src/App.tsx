@@ -9,6 +9,7 @@ import Routes from "./Routes";
 const App = (): JSX.Element => (
   <Fragment>
     <CssBaseline />
+
     <ApolloProvider client={client}>
       <Router>
         <Routes />

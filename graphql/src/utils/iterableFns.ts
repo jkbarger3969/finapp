@@ -25,7 +25,7 @@ export interface AsyncIterableIteratorFns<T, TReturn = any, TNext = undefined>
   [Symbol.asyncIterator](): AsyncIterableIteratorFns<T, TReturn, TNext>;
 }
 
-export const iterateIteratorResults = function*<
+export const iterateIteratorResults = function* <
   T,
   TReturn = any,
   TNext = undefined
@@ -41,7 +41,7 @@ export const iterateIteratorResults = function*<
   yield result;
 };
 
-export const cbWithReturn = function*<T, TReturn = any, TNext = undefined>(
+export const cbWithReturn = function* <T, TReturn = any, TNext = undefined>(
   iterable: IterableFns<T, TReturn, TNext>,
   cb: (value: TReturn, returnResult?: IteratorReturnResult<TReturn>) => void
 ): IterableIteratorFns<T, TReturn, TNext> {
@@ -65,7 +65,7 @@ export const resolveWithAsyncReturn = <T, TReturn = any, TNext = undefined>(
     reject = _reject;
   });
   return [
-    (async function*() {
+    (async function* () {
       try {
         const iterator = iterable[Symbol.asyncIterator]();
         let result = await iterator.next();
@@ -85,7 +85,7 @@ export const resolveWithAsyncReturn = <T, TReturn = any, TNext = undefined>(
   ] as [AsyncIterableIteratorFns<T, TReturn, TNext>, Promise<TReturn>];
 };
 
-export const iterateAsyncIteratorResults = async function*<
+export const iterateAsyncIteratorResults = async function* <
   T,
   TReturn = any,
   TNext = undefined
@@ -101,7 +101,7 @@ export const iterateAsyncIteratorResults = async function*<
   yield result;
 };
 
-const _iterableToAsyncIterable_ = async function*<
+const _iterableToAsyncIterable_ = async function* <
   T,
   TReturn = any,
   TNext = undefined
@@ -118,7 +118,7 @@ const _iterableToAsyncIterable_ = async function*<
   return result.value;
 };
 
-export const iterableToAsyncIterable = function<
+export const iterableToAsyncIterable = function <
   T,
   TReturn = any,
   TNext = undefined
@@ -133,11 +133,15 @@ export const iterableToAsyncIterable = function<
   return _iterableToAsyncIterable_(iterable as IterableFns<T, TReturn, TNext>);
 };
 
+export type IterateOwnKeysValuesIterableIterator<
+  TObj extends object
+> = IterableIterator<[keyof TObj, TObj[keyof TObj]]>;
+
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 
-export const iterateOwnKeyValues = function*<TObj extends object>(
+export const iterateOwnKeyValues = function* <TObj extends object>(
   obj: TObj
-): IterableIterator<[keyof TObj, TObj[keyof TObj]]> {
+): IterateOwnKeysValuesIterableIterator<TObj> {
   for (const key in obj) {
     if (hasOwnProperty.call(obj, key)) {
       yield [key, obj[key]];
@@ -158,7 +162,7 @@ export type ChainableGeneratorFunction<
  * NOTE: First element of return type `TReturn[]` is always the return type
  * from @param srcIterable
  */
-export const generatorChain = function*<
+export const generatorChain = function* <
   TArgs extends unknown[],
   T,
   TReturn = any
@@ -201,7 +205,7 @@ export type ChainableAsyncGeneratorFunction<
  * NOTE: First element of return type `TReturn[]` is always the return type
  * from @param srcIterable
  */
-export const asyncGeneratorChain = async function*<
+export const asyncGeneratorChain = async function* <
   TArgs extends unknown[],
   T,
   TReturn = any

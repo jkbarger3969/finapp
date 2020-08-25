@@ -2,6 +2,7 @@ import { JournalEntryResolvers } from "../../graphTypes";
 import { nodeFieldResolver } from "../utils/nodeResolver";
 import paymentMethodResolver from "../paymentMethod/paymentMethod";
 import { fractionToRational } from "../../utils/rational";
+import Fraction from "fraction.js";
 
 const paymentMethod: JournalEntryResolvers["paymentMethod"] = async (
   doc: any,
@@ -27,7 +28,7 @@ const JournalEntry: JournalEntryResolvers = {
   category: nodeFieldResolver,
   paymentMethod,
   source: nodeFieldResolver,
-  total: (doc) => fractionToRational((doc.total ?? doc) as any),
+  total: (doc) => fractionToRational((doc.total as unknown) as Fraction),
 };
 
 export default JournalEntry;

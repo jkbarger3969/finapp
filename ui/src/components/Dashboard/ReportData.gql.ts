@@ -5,7 +5,7 @@ export const GET_REPORT_DATA_DEPT_FRAGMENT = gql`
     __typename
     id
     name
-    budget {
+    budgets {
       id
       __typename
       amount {

@@ -19,7 +19,7 @@ const department: QueryResolvers["department"] = async (
   return (
     (
       await context.db
-        .collection("department")
+        .collection("departments")
         .aggregate([{ $match: { _id: new ObjectId(args.id) } }, addId])
         .toArray()
     )[0] || null

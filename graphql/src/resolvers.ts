@@ -44,7 +44,9 @@ import paymentMethod from "./resolvers/paymentMethod/paymentMethod";
 import paymentMethodAdd from "./resolvers/paymentMethod/paymentMethodAdd";
 import paymentMethodUpdate from "./resolvers/paymentMethod/paymentMethodUpdate";
 import PaymentMethod from "./resolvers/paymentMethod/PaymehtMethodResolver";
-import { people, addPerson } from "./resolvers/person";
+import { addPerson } from "./resolvers/person";
+import people from "./resolvers/person/people";
+import person from "./resolvers/person/person";
 import { User } from "./resolvers/user";
 
 const resolvers: Resolvers = {
@@ -73,6 +75,7 @@ const resolvers: Resolvers = {
     department,
     paymentMethods,
     paymentMethod,
+    person,
     people,
   },
   Mutation: {

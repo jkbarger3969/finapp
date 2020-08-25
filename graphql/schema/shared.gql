@@ -28,6 +28,11 @@ enum RegexOptions {
   S
 }
 
+input WhereTreeNodeInput {
+  id: ID!
+  matchDescendants: Boolean
+}
+
 input WhereRegexInput {
   pattern: String!
   options: [RegexOptions!]

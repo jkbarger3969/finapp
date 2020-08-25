@@ -106,7 +106,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     () => ({
       deptId,
       where: {
-        department: { eq: deptId, matchDecedentTree: true },
+        department: { eq: { id: deptId, matchDescendants: true } },
         deleted: false,
       },
     }),
@@ -191,8 +191,8 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     let subDeptBudgetAg = new Fraction(0);
 
     if (department) {
-      const budget = department.budget
-        ? rationalToFraction(department.budget.amount)
+      const budget = department.budgets[0]
+        ? rationalToFraction(department.budgets[0].amount)
         : null;
 
       deptReport.set(department.id, {
@@ -204,8 +204,8 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
       for (const subDept of department.descendants) {
         let budget: null | Fraction = null;
 
-        if (subDept.budget) {
-          const subBudget = rationalToFraction(subDept.budget.amount);
+        if (subDept.budgets[0]) {
+          const subBudget = rationalToFraction(subDept.budgets[0].amount);
           subDeptBudgetAg = subDeptBudgetAg.add(subBudget);
           budget = subBudget;
         }
@@ -248,8 +248,8 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     }
 
     // Format values
-    const budgetF = department?.budget
-      ? rationalToFraction(department.budget.amount)
+    const budgetF = department?.budgets[0]
+      ? rationalToFraction(department.budgets[0].amount)
       : subDeptBudgetAg;
 
     const totalRemaining = numeral(budgetF.sub(spent).valueOf()).format(

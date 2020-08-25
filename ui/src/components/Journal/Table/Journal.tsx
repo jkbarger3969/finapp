@@ -227,7 +227,7 @@ const Journal = (props: {
   const variables = useMemo<JournalEntriesQueryVars | undefined>(() => {
     return deptId
       ? {
-          where: { department: { eq: deptId, matchDecedentTree: true } },
+          where: { department: { eq: { id: deptId, matchDescendants: true } } },
         }
       : undefined;
   }, [deptId]);

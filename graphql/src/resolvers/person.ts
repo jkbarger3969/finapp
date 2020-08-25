@@ -1,8 +1,8 @@
 import { ObjectId } from "mongodb";
 
-import { QueryResolvers, MutationResolvers } from "../graphTypes";
+import { MutationResolvers } from "../graphTypes";
 
-export const people: QueryResolvers["people"] = async (
+/* export const people: QueryResolvers["people"] = async (
   parent,
   args,
   context,
@@ -48,7 +48,7 @@ export const people: QueryResolvers["people"] = async (
 
     return results;
   }
-};
+}; */
 
 export const addPerson: MutationResolvers["addPerson"] = async (
   parent,

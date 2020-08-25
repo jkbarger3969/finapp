@@ -4,7 +4,9 @@ import {
   AsyncIterableIteratorFns,
   AsyncIterableFns,
   iterateOwnKeyValues,
+  iterableToAsyncIterable,
 } from "../../../utils/iterableFns";
+import { cond } from "lodash";
 
 const NULLISH = Symbol();
 
@@ -37,14 +39,16 @@ const _logicOpParser_ = async function* <
   Toptions = unknown
 >(
   filterQuery: FilterQuery<unknown>,
-  where: TWhere,
+  where: TWhere | AsyncIterable<[keyof TWhere, TWhere[keyof TWhere]]>,
   fieldAndConditionGenerator: FieldAndConditionGenerator<TWhere, Toptions>,
   options?: Toptions
 ): AsyncIterableIteratorFns<[
   Exclude<keyof TWhere, keyof LogicOperators<TWhere>>,
   TWhere[Exclude<keyof TWhere, keyof LogicOperators<TWhere>>]
 ]> {
-  for (const [key, value] of iterateOwnKeyValues(where)) {
+  for await (const [key, value] of where[Symbol.asyncIterator]
+    ? (where as AsyncIterable<[keyof TWhere, TWhere[keyof TWhere]]>)
+    : iterableToAsyncIterable(iterateOwnKeyValues(where))) {
     // skip non-own prop and null or undefined filters
     if ((value ?? NULLISH) === NULLISH || typeof key !== "string") {
       continue;
@@ -88,7 +92,7 @@ const filterQueryCreator = async <
   TWhere extends LogicOperators<TWhere>,
   Toptions = unknown
 >(
-  where: TWhere,
+  where: TWhere | AsyncIterable<[keyof TWhere, TWhere[keyof TWhere]]>,
   fieldAndConditionGenerator: FieldAndConditionGenerator<TWhere, Toptions>,
   options?: Toptions
 ): Promise<FilterQuery<unknown>> => {
@@ -98,8 +102,30 @@ const filterQueryCreator = async <
     _logicOpParser_(filterQuery, where, fieldAndConditionGenerator, options),
     options
   )) {
+    // Handle multiple "$and" queries.
+    if (field === "$and" && "$and" in filterQuery) {
+      filterQuery.$and = [...filterQuery.$and, ...(condition as unknown[])];
+    }
+
+    // Handle multiple "$or" queries.
+    else if (field === "$or" && "$or" in filterQuery) {
+      if ("$and" in filterQuery) {
+        filterQuery.$and = [
+          ...filterQuery.$and,
+          { $or: condition as unknown[] },
+        ];
+      } else {
+        filterQuery.$and = [{ $or: condition as unknown[] }];
+      }
+    }
+
+    // Handle multiple "$nor" queries.
+    else if (field === "$nor" && "$nor" in filterQuery) {
+      filterQuery.$nor = [...filterQuery.$nor, ...(condition as unknown[])];
+    }
+
     // Handle multiple "$expr" queries.
-    if (field === "$expr" && filterQuery.$expr) {
+    else if (field === "$expr" && "$expr" in filterQuery) {
       filterQuery.$expr = {
         $allElementsTrue: [[filterQuery.$expr, condition]],
       };

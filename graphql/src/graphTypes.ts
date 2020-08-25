@@ -171,24 +171,24 @@ export type JournalEntriesSourceInput = {
 };
 
 export type JournalEntriesWhereCategory = {
-  eq?: Maybe<Scalars['ID']>;
-  ne?: Maybe<Scalars['ID']>;
-  in?: Maybe<Array<Scalars['ID']>>;
-  nin?: Maybe<Array<Scalars['ID']>>;
+  eq?: Maybe<WhereTreeNodeInput>;
+  ne?: Maybe<WhereTreeNodeInput>;
+  in?: Maybe<Array<WhereTreeNodeInput>>;
+  nin?: Maybe<Array<WhereTreeNodeInput>>;
 };
 
 export type JournalEntriesWhereDepartment = {
-  eq?: Maybe<Scalars['ID']>;
-  ne?: Maybe<Scalars['ID']>;
-  in?: Maybe<Array<Scalars['ID']>>;
-  nin?: Maybe<Array<Scalars['ID']>>;
+  eq?: Maybe<WhereTreeNodeInput>;
+  ne?: Maybe<WhereTreeNodeInput>;
+  in?: Maybe<Array<WhereTreeNodeInput>>;
+  nin?: Maybe<Array<WhereTreeNodeInput>>;
 };
 
 export type JournalEntriesWherePaymentMethod = {
-  eq?: Maybe<Scalars['ID']>;
-  ne?: Maybe<Scalars['ID']>;
-  in?: Maybe<Array<Maybe<Scalars['ID']>>>;
-  nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
+  eq?: Maybe<WhereTreeNodeInput>;
+  ne?: Maybe<WhereTreeNodeInput>;
+  in?: Maybe<Array<WhereTreeNodeInput>>;
+  nin?: Maybe<Array<WhereTreeNodeInput>>;
 };
 
 export type JournalEntriesWhereSource = {
@@ -531,6 +531,18 @@ export type PaymentMethodWhereRefIdInput = {
   nin?: Maybe<Array<Maybe<Scalars['String']>>>;
 };
 
+export type PeopleWhereInput = {
+  lastName?: Maybe<WhereRegexInput>;
+  firstName?: Maybe<WhereRegexInput>;
+  eq?: Maybe<Scalars['ID']>;
+  ne?: Maybe<Scalars['ID']>;
+  in?: Maybe<Array<Scalars['ID']>>;
+  nin?: Maybe<Array<Scalars['ID']>>;
+  and?: Maybe<Array<PeopleWhereInput>>;
+  or?: Maybe<Array<PeopleWhereInput>>;
+  nor?: Maybe<Array<PeopleWhereInput>>;
+};
+
 export type Person = {
   __typename?: 'Person';
   id: Scalars['ID'];
@@ -558,7 +570,7 @@ export type Query = {
   budgets: Array<Budget>;
   business: Business;
   businesses: Array<Business>;
-  department?: Maybe<Department>;
+  department: Department;
   departments: Array<Department>;
   journalEntries: Array<JournalEntry>;
   journalEntry?: Maybe<JournalEntry>;
@@ -570,6 +582,7 @@ export type Query = {
   paymentMethod?: Maybe<PaymentMethod>;
   paymentMethods: Array<PaymentMethod>;
   people: Array<Person>;
+  person: Person;
 };
 
 
@@ -649,7 +662,12 @@ export type QueryPaymentMethodsArgs = {
 
 
 export type QueryPeopleArgs = {
-  searchByName?: Maybe<PersonNameInput>;
+  where?: Maybe<PeopleWhereInput>;
+};
+
+
+export type QueryPersonArgs = {
+  id: Scalars['ID'];
 };
 
 export type Rational = {
@@ -733,6 +751,11 @@ export type WhereRational = {
 export type WhereRegexInput = {
   pattern: Scalars['String'];
   options?: Maybe<Array<RegexOptions>>;
+};
+
+export type WhereTreeNodeInput = {
+  id: Scalars['ID'];
+  matchDescendants?: Maybe<Scalars['Boolean']>;
 };
 
 
@@ -831,6 +854,7 @@ export type ResolversTypes = {
   WhereDate: WhereDate;
   WhereDateTime: WhereDateTime;
   JournalEntriesWhereDepartment: JournalEntriesWhereDepartment;
+  WhereTreeNodeInput: WhereTreeNodeInput;
   JournalEntriesWhereCategory: JournalEntriesWhereCategory;
   JournalEntriesWhereSource: JournalEntriesWhereSource;
   JournalEntriesSourceInput: JournalEntriesSourceInput;
@@ -855,10 +879,11 @@ export type ResolversTypes = {
   PaymentMethodWhereRefIdInput: PaymentMethodWhereRefIdInput;
   PaymentMethodWhereNameInput: PaymentMethodWhereNameInput;
   PaymentMethodWhereParentInput: PaymentMethodWhereParentInput;
-  PersonNameInput: PersonNameInput;
+  PeopleWhereInput: PeopleWhereInput;
   Mutation: ResolverTypeWrapper<{}>;
   BusinessAddFields: BusinessAddFields;
   PersonAddFields: PersonAddFields;
+  PersonNameInput: PersonNameInput;
   JournalEntryAddFields: JournalEntryAddFields;
   JournalEntrySourceInput: JournalEntrySourceInput;
   PaymentMethodAddFields: PaymentMethodAddFields;
@@ -908,6 +933,7 @@ export type ResolversParentTypes = {
   WhereDate: WhereDate;
   WhereDateTime: WhereDateTime;
   JournalEntriesWhereDepartment: JournalEntriesWhereDepartment;
+  WhereTreeNodeInput: WhereTreeNodeInput;
   JournalEntriesWhereCategory: JournalEntriesWhereCategory;
   JournalEntriesWhereSource: JournalEntriesWhereSource;
   JournalEntriesSourceInput: JournalEntriesSourceInput;
@@ -930,10 +956,11 @@ export type ResolversParentTypes = {
   PaymentMethodWhereRefIdInput: PaymentMethodWhereRefIdInput;
   PaymentMethodWhereNameInput: PaymentMethodWhereNameInput;
   PaymentMethodWhereParentInput: PaymentMethodWhereParentInput;
-  PersonNameInput: PersonNameInput;
+  PeopleWhereInput: PeopleWhereInput;
   Mutation: {};
   BusinessAddFields: BusinessAddFields;
   PersonAddFields: PersonAddFields;
+  PersonNameInput: PersonNameInput;
   JournalEntryAddFields: JournalEntryAddFields;
   JournalEntrySourceInput: JournalEntrySourceInput;
   PaymentMethodAddFields: PaymentMethodAddFields;
@@ -1108,7 +1135,7 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType, RequireFields<QueryBudgetsArgs, never>>;
   business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>;
   businesses?: Resolver<Array<ResolversTypes['Business']>, ParentType, ContextType, RequireFields<QueryBusinessesArgs, never>>;
-  department?: Resolver<Maybe<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
+  department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentsArgs, never>>;
   journalEntries?: Resolver<Array<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntriesArgs, never>>;
   journalEntry?: Resolver<Maybe<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntryArgs, 'id'>>;
@@ -1120,6 +1147,7 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   paymentMethod?: Resolver<Maybe<ResolversTypes['PaymentMethod']>, ParentType, ContextType, RequireFields<QueryPaymentMethodArgs, 'id'>>;
   paymentMethods?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType, RequireFields<QueryPaymentMethodsArgs, never>>;
   people?: Resolver<Array<ResolversTypes['Person']>, ParentType, ContextType, RequireFields<QueryPeopleArgs, never>>;
+  person?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<QueryPersonArgs, 'id'>>;
 };
 
 export type RationalResolvers<ContextType = Context, ParentType = ResolversParentTypes['Rational']> = {

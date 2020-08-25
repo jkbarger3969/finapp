@@ -118,17 +118,17 @@ type JournalEntryItemUpsertResult {
 
 # Where
 input JournalEntriesWhereDepartment {
-  eq: ID
-  ne: ID
-  in: [ID!]
-  nin: [ID!]
+  eq: WhereTreeNodeInput
+  ne: WhereTreeNodeInput
+  in: [WhereTreeNodeInput!]
+  nin: [WhereTreeNodeInput!]
 }
 
 input JournalEntriesWhereCategory {
-  eq: ID
-  ne: ID
-  in: [ID!]
-  nin: [ID!]
+  eq: WhereTreeNodeInput
+  ne: WhereTreeNodeInput
+  in: [WhereTreeNodeInput!]
+  nin: [WhereTreeNodeInput!]
 }
 
 input JournalEntriesSourceInput {
@@ -144,10 +144,10 @@ input JournalEntriesWhereSource {
 }
 
 input JournalEntriesWherePaymentMethod {
-  eq: ID
-  ne: ID
-  in: [ID]
-  nin: [ID]
+  eq: WhereTreeNodeInput
+  ne: WhereTreeNodeInput
+  in: [WhereTreeNodeInput!]
+  nin: [WhereTreeNodeInput!]
 }
 
 input JournalEntiresWhereInput {
