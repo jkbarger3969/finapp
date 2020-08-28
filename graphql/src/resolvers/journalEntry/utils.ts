@@ -74,7 +74,13 @@ export const entryAddFieldsStage = {
         const obj: {
           [P in keyof Omit<
             JournalEntry,
-            "__typename" | "id" | "refunds" | "items" | "lastUpdate"
+            | "__typename"
+            | "id"
+            | "refunds"
+            | "items"
+            | "lastUpdate"
+            | "budget"
+            | "fiscalYear"
           >]-?: null;
         } = {
           type: null,

@@ -47,6 +47,8 @@ import PaymentMethod from "./resolvers/paymentMethod/PaymehtMethodResolver";
 import { addPerson } from "./resolvers/person";
 import people from "./resolvers/person/people";
 import person from "./resolvers/person/person";
+import fiscalYear from "./resolvers/fiscalYear/fiscalYear";
+import fiscalYears from "./resolvers/fiscalYear/fiscalYears";
 import { User } from "./resolvers/user";
 
 const resolvers: Resolvers = {
@@ -77,6 +79,8 @@ const resolvers: Resolvers = {
     paymentMethod,
     person,
     people,
+    fiscalYear,
+    fiscalYears,
   },
   Mutation: {
     journalEntryAdd,

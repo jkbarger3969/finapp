@@ -4,7 +4,7 @@ type Budget {
   id: ID!
   amount: Rational!
   owner: BudgetOwner!
-  year: Int!
+  fiscalYear: FiscalYear!
 }
 
 enum BudgetOwnerType {
@@ -24,17 +24,6 @@ input BudgetsWhereOwner {
   nin: [BudgetOwnerInput!]
 }
 
-input BudgetsWhereYear {
-  eq: Int
-  ne: Int
-  in: [Int!]
-  nin: [Int!]
-  gt: Int
-  lt: Int
-  gte: Int
-  lte: Int
-}
-
 input BudgetsWhereInput {
   eq: ID
   ne: ID
@@ -45,7 +34,11 @@ input BudgetsWhereInput {
   nor: [BudgetsWhereInput!]
   amount: WhereRational
   owner: BudgetsWhereOwner
-  year: BudgetsWhereYear
+  """
+  Match Budgets assigned to the Department or first ancestor of the Department.
+  """
+  department: ID
+  fiscalYear: FiscalYearWhereInput
 }
 
 extend type Query {

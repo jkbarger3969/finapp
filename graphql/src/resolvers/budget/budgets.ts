@@ -3,11 +3,11 @@ import { ObjectId } from "mongodb";
 import {
   BudgetsWhereInput as Where,
   BudgetsWhereOwner,
-  BudgetsWhereYear,
+  FiscalYearWhereInput,
   QueryResolvers,
   BudgetOwnerType,
 } from "../../graphTypes";
-import { Context } from "../../types";
+import { Context, NodeValue } from "../../types";
 import filterQueryCreator, {
   FieldAndConditionGenerator,
   FieldAndCondition,
@@ -23,13 +23,34 @@ import {
 import { addId } from "../utils/mongoUtils";
 import { Returns as BudgetReturns } from "./budget";
 import { comparisonOpsMapper } from "../utils/filterQuery/operatorMapping/comparison";
+import { fieldAndCondGen as fiscalYearFieldAndCondGen } from "../fiscalYear/fiscalYears";
+import { GraphQLResolveInfo } from "graphql";
 
 const deptNode = new ObjectId("5dc4addacf96e166daaa008f");
 const bizNode = new ObjectId("5dc476becf96e166daa9fd0b");
 
-const parseWhereBudgetYear: Readonly<OpsParser<BudgetsWhereYear, Context>[]> = [
-  parseComparisonOps((opVal) => opVal),
-] as const;
+const parseWhereFiscalYear = async (
+  whereFiscalYear: FiscalYearWhereInput,
+  context: Context
+): Promise<FieldAndCondition> => {
+  const $match = await filterQueryCreator(
+    whereFiscalYear,
+    fiscalYearFieldAndCondGen,
+    context
+  );
+
+  const fiscalYearIds: ObjectId[] = (
+    await context.db
+      .collection("fiscalYears")
+      .aggregate<{ _id: ObjectId }>([{ $match }, { $project: { _id: true } }])
+      .toArray()
+  ).map(({ _id }) => _id);
+
+  return {
+    field: "fiscalYear",
+    condition: { $in: fiscalYearIds },
+  };
+};
 
 export type Returns = BudgetReturns[];
 
@@ -151,6 +172,99 @@ const parseWhereBudgetId: Readonly<OpsParser<Where, Context>[]> = [
   }),
 ] as const;
 
+const parseWhereDepartment = async (
+  deptId: Where["department"],
+  context: Context
+): Promise<FieldAndCondition> => {
+  const fiscalYears = (
+    await context.db
+      .collection("fiscalYears")
+      .find<{ _id: ObjectId }>({}, { projection: { _id: true } })
+      .toArray()
+  ).reduce(
+    (fiscalYears, { _id }) => fiscalYears.add(_id.toHexString()),
+    new Set<string>()
+  );
+
+  const deptBudgets: ObjectId[] = [];
+
+  let node = deptNode;
+  let id = new ObjectId(deptId);
+
+  await context.db
+    .collection("budgets")
+    .find<{
+      _id: ObjectId;
+      fiscalYear: ObjectId;
+    }>(
+      {
+        $and: [
+          { "owner.node": { $eq: node } },
+          { "owner.id": { $eq: id } },
+          {
+            fiscalYear: {
+              $in: Array.from(fiscalYears).map((id) => new ObjectId(id)),
+            },
+          },
+        ],
+      },
+      { projection: { _id: true, fiscalYear: true } }
+    )
+    .forEach(({ _id, fiscalYear }) => {
+      fiscalYears.delete(fiscalYear.toHexString());
+      deptBudgets.push(_id);
+    });
+
+  while (fiscalYears.size > 0 && node.equals(deptId)) {
+    const result = (
+      await context.db
+        .collection("departments")
+        .find<{ parent: NodeValue }>(
+          { _id: id },
+          { projection: { parent: true } }
+        )
+        .toArray()
+    )[0];
+
+    if (!result) {
+      break;
+    }
+
+    ({
+      parent: { id, node },
+    } = result);
+
+    await context.db
+      .collection("budgets")
+      .find<{
+        _id: ObjectId;
+        fiscalYear: ObjectId;
+      }>(
+        {
+          $and: [
+            { "owner.node": { $eq: node } },
+            { "owner.id": { $eq: id } },
+            {
+              fiscalYear: {
+                $in: Array.from(fiscalYears).map((id) => new ObjectId(id)),
+              },
+            },
+          ],
+        },
+        { projection: { _id: true, fiscalYear: true } }
+      )
+      .forEach(({ _id, fiscalYear }) => {
+        fiscalYears.delete(fiscalYear.toHexString());
+        deptBudgets.push(_id);
+      });
+  }
+
+  return {
+    field: "$and",
+    condition: [{ _id: { $in: deptBudgets } }],
+  } as const;
+};
+
 const fieldConditionGenerator: FieldAndConditionGenerator<
   Where,
   Context
@@ -179,19 +293,16 @@ const fieldConditionGenerator: FieldAndConditionGenerator<
           );
         }
         break;
-      case "year": {
-        const condition = await parseOps(
-          false,
-          iterateOwnKeyValues(value as Where[typeof key]),
-          parseWhereBudgetYear,
-          opts
-        );
-        yield {
-          field: "year",
-          condition,
-        };
+      case "fiscalYear":
+        if (value) {
+          yield parseWhereFiscalYear(value as Where[typeof key], opts);
+        }
         break;
-      }
+      case "department":
+        if (value) {
+          yield parseWhereDepartment(value as Where[typeof key], opts);
+        }
+        break;
     }
   }
 
@@ -225,6 +336,7 @@ const budgets: QueryResolvers["budgets"] = async (
         fieldConditionGenerator,
         context
       );
+
       pipeline.push({ $match });
     })(),
   ]);

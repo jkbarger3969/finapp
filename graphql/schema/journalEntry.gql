@@ -8,8 +8,13 @@ type JournalEntry {
   refunds: [JournalEntryRefund!]!
   items: [JournalEntryItem!]!
   type: JournalEntryType!
+  """
+  ISO 8601
+  """
   date: String!
   department: Department!
+  budget: Budget!
+  fiscalYear: FiscalYear!
   category: JournalEntryCategory!
   paymentMethod: PaymentMethod!
   description: String
@@ -32,6 +37,9 @@ input JournalEntrySourceInput {
 }
 
 input JournalEntryUpdateFields {
+  """
+  ISO 8601
+  """
   date: String
   department: ID
   type: JournalEntryType
@@ -44,6 +52,9 @@ input JournalEntryUpdateFields {
 }
 
 input JournalEntryAddFields {
+  """
+  ISO 8601
+  """
   date: String!
   department: ID!
   type: JournalEntryType!
@@ -58,6 +69,9 @@ input JournalEntryAddFields {
 # Refunds
 type JournalEntryRefund {
   id: ID!
+  """
+  ISO 8601
+  """
   date: String!
   description: String
   paymentMethod: PaymentMethod!
@@ -68,6 +82,9 @@ type JournalEntryRefund {
 }
 
 input JournalEntryAddRefundFields {
+  """
+  ISO 8601
+  """
   date: String!
   description: String
   paymentMethod: ID!
@@ -76,6 +93,9 @@ input JournalEntryAddRefundFields {
 }
 
 input JournalEntryUpdateRefundFields {
+  """
+  ISO 8601
+  """
   date: String
   description: String
   paymentMethod: ID
@@ -155,6 +175,9 @@ input JournalEntiresWhereInput {
   ne: ID
   in: [ID!]
   nin: [ID!]
+  """
+  ISO 8601
+  """
   date: WhereDate
   department: JournalEntriesWhereDepartment
   category: JournalEntriesWhereCategory

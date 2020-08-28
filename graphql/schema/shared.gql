@@ -39,6 +39,9 @@ input WhereRegexInput {
 }
 
 input WhereDateTime {
+  """
+  ISO 8601
+  """
   date: String!
   ignoreTime: Boolean
 }

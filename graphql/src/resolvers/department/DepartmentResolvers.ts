@@ -24,12 +24,7 @@ const budgets: TDepartmentResolvers["budgets"] = (doc, args, context, info) => {
     doc,
     {
       where: {
-        owner: {
-          eq: {
-            id: doc.id,
-            type: BudgetOwnerType.Department,
-          },
-        },
+        department: doc.id,
       },
     },
     context,
