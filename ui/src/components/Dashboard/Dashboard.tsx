@@ -15,15 +15,19 @@ import CardHeader from "@material-ui/core/CardHeader";
 import CardContent from "@material-ui/core/CardContent";
 import numeral from "numeral";
 import { red, green, orange, grey } from "@material-ui/core/colors";
-import { Color } from "@material-ui/core";
+import { Color, FormControl, InputLabel } from "@material-ui/core";
 import gql from "graphql-tag";
 import Fraction from "fraction.js";
+import { Select, SelectProps } from "@material-ui/core";
+import { MenuItem } from "@material-ui/core";
 
 import {
   GetReportDataQuery,
   GetReportDataQueryVariables,
   JournalEntryType,
   OnEntryUpsert_2Subscription as OnEntryUpsert,
+  GetReportDataDept_1Fragment as DepartmentFragment,
+  FiscalYear,
 } from "../../apollo/graphTypes";
 import {
   GET_REPORT_DATA,
@@ -62,7 +66,7 @@ const BudgetMeter = (props: { spentPercentage: number; height: number }) => {
   );
 };
 
-interface DeptReportObj {
+interface DeptReport {
   name: string;
   spent: Fraction;
   budget: Fraction | null;
@@ -169,9 +173,25 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     });
   }, [deptId, subscribeToMore]);
 
+  const [year, setYear] = useState<Date>(new Date(new Date().toDateString()));
+
+  const fiscalYear = useMemo<null | FiscalYear>(() => {
+    for (const fiscalYear of data?.fiscalYears || []) {
+      if (
+        year >= new Date(fiscalYear.begin) &&
+        year <= new Date(fiscalYear.end)
+      ) {
+        return fiscalYear;
+      }
+    }
+    return null;
+  }, [year, data]);
+
   const entries = useMemo(() => {
-    return (data?.journalEntries || []).filter((entry) => !entry.deleted);
-  }, [data]);
+    return (data?.journalEntries || []).filter(
+      (entry) => !entry.deleted && fiscalYear?.id === entry.fiscalYear.id
+    );
+  }, [data, fiscalYear]);
   const deptName = data?.department?.name || "";
 
   useEffect(() => {
@@ -184,34 +204,38 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     totalRemaining,
     budget,
     spentToBudgetRatio,
-    deptReport,
-  } = useMemo(() => {
+    deptReports,
+    uBudget,
+  } = useMemo<{
+    totalRemaining: string;
+    budget: string;
+    spentToBudgetRatio: number;
+    deptReports: Map<string, DeptReport>;
+    uBudget: Fraction;
+  }>(() => {
     // Generate department report objects
-    const deptReport = new Map<string, DeptReportObj>();
-    let subDeptBudgetAg = new Fraction(0);
+    const deptReports = new Map<string, DeptReport>();
+
+    let uBudget = new Fraction(0);
+    let uSpent = new Fraction(0);
+
+    const depts: (GetReportDataQuery["department"] | DepartmentFragment)[] = [];
 
     if (department) {
-      const budget = department.budgets[0]
-        ? rationalToFraction(department.budgets[0].amount)
-        : null;
+      depts.push(department, ...department.descendants);
+      for (const dept of depts) {
+        const amount =
+          dept.budgets.find((b) => b.fiscalYear.id === fiscalYear?.id)
+            ?.amount ?? null;
 
-      deptReport.set(department.id, {
-        name: department.name,
-        spent: new Fraction(0),
-        budget,
-      });
-
-      for (const subDept of department.descendants) {
         let budget: null | Fraction = null;
-
-        if (subDept.budgets[0]) {
-          const subBudget = rationalToFraction(subDept.budgets[0].amount);
-          subDeptBudgetAg = subDeptBudgetAg.add(subBudget);
-          budget = subBudget;
+        if (amount) {
+          budget = rationalToFraction(amount);
+          uBudget = uBudget.add(budget);
         }
 
-        deptReport.set(subDept.id, {
-          name: subDept.name,
+        deptReports.set(dept.id, {
+          name: dept.name,
           spent: new Fraction(0),
           budget,
         });
@@ -219,18 +243,17 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     }
 
     // Calculating aggregate depts and credits
-    let spent = new Fraction(0);
     for (const entry of entries) {
       if (entry.deleted) {
         continue;
       }
-      const deptReportObj = deptReport.get(
-        entry.department.id
-      ) as DeptReportObj;
+      const deptReport = deptReports.get(entry.department.id) as DeptReport;
 
       let entryTotal = rationalToFraction(entry.total);
 
-      // Aggregate refunds
+      // BUG Story ID: CH58
+
+      // Aggregate Refunds
       for (const refund of entry.refunds) {
         if (refund.deleted) {
           continue;
@@ -238,41 +261,46 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
         entryTotal = entryTotal.sub(rationalToFraction(refund.total));
       }
 
+      // Itemization Adjustments
+      if (department) {
+        for (const item of entry.items) {
+          if (
+            item.deleted ||
+            !item.department ||
+            depts.some(({ id }) => id === item.department?.id)
+          ) {
+            continue;
+          }
+
+          // Item has been applied  to another department budget.
+          entryTotal = entryTotal.sub(rationalToFraction(item.total));
+        }
+      }
+
       if (entry.type === JournalEntryType.Credit) {
-        spent = spent.sub(entryTotal);
-        deptReportObj.spent = deptReportObj.spent.sub(entryTotal);
+        uSpent = uSpent.sub(entryTotal);
+        deptReport.spent = deptReport.spent.sub(entryTotal);
       } else {
-        spent = spent.add(entryTotal);
-        deptReportObj.spent = deptReportObj.spent.add(entryTotal);
+        uSpent = uSpent.add(entryTotal);
+        deptReport.spent = deptReport.spent.add(entryTotal);
       }
     }
 
-    // Format values
-    const budgetF = department?.budgets[0]
-      ? rationalToFraction(department.budgets[0].amount)
-      : subDeptBudgetAg;
-
-    const totalRemaining = numeral(budgetF.sub(spent).valueOf()).format(
-      "$0,0.00"
-    );
-    const budget = numeral(budgetF.valueOf()).format("$0,0.00");
-    const spentToBudgetRatio =
-      budgetF.n === 0 ? new Fraction(1) : spent.div(budgetF);
-
     return {
-      totalRemaining,
-      budget,
-      spentToBudgetRatio,
-      deptReport,
+      totalRemaining: numeral(uBudget.sub(uSpent).valueOf()).format("$0,0.00"),
+      budget: numeral(uBudget.valueOf()).format("$0,0.00"),
+      spentToBudgetRatio: uBudget.n === 0 ? 1 : uSpent.div(uBudget).valueOf(),
+      deptReports,
+      uBudget,
     };
   }, [entries, department]);
 
   const subDeptCards = useMemo(() => {
     const subDeptCards: JSX.Element[] = [];
 
-    for (const [id, { budget, spent, name }] of deptReport) {
+    for (const [id, { budget, spent, name }] of deptReports) {
       // Do not include root department
-      if (id === department?.id) {
+      if (id === department?.id && budget?.equals(uBudget)) {
         continue;
       }
 
@@ -287,7 +315,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
             />
             <CardContent>
               {(() => {
-                if (budget === null) {
+                if (budget === null || budget.n === 0) {
                   return (
                     <Box
                       color={
@@ -308,12 +336,11 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
 
                 const totalRemaining = budget.sub(spent);
 
+                const spentToBudgetRatio = spent.div(budget).valueOf();
+
                 return (
                   <React.Fragment>
-                    <Box
-                      color={colorMeter(spent.div(budget).valueOf(), 900)}
-                      clone
-                    >
+                    <Box color={colorMeter(spentToBudgetRatio, 900)} clone>
                       <Typography variant="h6">{`${numeral(
                         totalRemaining.valueOf()
                       ).format("$0,0.00")} Remaining`}</Typography>
@@ -322,7 +349,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
                       budget.valueOf()
                     ).format("$0,0.00")}`}</Typography>
                     <BudgetMeter
-                      spentPercentage={spent.div(budget).valueOf()}
+                      spentPercentage={spentToBudgetRatio}
                       height={5}
                     />
                   </React.Fragment>
@@ -337,11 +364,52 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     }
 
     return subDeptCards;
-  }, [deptReport, department]);
+  }, [deptReports, department, uBudget]);
 
   const onClickAddEntry = useCallback(() => setAddEntryOpen(true), [
     setAddEntryOpen,
   ]);
+
+  const fiscalYearSelect = useMemo<JSX.Element>(() => {
+    const onChange: SelectProps["onChange"] = (event) => {
+      const value = event.target.value as string;
+      if (value) {
+        for (const fiscalYear of data?.fiscalYears || []) {
+          if (fiscalYear.id === value) {
+            setYear(new Date(fiscalYear.begin));
+            return;
+          }
+        }
+      }
+    };
+
+    return (
+      <Box minWidth={120} clone>
+        <FormControl variant="outlined">
+          <InputLabel>Fiscal Year</InputLabel>
+          <Select
+            label="Fiscal Year<"
+            variant="outlined"
+            value={fiscalYear?.id || ""}
+            onChange={onChange}
+          >
+            {(data?.fiscalYears || [])
+              .sort(
+                (a, b) =>
+                  new Date(a.begin).getTime() - new Date(b.begin).getTime()
+              )
+              .map((fiscalYear) => {
+                return (
+                  <MenuItem key={fiscalYear.id} value={fiscalYear.id}>
+                    {fiscalYear.name}
+                  </MenuItem>
+                );
+              })}
+          </Select>
+        </FormControl>
+      </Box>
+    );
+  }, [data, setYear, fiscalYear]);
 
   if (isLoading) {
     return <p>Loading...</p>;
@@ -367,8 +435,9 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
             </Grid>
             <Grid item>
               <Button
+                disabled={!fiscalYear}
                 component={Link}
-                to={`/journal/${deptId}/reconcile`}
+                to={`/journal/${deptId}/${fiscalYear?.id || ""}/reconcile`}
                 variant="contained"
                 startIcon={<DoneAllIcon />}
               >
@@ -382,14 +451,16 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
             </Grid>
             <Grid item>
               <Button
+                disabled={!fiscalYear}
                 component={Link}
-                to={`/journal/${deptId}`}
+                to={`/journal/${deptId}/${fiscalYear?.id || ""}`}
                 variant="contained"
                 startIcon={<TableChartIcon />}
               >
                 Journal
               </Button>
             </Grid>
+            <Grid item>{fiscalYearSelect}</Grid>
           </Grid>
         </Box>
         <Box flexGrow={1} overflow="auto">

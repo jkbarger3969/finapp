@@ -12,6 +12,7 @@ import gql from "graphql-tag";
 
 const DashBoardRender = () => {
   const { id } = useParams();
+
   return id ? <Dashboard deptId={id} /> : <div>Error: No Dept ID!</div>;
 };
 
@@ -26,7 +27,7 @@ const DEPARTMENT_NAME = gql`
 `;
 
 const JournalViewRender = () => {
-  const { id } = useParams();
+  const { id, year } = useParams();
   const { data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
     variables: { id },
   });
@@ -34,12 +35,17 @@ const JournalViewRender = () => {
     ? data.department.name
     : undefined;
   return (
-    <Journal mode={JournalMode.View} deptId={id} journalTitle={journalTitle} />
+    <Journal
+      mode={JournalMode.View}
+      deptId={id}
+      fiscalYearId={year}
+      journalTitle={journalTitle}
+    />
   );
 };
 
 const JournalReconcileRender = () => {
-  const { id } = useParams();
+  const { id, year } = useParams();
   const { data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
     variables: { id },
   });
@@ -50,6 +56,7 @@ const JournalReconcileRender = () => {
     <Journal
       mode={JournalMode.Reconcile}
       deptId={id}
+      fiscalYearId={year}
       journalTitle={journalTitle}
     />
   );
@@ -61,10 +68,10 @@ const Routes = (): JSX.Element => {
       <Route exact path="/" component={TopNav} />
       <Route exact path="/department/:id" component={DashBoardRender} />
       <Route exact path="/journal" component={Journal} />
-      <Route exact path="/journal/:id" component={JournalViewRender} />
+      <Route exact path="/journal/:id/:year" component={JournalViewRender} />
       <Route
         exact
-        path="/journal/:id/reconcile"
+        path="/journal/:id/:year/reconcile"
         component={JournalReconcileRender}
       />
     </Switch>

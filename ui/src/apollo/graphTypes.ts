@@ -20,7 +20,7 @@ export type Budget = {
   id: Scalars['ID'];
   amount: Rational;
   owner: BudgetOwner;
-  year: Scalars['Int'];
+  fiscalYear: FiscalYear;
 };
 
 export type BudgetOwner = Department | Business;
@@ -45,7 +45,9 @@ export type BudgetsWhereInput = {
   nor?: Maybe<Array<BudgetsWhereInput>>;
   amount?: Maybe<WhereRational>;
   owner?: Maybe<BudgetsWhereOwner>;
-  year?: Maybe<BudgetsWhereYear>;
+  /** Match Budgets assigned to the Department or first ancestor of the Department. */
+  department?: Maybe<Scalars['ID']>;
+  fiscalYear?: Maybe<FiscalYearWhereInput>;
 };
 
 export type BudgetsWhereOwner = {
@@ -53,17 +55,6 @@ export type BudgetsWhereOwner = {
   ne?: Maybe<BudgetOwnerInput>;
   in?: Maybe<Array<BudgetOwnerInput>>;
   nin?: Maybe<Array<BudgetOwnerInput>>;
-};
-
-export type BudgetsWhereYear = {
-  eq?: Maybe<Scalars['Int']>;
-  ne?: Maybe<Scalars['Int']>;
-  in?: Maybe<Array<Scalars['Int']>>;
-  nin?: Maybe<Array<Scalars['Int']>>;
-  gt?: Maybe<Scalars['Int']>;
-  lt?: Maybe<Scalars['Int']>;
-  gte?: Maybe<Scalars['Int']>;
-  lte?: Maybe<Scalars['Int']>;
 };
 
 export type Business = {
@@ -104,6 +95,10 @@ export type Department = {
   id: Scalars['ID'];
   name: Scalars['String'];
   code?: Maybe<Scalars['String']>;
+  /**
+   * Budgets are the FIRST Budget per FiscalYear assigned to
+   * the Department or an ancestor of the Department.
+   */
   budgets: Array<Budget>;
   business: Business;
   parent: DepartmentAncestor;
@@ -152,12 +147,42 @@ export enum FilterType {
   Exclude = 'EXCLUDE'
 }
 
+export type FiscalYear = {
+  __typename?: 'FiscalYear';
+  id: Scalars['ID'];
+  name: Scalars['String'];
+  begin: Scalars['String'];
+  end: Scalars['String'];
+};
+
+export type FiscalYearWhereHasDate = {
+  eq?: Maybe<Scalars['String']>;
+  ne?: Maybe<Scalars['String']>;
+  in?: Maybe<Array<Scalars['String']>>;
+  nin?: Maybe<Array<Scalars['String']>>;
+};
+
+export type FiscalYearWhereInput = {
+  eq?: Maybe<Scalars['ID']>;
+  ne?: Maybe<Scalars['ID']>;
+  in?: Maybe<Array<Scalars['ID']>>;
+  nin?: Maybe<Array<Scalars['ID']>>;
+  name?: Maybe<WhereRegexInput>;
+  /** A FiscalYear is the set of all dates in the interval [begin, end]. */
+  hasDate?: Maybe<FiscalYearWhereHasDate>;
+  and?: Maybe<Array<FiscalYearWhereInput>>;
+  or?: Maybe<Array<FiscalYearWhereInput>>;
+  nor?: Maybe<Array<FiscalYearWhereInput>>;
+};
+
 export type JournalEntiresWhereInput = {
   eq?: Maybe<Scalars['ID']>;
   ne?: Maybe<Scalars['ID']>;
   in?: Maybe<Array<Scalars['ID']>>;
   nin?: Maybe<Array<Scalars['ID']>>;
+  /** ISO 8601 */
   date?: Maybe<WhereDate>;
+  fiscalYear?: Maybe<JournalEntriesWhereFiscalYear>;
   department?: Maybe<JournalEntriesWhereDepartment>;
   category?: Maybe<JournalEntriesWhereCategory>;
   source?: Maybe<JournalEntriesWhereSource>;
@@ -192,6 +217,13 @@ export type JournalEntriesWhereDepartment = {
   nin?: Maybe<Array<WhereTreeNodeInput>>;
 };
 
+export type JournalEntriesWhereFiscalYear = {
+  eq?: Maybe<Scalars['ID']>;
+  ne?: Maybe<Scalars['ID']>;
+  in?: Maybe<Array<Scalars['ID']>>;
+  nin?: Maybe<Array<Scalars['ID']>>;
+};
+
 export type JournalEntriesWherePaymentMethod = {
   eq?: Maybe<WhereTreeNodeInput>;
   ne?: Maybe<WhereTreeNodeInput>;
@@ -212,8 +244,11 @@ export type JournalEntry = {
   refunds: Array<JournalEntryRefund>;
   items: Array<JournalEntryItem>;
   type: JournalEntryType;
+  /** ISO 8601 */
   date: Scalars['String'];
   department: Department;
+  budget: Budget;
+  fiscalYear: FiscalYear;
   category: JournalEntryCategory;
   paymentMethod: PaymentMethod;
   description?: Maybe<Scalars['String']>;
@@ -225,6 +260,7 @@ export type JournalEntry = {
 };
 
 export type JournalEntryAddFields = {
+  /** ISO 8601 */
   date: Scalars['String'];
   department: Scalars['ID'];
   type: JournalEntryType;
@@ -245,6 +281,7 @@ export type JournalEntryAddItemFields = {
 };
 
 export type JournalEntryAddRefundFields = {
+  /** ISO 8601 */
   date: Scalars['String'];
   description?: Maybe<Scalars['String']>;
   paymentMethod: Scalars['ID'];
@@ -313,6 +350,7 @@ export type JournalEntryItemUpsertResult = {
 export type JournalEntryRefund = {
   __typename?: 'JournalEntryRefund';
   id: Scalars['ID'];
+  /** ISO 8601 */
   date: Scalars['String'];
   description?: Maybe<Scalars['String']>;
   paymentMethod: PaymentMethod;
@@ -341,6 +379,7 @@ export enum JournalEntryType {
 }
 
 export type JournalEntryUpdateFields = {
+  /** ISO 8601 */
   date?: Maybe<Scalars['String']>;
   department?: Maybe<Scalars['ID']>;
   type?: Maybe<JournalEntryType>;
@@ -366,6 +405,7 @@ export type JournalEntryUpdatePaymentMethod = {
 };
 
 export type JournalEntryUpdateRefundFields = {
+  /** ISO 8601 */
   date?: Maybe<Scalars['String']>;
   description?: Maybe<Scalars['String']>;
   paymentMethod?: Maybe<Scalars['ID']>;
@@ -582,6 +622,8 @@ export type Query = {
   business: Business;
   departments: Array<Department>;
   department: Department;
+  fiscalYears: Array<FiscalYear>;
+  fiscalYear: FiscalYear;
   journalEntries: Array<JournalEntry>;
   journalEntry?: Maybe<JournalEntry>;
   journalEntryRefund?: Maybe<JournalEntryRefund>;
@@ -622,6 +664,16 @@ export type QueryDepartmentsArgs = {
 
 
 export type QueryDepartmentArgs = {
+  id: Scalars['ID'];
+};
+
+
+export type QueryFiscalYearsArgs = {
+  where?: Maybe<FiscalYearWhereInput>;
+};
+
+
+export type QueryFiscalYearArgs = {
   id: Scalars['ID'];
 };
 
@@ -744,6 +796,7 @@ export type WhereDate = {
 };
 
 export type WhereDateTime = {
+  /** ISO 8601 */
   date: Scalars['String'];
   ignoreTime?: Maybe<Scalars['Boolean']>;
 };
@@ -794,9 +847,9 @@ export type OnEntryUpsert_2Subscription = { __typename?: 'Subscription', journal
     & GetReportDataEntry_1Fragment
   ) };
 
-export type GetReportDataDept_1Fragment = { __typename: 'Department', id: string, name: string, budgets: Array<{ __typename: 'Budget', id: string, amount: { __typename?: 'Rational', n: number, d: number, s: RationalSign } }> };
+export type GetReportDataDept_1Fragment = { __typename: 'Department', id: string, name: string, budgets: Array<{ __typename: 'Budget', id: string, amount: { __typename?: 'Rational', n: number, d: number, s: RationalSign }, fiscalYear: { __typename: 'FiscalYear', id: string } }> };
 
-export type GetReportDataEntry_1Fragment = { __typename: 'JournalEntry', id: string, type: JournalEntryType, lastUpdate: string, deleted: boolean, category: { __typename: 'JournalEntryCategory', id: string, name: string }, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign }, department: { __typename: 'Department', id: string, ancestors: Array<{ __typename: 'Department', id: string } | { __typename: 'Business', id: string }> }, refunds: Array<{ __typename: 'JournalEntryRefund', id: string, deleted: boolean, lastUpdate: string, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign } }> };
+export type GetReportDataEntry_1Fragment = { __typename: 'JournalEntry', id: string, type: JournalEntryType, lastUpdate: string, deleted: boolean, category: { __typename: 'JournalEntryCategory', id: string, name: string }, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign }, fiscalYear: { __typename: 'FiscalYear', id: string }, department: { __typename: 'Department', id: string, ancestors: Array<{ __typename: 'Department', id: string } | { __typename: 'Business', id: string }> }, refunds: Array<{ __typename: 'JournalEntryRefund', id: string, deleted: boolean, lastUpdate: string, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign } }>, items: Array<{ __typename: 'JournalEntryItem', id: string, deleted: boolean, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign }, department?: Maybe<{ __typename: 'Department', id: string }> }> };
 
 export type GetReportDataQueryVariables = Exact<{
   deptId: Scalars['ID'];
@@ -813,7 +866,7 @@ export type GetReportDataQuery = { __typename?: 'Query', department: (
   ), journalEntries: Array<(
     { __typename?: 'JournalEntry' }
     & GetReportDataEntry_1Fragment
-  )> };
+  )>, fiscalYears: Array<{ __typename: 'FiscalYear', id: string, name: string, begin: string, end: string }> };
 
 export type JournalEntryAdded_2SubscriptionVariables = Exact<{ [key: string]: never; }>;
 
@@ -903,7 +956,7 @@ export type JournalEntries_1QueryVariables = Exact<{
 export type JournalEntries_1Query = { __typename?: 'Query', journalEntries: Array<(
     { __typename?: 'JournalEntry' }
     & JournalEntry_1Fragment
-  )> };
+  )>, fiscalYears: Array<{ __typename: 'FiscalYear', id: string, name: string, begin: string, end: string }> };
 
 export type JournalEntryAdded_1SubscriptionVariables = Exact<{ [key: string]: never; }>;
 
@@ -1270,19 +1323,21 @@ export type ResolversTypes = {
   BudgetsWhereOwner: BudgetsWhereOwner;
   BudgetOwnerInput: BudgetOwnerInput;
   BudgetOwnerType: BudgetOwnerType;
-  BudgetsWhereYear: BudgetsWhereYear;
+  FiscalYearWhereInput: FiscalYearWhereInput;
+  WhereRegexInput: WhereRegexInput;
+  String: ResolverTypeWrapper<Scalars['String']>;
+  RegexOptions: RegexOptions;
+  FiscalYearWhereHasDate: FiscalYearWhereHasDate;
   Budget: ResolverTypeWrapper<Omit<Budget, 'owner'> & { owner: ResolversTypes['BudgetOwner'] }>;
   Rational: ResolverTypeWrapper<Rational>;
   BudgetOwner: ResolversTypes['Department'] | ResolversTypes['Business'];
   Department: ResolverTypeWrapper<Omit<Department, 'parent' | 'ancestors'> & { parent: ResolversTypes['DepartmentAncestor'], ancestors: Array<ResolversTypes['DepartmentAncestor']> }>;
-  String: ResolverTypeWrapper<Scalars['String']>;
   Business: ResolverTypeWrapper<Business>;
   Vendor: ResolverTypeWrapper<Vendor>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']>;
   DepartmentAncestor: ResolversTypes['Department'] | ResolversTypes['Business'];
+  FiscalYear: ResolverTypeWrapper<FiscalYear>;
   BusinessesWhereInput: BusinessesWhereInput;
-  WhereRegexInput: WhereRegexInput;
-  RegexOptions: RegexOptions;
   DepartmentsWhereInput: DepartmentsWhereInput;
   DepartmentsWhereAncestor: DepartmentsWhereAncestor;
   DepartmentAncestorInput: DepartmentAncestorInput;
@@ -1290,6 +1345,7 @@ export type ResolversTypes = {
   JournalEntiresWhereInput: JournalEntiresWhereInput;
   WhereDate: WhereDate;
   WhereDateTime: WhereDateTime;
+  JournalEntriesWhereFiscalYear: JournalEntriesWhereFiscalYear;
   JournalEntriesWhereDepartment: JournalEntriesWhereDepartment;
   WhereTreeNodeInput: WhereTreeNodeInput;
   JournalEntriesWhereCategory: JournalEntriesWhereCategory;
@@ -1353,24 +1409,27 @@ export type ResolversParentTypes = {
   Int: Scalars['Int'];
   BudgetsWhereOwner: BudgetsWhereOwner;
   BudgetOwnerInput: BudgetOwnerInput;
-  BudgetsWhereYear: BudgetsWhereYear;
+  FiscalYearWhereInput: FiscalYearWhereInput;
+  WhereRegexInput: WhereRegexInput;
+  String: Scalars['String'];
+  FiscalYearWhereHasDate: FiscalYearWhereHasDate;
   Budget: Omit<Budget, 'owner'> & { owner: ResolversParentTypes['BudgetOwner'] };
   Rational: Rational;
   BudgetOwner: ResolversParentTypes['Department'] | ResolversParentTypes['Business'];
   Department: Omit<Department, 'parent' | 'ancestors'> & { parent: ResolversParentTypes['DepartmentAncestor'], ancestors: Array<ResolversParentTypes['DepartmentAncestor']> };
-  String: Scalars['String'];
   Business: Business;
   Vendor: Vendor;
   Boolean: Scalars['Boolean'];
   DepartmentAncestor: ResolversParentTypes['Department'] | ResolversParentTypes['Business'];
+  FiscalYear: FiscalYear;
   BusinessesWhereInput: BusinessesWhereInput;
-  WhereRegexInput: WhereRegexInput;
   DepartmentsWhereInput: DepartmentsWhereInput;
   DepartmentsWhereAncestor: DepartmentsWhereAncestor;
   DepartmentAncestorInput: DepartmentAncestorInput;
   JournalEntiresWhereInput: JournalEntiresWhereInput;
   WhereDate: WhereDate;
   WhereDateTime: WhereDateTime;
+  JournalEntriesWhereFiscalYear: JournalEntriesWhereFiscalYear;
   JournalEntriesWhereDepartment: JournalEntriesWhereDepartment;
   WhereTreeNodeInput: WhereTreeNodeInput;
   JournalEntriesWhereCategory: JournalEntriesWhereCategory;
@@ -1423,7 +1482,7 @@ export type BudgetResolvers<ContextType = Context, ParentType extends ResolversP
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   amount?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>;
   owner?: Resolver<ResolversTypes['BudgetOwner'], ParentType, ContextType>;
-  year?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
@@ -1457,6 +1516,14 @@ export type DepartmentAncestorResolvers<ContextType = Context, ParentType extend
   __resolveType: TypeResolveFn<'Department' | 'Business', ParentType, ContextType>;
 };
 
+export type FiscalYearResolvers<ContextType = Context, ParentType extends ResolversParentTypes['FiscalYear'] = ResolversParentTypes['FiscalYear']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  begin?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  end?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType>;
+};
+
 export type JournalEntryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['JournalEntry'] = ResolversParentTypes['JournalEntry']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   refunds?: Resolver<Array<ResolversTypes['JournalEntryRefund']>, ParentType, ContextType>;
@@ -1464,6 +1531,8 @@ export type JournalEntryResolvers<ContextType = Context, ParentType extends Reso
   type?: Resolver<ResolversTypes['JournalEntryType'], ParentType, ContextType>;
   date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType>;
+  budget?: Resolver<ResolversTypes['Budget'], ParentType, ContextType>;
+  fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType>;
   category?: Resolver<ResolversTypes['JournalEntryCategory'], ParentType, ContextType>;
   paymentMethod?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType>;
   description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -1577,6 +1646,8 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>;
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentsArgs, never>>;
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
+  fiscalYears?: Resolver<Array<ResolversTypes['FiscalYear']>, ParentType, ContextType, RequireFields<QueryFiscalYearsArgs, never>>;
+  fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType, RequireFields<QueryFiscalYearArgs, 'id'>>;
   journalEntries?: Resolver<Array<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntriesArgs, never>>;
   journalEntry?: Resolver<Maybe<ResolversTypes['JournalEntry']>, ParentType, ContextType, RequireFields<QueryJournalEntryArgs, 'id'>>;
   journalEntryRefund?: Resolver<Maybe<ResolversTypes['JournalEntryRefund']>, ParentType, ContextType, RequireFields<QueryJournalEntryRefundArgs, 'id'>>;
@@ -1625,6 +1696,7 @@ export type Resolvers<ContextType = Context> = {
   Business?: BusinessResolvers<ContextType>;
   Department?: DepartmentResolvers<ContextType>;
   DepartmentAncestor?: DepartmentAncestorResolvers;
+  FiscalYear?: FiscalYearResolvers<ContextType>;
   JournalEntry?: JournalEntryResolvers<ContextType>;
   JournalEntryCategory?: JournalEntryCategoryResolvers<ContextType>;
   JournalEntryItem?: JournalEntryItemResolvers<ContextType>;

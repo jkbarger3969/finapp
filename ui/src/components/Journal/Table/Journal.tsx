@@ -60,6 +60,7 @@ import {
   ReconcileEntryMutationVariables as ReconcileEntryVars,
   ReconcileRefundMutation as ReconcileRefund,
   ReconcileRefundMutationVariables as ReconcileRefundVars,
+  FiscalYear,
 } from "../../../apollo/graphTypes";
 import { JOURNAL_ENTRIES, JOURNAL_ENTRY_FRAGMENT } from "./JournalEntries.gql";
 import { CHECK_ID } from "../constants";
@@ -154,9 +155,15 @@ const RECONCILE_REFUND = gql`
 const Journal = (props: {
   journalTitle?: string;
   deptId?: string;
+  fiscalYearId?: string;
   mode: JournalMode;
 }): JSX.Element => {
-  const { deptId = null, journalTitle = null, mode } = props;
+  const {
+    journalTitle = null,
+    deptId = null,
+    fiscalYearId = null,
+    mode,
+  } = props;
 
   // Add Entry
   const [addEntryOpen, setAddEntryOpen] = useState<boolean>(false);
@@ -225,12 +232,30 @@ const Journal = (props: {
   >(RECONCILE_REFUND);
 
   const variables = useMemo<JournalEntriesQueryVars | undefined>(() => {
-    return deptId
-      ? {
-          where: { department: { eq: { id: deptId, matchDescendants: true } } },
-        }
-      : undefined;
-  }, [deptId]);
+    if (deptId && fiscalYearId) {
+      return {
+        where: {
+          department: { eq: { id: deptId, matchDescendants: true } },
+          fiscalYear: {
+            eq: fiscalYearId,
+          },
+        },
+      };
+    } else if (deptId) {
+      return {
+        where: { department: { eq: { id: deptId, matchDescendants: true } } },
+      };
+    } else if (fiscalYearId) {
+      return {
+        where: {
+          fiscalYear: {
+            eq: fiscalYearId,
+          },
+        },
+      };
+    }
+    return undefined;
+  }, [deptId, fiscalYearId]);
 
   const { loading, error, data, subscribeToMore } = useQuery<
     JournalEntriesQuery,
@@ -241,6 +266,14 @@ const Journal = (props: {
   });
 
   const isLoading = loading && !data?.journalEntries;
+
+  const fiscalYear = useMemo<null | FiscalYear>(
+    () =>
+      (data?.fiscalYears || []).find(
+        (fiscalYear) => fiscalYear.id === fiscalYearId
+      ) ?? null,
+    [fiscalYearId, data]
+  );
 
   // Subscribe to updates
   useEffect(() => {
@@ -267,13 +300,25 @@ const Journal = (props: {
             (entry) => entry.id !== upsertEntry.id
           );
 
-          if (journalEntriesFiltered.length === prev.journalEntries.length) {
-            return prev;
-          }
-
           return Object.assign({}, prev, {
             journalEntries: journalEntriesFiltered,
           });
+        }
+
+        if (fiscalYear) {
+          const date = new Date(upsertEntry.date);
+          if (
+            date < new Date(fiscalYear.begin) ||
+            date > new Date(fiscalYear.end)
+          ) {
+            // Filter entry out of query results if fiscal year changes.
+            const journalEntriesFiltered = prev.journalEntries.filter(
+              (entry) => entry.id !== upsertEntry.id
+            );
+            return Object.assign({}, prev, {
+              journalEntries: journalEntriesFiltered,
+            });
+          }
         }
 
         // Apollo will take care of updating if entry already exists in cache.
@@ -286,7 +331,7 @@ const Journal = (props: {
         });
       },
     });
-  }, [deptId, subscribeToMore]);
+  }, [deptId, fiscalYear, subscribeToMore]);
 
   const journalEntries = data?.journalEntries || [];
 
@@ -788,6 +833,8 @@ const Journal = (props: {
   const [aggregate, setAggregate] = useState<Fraction>(new Fraction(0));
 
   const title = useMemo(() => {
+    const year = fiscalYear?.name ? `${fiscalYear?.name} ` : "";
+
     const compare = aggregate.compare(new Fraction(0));
 
     const aggregateSpan = (
@@ -802,13 +849,18 @@ const Journal = (props: {
     if (journalTitle) {
       return (
         <Typography variant="h6">
-          {`${journalTitle}: `}
+          {`${year}${journalTitle}: `}
           {aggregateSpan}
         </Typography>
       );
     }
-    return <Typography variant="h6">{aggregateSpan}</Typography>;
-  }, [aggregate, journalTitle]);
+    return (
+      <Typography variant="h6">
+        {year}
+        {aggregateSpan}
+      </Typography>
+    );
+  }, [fiscalYear, aggregate, journalTitle]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tableRef = useRef<any>(null);
@@ -1062,13 +1114,46 @@ const Journal = (props: {
 
       const totalCount = raw.length;
 
-      const newAggregate = raw.reduce(
-        (aggregate: Fraction, entry: Entry) =>
-          entry.type === JournalEntryType.Credit
-            ? aggregate.add(rationalToFraction(entry.total))
-            : aggregate.sub(rationalToFraction(entry.total)),
-        new Fraction(0)
-      );
+      const newAggregate = (() => {
+        let newAggregate = new Fraction(0);
+
+        for (const entry of raw as Entry[]) {
+          if (entry.deleted) {
+            continue;
+          }
+
+          let entryTotal = rationalToFraction(entry.total);
+
+          // BUG Story ID: CH58
+          // Itemization Adjustments
+          if (deptId) {
+            for (const item of entry.items) {
+              if (
+                item.deleted ||
+                !item.department ||
+                item.department.id === deptId ||
+                item.department.ancestors.some(
+                  (dept) =>
+                    dept.__typename === "Department" && dept.id === deptId
+                )
+              ) {
+                continue;
+              }
+
+              // Item has been applied to another department budget.
+              entryTotal = entryTotal.sub(rationalToFraction(item.total));
+            }
+          }
+
+          if (entry.type === JournalEntryType.Credit) {
+            newAggregate = newAggregate.sub(entryTotal);
+          } else {
+            newAggregate = newAggregate.add(entryTotal);
+          }
+        }
+
+        return newAggregate;
+      })();
 
       if (aggregate.compare(newAggregate) !== 0) {
         setAggregate(newAggregate);
@@ -1080,7 +1165,7 @@ const Journal = (props: {
         totalCount,
       };
     },
-    [aggregate, entries, detailPanelState]
+    [aggregate, deptId, entries, detailPanelState]
   );
 
   useEffect(() => {

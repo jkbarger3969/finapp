@@ -13,6 +13,10 @@ export const GET_REPORT_DATA_DEPT_FRAGMENT = gql`
         d
         s
       }
+      fiscalYear {
+        __typename
+        id
+      }
     }
   }
 `;
@@ -31,6 +35,10 @@ export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
       n
       d
       s
+    }
+    fiscalYear {
+      __typename
+      id
     }
     department {
       __typename
@@ -56,6 +64,20 @@ export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
       deleted
       lastUpdate
     }
+    items {
+      __typename
+      id
+      total {
+        n
+        d
+        s
+      }
+      department {
+        __typename
+        id
+      }
+      deleted
+    }
     lastUpdate
     deleted
   }
@@ -71,6 +93,13 @@ export const GET_REPORT_DATA = gql`
     }
     journalEntries(where:$where) {
       ...GetReportDataEntry_1Fragment
+    }
+    fiscalYears {
+      __typename
+      id
+      name
+      begin
+      end
     }
   }
   ${GET_REPORT_DATA_DEPT_FRAGMENT},
