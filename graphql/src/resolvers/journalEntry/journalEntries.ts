@@ -10,6 +10,7 @@ import {
   JournalEntry,
   JournalEntrySourceType,
   JournalEntriesWhereSource,
+  JournalEntriesWhereFiscalYear,
 } from "../../graphTypes";
 import { Context } from "../../types";
 
@@ -27,6 +28,7 @@ import {
 } from "../../utils/iterableFns";
 import gqlMongoRational from "../utils/filterQuery/gqlMongoRational";
 import { comparisonOpsMapper } from "../utils/filterQuery/operatorMapping/comparison";
+import { json } from "express";
 
 const deptNode = new ObjectId("5dc4addacf96e166daaa008f");
 const bizNode = new ObjectId("5dc476becf96e166daa9fd0b");
@@ -442,6 +444,113 @@ const parseWhereParentDept = function* (
   }
 };
 
+const parseWhereFiscalYear = async function* (
+  whereFiscalYearIter: Iterable<
+    [
+      keyof JournalEntriesWhereFiscalYear,
+      JournalEntriesWhereFiscalYear[keyof JournalEntriesWhereFiscalYear]
+    ]
+  >,
+  context: Context
+): AsyncIterableIterator<FieldAndCondition<unknown>> {
+  const fiscalYears = (
+    await context.db
+      .collection("fiscalYears")
+      .find<{
+        _id: ObjectId;
+        begin: Date;
+        end: Date;
+      }>({}, { projection: { _id: true, begin: true, end: true } })
+      .toArray()
+  ).reduce((fiscalYears, { _id, ...rest }) => {
+    fiscalYears.set(_id.toHexString(), rest);
+    return fiscalYears;
+  }, new Map<string, { begin: Date; end: Date }>());
+
+  for (const [op, opValue] of whereFiscalYearIter) {
+    switch (op) {
+      case "eq":
+        if (opValue) {
+          const { begin, end } = fiscalYears.get(
+            opValue as JournalEntriesWhereFiscalYear[typeof op]
+          );
+          yield {
+            field: "$and",
+            condition: [
+              {
+                "date.0.value": {
+                  $gte: begin,
+                  $lte: end,
+                },
+              },
+            ],
+          };
+        }
+        break;
+      case "ne":
+        if (opValue) {
+          const { begin, end } = fiscalYears.get(
+            opValue as JournalEntriesWhereFiscalYear[typeof op]
+          );
+          yield {
+            field: "$and",
+            condition: [
+              {
+                "date.0.value": {
+                  $not: {
+                    $gte: begin,
+                    $lte: end,
+                  },
+                },
+              },
+            ],
+          };
+        }
+        break;
+      case "in":
+        if (opValue) {
+          const condition = (opValue as JournalEntriesWhereFiscalYear[typeof op]).map(
+            (opValue) => {
+              const { begin, end } = fiscalYears.get(opValue);
+              return {
+                "date.0.value": {
+                  $gte: begin,
+                  $lte: end,
+                },
+              };
+            }
+          );
+          yield {
+            field: "$or",
+            condition,
+          };
+        }
+        break;
+      case "nin":
+        if (opValue) {
+          const condition = (opValue as JournalEntriesWhereFiscalYear[typeof op]).map(
+            (opValue) => {
+              const { begin, end } = fiscalYears.get(opValue);
+              return {
+                "date.0.value": {
+                  $not: {
+                    $gte: begin,
+                    $lte: end,
+                  },
+                },
+              };
+            }
+          );
+          yield {
+            field: "$and",
+            condition,
+          };
+        }
+        break;
+    }
+  }
+};
+
 const parseWhereJournalEntryId: Readonly<OpsParser<Where, Context>[]> = [
   parseComparisonOps<Where, Context>((opVal, op) => {
     switch (op) {
@@ -532,6 +641,14 @@ const fieldAndConditionGen: FieldAndConditionGenerator<
             field,
             condition,
           };
+        }
+        break;
+      case "fiscalYear":
+        if (value) {
+          yield* parseWhereFiscalYear(
+            iterateOwnKeyValues(value as Where[typeof key]),
+            opts
+          );
         }
         break;
       case "lastUpdate":

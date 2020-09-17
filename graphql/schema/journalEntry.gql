@@ -170,6 +170,13 @@ input JournalEntriesWherePaymentMethod {
   nin: [WhereTreeNodeInput!]
 }
 
+input JournalEntriesWhereFiscalYear {
+  eq: ID
+  ne: ID
+  in: [ID!]
+  nin: [ID!]
+}
+
 input JournalEntiresWhereInput {
   eq: ID
   ne: ID
@@ -179,6 +186,7 @@ input JournalEntiresWhereInput {
   ISO 8601
   """
   date: WhereDate
+  fiscalYear: JournalEntriesWhereFiscalYear
   department: JournalEntriesWhereDepartment
   category: JournalEntriesWhereCategory
   source: JournalEntriesWhereSource

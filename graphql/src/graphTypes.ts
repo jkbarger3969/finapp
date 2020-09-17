@@ -175,6 +175,7 @@ export type JournalEntiresWhereInput = {
   nin?: Maybe<Array<Scalars['ID']>>;
   /** ISO 8601 */
   date?: Maybe<WhereDate>;
+  fiscalYear?: Maybe<JournalEntriesWhereFiscalYear>;
   department?: Maybe<JournalEntriesWhereDepartment>;
   category?: Maybe<JournalEntriesWhereCategory>;
   source?: Maybe<JournalEntriesWhereSource>;
@@ -206,6 +207,13 @@ export type JournalEntriesWhereDepartment = {
   ne?: Maybe<WhereTreeNodeInput>;
   in?: Maybe<Array<WhereTreeNodeInput>>;
   nin?: Maybe<Array<WhereTreeNodeInput>>;
+};
+
+export type JournalEntriesWhereFiscalYear = {
+  eq?: Maybe<Scalars['ID']>;
+  ne?: Maybe<Scalars['ID']>;
+  in?: Maybe<Array<Scalars['ID']>>;
+  nin?: Maybe<Array<Scalars['ID']>>;
 };
 
 export type JournalEntriesWherePaymentMethod = {
@@ -900,6 +908,7 @@ export type ResolversTypes = {
   JournalEntiresWhereInput: JournalEntiresWhereInput;
   WhereDate: WhereDate;
   WhereDateTime: WhereDateTime;
+  JournalEntriesWhereFiscalYear: JournalEntriesWhereFiscalYear;
   JournalEntriesWhereDepartment: JournalEntriesWhereDepartment;
   WhereTreeNodeInput: WhereTreeNodeInput;
   JournalEntriesWhereCategory: JournalEntriesWhereCategory;
@@ -981,6 +990,7 @@ export type ResolversParentTypes = {
   JournalEntiresWhereInput: JournalEntiresWhereInput;
   WhereDate: WhereDate;
   WhereDateTime: WhereDateTime;
+  JournalEntriesWhereFiscalYear: JournalEntriesWhereFiscalYear;
   JournalEntriesWhereDepartment: JournalEntriesWhereDepartment;
   WhereTreeNodeInput: WhereTreeNodeInput;
   JournalEntriesWhereCategory: JournalEntriesWhereCategory;
