@@ -300,7 +300,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
 
     for (const [id, { budget, spent, name }] of deptReports) {
       // Do not include root department
-      if (id === department?.id && budget?.equals(uBudget)) {
+      if (id === department?.id && (!budget || budget.equals(uBudget))) {
         continue;
       }
 

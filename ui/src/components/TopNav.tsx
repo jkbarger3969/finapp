@@ -37,7 +37,7 @@ const DEPTS_FOR_NAV = gql`
 const TopNav = (props: Record<string, unknown>): JSX.Element => {
   const { loading, error, data } = useQuery<DeptsForNavQuery>(DEPTS_FOR_NAV);
 
-  const [value, setValue] = useState<string | null>(null);
+  const [value, setValue] = useState<string>("");
 
   const depts = data?.departments || [];
 
@@ -80,7 +80,7 @@ const TopNav = (props: Record<string, unknown>): JSX.Element => {
 
   const onChange = useCallback(
     (event?) => {
-      setValue(event?.target?.value || null);
+      setValue(event?.target?.value || "");
     },
     [setValue]
   );
