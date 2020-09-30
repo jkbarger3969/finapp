@@ -30,6 +30,8 @@ import submitAdd, { AddValues } from "./submitAdd";
 import {
   GetEntryItemState_1Query as GetEntryItemState,
   GetEntryItemState_1QueryVariables as GetEntryItemStateVars,
+  FiscalYearQuery,
+  FiscalYearQueryVariables,
 } from "../../../../apollo/graphTypes";
 import Description from "../EntryFields/Description";
 import Total from "../EntryFields/Total";
@@ -45,6 +47,8 @@ import OverlayLoading from "../../../utils/OverlayLoading";
 import Overlay from "../../../utils/Overlay";
 import { JOURNAL_FRAGMENT } from "./items.gql";
 import { rationalToFraction } from "../../../../utils/rational";
+import { ApolloError } from "apollo-client";
+import { FISCAL_YEAR } from "../upsertEntry.gql";
 
 const ENTRY_ITEM_STATE = gql`
   query GetEntryItemState_1($id: ID!) {
@@ -103,6 +107,33 @@ const AddItemDialog = (
       variables: { id: entryId as string },
       onError,
     }
+  );
+
+  const fiscalYearOnError = useCallback<
+    NonNullable<QueryHookOptions<FiscalYearQuery>["onError"]>
+  >(
+    (err: ApolloError) => {
+      setFormikStatus({ msg: err.message, type: FormikStatusType.FATAL_ERROR });
+    },
+    [setFormikStatus]
+  );
+
+  const date = data?.journalEntry?.date || "";
+
+  const { data: fiscalYearData } = useQuery<
+    FiscalYearQuery,
+    FiscalYearQueryVariables
+  >(FISCAL_YEAR, {
+    skip: !date,
+    variables: {
+      date,
+    },
+    onError: fiscalYearOnError,
+  });
+
+  const fiscalYearId = useMemo<string>(
+    () => fiscalYearData?.fiscalYears[0]?.id ?? "",
+    [fiscalYearData]
   );
 
   const type = data?.journalEntry?.type ?? null;
@@ -246,6 +277,7 @@ const AddItemDialog = (
               <Department
                 disabled={loading || isSubmitting || !!fatalError}
                 fullWidth
+                fiscalYearId={fiscalYearId}
               />
             </Grid>
           </Grid>

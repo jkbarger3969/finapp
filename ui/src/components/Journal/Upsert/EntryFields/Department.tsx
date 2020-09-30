@@ -73,10 +73,13 @@ const renderTags: AutocompleteProps["renderTags"] = (
 export type DepartmentProps = {
   variant?: "filled" | "outlined";
   autoFocus?: boolean;
+  fiscalYearId?: string;
 } & Omit<TextFieldProps, "value">;
 
 const Department = (props: DepartmentProps): JSX.Element => {
-  const { disabled: disabledFromProps = false, required } = props;
+  const { disabled: disabledFromProps = false, required, fiscalYearId } = props;
+
+  const fiscalYearRequired = typeof fiscalYearId === "string";
 
   const [formikStatus, setFormikStatus] = useFormikStatus();
 
@@ -112,6 +115,13 @@ const Department = (props: DepartmentProps): JSX.Element => {
           return "Department Required";
         }
         return;
+      } else if (fiscalYearRequired) {
+        if (
+          value.budgets.every((budget) => budget.fiscalYear.id !== fiscalYearId)
+        ) {
+          return "Department has no budget.";
+        }
+        return;
       } else if (
         depts.some(
           ({ parent }) =>
@@ -121,7 +131,7 @@ const Department = (props: DepartmentProps): JSX.Element => {
         return "Sub-department Required";
       }
     },
-    [depts, required]
+    [depts, required, fiscalYearRequired, fiscalYearId]
   );
 
   const [field, meta, helpers] = useField<DeptValue | null>({
@@ -132,6 +142,15 @@ const Department = (props: DepartmentProps): JSX.Element => {
   const { value: deptValue, onBlur: onBlurField } = field;
   const { error, touched } = meta;
   const { setValue } = helpers;
+
+  const hasBudget = useMemo(
+    () =>
+      !!deptValue &&
+      !deptValue.budgets.every(
+        (budget) => budget.fiscalYear.id !== fiscalYearId
+      ),
+    [deptValue]
+  );
 
   const idDeptMap = useMemo(
     () =>
@@ -178,6 +197,8 @@ const Department = (props: DepartmentProps): JSX.Element => {
       return error;
     } else if (gqlError) {
       return gqlError.message;
+    } else if (fiscalYearId === "") {
+      return "Department requires a date.";
     }
     return "";
   }, [error, touched, gqlError]);
@@ -187,8 +208,16 @@ const Department = (props: DepartmentProps): JSX.Element => {
       loading ||
       disableTextInput ||
       formikStatus?.type === FormikStatusType.FATAL_ERROR ||
+      disabledFromProps ||
+      (fiscalYearRequired && !fiscalYearId),
+    [
+      disableTextInput,
       disabledFromProps,
-    [disableTextInput, disabledFromProps, formikStatus, loading]
+      formikStatus,
+      loading,
+      fiscalYearRequired,
+      fiscalYearId,
+    ]
   );
 
   const renderInput = useCallback(
@@ -196,6 +225,7 @@ const Department = (props: DepartmentProps): JSX.Element => {
       return (
         <TextField
           {...props}
+          required={fiscalYearRequired ? !hasBudget : !!props.required}
           variant={props.variant || "filled"}
           {...params}
           error={touched && !!error}
@@ -206,7 +236,7 @@ const Department = (props: DepartmentProps): JSX.Element => {
         />
       );
     },
-    [props, touched, error, helperText, disabled]
+    [props, touched, error, helperText, disabled, fiscalYearRequired, hasBudget]
   );
 
   const onFocus = useCallback(() => setHasFocus(true), [setHasFocus]);
@@ -254,7 +284,7 @@ const Department = (props: DepartmentProps): JSX.Element => {
       value,
       renderInput,
       loading,
-      autoSelect: true,
+      autoSelect: false,
       multiple: true,
       getOptionLabel,
       onChange,

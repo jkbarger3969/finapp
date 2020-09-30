@@ -10,6 +10,7 @@ export const JOURNAL_FRAGMENT = gql`
       d
       s
     }
+    date
     items {
       id
       __typename
