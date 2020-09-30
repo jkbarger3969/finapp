@@ -1,4 +1,4 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 export declare type PresentValueExpression = {
     readonly $ifNull: [{
         readonly $arrayElemAt: [string, 0];
@@ -8,8 +8,8 @@ export declare type PresentValueProjection = {
     readonly [field: string]: PresentValueExpression;
 };
 export interface CreatedBy {
-    readonly node: ObjectID;
-    readonly id: ObjectID;
+    readonly node: ObjectId;
+    readonly id: ObjectId;
 }
 export interface HistoryObject<T> {
     readonly value: T;

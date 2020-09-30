@@ -40,7 +40,7 @@ const journalEntryUpdate = (obj, args, context, info) => __awaiter(void 0, void 
         throw new Error(`"businessAdd" and "personAdd" are mutually exclusive source creation arguments.`);
     }
     const { db, nodeMap, user, pubSub } = context;
-    const entryId = new mongodb_1.ObjectID(id);
+    const entryId = new mongodb_1.ObjectId(id);
     // Async validations
     // All async validation are run at once instead of in series.
     const asyncOps = [
@@ -115,7 +115,7 @@ const journalEntryUpdate = (obj, args, context, info) => __awaiter(void 0, void 
             const [result] = (yield db
                 .collection("journalEntries")
                 .aggregate([
-                { $match: { _id: new mongodb_1.ObjectID(id) } },
+                { $match: { _id: new mongodb_1.ObjectId(id) } },
                 utils_1.stages.refundTotals,
                 utils_1.stages.itemTotals,
             ])
@@ -142,14 +142,14 @@ const journalEntryUpdate = (obj, args, context, info) => __awaiter(void 0, void 
     if (departmentId) {
         asyncOps.push((() => __awaiter(void 0, void 0, void 0, function* () {
             const { collection, id: node } = nodeMap.typename.get("Department");
-            const id = new mongodb_1.ObjectID(departmentId);
+            const id = new mongodb_1.ObjectId(departmentId);
             if (!(yield db
                 .collection(collection)
                 .findOne({ _id: id }, { projection: { _id: true } }))) {
                 throw new Error(`Department with id ${departmentId} does not exist.`);
             }
             updateBuilder.updateField("department", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         }))());
@@ -158,14 +158,14 @@ const journalEntryUpdate = (obj, args, context, info) => __awaiter(void 0, void 
     if (categoryId) {
         asyncOps.push((() => __awaiter(void 0, void 0, void 0, function* () {
             const { collection, id: node } = nodeMap.typename.get("JournalEntryCategory");
-            const id = new mongodb_1.ObjectID(categoryId);
+            const id = new mongodb_1.ObjectId(categoryId);
             if (!(yield db
                 .collection(collection)
                 .findOne({ _id: id }, { projection: { _id: true } }))) {
                 throw new Error(`Category with id ${categoryId} does not exist.`);
             }
             updateBuilder.updateField("category", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         }))());
@@ -178,7 +178,7 @@ const journalEntryUpdate = (obj, args, context, info) => __awaiter(void 0, void 
             const { node } = utils_1.getSrcCollectionAndNode(db, graphTypes_1.JournalEntrySourceType.Business, nodeMap);
             updateBuilder.updateField("source", {
                 node,
-                id: new mongodb_1.ObjectID(id),
+                id: new mongodb_1.ObjectId(id),
             });
         })));
     }
@@ -189,7 +189,7 @@ const journalEntryUpdate = (obj, args, context, info) => __awaiter(void 0, void 
             const { node } = utils_1.getSrcCollectionAndNode(db, graphTypes_1.JournalEntrySourceType.Person, nodeMap);
             updateBuilder.updateField("source", {
                 node,
-                id: new mongodb_1.ObjectID(id),
+                id: new mongodb_1.ObjectId(id),
             });
         })));
     }
@@ -197,7 +197,7 @@ const journalEntryUpdate = (obj, args, context, info) => __awaiter(void 0, void 
         const { id: sourceId, sourceType } = source;
         asyncOps.push((() => __awaiter(void 0, void 0, void 0, function* () {
             const { collection, node } = utils_1.getSrcCollectionAndNode(db, sourceType, nodeMap);
-            const id = new mongodb_1.ObjectID(sourceId);
+            const id = new mongodb_1.ObjectId(sourceId);
             if (!(yield collection.findOne({ _id: id }, { projection: { _id: true } }))) {
                 throw new Error(`Source type "${sourceType}" with id ${sourceId} does not exist.`);
             }
@@ -212,10 +212,10 @@ const journalEntryUpdate = (obj, args, context, info) => __awaiter(void 0, void 
         // Ensure other checks finish before creating payment method
         asyncOps.push(Promise.all(asyncOps.splice(0)).then(() => __awaiter(void 0, void 0, void 0, function* () {
             // Add payment method
-            const id = new mongodb_1.ObjectID(yield paymentMethodAdd_1.default(obj, { fields: paymentMethodAdd }, Object.assign(Object.assign({}, context), { ephemeral: Object.assign(Object.assign({}, (context.ephemeral || {})), { docHistoryDate: docHistory.date }) }), info).then(({ id }) => id));
+            const id = new mongodb_1.ObjectId(yield paymentMethodAdd_1.default(obj, { fields: paymentMethodAdd }, Object.assign(Object.assign({}, context), { ephemeral: Object.assign(Object.assign({}, (context.ephemeral || {})), { docHistoryDate: docHistory.date }) }), info).then(({ id }) => id));
             const { id: node } = nodeMap.typename.get("PaymentMethod");
             updateBuilder.updateField("paymentMethod", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         })));
@@ -223,7 +223,7 @@ const journalEntryUpdate = (obj, args, context, info) => __awaiter(void 0, void 
     else if (paymentMethodUpdate) {
         // Ensure other checks finish before updating payment method
         asyncOps.push(Promise.all(asyncOps.splice(0)).then(() => __awaiter(void 0, void 0, void 0, function* () {
-            const id = new mongodb_1.ObjectID(paymentMethodUpdate.id);
+            const id = new mongodb_1.ObjectId(paymentMethodUpdate.id);
             // Update payment method
             yield paymentMethodUpdate_1.default(obj, {
                 id: paymentMethodUpdate.id,
@@ -231,14 +231,14 @@ const journalEntryUpdate = (obj, args, context, info) => __awaiter(void 0, void 
             }, Object.assign(Object.assign({}, context), { ephemeral: Object.assign(Object.assign({}, (context.ephemeral || {})), { docHistoryDate: docHistory.date }) }), info);
             const { id: node } = nodeMap.typename.get("PaymentMethod");
             updateBuilder.updateField("paymentMethod", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         })));
     }
     else if (paymentMethodId) {
         asyncOps.push((() => __awaiter(void 0, void 0, void 0, function* () {
-            const id = new mongodb_1.ObjectID(paymentMethodId);
+            const id = new mongodb_1.ObjectId(paymentMethodId);
             const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
             if (!(yield db
                 .collection(collection)
@@ -246,7 +246,7 @@ const journalEntryUpdate = (obj, args, context, info) => __awaiter(void 0, void 
                 throw new Error(`Payment method with id ${id.toHexString()} does not exist.`);
             }
             updateBuilder.updateField("paymentMethod", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         }))());
@@ -269,7 +269,7 @@ const journalEntryUpdate = (obj, args, context, info) => __awaiter(void 0, void 
         })();
         throw new Error(`Entry update requires at least one of the following fields: ${keys.join(", ")}".`);
     }
-    const _id = new mongodb_1.ObjectID(id);
+    const _id = new mongodb_1.ObjectId(id);
     const { modifiedCount } = yield db
         .collection("journalEntries")
         .updateOne({ _id }, updateBuilder.update());

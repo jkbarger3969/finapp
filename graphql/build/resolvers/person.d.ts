@@ -1,3 +1,2 @@
-import { QueryResolvers, MutationResolvers } from "../graphTypes";
-export declare const people: QueryResolvers["people"];
+import { MutationResolvers } from "../graphTypes";
 export declare const addPerson: MutationResolvers["addPerson"];

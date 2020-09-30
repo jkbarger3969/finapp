@@ -10,5 +10,5 @@ export declare type ComparisonOpsMap = MongoOpsMap<{
     nin: "$nin";
 }>;
 export declare type ComparisonOps = keyof ComparisonOpsMap;
-declare const parseComparisonOps: (opValueParser?: OpValueParser<unknown, "lt" | "eq" | "gt" | "gte" | "in" | "lte" | "ne" | "nin">) => OpsParser;
+declare const parseComparisonOps: <TopValsDef extends Record<string, unknown>, Toptions = unknown>(opValueParser?: OpValueParser<unknown, TopValsDef, Toptions>) => OpsParser<TopValsDef, Toptions>;
 export default parseComparisonOps;

@@ -12,6 +12,7 @@ export declare type ComparisonMongoOpsMap = MongoOpsMap<MongoComparisonOperators
 }>;
 export declare type ComparisonOperators = keyof ComparisonMongoOpsMap;
 export declare type MongoComparisonOperators = keyof Pick<QuerySelector<unknown>, "$eq" | "$gt" | "$gte" | "$in" | "$lt" | "$lte" | "$ne" | "$nin">;
+export declare const comparisonOpsMapper: (op: "eq" | "gt" | "gte" | "in" | "lt" | "lte" | "ne" | "nin") => "$eq" | "$gt" | "$gte" | "$in" | "$lt" | "$lte" | "$ne" | "$nin";
 declare const comparisonQueryGenerator: <TOpValue, TReturn>(opValueTransmutator?: OperatorValueTransmutator<TOpValue, TReturn, MongoOpsMap<"$eq" | "$gt" | "$gte" | "$in" | "$lt" | "$lte" | "$ne" | "$nin", {
     eq: "$eq";
     gt: "$gt";
@@ -21,5 +22,5 @@ declare const comparisonQueryGenerator: <TOpValue, TReturn>(opValueTransmutator?
     lte: "$lte";
     ne: "$ne";
     nin: "$nin";
-}>, "lt" | "eq" | "gt" | "gte" | "in" | "lte" | "ne" | "nin">) => QuerySelectorGenerator<string, TOpValue, TReturn>;
+}>, "eq" | "gt" | "gte" | "in" | "lt" | "lte" | "ne" | "nin">) => QuerySelectorGenerator<string, TOpValue, TReturn>;
 export default comparisonQueryGenerator;

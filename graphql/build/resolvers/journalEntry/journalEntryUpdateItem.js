@@ -24,7 +24,7 @@ const journalEntryUpdateItem = (obj, args, context, info) => __awaiter(void 0, v
     const { id, fields } = args;
     const { db, user, nodeMap, pubSub } = context;
     const collection = db.collection("journalEntries");
-    const itemId = new mongodb_1.ObjectID(id);
+    const itemId = new mongodb_1.ObjectId(id);
     const docHistory = new DocHistory_1.default({ node: standIns_1.userNodeType, id: user.id });
     const updateBuilder = docHistory.updateHistoricalDoc("items.$[item]");
     // Description
@@ -65,14 +65,14 @@ const journalEntryUpdateItem = (obj, args, context, info) => __awaiter(void 0, v
                 return;
             }
             const { collection, id: node } = nodeMap.typename.get("Department");
-            const id = new mongodb_1.ObjectID(deptId);
+            const id = new mongodb_1.ObjectId(deptId);
             if (!(yield db
                 .collection(collection)
                 .findOne({ _id: id }, { projection: { _id: true } }))) {
                 throw new Error(`Department with id ${deptId} does not exist.`);
             }
             updateBuilder.updateField("department", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         }))(),
@@ -83,14 +83,14 @@ const journalEntryUpdateItem = (obj, args, context, info) => __awaiter(void 0, v
                 return;
             }
             const { collection, id: node } = nodeMap.typename.get("JournalEntryCategory");
-            const id = new mongodb_1.ObjectID(catId);
+            const id = new mongodb_1.ObjectId(catId);
             if (!(yield db
                 .collection(collection)
                 .findOne({ _id: id }, { projection: { _id: true } }))) {
                 throw new Error(`Category with id ${catId} does not exist.`);
             }
             updateBuilder.updateField("category", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         }))(),

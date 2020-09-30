@@ -30,7 +30,7 @@ const journalEntryUpdateRefund = (obj, args, context, info) => __awaiter(void 0,
     const { id, fields, paymentMethodAdd, paymentMethodUpdate } = args;
     const { db, user, nodeMap, pubSub } = context;
     const collection = db.collection("journalEntries");
-    const refundId = new mongodb_1.ObjectID(id);
+    const refundId = new mongodb_1.ObjectId(id);
     const docHistory = new DocHistory_1.default({ node: standIns_1.userNodeType, id: user.id });
     const updateBuilder = docHistory.updateHistoricalDoc("refunds.$[refund]");
     let entryId;
@@ -122,9 +122,9 @@ const journalEntryUpdateRefund = (obj, args, context, info) => __awaiter(void 0,
         // Ensure other checks finish before creating payment method
         asyncOps.push(Promise.all(asyncOps.splice(0)).then(() => __awaiter(void 0, void 0, void 0, function* () {
             const { id: node } = nodeMap.typename.get("PaymentMethod");
-            const id = new mongodb_1.ObjectID(yield paymentMethodAdd_1.default(obj, { fields: paymentMethodAdd }, Object.assign(Object.assign({}, context), { ephemeral: Object.assign(Object.assign({}, (context.ephemeral || {})), { docHistoryDate: docHistory.date }) }), info).then(({ id }) => id));
+            const id = new mongodb_1.ObjectId(yield paymentMethodAdd_1.default(obj, { fields: paymentMethodAdd }, Object.assign(Object.assign({}, context), { ephemeral: Object.assign(Object.assign({}, (context.ephemeral || {})), { docHistoryDate: docHistory.date }) }), info).then(({ id }) => id));
             updateBuilder.updateField("paymentMethod", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         })));
@@ -132,7 +132,7 @@ const journalEntryUpdateRefund = (obj, args, context, info) => __awaiter(void 0,
     else if (paymentMethodUpdate) {
         // Ensure other checks finish before creating updating method
         asyncOps.push(Promise.all(asyncOps.splice(0)).then(() => __awaiter(void 0, void 0, void 0, function* () {
-            const id = new mongodb_1.ObjectID(paymentMethodUpdate.id);
+            const id = new mongodb_1.ObjectId(paymentMethodUpdate.id);
             // Update payment method
             yield paymentMethodUpdate_1.default(obj, {
                 id: paymentMethodUpdate.id,
@@ -140,14 +140,14 @@ const journalEntryUpdateRefund = (obj, args, context, info) => __awaiter(void 0,
             }, Object.assign(Object.assign({}, context), { ephemeral: Object.assign(Object.assign({}, (context.ephemeral || {})), { docHistoryDate: docHistory.date }) }), info);
             const { id: node } = nodeMap.typename.get("PaymentMethod");
             updateBuilder.updateField("paymentMethod", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         })));
     }
     else if (fields.paymentMethod) {
         asyncOps.push((() => __awaiter(void 0, void 0, void 0, function* () {
-            const id = new mongodb_1.ObjectID(fields.paymentMethod);
+            const id = new mongodb_1.ObjectId(fields.paymentMethod);
             const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
             if (!(yield db
                 .collection(collection)
@@ -155,7 +155,7 @@ const journalEntryUpdateRefund = (obj, args, context, info) => __awaiter(void 0,
                 throw new Error(`Payment method with id ${id.toHexString()} does not exist.`);
             }
             updateBuilder.updateField("paymentMethod", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         }))());

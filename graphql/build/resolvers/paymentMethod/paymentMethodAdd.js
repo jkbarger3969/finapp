@@ -18,7 +18,7 @@ const paymentMethodAdd = (obj, args, context, info) => __awaiter(void 0, void 0,
     const { fields: { active, refId, name, parent: parentId }, } = args;
     const { db, user } = context;
     const docHistory = new DocHistory_1.default({ node: standIns_1.userNodeType, id: user.id }, (_a = context.ephemeral) === null || _a === void 0 ? void 0 : _a.docHistoryDate);
-    const parent = new mongodb_1.ObjectID(parentId);
+    const parent = new mongodb_1.ObjectId(parentId);
     const collection = db.collection("paymentMethods");
     const parentDoc = yield collection.findOne({ _id: parent }, { projection: { _id: true, allowChildren: true } });
     if (!parentDoc) {

@@ -26,7 +26,7 @@ const journalEntryAddItem = (obj, args, context, info) => __awaiter(void 0, void
     const total = rational_1.rationalToFraction(totalR);
     const description = (_a = args.fields.description) === null || _a === void 0 ? void 0 : _a.trim();
     const collection = db.collection("journalEntries");
-    const srcEntryId = new mongodb_1.ObjectID(id);
+    const srcEntryId = new mongodb_1.ObjectId(id);
     const docHistory = new DocHistory_1.default({ node: standIns_1.userNodeType, id: user.id });
     const docBuilder = docHistory.newHistoricalDoc(true).addFields([
         ["total", total],
@@ -76,14 +76,14 @@ const journalEntryAddItem = (obj, args, context, info) => __awaiter(void 0, void
                 return;
             }
             const { collection, id: node } = nodeMap.typename.get("Department");
-            const id = new mongodb_1.ObjectID(departmentId);
+            const id = new mongodb_1.ObjectId(departmentId);
             if (!(yield db
                 .collection(collection)
                 .findOne({ _id: id }, { projection: { _id: true } }))) {
                 throw new Error(`Department with id ${departmentId} does not exist.`);
             }
             docBuilder.addField("department", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         }))(),
@@ -93,13 +93,13 @@ const journalEntryAddItem = (obj, args, context, info) => __awaiter(void 0, void
                 return;
             }
             const { collection, id: node } = nodeMap.typename.get("JournalEntryCategory");
-            const id = new mongodb_1.ObjectID(categoryId);
+            const id = new mongodb_1.ObjectId(categoryId);
             if (!(yield db
                 .collection(collection)
                 .findOne({ _id: id }, { projection: { _id: true } }))) {
                 throw new Error(`Category with id ${categoryId} does not exist.`);
             }
-            docBuilder.addField("category", { node: new mongodb_1.ObjectID(node), id });
+            docBuilder.addField("category", { node: new mongodb_1.ObjectId(node), id });
         }))(),
         // Generate item ID
         (() => __awaiter(void 0, void 0, void 0, function* () {

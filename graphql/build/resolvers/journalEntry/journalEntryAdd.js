@@ -56,27 +56,27 @@ const journalEntryAdd = (obj, args, context, info) => __awaiter(void 0, void 0, 
         // Department
         (() => __awaiter(void 0, void 0, void 0, function* () {
             const { collection, id: node } = nodeMap.typename.get("Department");
-            const id = new mongodb_1.ObjectID(departmentId);
+            const id = new mongodb_1.ObjectId(departmentId);
             if (!(yield db
                 .collection(collection)
                 .findOne({ _id: id }, { projection: { _id: true } }))) {
                 throw new Error(`Department with id ${departmentId} does not exist.`);
             }
             docBuilder.addField("department", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         }))(),
         // Category
         (() => __awaiter(void 0, void 0, void 0, function* () {
             const { collection, id: node } = nodeMap.typename.get("JournalEntryCategory");
-            const id = new mongodb_1.ObjectID(categoryId);
+            const id = new mongodb_1.ObjectId(categoryId);
             if (!(yield db
                 .collection(collection)
                 .findOne({ _id: id }, { projection: { _id: true } }))) {
                 throw new Error(`Category with id ${categoryId} does not exist.`);
             }
-            docBuilder.addField("category", { node: new mongodb_1.ObjectID(node), id });
+            docBuilder.addField("category", { node: new mongodb_1.ObjectId(node), id });
         }))(),
     ];
     // PaymentMethod
@@ -84,9 +84,9 @@ const journalEntryAdd = (obj, args, context, info) => __awaiter(void 0, void 0, 
         // Do NOT create new payment method until all other checks pass
         asyncOps.push(Promise.all(asyncOps.splice(0)).then(() => __awaiter(void 0, void 0, void 0, function* () {
             const { id: node } = nodeMap.typename.get("PaymentMethod");
-            const id = new mongodb_1.ObjectID(yield paymentMethodAdd_1.default(obj, { fields: paymentMethodAdd }, Object.assign(Object.assign({}, context), { ephemeral: Object.assign(Object.assign({}, (context.ephemeral || {})), { docHistoryDate: docHistory.date }) }), info).then(({ id }) => id));
+            const id = new mongodb_1.ObjectId(yield paymentMethodAdd_1.default(obj, { fields: paymentMethodAdd }, Object.assign(Object.assign({}, context), { ephemeral: Object.assign(Object.assign({}, (context.ephemeral || {})), { docHistoryDate: docHistory.date }) }), info).then(({ id }) => id));
             docBuilder.addField("paymentMethod", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         })));
@@ -95,14 +95,14 @@ const journalEntryAdd = (obj, args, context, info) => __awaiter(void 0, void 0, 
         // Ensure payment method exists.
         asyncOps.push((() => __awaiter(void 0, void 0, void 0, function* () {
             const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
-            const id = new mongodb_1.ObjectID(args.fields.paymentMethod);
+            const id = new mongodb_1.ObjectId(args.fields.paymentMethod);
             if (!(yield db
                 .collection(collection)
                 .findOne({ _id: id }, { projection: { _id: true } }))) {
                 throw new Error(`Payment method with id ${id.toHexString()} does not exist.`);
             }
             docBuilder.addField("paymentMethod", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         }))());
@@ -115,7 +115,7 @@ const journalEntryAdd = (obj, args, context, info) => __awaiter(void 0, void 0, 
             const { id } = yield business_1.addBusiness(obj, { fields: businessAdd }, context, info);
             docBuilder.addField("source", {
                 node,
-                id: new mongodb_1.ObjectID(id),
+                id: new mongodb_1.ObjectId(id),
             });
         })));
     }
@@ -126,7 +126,7 @@ const journalEntryAdd = (obj, args, context, info) => __awaiter(void 0, void 0, 
             const { id } = yield person_1.addPerson(obj, { fields: personAdd }, context, info);
             docBuilder.addField("source", {
                 node,
-                id: new mongodb_1.ObjectID(id),
+                id: new mongodb_1.ObjectId(id),
             });
         })));
     }
@@ -134,7 +134,7 @@ const journalEntryAdd = (obj, args, context, info) => __awaiter(void 0, void 0, 
         asyncOps.push((() => __awaiter(void 0, void 0, void 0, function* () {
             const { sourceType, id: sourceId } = source;
             const { collection, node } = utils_1.getSrcCollectionAndNode(db, sourceType, nodeMap);
-            const id = new mongodb_1.ObjectID(sourceId);
+            const id = new mongodb_1.ObjectId(sourceId);
             if (!(yield collection.findOne({ _id: id }, { projection: { _id: true } }))) {
                 throw new Error(`Source type "${sourceType}" with id ${sourceId} does not exist.`);
             }

@@ -1,5 +1,5 @@
-import { Db } from 'mongodb';
-declare const _default: ({ dbHost, dbPort, dbUser, dbPass, db }: {
+import { Db } from "mongodb";
+declare const _default: ({ dbHost, dbPort, dbUser, dbPass, db, }: {
     dbHost: string;
     dbPort: string;
     dbUser: string;

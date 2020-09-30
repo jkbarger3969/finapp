@@ -34,7 +34,7 @@ const filedAndConditionCreator = (key, value) => __awaiter(void 0, void 0, void 
         case "parent":
             return {
                 field: `${key}.id`,
-                condition: yield mapComarisonOperators_1.default(value, (id) => (id ? new mongodb_1.ObjectID(id) : id)),
+                condition: yield mapComarisonOperators_1.default(value, (id) => (id ? new mongodb_1.ObjectId(id) : id)),
             };
         case "type":
             return {

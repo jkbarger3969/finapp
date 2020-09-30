@@ -1,5 +1,5 @@
 import { O } from "ts-toolbelt";
-import { Collection, Db, ObjectID } from "mongodb";
+import { Collection, Db, ObjectId } from "mongodb";
 import { JournalEntrySourceType, JournalEntryType } from "../../graphTypes";
 export declare const addFields: {
     $addFields: {
@@ -53,7 +53,7 @@ export declare const getSrcCollectionAndNode: (db: Db, sourceType: JournalEntryS
     typename: Map<string, import("../../types").NodeInfo>;
 }) => {
     collection: Collection<any>;
-    node: ObjectID;
+    node: ObjectId;
 };
 export declare const entryAddFieldsStage: {
     readonly $addFields: {
@@ -178,7 +178,7 @@ export declare const entryTransmutationsStage: {
         };
     };
 };
-export declare const getRefundTotals: (exclude?: (string | ObjectID)[]) => {
+export declare const getRefundTotals: (exclude?: (string | ObjectId)[]) => {
     readonly $addFields: {
         readonly refundTotals: {
             readonly $ifNull: readonly [{
@@ -190,10 +190,10 @@ export declare const getRefundTotals: (exclude?: (string | ObjectID)[]) => {
                             readonly cond: {
                                 $and: ({
                                     $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
-                                    $not?: undefined;
+                                    readonly $not?: undefined;
                                 } | {
                                     $not: {
-                                        $in: (string | ObjectID[])[];
+                                        $in: (string | ObjectId[])[];
                                     };
                                     $eq?: undefined;
                                 })[];
@@ -211,7 +211,7 @@ export declare const getRefundTotals: (exclude?: (string | ObjectID)[]) => {
         };
     };
 };
-export declare const getItemTotals: (exclude?: (string | ObjectID)[]) => {
+export declare const getItemTotals: (exclude?: (string | ObjectId)[]) => {
     readonly $addFields: {
         readonly itemTotals: {
             readonly $ifNull: readonly [{
@@ -223,10 +223,10 @@ export declare const getItemTotals: (exclude?: (string | ObjectID)[]) => {
                             readonly cond: {
                                 $and: ({
                                     $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
-                                    $not?: undefined;
+                                    readonly $not?: undefined;
                                 } | {
                                     $not: {
-                                        $in: (string | ObjectID[])[];
+                                        $in: (string | ObjectId[])[];
                                     };
                                     $eq?: undefined;
                                 })[];
@@ -385,10 +385,10 @@ export declare const stages: {
                                 readonly cond: {
                                     $and: ({
                                         $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
-                                        $not?: undefined;
+                                        readonly $not?: undefined;
                                     } | {
                                         $not: {
-                                            $in: (string | ObjectID[])[];
+                                            $in: (string | ObjectId[])[];
                                         };
                                         $eq?: undefined;
                                     })[];
@@ -418,10 +418,10 @@ export declare const stages: {
                                 readonly cond: {
                                     $and: ({
                                         $eq: (boolean | import("../utils/DocHistory").PresentValueExpression)[];
-                                        $not?: undefined;
+                                        readonly $not?: undefined;
                                     } | {
                                         $not: {
-                                            $in: (string | ObjectID[])[];
+                                            $in: (string | ObjectId[])[];
                                         };
                                         $eq?: undefined;
                                     })[];

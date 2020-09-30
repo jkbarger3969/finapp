@@ -16,7 +16,8 @@ export declare const cbWithReturn: <T, TReturn = any, TNext = undefined>(iterabl
 export declare const resolveWithAsyncReturn: <T, TReturn = any, TNext = undefined>(iterable: AsyncIterableFns<T, TReturn, TNext>) => [AsyncIterableIteratorFns<T, TReturn, TNext>, Promise<TReturn>];
 export declare const iterateAsyncIteratorResults: <T, TReturn = any, TNext = undefined>(iterable: AsyncIterableFns<T, TReturn, TNext>) => AsyncIterableIteratorFns<IteratorResult<T, TReturn>, any, undefined>;
 export declare const iterableToAsyncIterable: <T, TReturn = any, TNext = undefined>(iterable: IterableFns<T, TReturn, TNext> | AsyncIterableFns<T, TReturn, TNext>) => AsyncIterableFns<T, TReturn, TNext>;
-export declare const iterateOwnKeyValues: <TObj extends object>(obj: TObj) => IterableIterator<[keyof TObj, TObj[keyof TObj]]>;
+export declare type IterateOwnKeysValuesIterableIterator<TObj extends object> = IterableIterator<[keyof TObj, TObj[keyof TObj]]>;
+export declare const iterateOwnKeyValues: <TObj extends object>(obj: TObj) => IterateOwnKeysValuesIterableIterator<TObj>;
 export declare type ChainableGeneratorFunction<TArgs extends unknown[], T, TReturn = any> = (iterable: IterableFns<T, TReturn>, ...args: TArgs) => Generator<T, TReturn>;
 /**
  * NOTE: First element of return type `TReturn[]` is always the return type

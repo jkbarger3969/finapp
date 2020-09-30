@@ -41,7 +41,7 @@ const journalEntryAddRefund = (doc, args, context, info) => __awaiter(void 0, vo
     const { db, user, nodeMap, pubSub } = context;
     const docHistory = new DocHistory_1.default({ node: standIns_1.userNodeType, id: user.id });
     const collection = db.collection("journalEntries");
-    const srcEntryId = new mongodb_1.ObjectID(id);
+    const srcEntryId = new mongodb_1.ObjectId(id);
     const docBuilder = docHistory.newHistoricalDoc(true).addFields([
         ["date", date],
         ["total", total],
@@ -94,9 +94,9 @@ const journalEntryAddRefund = (doc, args, context, info) => __awaiter(void 0, vo
         // Do NOT create new payment method until all other checks pass
         asyncOps.push(Promise.all(asyncOps.splice(0)).then(() => __awaiter(void 0, void 0, void 0, function* () {
             const { id: node } = nodeMap.typename.get("PaymentMethod");
-            const id = new mongodb_1.ObjectID(yield paymentMethodAdd_1.default(doc, { fields: paymentMethodAdd }, Object.assign(Object.assign({}, context), { ephemeral: Object.assign(Object.assign({}, (context.ephemeral || {})), { docHistoryDate: docHistory.date }) }), info).then(({ id }) => id));
+            const id = new mongodb_1.ObjectId(yield paymentMethodAdd_1.default(doc, { fields: paymentMethodAdd }, Object.assign(Object.assign({}, context), { ephemeral: Object.assign(Object.assign({}, (context.ephemeral || {})), { docHistoryDate: docHistory.date }) }), info).then(({ id }) => id));
             docBuilder.addField("paymentMethod", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         })));
@@ -105,14 +105,14 @@ const journalEntryAddRefund = (doc, args, context, info) => __awaiter(void 0, vo
         // Ensure payment method exists.
         asyncOps.push((() => __awaiter(void 0, void 0, void 0, function* () {
             const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
-            const id = new mongodb_1.ObjectID(args.fields.paymentMethod);
+            const id = new mongodb_1.ObjectId(args.fields.paymentMethod);
             if (!(yield db
                 .collection(collection)
                 .findOne({ _id: id }, { projection: { _id: true } }))) {
                 throw new Error(`Payment method with id ${id.toHexString()} does not exist.`);
             }
             docBuilder.addField("paymentMethod", {
-                node: new mongodb_1.ObjectID(node),
+                node: new mongodb_1.ObjectId(node),
                 id,
             });
         }))());

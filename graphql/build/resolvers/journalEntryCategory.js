@@ -26,7 +26,7 @@ exports.journalEntryCategory = (parent, args, context, info) => __awaiter(void 0
     const { id } = args;
     const result = yield db
         .collection("journalEntryCategories")
-        .aggregate([{ $match: { _id: new mongodb_1.ObjectID(id) } }, addId])
+        .aggregate([{ $match: { _id: new mongodb_1.ObjectId(id) } }, addId])
         .toArray();
     return result[0];
 });
@@ -42,7 +42,7 @@ exports.ancestors = (parent, args, context, info) => __awaiter(void 0, void 0, v
     const results = yield db
         .collection("journalEntryCategories")
         .aggregate([
-        { $match: { _id: new mongodb_1.ObjectID(id) } },
+        { $match: { _id: new mongodb_1.ObjectId(id) } },
         {
             $graphLookup: {
                 from: "journalEntryCategories",
@@ -75,7 +75,7 @@ const children = (parent, args, context, info) => __awaiter(void 0, void 0, void
     const results = yield db
         .collection("journalEntryCategories")
         .aggregate([
-        { $match: { "parent.id": new mongodb_1.ObjectID(id) } },
+        { $match: { "parent.id": new mongodb_1.ObjectId(id) } },
         { $addFields: { id: { $toString: "$_id" } } },
     ])
         .toArray();

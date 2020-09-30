@@ -18,7 +18,7 @@ const journalEntryDeleteRefund = (obj, args, context, info) => __awaiter(void 0,
     const { id } = args;
     const { db, user, pubSub } = context;
     const collection = db.collection("journalEntries");
-    const refundId = new mongodb_1.ObjectID(id);
+    const refundId = new mongodb_1.ObjectId(id);
     const [entryState] = (yield collection
         .aggregate([
         { $match: { "refunds.id": refundId } },

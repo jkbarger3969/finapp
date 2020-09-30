@@ -1,2 +1,2 @@
-import { ObjectID } from "mongodb";
-export declare const userNodeType: ObjectID;
+import { ObjectId } from "mongodb";
+export declare const userNodeType: ObjectId;

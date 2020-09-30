@@ -27,7 +27,7 @@ const paymentMethodUpdate = (obj, args, context, info) => __awaiter(void 0, void
     const active = (_b = fields.active, (_b !== null && _b !== void 0 ? _b : null));
     const refId = (_c = fields.refId, (_c !== null && _c !== void 0 ? _c : "")).trim();
     const name = (_d = fields.name, (_d !== null && _d !== void 0 ? _d : "")).trim();
-    const _id = new mongodb_1.ObjectID(id);
+    const _id = new mongodb_1.ObjectId(id);
     if (active !== null) {
         updateBuilder.updateField("active", active);
     }

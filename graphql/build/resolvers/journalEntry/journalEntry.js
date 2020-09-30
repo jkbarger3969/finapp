@@ -17,7 +17,7 @@ const journalEntry = (parent, args, context, info) => __awaiter(void 0, void 0, 
     const [entry] = yield db
         .collection("journalEntries")
         .aggregate([
-        { $match: { _id: new mongodb_1.ObjectID(id) } },
+        { $match: { _id: new mongodb_1.ObjectId(id) } },
         utils_1.stages.entryAddFields,
         utils_1.stages.entryTransmutations,
     ])

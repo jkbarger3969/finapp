@@ -24,7 +24,7 @@ const transmutateFields = {
 const journalEntryRefund = (obj, args, context, info) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = args;
     const { db } = context;
-    const refundId = new mongodb_1.ObjectID(id);
+    const refundId = new mongodb_1.ObjectId(id);
     const [refundEntry] = yield db
         .collection("journalEntries")
         .aggregate([

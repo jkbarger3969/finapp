@@ -16,7 +16,7 @@ const paymentMethod = (doc, args, context, info) => __awaiter(void 0, void 0, vo
     const { db } = context;
     const [result] = yield db
         .collection("paymentMethods")
-        .aggregate([{ $match: { _id: new mongodb_1.ObjectID(id) } }, { $addFields: utils_1.$addFields }])
+        .aggregate([{ $match: { _id: new mongodb_1.ObjectId(id) } }, { $addFields: utils_1.$addFields }])
         .toArray();
     return result || null;
 });
