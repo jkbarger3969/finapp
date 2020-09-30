@@ -113,8 +113,6 @@ const entriesGen = function* (
   }
 };
 
-// export type EntryFilter = U.Exclude<Query<Entry>, RegExp>;
-
 export const CLEAR_FILTER = Symbol();
 
 const ON_ENTRY_UPSERT = gql`
@@ -309,7 +307,7 @@ const Journal = (props: {
           const date = new Date(upsertEntry.date);
           if (
             date < new Date(fiscalYear.begin) ||
-            date > new Date(fiscalYear.end)
+            date >= new Date(fiscalYear.end)
           ) {
             // Filter entry out of query results if fiscal year changes.
             const journalEntriesFiltered = prev.journalEntries.filter(
@@ -1146,9 +1144,9 @@ const Journal = (props: {
           }
 
           if (entry.type === JournalEntryType.Credit) {
-            newAggregate = newAggregate.sub(entryTotal);
-          } else {
             newAggregate = newAggregate.add(entryTotal);
+          } else {
+            newAggregate = newAggregate.sub(entryTotal);
           }
         }
 

@@ -43,7 +43,10 @@ export type BudgetsWhereInput = {
   nor?: Maybe<Array<BudgetsWhereInput>>;
   amount?: Maybe<WhereRational>;
   owner?: Maybe<BudgetsWhereOwner>;
-  /** Match Budgets assigned to the Department or first ancestor of the Department. */
+  /**
+   * Matches Budgets assigned to the Department or first ancestor of the
+   * Department.
+   */
   department?: Maybe<Scalars['ID']>;
   fiscalYear?: Maybe<FiscalYearWhereInput>;
 };
@@ -161,7 +164,7 @@ export type FiscalYearWhereInput = {
   in?: Maybe<Array<Scalars['ID']>>;
   nin?: Maybe<Array<Scalars['ID']>>;
   name?: Maybe<WhereRegexInput>;
-  /** A FiscalYear is the set of all dates in the interval [begin, end]. */
+  /** A FiscalYear is the set of all dates in the interval [begin, end). */
   hasDate?: Maybe<FiscalYearWhereHasDate>;
   and?: Maybe<Array<FiscalYearWhereInput>>;
   or?: Maybe<Array<FiscalYearWhereInput>>;

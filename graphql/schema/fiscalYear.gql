@@ -19,7 +19,7 @@ input FiscalYearWhereInput {
   nin: [ID!]
   name: WhereRegexInput
   """
-  A FiscalYear is the set of all dates in the interval [begin, end].
+  A FiscalYear is the set of all dates in the interval [begin, end).
   """
   hasDate: FiscalYearWhereHasDate
   and: [FiscalYearWhereInput!]

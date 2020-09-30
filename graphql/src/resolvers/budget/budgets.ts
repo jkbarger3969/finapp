@@ -191,49 +191,7 @@ const parseWhereDepartment = async (
   let node = deptNode;
   let id = new ObjectId(deptId);
 
-  await context.db
-    .collection("budgets")
-    .find<{
-      _id: ObjectId;
-      fiscalYear: ObjectId;
-    }>(
-      {
-        $and: [
-          { "owner.node": { $eq: node } },
-          { "owner.id": { $eq: id } },
-          {
-            fiscalYear: {
-              $in: Array.from(fiscalYears).map((id) => new ObjectId(id)),
-            },
-          },
-        ],
-      },
-      { projection: { _id: true, fiscalYear: true } }
-    )
-    .forEach(({ _id, fiscalYear }) => {
-      fiscalYears.delete(fiscalYear.toHexString());
-      deptBudgets.push(_id);
-    });
-
-  while (fiscalYears.size > 0 && node.equals(deptId)) {
-    const result = (
-      await context.db
-        .collection("departments")
-        .find<{ parent: NodeValue }>(
-          { _id: id },
-          { projection: { parent: true } }
-        )
-        .toArray()
-    )[0];
-
-    if (!result) {
-      break;
-    }
-
-    ({
-      parent: { id, node },
-    } = result);
-
+  while (fiscalYears.size > 0 && node.equals(deptNode)) {
     await context.db
       .collection("budgets")
       .find<{
@@ -257,6 +215,24 @@ const parseWhereDepartment = async (
         fiscalYears.delete(fiscalYear.toHexString());
         deptBudgets.push(_id);
       });
+
+    const result = (
+      await context.db
+        .collection("departments")
+        .find<{ parent: NodeValue }>(
+          { _id: id },
+          { projection: { parent: true } }
+        )
+        .toArray()
+    )[0];
+
+    if (!result) {
+      break;
+    }
+
+    ({
+      parent: { id, node },
+    } = result);
   }
 
   return {
@@ -300,7 +276,12 @@ const fieldConditionGenerator: FieldAndConditionGenerator<
         break;
       case "department":
         if (value) {
-          yield parseWhereDepartment(value as Where[typeof key], opts);
+          const result = await parseWhereDepartment(
+            value as Where[typeof key],
+            opts
+          );
+
+          yield result;
         }
         break;
     }

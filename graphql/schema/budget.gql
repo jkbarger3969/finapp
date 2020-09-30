@@ -35,7 +35,8 @@ input BudgetsWhereInput {
   amount: WhereRational
   owner: BudgetsWhereOwner
   """
-  Match Budgets assigned to the Department or first ancestor of the Department.
+  Matches Budgets assigned to the Department or first ancestor of the
+  Department.
   """
   department: ID
   fiscalYear: FiscalYearWhereInput

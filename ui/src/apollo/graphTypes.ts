@@ -45,7 +45,10 @@ export type BudgetsWhereInput = {
   nor?: Maybe<Array<BudgetsWhereInput>>;
   amount?: Maybe<WhereRational>;
   owner?: Maybe<BudgetsWhereOwner>;
-  /** Match Budgets assigned to the Department or first ancestor of the Department. */
+  /**
+   * Matches Budgets assigned to the Department or first ancestor of the
+   * Department.
+   */
   department?: Maybe<Scalars['ID']>;
   fiscalYear?: Maybe<FiscalYearWhereInput>;
 };
@@ -168,7 +171,7 @@ export type FiscalYearWhereInput = {
   in?: Maybe<Array<Scalars['ID']>>;
   nin?: Maybe<Array<Scalars['ID']>>;
   name?: Maybe<WhereRegexInput>;
-  /** A FiscalYear is the set of all dates in the interval [begin, end]. */
+  /** A FiscalYear is the set of all dates in the interval [begin, end). */
   hasDate?: Maybe<FiscalYearWhereHasDate>;
   and?: Maybe<Array<FiscalYearWhereInput>>;
   or?: Maybe<Array<FiscalYearWhereInput>>;
@@ -1140,7 +1143,7 @@ export type UpdateItemIniStateQuery = { __typename?: 'Query', journalEntry?: May
       & CatEntryOptFragment
     )>, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign } }> };
 
-export type JournalEntry_3Fragment = { __typename: 'JournalEntry', id: string, type: JournalEntryType, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign }, items: Array<{ __typename: 'JournalEntryItem', id: string, deleted: boolean, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign } }> };
+export type JournalEntry_3Fragment = { __typename: 'JournalEntry', id: string, type: JournalEntryType, date: string, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign }, items: Array<{ __typename: 'JournalEntryItem', id: string, deleted: boolean, total: { __typename?: 'Rational', n: number, d: number, s: RationalSign } }> };
 
 export type AddEntryItemMutationVariables = Exact<{
   id: Scalars['ID'];
@@ -1228,7 +1231,14 @@ export type UpdateRefundMutation = { __typename?: 'Mutation', journalEntryUpdate
       & JournalEntryRefund_1Fragment
     )> } };
 
-export type DeptEntryOptFragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
+export type FiscalYearQueryVariables = Exact<{
+  date?: Maybe<Scalars['String']>;
+}>;
+
+
+export type FiscalYearQuery = { __typename?: 'Query', fiscalYears: Array<{ __typename: 'FiscalYear', id: string }> };
+
+export type DeptEntryOptFragment = { __typename: 'Department', id: string, name: string, budgets: Array<{ __typename: 'Budget', id: string, fiscalYear: { __typename: 'FiscalYear', id: string } }>, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
 
 export type CatEntryOptFragment = { __typename: 'JournalEntryCategory', id: string, name: string, type: JournalEntryType, parent?: Maybe<{ __typename: 'JournalEntryCategory', id: string }> };
 

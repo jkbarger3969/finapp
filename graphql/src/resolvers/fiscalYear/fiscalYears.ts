@@ -20,6 +20,7 @@ import {
 } from "../../utils/iterableFns";
 import parseOps from "../utils/filterQuery/querySelectors/parseOps";
 import parseGQLMongoRegex from "../utils/filterQuery/gqlMongoRegex";
+import { json } from "express";
 
 const parseWhereFiscalYearHasDate = function* (
   opValueIter: Iterable<
@@ -41,7 +42,7 @@ const parseWhereFiscalYearHasDate = function* (
                   $lte: new Date(opValue as FiscalYearWhereHasDate[typeof op]),
                 },
                 end: {
-                  $gte: new Date(opValue as FiscalYearWhereHasDate[typeof op]),
+                  $gt: new Date(opValue as FiscalYearWhereHasDate[typeof op]),
                 },
               },
             ],
@@ -51,16 +52,18 @@ const parseWhereFiscalYearHasDate = function* (
       case "ne":
         if (opValue) {
           yield {
-            field: "$or",
+            field: "$and",
             condition: [
               {
-                begin: {
-                  $gt: new Date(opValue as FiscalYearWhereHasDate[typeof op]),
-                },
-              },
-              {
-                end: {
-                  $lt: new Date(opValue as FiscalYearWhereHasDate[typeof op]),
+                $not: {
+                  begin: {
+                    $lte: new Date(
+                      opValue as FiscalYearWhereHasDate[typeof op]
+                    ),
+                  },
+                  end: {
+                    $gt: new Date(opValue as FiscalYearWhereHasDate[typeof op]),
+                  },
                 },
               },
             ],
@@ -188,7 +191,6 @@ const fiscalYears: QueryResolvers["fiscalYears"] = async (
         fieldAndCondGen,
         context
       );
-
       pipeline.push({ $match });
     })(),
   ]);

@@ -480,7 +480,7 @@ const parseWhereFiscalYear = async function* (
               {
                 "date.0.value": {
                   $gte: begin,
-                  $lte: end,
+                  $lt: end,
                 },
               },
             ],
@@ -499,7 +499,7 @@ const parseWhereFiscalYear = async function* (
                 "date.0.value": {
                   $not: {
                     $gte: begin,
-                    $lte: end,
+                    $lt: end,
                   },
                 },
               },
@@ -515,7 +515,7 @@ const parseWhereFiscalYear = async function* (
               return {
                 "date.0.value": {
                   $gte: begin,
-                  $lte: end,
+                  $lt: end,
                 },
               };
             }
@@ -535,7 +535,7 @@ const parseWhereFiscalYear = async function* (
                 "date.0.value": {
                   $not: {
                     $gte: begin,
-                    $lte: end,
+                    $lt: end,
                   },
                 },
               };

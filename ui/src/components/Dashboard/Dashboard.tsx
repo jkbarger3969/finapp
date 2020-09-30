@@ -179,7 +179,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     for (const fiscalYear of data?.fiscalYears || []) {
       if (
         year >= new Date(fiscalYear.begin) &&
-        year <= new Date(fiscalYear.end)
+        year < new Date(fiscalYear.end)
       ) {
         return fiscalYear;
       }
@@ -222,14 +222,20 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     const depts: (GetReportDataQuery["department"] | DepartmentFragment)[] = [];
 
     if (department) {
+      const budgetsAccountedFor = new Set<string>();
       depts.push(department, ...department.descendants);
       for (const dept of depts) {
-        const amount =
-          dept.budgets.find((b) => b.fiscalYear.id === fiscalYear?.id)
-            ?.amount ?? null;
+        const budgetFound =
+          dept.budgets.find(
+            (b) =>
+              b.fiscalYear.id === fiscalYear?.id &&
+              !budgetsAccountedFor.has(b.id)
+          ) ?? null;
 
         let budget: null | Fraction = null;
-        if (amount) {
+        if (budgetFound) {
+          const amount = budgetFound.amount;
+          budgetsAccountedFor.add(budgetFound.id);
           budget = rationalToFraction(amount);
           uBudget = uBudget.add(budget);
         }
@@ -376,7 +382,12 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
       if (value) {
         for (const fiscalYear of data?.fiscalYears || []) {
           if (fiscalYear.id === value) {
-            setYear(new Date(fiscalYear.begin));
+            setYear(
+              new Date(fiscalYear.begin)
+              /* new Date(
+                new Date(fiscalYear.begin).getTime() + 1000 * 60 * 60 * 24 * 5
+              ) */
+            );
             return;
           }
         }
