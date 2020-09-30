@@ -13,3 +13,14 @@ input RationalInput {
   d: Int!
   s: RationalSign!
 }
+
+input WhereRational {
+  eq: RationalInput
+  ne: RationalInput
+  in: [RationalInput!]
+  nin: [RationalInput!]
+  gt: RationalInput
+  lt: RationalInput
+  gte: RationalInput
+  lte: RationalInput
+}

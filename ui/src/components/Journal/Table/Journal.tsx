@@ -15,6 +15,7 @@ import MaterialTable, {
   QueryResult,
   Query as MTQuery,
   MTableBodyRow,
+  Action,
 } from "material-table";
 import { useQuery, useMutation } from "@apollo/react-hooks";
 import numeral from "numeral";
@@ -33,6 +34,7 @@ import {
   TableRow,
   TableCell,
   Typography,
+  IconProps,
 } from "@material-ui/core";
 import { green, red } from "@material-ui/core/colors";
 import {
@@ -58,6 +60,7 @@ import {
   ReconcileEntryMutationVariables as ReconcileEntryVars,
   ReconcileRefundMutation as ReconcileRefund,
   ReconcileRefundMutationVariables as ReconcileRefundVars,
+  FiscalYear,
 } from "../../../apollo/graphTypes";
 import { JOURNAL_ENTRIES, JOURNAL_ENTRY_FRAGMENT } from "./JournalEntries.gql";
 import { CHECK_ID } from "../constants";
@@ -110,8 +113,6 @@ const entriesGen = function* (
   }
 };
 
-// export type EntryFilter = U.Exclude<Query<Entry>, RegExp>;
-
 export const CLEAR_FILTER = Symbol();
 
 const ON_ENTRY_UPSERT = gql`
@@ -152,9 +153,15 @@ const RECONCILE_REFUND = gql`
 const Journal = (props: {
   journalTitle?: string;
   deptId?: string;
+  fiscalYearId?: string;
   mode: JournalMode;
-}) => {
-  const { deptId = null, journalTitle = null, mode } = props;
+}): JSX.Element => {
+  const {
+    journalTitle = null,
+    deptId = null,
+    fiscalYearId = null,
+    mode,
+  } = props;
 
   // Add Entry
   const [addEntryOpen, setAddEntryOpen] = useState<boolean>(false);
@@ -223,12 +230,30 @@ const Journal = (props: {
   >(RECONCILE_REFUND);
 
   const variables = useMemo<JournalEntriesQueryVars | undefined>(() => {
-    return deptId
-      ? {
-          where: { department: { eq: deptId, matchDecedentTree: true } },
-        }
-      : undefined;
-  }, [deptId]);
+    if (deptId && fiscalYearId) {
+      return {
+        where: {
+          department: { eq: { id: deptId, matchDescendants: true } },
+          fiscalYear: {
+            eq: fiscalYearId,
+          },
+        },
+      };
+    } else if (deptId) {
+      return {
+        where: { department: { eq: { id: deptId, matchDescendants: true } } },
+      };
+    } else if (fiscalYearId) {
+      return {
+        where: {
+          fiscalYear: {
+            eq: fiscalYearId,
+          },
+        },
+      };
+    }
+    return undefined;
+  }, [deptId, fiscalYearId]);
 
   const { loading, error, data, subscribeToMore } = useQuery<
     JournalEntriesQuery,
@@ -239,6 +264,14 @@ const Journal = (props: {
   });
 
   const isLoading = loading && !data?.journalEntries;
+
+  const fiscalYear = useMemo<null | FiscalYear>(
+    () =>
+      (data?.fiscalYears || []).find(
+        (fiscalYear) => fiscalYear.id === fiscalYearId
+      ) ?? null,
+    [fiscalYearId, data]
+  );
 
   // Subscribe to updates
   useEffect(() => {
@@ -256,20 +289,34 @@ const Journal = (props: {
         if (
           deptId &&
           upsertEntry.department.id !== deptId &&
-          ancestors.every((dept) => (dept as any).id !== deptId)
+          ancestors.every(
+            (dept) => dept.__typename === "Department" && dept.id !== deptId
+          )
         ) {
           // Filter entry out of query results if department changes.
           const journalEntriesFiltered = prev.journalEntries.filter(
             (entry) => entry.id !== upsertEntry.id
           );
 
-          if (journalEntriesFiltered.length === prev.journalEntries.length) {
-            return prev;
-          }
-
           return Object.assign({}, prev, {
             journalEntries: journalEntriesFiltered,
           });
+        }
+
+        if (fiscalYear) {
+          const date = new Date(upsertEntry.date);
+          if (
+            date < new Date(fiscalYear.begin) ||
+            date >= new Date(fiscalYear.end)
+          ) {
+            // Filter entry out of query results if fiscal year changes.
+            const journalEntriesFiltered = prev.journalEntries.filter(
+              (entry) => entry.id !== upsertEntry.id
+            );
+            return Object.assign({}, prev, {
+              journalEntries: journalEntriesFiltered,
+            });
+          }
         }
 
         // Apollo will take care of updating if entry already exists in cache.
@@ -282,7 +329,7 @@ const Journal = (props: {
         });
       },
     });
-  }, [deptId, subscribeToMore]);
+  }, [deptId, fiscalYear, subscribeToMore]);
 
   const journalEntries = data?.journalEntries || [];
 
@@ -296,7 +343,7 @@ const Journal = (props: {
 
     const entries: Entry[] = [];
 
-    for (let entry of entriesGen(journalEntries)) {
+    for (const entry of entriesGen(journalEntries)) {
       if (
         entry.deleted ||
         (mode === JournalMode.Reconcile && entry.reconciled)
@@ -337,11 +384,14 @@ const Journal = (props: {
       {
         field: "reconciled",
         title: "Reconciled",
+        // eslint-disable-next-line react/display-name, react/prop-types
         render: ({ reconciled }) => (reconciled ? <DoneIcon /> : null),
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <ReconciledFilter
             setFilter={(filter) =>
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "0", filter)
             }
           />
@@ -355,9 +405,11 @@ const Journal = (props: {
         render: ({ total }) =>
           numeral(rationalToFraction(total).valueOf()).format("$0,0.00"),
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <TotalFilter
             setFilter={(filter) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "1", filter);
             }}
           />
@@ -368,9 +420,11 @@ const Journal = (props: {
         title: "Date",
         render: ({ date }) => format(new Date(date), "MMM dd, yyyy"),
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <DateFilter
             setFilter={(filter) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "2", filter);
             }}
           />
@@ -383,15 +437,17 @@ const Journal = (props: {
         render: (data, type) => {
           const name =
             type === "group"
-              ? ((data as any) as JournalEntryFragment["category"]).name
+              ? ((data as unknown) as JournalEntryFragment["category"]).name
               : data.category.name;
           return capitalCase(name);
         },
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <CategoryFilter
             options={filterOptions.category}
             setFilter={(filter) =>
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "3", filter)
             }
           />
@@ -411,10 +467,12 @@ const Journal = (props: {
           }
         },
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <SourceFilter
             options={filterOptions.source}
             setFilter={(filter) =>
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "4", filter)
             }
           />
@@ -428,10 +486,12 @@ const Journal = (props: {
             ? `CK-${paymentMethod.name}`
             : paymentMethod.name,
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <PaymentMethodFilter
             options={filterOptions.paymentMethod}
             setFilter={(filter) =>
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "5", filter)
             }
           />
@@ -450,10 +510,12 @@ const Journal = (props: {
         title: "Department",
         render: ({ department }) => capitalCase(department.name),
         searchable: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
           <DepartmentFilter
             options={filterOptions.department}
             setFilter={(filter) =>
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
               onFilterChanged((columnDef as any).tableData?.id ?? "5", filter)
             }
           />
@@ -473,20 +535,20 @@ const Journal = (props: {
       toolbar: {
         searchTooltip: (
           <Box fontSize={12} component="span">
-            [abc] | [efg] = "abc" OR "efg"
+            {`[abc] | [efg] = "abc" OR "efg"`}
             <br />
-            '[abc] = EXACTLY "abc"
+            {`'[abc] = EXACTLY "abc"`}
             <br />
-            ![abc] = NOT "abc"
+            {`![abc] = NOT "abc"`}
             <br />
-            ^[abc] = STARTS WITH "abc"
+            {`^[abc] = STARTS WITH "abc"`}
             <br />
-            !^[abc] = DOES NOT START WITH "abc"
+            {`!^[abc] = DOES NOT START WITH "abc"`}
             <br />
-            [abc]$ = ENDS WITH "abc"
+            {`[abc]$ = ENDS WITH "abc"`}
             <br />
-            ![abc]$ = DOES NOT END WITH "abc"
-          </Box>
+            {`![abc]$ = DOES NOT END WITH "abc"`}
+          </Box> // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ) as any,
         nRowsSelected: "Reconcile {0} Entry(s)",
       },
@@ -525,14 +587,16 @@ const Journal = (props: {
     if (mode === JournalMode.Reconcile) {
       return [
         {
-          icon: ((props) => <CheckCircleIcon {...props} />) as any,
+          icon: ((props: Record<string, unknown>) => (
+            <CheckCircleIcon {...props} />
+          )) as Action<Entry>["icon"],
           tooltip: "Reconcile Selected",
           position: "toolbarOnSelect",
           iconProps: {
             color: "secondary",
             fontSize: "large",
           },
-          onClick: async (event, rowData) => {
+          onClick: async (event: unknown, rowData: Entry | unknown) => {
             await Promise.all(
               (Array.isArray(rowData) ? rowData : [rowData]).map(
                 async (entry) => {
@@ -564,25 +628,27 @@ const Journal = (props: {
             case "JournalEntry":
               return {
                 tooltip: "Delete Entry",
-                onClick: (event, rowData) => setDeleteEntry(rowData.id),
+                onClick: (event: unknown, rowData: Entry | unknown) =>
+                  setDeleteEntry((rowData as Entry).id),
               };
             // case "JournalEntryItem":
             //   return {
             //     tooltip: "Delete Item",
-            //     onClick: (event, rowData) => {
-            //       // setDeleteItem(rowData.id)
+            //     onClick: (event:unknown, rowData:Entry | unknown) => {
+            //       // setDeleteItem((rowData as Entry).id)
             //     },
             //   };
             case "JournalEntryRefund":
               return {
                 tooltip: "Delete Refund",
-                onClick: (event, rowData) => setDeleteRefund(rowData.id),
+                onClick: (event: unknown, rowData: Entry | unknown) =>
+                  setDeleteRefund((rowData as Entry).id),
               };
           }
         })();
 
         return {
-          icon: DeleteIcon as any,
+          icon: DeleteIcon as Action<Entry>["icon"],
           tooltip,
           onClick,
         };
@@ -593,7 +659,7 @@ const Journal = (props: {
             case "JournalEntry":
               return {
                 tooltip: "Edit Entry",
-                onClick: (event, rowData) => {
+                onClick: (event: unknown, rowData: Entry | unknown) => {
                   setUpdateEntryOpen(true);
                   setUpdateEntry((rowData as Entry).id);
                 },
@@ -601,7 +667,7 @@ const Journal = (props: {
             // case "JournalEntryItem":
             //   return {
             //     tooltip: "Edit Item",
-            //     onClick: (event, rowData) => {
+            //     onClick: (event:unknown, rowData:Entry | unknown) => {
             //       setUpdateItemOpen(true);
             //       setUpdateItem({
             //         entryId: (rowData as Entry).items as string,
@@ -612,7 +678,7 @@ const Journal = (props: {
             case "JournalEntryRefund":
               return {
                 tooltip: "Edit Refund",
-                onClick: (event, rowData) => {
+                onClick: (event: unknown, rowData: Entry | unknown) => {
                   setUpdateRefundOpen(true);
                   setUpdateRefund({
                     entryId: (rowData as Entry).refunds as string,
@@ -624,39 +690,42 @@ const Journal = (props: {
         })();
 
         return {
-          icon: EditIcon as any,
+          icon: EditIcon as Action<Entry>["icon"],
           tooltip,
           onClick,
         };
       },
       (rowData) => {
         if (rowData.__typename !== "JournalEntry") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return null as any;
         }
 
         const isCredit = rowData.type === JournalEntryType.Credit;
 
         return {
-          icon: ((props) =>
+          icon: ((props: Record<string, unknown>) =>
             isCredit ? (
               <BankTransferOutIcon {...props} />
             ) : (
               <BankTransferInIcon {...props} />
-            )) as any,
+            )) as Action<Entry>["icon"],
           tooltip: isCredit ? "Give Refund" : "Add Refund",
           iconProps: {
             style: { color: isCredit ? red[900] : green[900] },
             // color: "secondary",
             // fontSize: "large",
-          } as any,
-          onClick: (event, rowData) => {
+          } as IconProps,
+          onClick: (event: unknown, rowData: Entry | unknown) => {
             setAddRefundOpen(true);
             setAddRefundToEntry((rowData as JournalEntryFragment).id);
           },
         };
       },
       {
-        icon: ((props) => <AddCircleIcon {...props} />) as any,
+        icon: ((props: Record<string, unknown>) => (
+          <AddCircleIcon {...props} />
+        )) as Action<Entry>["icon"],
         iconProps: {
           color: "secondary",
           fontSize: "large",
@@ -671,12 +740,12 @@ const Journal = (props: {
   }, [mode, reconcileRefund, reconcileEntry, setDeleteRefund, setDeleteEntry]);
 
   // https://github.com/mbrn/material-table/issues/563
-  const detailPanelState = useMemo(() => new Map<string, any>(), []);
+  const detailPanelState = useMemo(() => new Map<string, unknown>(), []);
 
   const components = useMemo<Components>(
     () => ({
       Body: error
-        ? (props) => (
+        ? (props: Record<string, unknown>) => (
             <TableBody {...props}>
               <TableRow>
                 <TableCell
@@ -694,17 +763,25 @@ const Journal = (props: {
               </TableRow>
             </TableBody>
           )
-        : (props) => <MTableBody {...props} />,
-      Row: (p) => {
+        : (props: Record<string, unknown>) => <MTableBody {...props} />,
+      Row: function RowDetailPanelHack(p: Record<string, unknown>) {
         const props = {
           ...p,
-          onToggleDetailPanel: (path, render, ...args) => {
-            if (detailPanelState.has(p.data.id)) {
-              detailPanelState.delete(p.data.id);
+          onToggleDetailPanel: (
+            path: unknown,
+            render: unknown,
+            ...args: unknown[]
+          ) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (detailPanelState.has((p.data as any).id)) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              detailPanelState.delete((p.data as any).id);
             } else {
-              detailPanelState.set(p.data.id, render);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              detailPanelState.set((p.data as any).id, render);
             }
-            return p.onToggleDetailPanel(path, render, ...args);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return (p.onToggleDetailPanel as any)(path, render, ...args);
           },
         };
         return <MTableBodyRow {...props} />;
@@ -721,7 +798,7 @@ const Journal = (props: {
         const isJournalEntry = rowData.__typename === "JournalEntry";
         const hasItems = isJournalEntry ? rowData.items.length > 0 : false;
         return {
-          icon: (props) =>
+          icon: (props: Record<string, unknown>) =>
             isJournalEntry ? (
               hasItems ? (
                 <FileTreeIcon {...props} />
@@ -729,7 +806,8 @@ const Journal = (props: {
                 <FileTreeOutlineIcon {...props} />
               )
             ) : null,
-          openIcon: (props) =>
+          // eslint-disable-next-line react/display-name
+          openIcon: (props: Record<string, unknown>) =>
             hasItems ? (
               <FileTreeIcon {...props} color="primary" />
             ) : (
@@ -737,6 +815,7 @@ const Journal = (props: {
             ),
           disabled: !isJournalEntry,
           tooltip: isJournalEntry ? "Itemize" : undefined,
+          // eslint-disable-next-line react/display-name
           render: (rowData) => {
             if (rowData.__typename !== "JournalEntry") {
               return null;
@@ -752,6 +831,8 @@ const Journal = (props: {
   const [aggregate, setAggregate] = useState<Fraction>(new Fraction(0));
 
   const title = useMemo(() => {
+    const year = fiscalYear?.name ? `${fiscalYear?.name} ` : "";
+
     const compare = aggregate.compare(new Fraction(0));
 
     const aggregateSpan = (
@@ -766,14 +847,20 @@ const Journal = (props: {
     if (journalTitle) {
       return (
         <Typography variant="h6">
-          {`${journalTitle}: `}
+          {`${year}${journalTitle}: `}
           {aggregateSpan}
         </Typography>
       );
     }
-    return <Typography variant="h6">{aggregateSpan}</Typography>;
-  }, [aggregate, journalTitle]);
+    return (
+      <Typography variant="h6">
+        {year}
+        {aggregateSpan}
+      </Typography>
+    );
+  }, [fiscalYear, aggregate, journalTitle]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tableRef = useRef<any>(null);
 
   const mTData = useCallback(
@@ -845,9 +932,9 @@ const Journal = (props: {
           .map((result) => result.item);
       })();
 
-      const pipeline: Object[] = [];
+      const pipeline: Record<string, unknown>[] = [];
 
-      const $match = { $and: [] as object[] };
+      const $match = { $and: [] as Record<string, unknown>[] };
 
       if (filters.length > 0) {
         const { $and } = $match;
@@ -896,7 +983,7 @@ const Journal = (props: {
       }
 
       const $facet = {
-        data: [] as object[],
+        data: [] as Record<string, unknown>[],
         raw: [],
       };
 
@@ -1003,7 +1090,7 @@ const Journal = (props: {
             tableData: {
               showDetailPanel: detailPanelState.get(entry.id),
             },
-          } as any;
+          } as unknown;
         }
 
         return entry;
@@ -1025,13 +1112,46 @@ const Journal = (props: {
 
       const totalCount = raw.length;
 
-      const newAggregate = raw.reduce(
-        (aggregate: Fraction, entry: Entry) =>
-          entry.type === JournalEntryType.Credit
-            ? aggregate.add(rationalToFraction(entry.total))
-            : aggregate.sub(rationalToFraction(entry.total)),
-        new Fraction(0)
-      );
+      const newAggregate = (() => {
+        let newAggregate = new Fraction(0);
+
+        for (const entry of raw as Entry[]) {
+          if (entry.deleted) {
+            continue;
+          }
+
+          let entryTotal = rationalToFraction(entry.total);
+
+          // BUG Story ID: CH58
+          // Itemization Adjustments
+          if (deptId) {
+            for (const item of entry.items) {
+              if (
+                item.deleted ||
+                !item.department ||
+                item.department.id === deptId ||
+                item.department.ancestors.some(
+                  (dept) =>
+                    dept.__typename === "Department" && dept.id === deptId
+                )
+              ) {
+                continue;
+              }
+
+              // Item has been applied to another department budget.
+              entryTotal = entryTotal.sub(rationalToFraction(item.total));
+            }
+          }
+
+          if (entry.type === JournalEntryType.Credit) {
+            newAggregate = newAggregate.add(entryTotal);
+          } else {
+            newAggregate = newAggregate.sub(entryTotal);
+          }
+        }
+
+        return newAggregate;
+      })();
 
       if (aggregate.compare(newAggregate) !== 0) {
         setAggregate(newAggregate);
@@ -1043,7 +1163,7 @@ const Journal = (props: {
         totalCount,
       };
     },
-    [aggregate, entries, detailPanelState]
+    [aggregate, deptId, entries, detailPanelState]
   );
 
   useEffect(() => {

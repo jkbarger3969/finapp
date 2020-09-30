@@ -14,21 +14,21 @@ import {
   FormHelperText,
 } from "@material-ui/core";
 import { JournalEntryType } from "../../../../apollo/graphTypes";
-import { useFormikStatus, FormikStatusType } from "../../../../formik/utils";
+import { useFormikStatus, FormikStatusType } from "../../../../utils/formik";
 
 const NULLISH: unique symbol = Symbol();
 
-const validate = (value?: JournalEntryType) => {
-  if (((value ?? NULLISH) as any) === NULLISH) {
+const validate = (value?: JournalEntryType): void | string => {
+  if (((value ?? NULLISH) as unknown) === NULLISH) {
     return "Type Required";
   }
 };
 
-const Type = function (
+const Type = (
   props: {
     label?: boolean | FormControlLabelProps["labelPlacement"];
   } & ToggleButtonGroupProps & { disabled?: boolean }
-) {
+): JSX.Element => {
   const { disabled: disabledFromProps = false } = props;
 
   const [formikStatus] = useFormikStatus();
@@ -52,7 +52,7 @@ const Type = function (
       disabled: isSubmitting,
       ...field,
       onChange: async (event, value: JournalEntryType) => {
-        if (((value ?? NULLISH) as any) === NULLISH) {
+        if (((value ?? NULLISH) as unknown) === NULLISH) {
           return;
         }
 
@@ -72,7 +72,7 @@ const Type = function (
   const control = useMemo(
     () => (
       <Box pl={1} clone>
-        <ToggleButtonGroup {...(props as any)} {...toggleButtonGroupProps}>
+        <ToggleButtonGroup {...props} {...toggleButtonGroupProps}>
           <ToggleButton disabled={disabled} value={JournalEntryType.Credit}>
             <Tooltip arrow placement="top" title="Credit">
               <BankPlus />
@@ -93,7 +93,7 @@ const Type = function (
     return (
       <FormControl>
         <FormControlLabel
-          {...(props as any)}
+          {...(props as FormControlLabelProps)}
           labelPlacement={typeof label === "boolean" ? undefined : label}
           control={control}
           label="Type"

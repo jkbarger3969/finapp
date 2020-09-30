@@ -2,7 +2,7 @@ import Fraction from "fraction.js";
 
 import { RationalSign, Rational, RationalInput } from "../apollo/graphTypes";
 
-export const isRational = (rational) =>
+export const isRational = (rational: unknown): boolean =>
   typeof rational === "object" &&
   rational !== null &&
   "s" in rational &&
@@ -17,7 +17,9 @@ export const fractionToRational = (
   s: fraction.s === -1 ? RationalSign.Neg : RationalSign.Pos,
 });
 
-export const rationalToFraction = (rational: Rational | RationalInput) =>
+export const rationalToFraction = (
+  rational: Rational | RationalInput
+): Fraction =>
   new Fraction({
     n:
       rational.s === RationalSign.Neg

@@ -9,6 +9,8 @@ import { useQuery, QueryHookOptions } from "@apollo/react-hooks";
 import { TextFieldProps, TextField, Box, Chip } from "@material-ui/core";
 import { ChevronRight } from "@material-ui/icons";
 import { parseName } from "humanparser";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: namecase has no type defs.
 import * as namecase from "namecase";
 import gql from "graphql-tag";
 
@@ -29,14 +31,22 @@ import {
   TransmutationValue,
   useFormikStatus,
   FormikStatusType,
-} from "../../../../formik/utils";
+} from "../../../../utils/formik";
 
 const SRC_ENTRY_OPTS_QUERY = gql`
   query SrcEntryOpts($name: String!, $isBiz: Boolean!) {
-    businesses(searchByName: $name) @include(if: $isBiz) {
+    businesses(where: { name: { pattern: $name, options: I } })
+      @include(if: $isBiz) {
       ...SrcEntryBizOptFragment
     }
-    people(searchByName: { first: $name, last: $name }) @skip(if: $isBiz) {
+    people(
+      where: {
+        or: [
+          { firstName: { pattern: $name, options: I } }
+          { lastName: { pattern: $name, options: I } }
+        ]
+      }
+    ) @skip(if: $isBiz) {
       ...SrcEntryPersonOptFragment
     }
   }
@@ -59,7 +69,7 @@ export type FieldValue = TransmutationValue<string, Value[]>;
 type AutocompleteProps = AutocompletePropsRaw<Value> &
   UseAutocompleteMultipleProps<Value>;
 
-export const isFreeSoloOpt = (opt: Value) => {
+export const isFreeSoloOpt = (opt: Value): boolean | JournalEntrySourceType => {
   switch (opt) {
     case JournalEntrySourceType.Business:
     case JournalEntrySourceType.Department:
@@ -96,7 +106,7 @@ const renderTags: AutocompleteProps["renderTags"] = (values, getTagProps) => {
   const lastIndex = values.length - 1;
   return values.map((value: Value, index: number) => {
     const isLastIndex = lastIndex === index;
-    const { key, ...props } = getTagProps({ index }) as any;
+    const { key, ...props } = getTagProps({ index }) as Record<string, unknown>;
 
     if (isFreeSoloOpt(value)) {
       return value;
@@ -104,7 +114,7 @@ const renderTags: AutocompleteProps["renderTags"] = (values, getTagProps) => {
 
     return (
       <Box
-        key={key}
+        key={key as string}
         display="flex"
         flexDirection="row"
         alignItems="center"
@@ -152,7 +162,7 @@ const validate = (transmutationVal?: FieldValue) => {
   }
 };
 
-const Source = function (props: SourceProps) {
+const Source = function (props: SourceProps): JSX.Element {
   const { disabled: disabledFromProps = false } = props;
 
   const [hasFocus, setHasFocus] = useState(false);
@@ -296,7 +306,7 @@ const Source = function (props: SourceProps) {
 
       return (
         <TextField
-          {...(props as any)}
+          {...props}
           variant={props.variant || "filled"}
           {...params}
           error={touched && !!error}
@@ -310,7 +320,7 @@ const Source = function (props: SourceProps) {
     [srcValue, options.length, props, touched, error, label, disabled]
   );
 
-  const onFocus = useCallback((event?) => setHasFocus(true), [setHasFocus]);
+  const onFocus = useCallback(() => setHasFocus(true), [setHasFocus]);
   const onBlur = useCallback<NonNullable<AutocompleteProps["onBlur"]>>(
     (event) => {
       setHasFocus(false);
@@ -351,7 +361,7 @@ const Source = function (props: SourceProps) {
   const onInputChange = useCallback<
     NonNullable<AutocompleteProps["onInputChange"]>
   >(
-    (event, inputValue: string, reason) => {
+    (event, inputValue: string) => {
       inputValue = (inputValue || "").trimStart();
 
       if (!disableTextInput) {

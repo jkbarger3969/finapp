@@ -1,4 +1,5 @@
 import { FilterQuery, Condition } from "mongodb";
+import { iterateOwnKeyValues } from "../../../utils/iterableFns";
 
 const NULLISH = Symbol();
 
@@ -24,41 +25,45 @@ const filter = async <TWhere extends LogicOperators<TWhere>>(
 ): Promise<FilterQuery<any>> => {
   const filterQuery: FilterQuery<any> = {};
 
-  for (const key of Object.keys(where) as (keyof TWhere)[]) {
+  for (const [key, value] of iterateOwnKeyValues(where)) {
     // skip null or undefined filters
-    if ((where[key] ?? NULLISH) === NULLISH) {
+    if ((value ?? NULLISH) === NULLISH) {
       continue;
     }
 
     // Match Logic Operators
     switch (key) {
       case "or":
-        filterQuery.$or = await Promise.all(
-          where[key as "or"].map(where =>
-            filter(where, fieldAndConditionCreator)
-          )
-        );
+        if (value) {
+          filterQuery.$or = await Promise.all(
+            ((value as unknown) as NonNullable<
+              LogicOperators<TWhere>["or"]
+            >).map((where) => filter(where, fieldAndConditionCreator))
+          );
+        }
         break;
-
       case "and":
-        filterQuery.$and = await Promise.all(
-          where[key as "and"].map(where =>
-            filter(where, fieldAndConditionCreator)
-          )
-        );
+        if (value) {
+          filterQuery.$and = await Promise.all(
+            ((value as unknown) as NonNullable<
+              LogicOperators<TWhere>["and"]
+            >).map((where) => filter(where, fieldAndConditionCreator))
+          );
+        }
         break;
-
       case "nor":
-        filterQuery.$and = await Promise.all(
-          where[key as "nor"].map(where =>
-            filter(where, fieldAndConditionCreator)
-          )
-        );
+        if (value) {
+          filterQuery.$nor = await Promise.all(
+            ((value as unknown) as NonNullable<
+              LogicOperators<TWhere>["nor"]
+            >).map((where) => filter(where, fieldAndConditionCreator))
+          );
+        }
         break;
       default: {
         const { field, condition } = await fieldAndConditionCreator(
-          key as any,
-          where[key] as any
+          key as Exclude<typeof key, keyof LogicOperators<TWhere>>,
+          value as TWhere[Exclude<typeof key, keyof LogicOperators<TWhere>>]
         );
 
         filterQuery[field] = condition;

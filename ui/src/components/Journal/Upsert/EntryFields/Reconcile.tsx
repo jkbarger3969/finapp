@@ -6,7 +6,7 @@ import {
   CheckboxProps,
 } from "@material-ui/core";
 import { useField, FieldInputProps } from "formik";
-import { useFormikStatus, FormikStatusType } from "../../../../formik/utils";
+import { useFormikStatus, FormikStatusType } from "../../../../utils/formik";
 
 const inputProps = {
   type: "checkbox",
@@ -21,16 +21,16 @@ const Reconcile = (
           | "control"
           | "checked"
           | "label"
-          | keyof FieldInputProps<any>
+          | keyof FieldInputProps<unknown>
         >
       >)
     | ({ label?: false } & Partial<
         Omit<
           CheckboxProps,
-          "inputProps" | "checked" | keyof FieldInputProps<any>
+          "inputProps" | "checked" | keyof FieldInputProps<unknown>
         >
       >)
-) => {
+): JSX.Element => {
   const { label, disabled = false, ...customProps } = props;
 
   const [field] = useField<boolean | undefined>({
@@ -45,8 +45,9 @@ const Reconcile = (
   if (label) {
     return (
       <FormControlLabel
-        {...customProps}
-        {...(field as any)}
+        // TS is having trouble with DOMAttributes<T>
+        {...(customProps as unknown)}
+        {...field}
         value={value}
         disabled={
           disabled || formikStatus?.type === FormikStatusType.FATAL_ERROR
@@ -59,7 +60,8 @@ const Reconcile = (
 
   return (
     <Checkbox
-      {...(customProps as any)}
+      // TS is having trouble with DOMAttributes<T>
+      {...(customProps as unknown)}
       {...field}
       value={value}
       disabled={disabled || formikStatus?.type === FormikStatusType.FATAL_ERROR}

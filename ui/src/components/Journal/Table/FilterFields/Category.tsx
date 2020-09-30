@@ -15,8 +15,8 @@ import { Entry } from "../Journal";
 
 const Category = (props: {
   options: Iterable<Entry["category"]>;
-  setFilter: (filter: any) => void;
-}) => {
+  setFilter: (filter: unknown) => void;
+}): JSX.Element => {
   const { setFilter, options } = props;
 
   const [value, setValue] = useState<string[]>([]);
@@ -40,8 +40,8 @@ const Category = (props: {
   }, [options, value]);
 
   const renderValue = useCallback(
-    (renderValues: string[]) =>
-      renderValues.map((v) => idNameMap.get(v) ?? "").join(", "),
+    (renderValues: unknown) =>
+      (renderValues as string[]).map((v) => idNameMap.get(v) ?? "").join(", "),
     [idNameMap]
   );
 
@@ -74,7 +74,7 @@ const Category = (props: {
           value={value}
           onChange={onChange}
           input={<Input />}
-          renderValue={renderValue as any}
+          renderValue={renderValue}
         >
           {items}
         </Select>

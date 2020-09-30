@@ -17,26 +17,40 @@ input ByIdFilter {
   eq: ID
 }
 
-input WhereRegexInput {
-  pattern: String!
-  flags: String
+enum RegexOptions {
+  CaseInsensitive
+  Multiline
+  Extended
+  DotAll
+  I
+  M
+  X
+  S
 }
 
-input WhereDate {
-  eq: String
-  ne: String
-  gt: String
-  gte: String
-  lt: String
-  lte: String
+input WhereTreeNodeInput {
+  id: ID!
+  matchDescendants: Boolean
+}
+
+input WhereRegexInput {
+  pattern: String!
+  options: [RegexOptions!]
+}
+
+input WhereDateTime {
+  """
+  ISO 8601
+  """
+  date: String!
   ignoreTime: Boolean
 }
 
-input WhereRational {
-  eq: RationalInput
-  ne: RationalInput
-  gt: RationalInput
-  gte: RationalInput
-  lt: RationalInput
-  lte: RationalInput
+input WhereDate {
+  eq: WhereDateTime
+  ne: WhereDateTime
+  gt: WhereDateTime
+  gte: WhereDateTime
+  lt: WhereDateTime
+  lte: WhereDateTime
 }

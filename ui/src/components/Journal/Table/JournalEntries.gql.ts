@@ -163,6 +163,13 @@ export const JOURNAL_ENTRIES = gql`
       @connection(key: "JournalEntries_1", filter: ["where"]) {
       ...JournalEntry_1Fragment
     }
+    fiscalYears {
+      __typename
+      id
+      name
+      begin
+      end
+    }
   }
   ${JOURNAL_ENTRY_FRAGMENT}
 `;

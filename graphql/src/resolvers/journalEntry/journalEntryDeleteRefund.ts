@@ -1,5 +1,5 @@
 import { MutationResolvers } from "../../graphTypes";
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
 import journalEntry from "./journalEntry";
@@ -16,7 +16,7 @@ const journalEntryDeleteRefund: MutationResolvers["journalEntryDeleteRefund"] = 
 
   const collection = db.collection("journalEntries");
 
-  const refundId = new ObjectID(id);
+  const refundId = new ObjectId(id);
 
   const [entryState] = (await collection
     .aggregate([
@@ -33,7 +33,7 @@ const journalEntryDeleteRefund: MutationResolvers["journalEntryDeleteRefund"] = 
         },
       },
     ])
-    .toArray()) as [{ entryId: ObjectID; deleted: boolean }];
+    .toArray()) as [{ entryId: ObjectId; deleted: boolean }];
 
   if (!entryState) {
     throw new Error(`Refund "${id} does not exists.`);

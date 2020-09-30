@@ -10,8 +10,9 @@ import { useQuery } from "@apollo/react-hooks";
 import { DepartmentName_1Query as DepartmentName } from "./apollo/graphTypes";
 import gql from "graphql-tag";
 
-const DashBoardRender = (props) => {
+const DashBoardRender = () => {
   const { id } = useParams();
+
   return id ? <Dashboard deptId={id} /> : <div>Error: No Dept ID!</div>;
 };
 
@@ -25,22 +26,27 @@ const DEPARTMENT_NAME = gql`
   }
 `;
 
-const JournalViewRender = (props) => {
-  const { id } = useParams();
-  const { loading, error, data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
+const JournalViewRender = () => {
+  const { id, year } = useParams();
+  const { data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
     variables: { id },
   });
   const journalTitle = data?.department?.name
     ? data.department.name
     : undefined;
   return (
-    <Journal mode={JournalMode.View} deptId={id} journalTitle={journalTitle} />
+    <Journal
+      mode={JournalMode.View}
+      deptId={id}
+      fiscalYearId={year}
+      journalTitle={journalTitle}
+    />
   );
 };
 
-const JournalReconcileRender = (props) => {
-  const { id } = useParams();
-  const { loading, error, data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
+const JournalReconcileRender = () => {
+  const { id, year } = useParams();
+  const { data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
     variables: { id },
   });
   const journalTitle = data?.department?.name
@@ -50,21 +56,22 @@ const JournalReconcileRender = (props) => {
     <Journal
       mode={JournalMode.Reconcile}
       deptId={id}
+      fiscalYearId={year}
       journalTitle={journalTitle}
     />
   );
 };
 
-const Routes = (props) => {
+const Routes = (): JSX.Element => {
   return (
     <Switch>
       <Route exact path="/" component={TopNav} />
       <Route exact path="/department/:id" component={DashBoardRender} />
       <Route exact path="/journal" component={Journal} />
-      <Route exact path="/journal/:id" component={JournalViewRender} />
+      <Route exact path="/journal/:id/:year" component={JournalViewRender} />
       <Route
         exact
-        path="/journal/:id/reconcile"
+        path="/journal/:id/:year/reconcile"
         component={JournalReconcileRender}
       />
     </Switch>

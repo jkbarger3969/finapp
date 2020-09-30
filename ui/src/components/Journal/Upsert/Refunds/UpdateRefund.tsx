@@ -29,7 +29,7 @@ import {
   FormikStatus,
   FormikStatusType,
   useFormikStatus,
-} from "../../../../formik/utils";
+} from "../../../../utils/formik";
 import OverlayLoading from "../../../utils/OverlayLoading";
 import Overlay from "../../../utils/Overlay";
 import Description from "../EntryFields/Description";
@@ -261,7 +261,7 @@ const UpdateRefundDialog = (
   );
 };
 
-const UpdateRefund = (props: UpdateRefundProps) => {
+const UpdateRefund = (props: UpdateRefundProps): JSX.Element => {
   const { entryId, refundId, open, onClose, onExited } = props;
 
   const { loading, error, data } = useQuery<
@@ -289,7 +289,7 @@ const UpdateRefund = (props: UpdateRefundProps) => {
   const journalEntryRefund = data?.journalEntryRefund;
   const initialValues = useMemo<IniUpdateValues>(() => {
     if (!journalEntryRefund) {
-      return {} as any;
+      return {} as IniUpdateValues;
     }
 
     const date = {
@@ -402,8 +402,9 @@ const UpdateRefund = (props: UpdateRefundProps) => {
       // isInitialValid={false}
       enableReinitialize={true}
       onSubmit={onSubmit}
-      children={children}
-    />
+    >
+      {children}
+    </Formik>
   );
 };
 

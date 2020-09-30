@@ -20,12 +20,16 @@ import {
   // TransmutationValue,
   useFormikStatus,
   FormikStatusType,
-} from "../../../../formik/utils";
+} from "../../../../utils/formik";
 
 const DEPT_OPTS_QUERY = gql`
-  query DeptEntryOpts($fromParent: ID) {
-    deptOpts: departments(fromParent: $fromParent) {
-      ...DeptEntryOptFragment
+  query DeptEntryOpts($bizId: ID!) {
+    deptOpts: business(id: $bizId) {
+      __typename
+      id
+      departments {
+        ...DeptEntryOptFragment
+      }
     }
   }
   ${DEPT_ENTRY_OPT_FRAGMENT}
@@ -42,12 +46,12 @@ const renderTags: AutocompleteProps["renderTags"] = (
   getTagProps
 ) => {
   const lastIndex = values.length - 1;
-  return values.map((dept: any, index: number) => {
+  return values.map((dept, index: number) => {
     const isLastIndex = lastIndex === index;
-    const { key, ...props } = getTagProps({ index }) as any;
+    const { key, ...props } = getTagProps({ index }) as Record<string, unknown>;
     return (
       <Box
-        key={key}
+        key={key as string}
         display="flex"
         flexDirection="row"
         alignItems="center"
@@ -69,10 +73,13 @@ const renderTags: AutocompleteProps["renderTags"] = (
 export type DepartmentProps = {
   variant?: "filled" | "outlined";
   autoFocus?: boolean;
+  fiscalYearId?: string;
 } & Omit<TextFieldProps, "value">;
 
-const Department = function (props: DepartmentProps) {
-  const { disabled: disabledFromProps = false, required } = props;
+const Department = (props: DepartmentProps): JSX.Element => {
+  const { disabled: disabledFromProps = false, required, fiscalYearId } = props;
+
+  const fiscalYearRequired = typeof fiscalYearId === "string";
 
   const [formikStatus, setFormikStatus] = useFormikStatus();
 
@@ -92,9 +99,9 @@ const Department = function (props: DepartmentProps) {
   const { loading, error: gqlError, data } = useQuery<
     DeptEntryOptsQuery,
     DeptEntryOptsQueryVars
-  >(DEPT_OPTS_QUERY, { onError, variables: { fromParent: businessId } });
+  >(DEPT_OPTS_QUERY, { onError, variables: { bizId: businessId } });
 
-  const depts = data?.deptOpts || [];
+  const depts = data?.deptOpts.departments || [];
 
   const [hasFocus, setHasFocus] = useState(false);
 
@@ -108,6 +115,13 @@ const Department = function (props: DepartmentProps) {
           return "Department Required";
         }
         return;
+      } else if (fiscalYearRequired) {
+        if (
+          value.budgets.every((budget) => budget.fiscalYear.id !== fiscalYearId)
+        ) {
+          return "Department has no budget.";
+        }
+        return;
       } else if (
         depts.some(
           ({ parent }) =>
@@ -117,7 +131,7 @@ const Department = function (props: DepartmentProps) {
         return "Sub-department Required";
       }
     },
-    [depts, required]
+    [depts, required, fiscalYearRequired, fiscalYearId]
   );
 
   const [field, meta, helpers] = useField<DeptValue | null>({
@@ -128,6 +142,15 @@ const Department = function (props: DepartmentProps) {
   const { value: deptValue, onBlur: onBlurField } = field;
   const { error, touched } = meta;
   const { setValue } = helpers;
+
+  const hasBudget = useMemo(
+    () =>
+      !!deptValue &&
+      !deptValue.budgets.every(
+        (budget) => budget.fiscalYear.id !== fiscalYearId
+      ),
+    [deptValue]
+  );
 
   const idDeptMap = useMemo(
     () =>
@@ -172,8 +195,10 @@ const Department = function (props: DepartmentProps) {
   const helperText = useMemo(() => {
     if (!!error && touched) {
       return error;
-    } else if (!!gqlError) {
+    } else if (gqlError) {
       return gqlError.message;
+    } else if (fiscalYearId === "") {
+      return "Department requires a date.";
     }
     return "";
   }, [error, touched, gqlError]);
@@ -183,15 +208,24 @@ const Department = function (props: DepartmentProps) {
       loading ||
       disableTextInput ||
       formikStatus?.type === FormikStatusType.FATAL_ERROR ||
+      disabledFromProps ||
+      (fiscalYearRequired && !fiscalYearId),
+    [
+      disableTextInput,
       disabledFromProps,
-    [disableTextInput, disabledFromProps, formikStatus, loading]
+      formikStatus,
+      loading,
+      fiscalYearRequired,
+      fiscalYearId,
+    ]
   );
 
   const renderInput = useCallback(
     (params: RenderInputParams) => {
       return (
         <TextField
-          {...(props as any)}
+          {...props}
+          required={fiscalYearRequired ? !hasBudget : !!props.required}
           variant={props.variant || "filled"}
           {...params}
           error={touched && !!error}
@@ -202,10 +236,10 @@ const Department = function (props: DepartmentProps) {
         />
       );
     },
-    [props, touched, error, helperText, disabled]
+    [props, touched, error, helperText, disabled, fiscalYearRequired, hasBudget]
   );
 
-  const onFocus = useCallback((event?) => setHasFocus(true), [setHasFocus]);
+  const onFocus = useCallback(() => setHasFocus(true), [setHasFocus]);
   const onBlur = useCallback(
     (event) => {
       setHasFocus(false);
@@ -231,7 +265,7 @@ const Department = function (props: DepartmentProps) {
   const onInputChange = useCallback<
     NonNullable<AutocompleteProps["onInputChange"]>
   >(
-    (event, value: string, reason) => {
+    (event, value: string) => {
       setInputValue((value || "").trimStart());
     },
     [setInputValue]
@@ -250,7 +284,7 @@ const Department = function (props: DepartmentProps) {
       value,
       renderInput,
       loading,
-      autoSelect: true,
+      autoSelect: false,
       multiple: true,
       getOptionLabel,
       onChange,

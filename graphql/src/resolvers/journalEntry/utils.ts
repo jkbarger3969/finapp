@@ -1,5 +1,5 @@
 import { O } from "ts-toolbelt";
-import { Collection, Db, ObjectID } from "mongodb";
+import { Collection, Db, ObjectId } from "mongodb";
 import {
   JournalEntrySourceType,
   JournalEntry,
@@ -46,7 +46,7 @@ export const getSrcCollectionAndNode = (
   db: Db,
   sourceType: JournalEntrySourceType,
   nodeMap: Context["nodeMap"]
-): { collection: Collection; node: ObjectID } => {
+): { collection: Collection; node: ObjectId } => {
   let collection: string;
   let id: string;
   switch (sourceType) {
@@ -63,7 +63,7 @@ export const getSrcCollectionAndNode = (
 
   return {
     collection: db.collection(collection),
-    node: new ObjectID(id),
+    node: new ObjectId(id),
   };
 };
 
@@ -74,7 +74,13 @@ export const entryAddFieldsStage = {
         const obj: {
           [P in keyof Omit<
             JournalEntry,
-            "__typename" | "id" | "refunds" | "items" | "lastUpdate"
+            | "__typename"
+            | "id"
+            | "refunds"
+            | "items"
+            | "lastUpdate"
+            | "budget"
+            | "fiscalYear"
           >]-?: null;
         } = {
           type: null,
@@ -166,7 +172,7 @@ export const entryAddFieldsStage = {
                     "$$item",
                     {
                       ...DocHistory.getPresentValues(
-                        (function*() {
+                        (function* () {
                           const obj: {
                             [P in keyof Omit<
                               JournalEntryItem,
@@ -265,7 +271,7 @@ export const entryTransmutationsStage = {
   },
 };
 
-export const getRefundTotals = (exclude: (ObjectID | string)[] = []) => {
+export const getRefundTotals = (exclude: (ObjectId | string)[] = []) => {
   const $eq = [
     DocHistory.getPresentValueExpression("deleted", {
       defaultValue: false,
@@ -281,7 +287,7 @@ export const getRefundTotals = (exclude: (ObjectID | string)[] = []) => {
             { $eq },
             {
               $not: {
-                $in: ["$$refund.id", exclude.map((id) => new ObjectID(id))],
+                $in: ["$$refund.id", exclude.map((id) => new ObjectId(id))],
               },
             },
           ],
@@ -315,7 +321,7 @@ export const getRefundTotals = (exclude: (ObjectID | string)[] = []) => {
   } as const;
 };
 
-export const getItemTotals = (exclude: (ObjectID | string)[] = []) => {
+export const getItemTotals = (exclude: (ObjectId | string)[] = []) => {
   const $eq = [
     DocHistory.getPresentValueExpression("deleted", {
       defaultValue: true,
@@ -331,7 +337,7 @@ export const getItemTotals = (exclude: (ObjectID | string)[] = []) => {
             { $eq },
             {
               $not: {
-                $in: ["$$item.id", exclude.map((id) => new ObjectID(id))],
+                $in: ["$$item.id", exclude.map((id) => new ObjectId(id))],
               },
             },
           ],

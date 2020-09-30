@@ -1,10 +1,27 @@
 import gql from "graphql-tag";
 
+export const FISCAL_YEAR = gql`
+  query FiscalYear($date: String) {
+    fiscalYears(where: { hasDate: { eq: $date } }) {
+      __typename
+      id
+    }
+  }
+`;
+
 export const DEPT_ENTRY_OPT_FRAGMENT = gql`
   fragment DeptEntryOptFragment on Department {
     __typename
     id
     name
+    budgets {
+      id
+      __typename
+      fiscalYear {
+        __typename
+        id
+      }
+    }
     parent {
       __typename
       ... on Business {

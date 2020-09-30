@@ -21,7 +21,7 @@ import {
   TransmutationValue,
   useFormikStatus,
   FormikStatusType,
-} from "../../../../formik/utils";
+} from "../../../../utils/formik";
 
 type Value = PayMethodEntryOptFragment | string;
 
@@ -67,7 +67,7 @@ const renderTags: AutocompleteProps["renderTags"] = (values, getTagProps) => {
   const lastIndex = values.length - 1;
   return values.map((value: Value, index: number) => {
     const isLastIndex = lastIndex === index;
-    const { key, ...props } = getTagProps({ index }) as any;
+    const { key, ...props } = getTagProps({ index }) as Record<string, unknown>;
 
     const parent = values[index - 1] as PayMethodEntryOptFragment | undefined;
 
@@ -98,7 +98,7 @@ const renderTags: AutocompleteProps["renderTags"] = (values, getTagProps) => {
 
     return (
       <Box
-        key={key}
+        key={key as string}
         display="flex"
         flexDirection="row"
         alignItems="center"
@@ -121,18 +121,18 @@ const renderTags: AutocompleteProps["renderTags"] = (values, getTagProps) => {
 const PaymentMethod = (
   props: {
     variant?: "filled" | "outlined";
-  } & {} & Omit<
-      TextFieldProps,
-      | "value"
-      | "variant"
-      | "error"
-      | "helperText"
-      | "name"
-      | "label"
-      | keyof FieldInputProps<any>
-      | keyof Omit<RenderInputParams, "id" | "disabled">
-    >
-) => {
+  } & Omit<
+    TextFieldProps,
+    | "value"
+    | "variant"
+    | "error"
+    | "helperText"
+    | "name"
+    | "label"
+    | keyof FieldInputProps<unknown>
+    | keyof Omit<RenderInputParams, "id" | "disabled">
+  >
+): JSX.Element => {
   const { disabled = false, ...textFieldProps } = props;
 
   const [hasFocus, setHasFocus] = useState(false);
@@ -273,7 +273,9 @@ const PaymentMethod = (
         <TextField
           {...textFieldProps}
           {...params}
-          variant={(textFieldProps.variant || "filled") as any}
+          variant={
+            (textFieldProps.variant || "filled") as TextFieldProps["variant"]
+          }
           error={(touched && !!error) || !!gqlError}
           helperText={helperText}
           name="paymentMethod"
@@ -284,7 +286,7 @@ const PaymentMethod = (
     [textFieldProps, touched, gqlError, error, label, InputProps, inputProps]
   );
 
-  const onFocus = useCallback((event?) => setHasFocus(true), [setHasFocus]);
+  const onFocus = useCallback(() => setHasFocus(true), [setHasFocus]);
   const onBlur = useCallback<NonNullable<AutocompleteProps["onBlur"]>>(
     (event) => {
       setHasFocus(false);
@@ -305,7 +307,7 @@ const PaymentMethod = (
   const onInputChange = useCallback<
     NonNullable<AutocompleteProps["onInputChange"]>
   >(
-    (event, inputValue: string, reason) => {
+    (event, inputValue: string) => {
       inputValue = (inputValue || "").trimStart();
       if (!disableTextInput) {
         setValue({ inputValue, value });

@@ -1,4 +1,4 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 import Fraction from "fraction.js";
 
 import DocHistory from "../utils/DocHistory";
@@ -29,7 +29,7 @@ const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = asyn
 
   const collection = db.collection("journalEntries");
 
-  const itemId = new ObjectID(id);
+  const itemId = new ObjectId(id);
 
   const docHistory = new DocHistory({ node: userNodeType, id: user.id });
 
@@ -48,7 +48,7 @@ const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = asyn
     updateBuilder.updateField("units", fields.units);
   }
 
-  let entryId: ObjectID;
+  let entryId: ObjectId;
   const asyncOps = [
     // Ensure item exists and get entry id
     (async () => {
@@ -62,7 +62,7 @@ const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = asyn
             },
           },
         ])
-        .toArray()) as [{ entryId: ObjectID } | undefined];
+        .toArray()) as [{ entryId: ObjectId } | undefined];
 
       if (!result) {
         throw new Error(`Item "${id}" does not exists.`);
@@ -79,7 +79,7 @@ const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = asyn
       }
 
       const { collection, id: node } = nodeMap.typename.get("Department");
-      const id = new ObjectID(deptId);
+      const id = new ObjectId(deptId);
 
       if (
         !(await db
@@ -90,7 +90,7 @@ const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = asyn
       }
 
       updateBuilder.updateField("department", {
-        node: new ObjectID(node),
+        node: new ObjectId(node),
         id,
       });
     })(),
@@ -106,7 +106,7 @@ const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = asyn
         "JournalEntryCategory"
       );
 
-      const id = new ObjectID(catId);
+      const id = new ObjectId(catId);
 
       if (
         !(await db
@@ -117,7 +117,7 @@ const journalEntryUpdateItem: MutationResolvers["journalEntryUpdateItem"] = asyn
       }
 
       updateBuilder.updateField("category", {
-        node: new ObjectID(node),
+        node: new ObjectId(node),
         id,
       });
     })(),

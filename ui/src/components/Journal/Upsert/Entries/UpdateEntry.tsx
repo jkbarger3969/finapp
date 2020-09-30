@@ -1,7 +1,11 @@
 import React, { useMemo, useCallback } from "react";
 import gql from "graphql-tag";
 import { Formik, FormikConfig, FormikProps, useFormikContext } from "formik";
-import { useQuery, useApolloClient } from "@apollo/react-hooks";
+import {
+  useQuery,
+  useApolloClient,
+  QueryHookOptions,
+} from "@apollo/react-hooks";
 import {
   Dialog,
   DialogTitle,
@@ -24,12 +28,14 @@ import {
   JournalEntrySourceType,
   SrcEntryDeptOptFragment,
   SrcEntryBizOptFragment,
+  FiscalYearQuery,
+  FiscalYearQueryVariables,
 } from "../../../../apollo/graphTypes";
 import {
   FormikStatus,
   FormikStatusType,
   useFormikStatus,
-} from "../../../../formik/utils";
+} from "../../../../utils/formik";
 import submitUpdate, { UpdateValues, IniUpdateValues } from "./submitUpdate";
 import {
   PAY_METHOD_ENTRY_OPT_FRAGMENT,
@@ -38,6 +44,7 @@ import {
   SRC_ENTRY_PERSON_OPT_FRAGMENT,
   SRC_ENTRY_BIZ_OPT_FRAGMENT,
   SRC_ENTRY_DEPT_OPT_FRAGMENT,
+  FISCAL_YEAR,
 } from "../upsertEntry.gql";
 import { min } from "date-fns/esm";
 
@@ -53,6 +60,7 @@ import Department from "../EntryFields/Department";
 import Source from "../EntryFields/Source";
 import Type from "../EntryFields/Type";
 import { rationalToFraction } from "../../../../utils/rational";
+import { ApolloError } from "apollo-client";
 
 export interface UpdateEntryProps {
   entryId: string | null;
@@ -147,9 +155,38 @@ const UpdateEntryDialog = (
     handleSubmit,
   } = props;
 
-  const { resetForm, isSubmitting, isValid } = useFormikContext<UpdateValues>();
+  const {
+    resetForm,
+    isSubmitting,
+    isValid,
+    values: { date },
+  } = useFormikContext<UpdateValues>();
 
   const [formikStatus, setFormikStatus] = useFormikStatus();
+
+  const onError = useCallback<
+    NonNullable<QueryHookOptions<FiscalYearQuery>["onError"]>
+  >(
+    (err: ApolloError) => {
+      setFormikStatus({ msg: err.message, type: FormikStatusType.FATAL_ERROR });
+    },
+    [setFormikStatus]
+  );
+
+  const { data } = useQuery<FiscalYearQuery, FiscalYearQueryVariables>(
+    FISCAL_YEAR,
+    {
+      skip: !date?.inputValue,
+      variables: {
+        date: date?.value || "",
+      },
+      onError,
+    }
+  );
+
+  const fiscalYearId = useMemo<string>(() => data?.fiscalYears[0]?.id ?? "", [
+    data,
+  ]);
 
   const refunds = journalEntry?.refunds || [];
 
@@ -157,7 +194,7 @@ const UpdateEntryDialog = (
   const [minTotal, maxDate] = useMemo(
     () =>
       refunds.reduce(
-        ([minTotal, maxDate], { id, deleted, total, date }) => [
+        ([minTotal, maxDate], { deleted, total, date }) => [
           deleted ? minTotal : minTotal.add(rationalToFraction(total)),
           deleted ? maxDate : min([maxDate, new Date(date)]),
         ],
@@ -272,6 +309,7 @@ const UpdateEntryDialog = (
                 disabled={isSubmitting || loading || !!fatalError}
                 fullWidth
                 required
+                fiscalYearId={fiscalYearId}
               />
             </Grid>
             <Grid {...gridEntryResponsiveProps}>
@@ -332,7 +370,7 @@ const UpdateEntryDialog = (
   );
 };
 
-const UpdateEntry = (props: UpdateEntryProps) => {
+const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
   const { entryId, open, onClose, onExited } = props;
 
   const { loading, error, data } = useQuery<
@@ -364,7 +402,7 @@ const UpdateEntry = (props: UpdateEntryProps) => {
   const journalEntry = data?.journalEntry;
   const initialValues = useMemo<IniUpdateValues>(() => {
     if (!journalEntry) {
-      return {} as any;
+      return {} as IniUpdateValues;
     }
 
     const date = {
@@ -443,7 +481,7 @@ const UpdateEntry = (props: UpdateEntryProps) => {
         case "Business":
           value.push(JournalEntrySourceType.Business, src);
           break;
-        case "Department":
+        case "Department": {
           // The source type is the root, for Dept is always a business.
           value.push(JournalEntrySourceType.Business);
           const ancestorDeptQueue: string[] = [];
@@ -485,6 +523,7 @@ const UpdateEntry = (props: UpdateEntryProps) => {
 
             value.push(...ancestorDepts, src);
           }
+        }
       }
 
       return {
@@ -554,8 +593,9 @@ const UpdateEntry = (props: UpdateEntryProps) => {
       loading={loading}
       onSubmit={onSubmit}
       enableReinitialize={true}
-      children={children}
-    />
+    >
+      {children}
+    </Formik>
   );
 };
 

@@ -36,7 +36,7 @@ import {
   FormikStatusType,
   useFormikStatus,
   FormikStatus,
-} from "../../../../formik/utils";
+} from "../../../../utils/formik";
 import OverlayLoading from "../../../utils/OverlayLoading";
 import Overlay from "../../../utils/Overlay";
 import { JOURNAL_FRAGMENT } from "./refunds.gql";
@@ -251,7 +251,7 @@ const AddRefundDialog = (
   );
 };
 
-const AddRefund = (props: AddRefundProps) => {
+const AddRefund = (props: AddRefundProps): JSX.Element => {
   const { entryId, open, onClose, onExited } = props;
 
   const initialValues = useMemo<Partial<AddValues>>(() => ({}), []);
@@ -293,8 +293,9 @@ const AddRefund = (props: AddRefundProps) => {
       // isInitialValid={false}
       enableReinitialize={true}
       onSubmit={onSubmit}
-      children={children}
-    />
+    >
+      {children}
+    </Formik>
   );
 };
 

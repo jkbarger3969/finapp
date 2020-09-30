@@ -1,4 +1,4 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 import Fraction from "fraction.js";
 
 import DocHistory from "../utils/DocHistory";
@@ -39,7 +39,7 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
 
   const collection = db.collection("journalEntries");
 
-  const srcEntryId = new ObjectID(id);
+  const srcEntryId = new ObjectId(id);
 
   const docHistory = new DocHistory({ node: userNodeType, id: user.id });
 
@@ -57,7 +57,7 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
     throw new Error("Item units must be greater than 0.");
   }
 
-  let itemId: ObjectID;
+  let itemId: ObjectId;
 
   const asyncOps: Promise<void>[] = [
     // Ensure entry exists and ensure item totals does not exceed entry total
@@ -107,7 +107,7 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
       }
 
       const { collection, id: node } = nodeMap.typename.get("Department");
-      const id = new ObjectID(departmentId);
+      const id = new ObjectId(departmentId);
 
       if (
         !(await db
@@ -118,7 +118,7 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
       }
 
       docBuilder.addField("department", {
-        node: new ObjectID(node),
+        node: new ObjectId(node),
         id,
       });
     })(),
@@ -133,7 +133,7 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
         "JournalEntryCategory"
       );
 
-      const id = new ObjectID(categoryId);
+      const id = new ObjectId(categoryId);
 
       if (
         !(await db
@@ -143,7 +143,7 @@ const journalEntryAddItem: MutationResolvers["journalEntryAddItem"] = async (
         throw new Error(`Category with id ${categoryId} does not exist.`);
       }
 
-      docBuilder.addField("category", { node: new ObjectID(node), id });
+      docBuilder.addField("category", { node: new ObjectId(node), id });
     })(),
 
     // Generate item ID

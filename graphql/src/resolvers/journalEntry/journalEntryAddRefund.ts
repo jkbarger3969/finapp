@@ -1,4 +1,4 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 import Fraction from "fraction.js";
 import { isValid } from "date-fns";
 
@@ -56,7 +56,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
 
   const collection = db.collection("journalEntries");
 
-  const srcEntryId = new ObjectID(id);
+  const srcEntryId = new ObjectId(id);
 
   const docBuilder = docHistory.newHistoricalDoc(true).addFields([
     ["date", date],
@@ -69,7 +69,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
     docBuilder.addField("description", description);
   }
 
-  let refundId: ObjectID;
+  let refundId: ObjectId;
   const asyncOps = [
     // Ensure source entry exists, max refund totals are not exceeded, and
     // that refund date is after entry date
@@ -128,7 +128,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
       Promise.all(asyncOps.splice(0)).then(async () => {
         const { id: node } = nodeMap.typename.get("PaymentMethod");
 
-        const id = new ObjectID(
+        const id = new ObjectId(
           await (paymentMethodAddMutation(
             doc,
             { fields: paymentMethodAdd },
@@ -144,7 +144,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
         );
 
         docBuilder.addField("paymentMethod", {
-          node: new ObjectID(node),
+          node: new ObjectId(node),
           id,
         });
       })
@@ -155,7 +155,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
       (async () => {
         const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
 
-        const id = new ObjectID(args.fields.paymentMethod);
+        const id = new ObjectId(args.fields.paymentMethod);
 
         if (
           !(await db
@@ -168,7 +168,7 @@ const journalEntryAddRefund: MutationResolvers["journalEntryAddRefund"] = async 
         }
 
         docBuilder.addField("paymentMethod", {
-          node: new ObjectID(node),
+          node: new ObjectId(node),
           id,
         });
       })()

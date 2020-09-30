@@ -12,7 +12,7 @@ import { NodeInfo, Context } from "./types";
 import secrets from "./secrets";
 import mongoDb from "./mongoDb";
 import typeDefs from "./schema";
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 
 const PORT = process.env.PORT || 4000;
 
@@ -26,14 +26,14 @@ const PORT = process.env.PORT || 4000;
       dbPort: DB_PORT,
       dbUser: DB_USER,
       dbPass: DB_PASS,
-      db: "accounting"
+      db: "accounting",
     });
 
     const nodeMap = await db
       .collection("nodes")
       .aggregate([{ $addFields: { id: { $toString: "$_id" } } }])
       .toArray()
-      .then(nodes => {
+      .then((nodes) => {
         const nodeTypesIdMap = new Map<string, NodeInfo>();
         const nodeTypesTypeMap = new Map<string, NodeInfo>();
 
@@ -49,15 +49,15 @@ const PORT = process.env.PORT || 4000;
       db,
       nodeMap,
       user: {
-        id: new ObjectID("5de16db089c4360df927a3db")
+        id: new ObjectId("5de16db089c4360df927a3db"),
       },
-      pubSub: new PubSub()
+      pubSub: new PubSub(),
     };
 
     const gqlServer = new ApolloServer({
       typeDefs,
       resolvers,
-      context
+      context,
     });
 
     const gqlApp = new Koa();

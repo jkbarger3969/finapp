@@ -1,9 +1,9 @@
-import { Db, ObjectID } from "mongodb";
+import { Db, ObjectId } from "mongodb";
 import { PubSub } from "apollo-server";
 
 export interface NodeValue {
-  node: ObjectID;
-  id: ObjectID;
+  node: ObjectId;
+  id: ObjectId;
 }
 
 export interface NodeInfo {
@@ -20,7 +20,7 @@ export interface Context {
     typename: Map<string, NodeInfo>;
   };
   user?: {
-    id: ObjectID;
+    id: ObjectId;
   };
   pubSub: PubSub;
   ephemeral?: {

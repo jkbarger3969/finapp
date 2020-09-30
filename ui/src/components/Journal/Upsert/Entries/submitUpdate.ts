@@ -14,7 +14,7 @@ import {
   UpdateEntryMutation as UpdateEntry,
   UpdateEntryMutationVariables as UpdateEntryVars,
 } from "../../../../apollo/graphTypes";
-import { TransmutationValue } from "../../../../formik/utils";
+import { TransmutationValue } from "../../../../utils/formik";
 import { CHECK_ID } from "../../constants";
 import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/JournalEntries.gql";
 import { SourceValue } from "./submitAdd";
@@ -62,8 +62,6 @@ export type IniUpdateValues = O.Overwrite<
   }
 >;
 
-const NULLISH = Symbol();
-
 const UPDATE_ENTRY = gql`
   mutation UpdateEntry(
     $id: ID!
@@ -88,7 +86,7 @@ const UPDATE_ENTRY = gql`
 `;
 
 const submitUpdate: (
-  client: ApolloClient<any>,
+  client: ApolloClient<unknown>,
   iniValues: IniUpdateValues,
   id: string,
   ...rest: Parameters<FormikConfig<UpdateValues>["onSubmit"]>

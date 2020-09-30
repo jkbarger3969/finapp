@@ -1,4 +1,4 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 import { PaymentMethodResolvers, PaymentMethod } from "../../graphTypes";
 import { $addFields } from "./utils";
 
@@ -14,10 +14,10 @@ const ancestors: PaymentMethodResolvers["ancestors"] = async (
   const collect = db.collection("paymentMethods");
 
   while (doc.parent) {
-    const _id = new ObjectID(
+    const _id = new ObjectId(
       doc.parent?.__typename === "PaymentMethod"
         ? doc.parent.id
-        : ((doc.parent as any) as string | ObjectID)
+        : ((doc.parent as any) as string | ObjectId)
     );
     [doc] = await collect
       .aggregate<PaymentMethod>([{ $match: { _id } }, { $addFields }])
@@ -36,7 +36,7 @@ const children: PaymentMethodResolvers["children"] = (
 ) => {
   const { db } = context;
 
-  const parent = new ObjectID(doc.id ? doc.id : (doc as any)._id) as any;
+  const parent = new ObjectId(doc.id ? doc.id : (doc as any)._id) as any;
 
   return db
     .collection("paymentMethods")
@@ -56,7 +56,7 @@ const parent: PaymentMethodResolvers["parent"] = async (
     return parent.parent;
   }
 
-  const _id = new ObjectID((parent.parent as any) as string | ObjectID);
+  const _id = new ObjectId((parent.parent as any) as string | ObjectId);
 
   const { db } = context;
 
@@ -69,11 +69,11 @@ const parent: PaymentMethodResolvers["parent"] = async (
 };
 
 const PaymentMethod: PaymentMethodResolvers = {
-  // id: doc => (doc.id ? doc.id : ((doc as any)._id as ObjectID).toHexString()),
+  // id: doc => (doc.id ? doc.id : ((doc as any)._id as ObjectId).toHexString()),
   parent,
   ancestors,
   children,
-  authorization: doc => (doc.authorization ? doc.authorization : [])
+  authorization: (doc) => (doc.authorization ? doc.authorization : []),
 };
 
 export default PaymentMethod;

@@ -3,7 +3,7 @@ import {
   JournalEntryItemUpsertResult,
   JournalEntry,
 } from "../../graphTypes";
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
 import journalEntry from "./journalEntry";
@@ -20,7 +20,7 @@ const journalEntryDeleteItem: MutationResolvers["journalEntryDeleteItem"] = asyn
 
   const collection = db.collection("journalEntries");
 
-  const itemId = new ObjectID(id);
+  const itemId = new ObjectId(id);
 
   const [entryState] = (await collection
     .aggregate([
@@ -37,7 +37,7 @@ const journalEntryDeleteItem: MutationResolvers["journalEntryDeleteItem"] = asyn
         },
       },
     ])
-    .toArray()) as [{ entryId: ObjectID; deleted: boolean }];
+    .toArray()) as [{ entryId: ObjectId; deleted: boolean }];
 
   if (!entryState) {
     throw new Error(`Item "${id} does not exists.`);

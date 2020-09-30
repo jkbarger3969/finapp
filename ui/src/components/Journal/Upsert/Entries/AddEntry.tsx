@@ -18,20 +18,26 @@ import {
   Queue as QueueIcon,
 } from "@material-ui/icons";
 import { Formik, FormikConfig, FormikProps, useFormikContext } from "formik";
-import { useApolloClient, useQuery } from "@apollo/react-hooks";
+import {
+  useApolloClient,
+  useQuery,
+  QueryHookOptions,
+} from "@apollo/react-hooks";
 import gql from "graphql-tag";
 
 import {
   DeptIniValueForAddEntryQuery as DeptIniValueForAddEntry,
   DeptIniValueForAddEntryQueryVariables as DeptIniValueForAddEntryVars,
+  FiscalYearQuery,
+  FiscalYearQueryVariables,
 } from "../../../../apollo/graphTypes";
 import submitAdd, { AddValues } from "./submitAdd";
 import {
   FormikStatusType,
   FormikStatus,
   useFormikStatus,
-} from "../../../../formik/utils";
-import { DEPT_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";
+} from "../../../../utils/formik";
+import { DEPT_ENTRY_OPT_FRAGMENT, FISCAL_YEAR } from "../upsertEntry.gql";
 import OverlayLoading from "../../../utils/OverlayLoading";
 import Overlay from "../../../utils/Overlay";
 import DateEntry from "../EntryFields/DateEntry";
@@ -43,6 +49,7 @@ import Category from "../EntryFields/Category";
 import Department from "../EntryFields/Department";
 import Source from "../EntryFields/Source";
 import Type from "../EntryFields/Type";
+import { ApolloError } from "apollo-client";
 
 export interface AddEntryProps {
   deptId?: string | null;
@@ -73,11 +80,39 @@ const AddEntryDialog = (
 ) => {
   const { open, onClose, loading } = props;
 
-  const { resetForm, isSubmitting, isValid, submitForm } = useFormikContext<
-    AddValues
-  >();
+  const {
+    resetForm,
+    isSubmitting,
+    isValid,
+    submitForm,
+    values: { date },
+  } = useFormikContext<AddValues>();
 
   const [formikStatus, setFormikStatus] = useFormikStatus();
+
+  const onError = useCallback<
+    NonNullable<QueryHookOptions<FiscalYearQuery>["onError"]>
+  >(
+    (err: ApolloError) => {
+      setFormikStatus({ msg: err.message, type: FormikStatusType.FATAL_ERROR });
+    },
+    [setFormikStatus]
+  );
+
+  const { data } = useQuery<FiscalYearQuery, FiscalYearQueryVariables>(
+    FISCAL_YEAR,
+    {
+      skip: !date?.inputValue,
+      variables: {
+        date: date?.value || "",
+      },
+      onError,
+    }
+  );
+
+  const fiscalYearId = useMemo<string>(() => data?.fiscalYears[0]?.id ?? "", [
+    data,
+  ]);
 
   const [generalError, fatalError] = useMemo<
     [string | null, boolean | null]
@@ -210,6 +245,7 @@ const AddEntryDialog = (
                 disabled={loading || isSubmitting || !!fatalError}
                 fullWidth
                 required
+                fiscalYearId={fiscalYearId}
               />
             </Grid>
             <Grid {...gridEntryResponsiveProps}>
@@ -281,7 +317,7 @@ const AddEntryDialog = (
   );
 };
 
-const AddEntry = (props: AddEntryProps) => {
+const AddEntry = (props: AddEntryProps): JSX.Element => {
   const { open, onClose, deptId } = props;
 
   const { loading, error, data } = useQuery<
@@ -312,7 +348,7 @@ const AddEntry = (props: AddEntryProps) => {
   );
 
   const children = useCallback(
-    (props: FormikProps<AddValues>) => (
+    (/* props: FormikProps<AddValues> */) => (
       <AddEntryDialog open={open} onClose={onClose} loading={loading} />
     ),
     [open, onClose, loading]
@@ -324,8 +360,9 @@ const AddEntry = (props: AddEntryProps) => {
       initialStatus={initialStatus}
       enableReinitialize={true}
       onSubmit={onSubmit}
-      children={children}
-    />
+    >
+      {children}
+    </Formik>
   );
 };
 

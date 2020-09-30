@@ -9,7 +9,7 @@ import {
   AddEntryRefundMutation as AddRefund,
   AddEntryRefundMutationVariables as AddRefundVars,
 } from "../../../../apollo/graphTypes";
-import { TransmutationValue } from "../../../../formik/utils";
+import { TransmutationValue } from "../../../../utils/formik";
 import { JOURNAL_ENTRY_REFUND } from "../../Table/JournalEntries.gql";
 
 export type AddValues = O.Overwrite<
@@ -50,7 +50,7 @@ const ADD_REFUND = gql`
 `;
 
 const submitAdd: (
-  client: ApolloClient<any>,
+  client: ApolloClient<unknown>,
   id: string,
   ...rest: Parameters<FormikConfig<AddValues>["onSubmit"]>
 ) => ReturnType<FormikConfig<AddValues>["onSubmit"]> = async (

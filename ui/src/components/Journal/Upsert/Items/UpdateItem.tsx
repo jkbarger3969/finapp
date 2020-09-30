@@ -1,5 +1,9 @@
 import React, { useMemo, useCallback } from "react";
-import { useQuery, useApolloClient } from "@apollo/react-hooks";
+import {
+  useQuery,
+  useApolloClient,
+  QueryHookOptions,
+} from "@apollo/react-hooks";
 import gql from "graphql-tag";
 import { Formik, FormikConfig, FormikProps, useFormikContext } from "formik";
 import {
@@ -22,18 +26,21 @@ import {
   UpdateItemIniStateQuery as UpdateItemIniState,
   UpdateItemIniStateQueryVariables as UpdateItemIniStateVars,
   JournalEntry_3Fragment as JournalEntryFragment,
+  FiscalYearQuery,
+  FiscalYearQueryVariables,
 } from "../../../../apollo/graphTypes";
 import submitUpdate, { UpdateValues } from "./submitUpdate";
 import { JOURNAL_FRAGMENT } from "./items.gql";
 import {
   DEPT_ENTRY_OPT_FRAGMENT,
   CAT_ENTRY_OPT_FRAGMENT,
+  FISCAL_YEAR,
 } from "../upsertEntry.gql";
 import {
   FormikStatus,
   FormikStatusType,
   useFormikStatus,
-} from "../../../../formik/utils";
+} from "../../../../utils/formik";
 import OverlayLoading from "../../../utils/OverlayLoading";
 import Overlay from "../../../utils/Overlay";
 import Description from "../EntryFields/Description";
@@ -42,6 +49,7 @@ import Total from "../EntryFields/Total";
 import Category from "../EntryFields/Category";
 import Units from "./ItemFields/Units";
 import { rationalToFraction } from "../../../../utils/rational";
+import { ApolloError } from "apollo-client";
 
 export interface UpdateItemProps {
   entryId: string | null;
@@ -109,6 +117,33 @@ const UpdateItemDialog = (
   const { resetForm, isSubmitting, isValid } = useFormikContext<UpdateValues>();
 
   const [formikStatus, setFormikStatus] = useFormikStatus();
+
+  const onError = useCallback<
+    NonNullable<QueryHookOptions<FiscalYearQuery>["onError"]>
+  >(
+    (err: ApolloError) => {
+      setFormikStatus({ msg: err.message, type: FormikStatusType.FATAL_ERROR });
+    },
+    [setFormikStatus]
+  );
+
+  const date = journalEntry?.date || "";
+
+  const { data: fiscalYearData } = useQuery<
+    FiscalYearQuery,
+    FiscalYearQueryVariables
+  >(FISCAL_YEAR, {
+    skip: !date,
+    variables: {
+      date,
+    },
+    onError,
+  });
+
+  const fiscalYearId = useMemo<string>(
+    () => fiscalYearData?.fiscalYears[0]?.id ?? "",
+    [fiscalYearData]
+  );
 
   const type = journalEntry?.type ?? null;
 
@@ -227,6 +262,7 @@ const UpdateItemDialog = (
               <Department
                 disabled={loading || isSubmitting || !!fatalError}
                 fullWidth
+                fiscalYearId={fiscalYearId}
               />
             </Grid>
           </Grid>
@@ -257,7 +293,7 @@ const UpdateItemDialog = (
   );
 };
 
-const UpdateItem = (props: UpdateItemProps) => {
+const UpdateItem = (props: UpdateItemProps): JSX.Element => {
   const { entryId, itemId, open, onClose, onExited } = props;
 
   const { loading, error, data } = useQuery<
@@ -285,7 +321,7 @@ const UpdateItem = (props: UpdateItemProps) => {
   const journalEntryItem = data?.journalEntryItem;
   const initialValues = useMemo<UpdateValues>(() => {
     if (!journalEntryItem) {
-      return {} as any;
+      return {} as UpdateValues;
     }
 
     const total = {
@@ -401,8 +437,9 @@ const UpdateItem = (props: UpdateItemProps) => {
       initialStatus={initialStatus}
       enableReinitialize={true}
       onSubmit={onSubmit}
-      children={children}
-    />
+    >
+      {children}
+    </Formik>
   );
 };
 

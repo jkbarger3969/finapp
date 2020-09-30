@@ -1,4 +1,4 @@
-import { ObjectID } from "mongodb";
+import { ObjectId } from "mongodb";
 import { MutationResolvers, PaymentMethodUpdateFields } from "../../graphTypes";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
@@ -31,7 +31,7 @@ const paymentMethodUpdate: MutationResolvers["paymentMethodUpdate"] = async (
   const refId = (fields.refId ?? "").trim();
   const name = (fields.name ?? "").trim();
 
-  const _id = new ObjectID(id);
+  const _id = new ObjectId(id);
 
   if (active !== null) {
     updateBuilder.updateField("active", active);

@@ -1,12 +1,16 @@
 import { Resolvers } from "./graphTypes";
-import { Budget, budgets } from "./resolvers/budget";
-import {
-  Business,
-  business,
-  businesses,
-  addBusiness,
-} from "./resolvers/business";
-import { Department, departments, department } from "./resolvers/departments";
+// import { Budget, budgets } from "./resolvers/budget";
+import budget from "./resolvers/budget/budget";
+import budgets from "./resolvers/budget/budgets";
+import Budget from "./resolvers/budget/BudgetResolvers";
+import { addBusiness } from "./resolvers/business";
+import business from "./resolvers/business/business";
+import businesses from "./resolvers/business/businesses";
+import Business from "./resolvers/business/BusinessResolvers";
+// import { Department, departments, department } from "./resolvers/departments";
+import department from "./resolvers/department/department";
+import departments from "./resolvers/department/departments";
+import Department from "./resolvers/department/DepartmentResolvers";
 import {
   journalEntryAdded,
   journalEntryUpdated,
@@ -40,7 +44,11 @@ import paymentMethod from "./resolvers/paymentMethod/paymentMethod";
 import paymentMethodAdd from "./resolvers/paymentMethod/paymentMethodAdd";
 import paymentMethodUpdate from "./resolvers/paymentMethod/paymentMethodUpdate";
 import PaymentMethod from "./resolvers/paymentMethod/PaymehtMethodResolver";
-import { people, addPerson } from "./resolvers/person";
+import { addPerson } from "./resolvers/person";
+import people from "./resolvers/person/people";
+import person from "./resolvers/person/person";
+import fiscalYear from "./resolvers/fiscalYear/fiscalYear";
+import fiscalYears from "./resolvers/fiscalYear/fiscalYears";
 import { User } from "./resolvers/user";
 
 const resolvers: Resolvers = {
@@ -54,6 +62,7 @@ const resolvers: Resolvers = {
   JournalEntryCategory,
   User,
   Query: {
+    budget,
     businesses,
     business,
     budgets,
@@ -68,7 +77,10 @@ const resolvers: Resolvers = {
     department,
     paymentMethods,
     paymentMethod,
+    person,
     people,
+    fiscalYear,
+    fiscalYears,
   },
   Mutation: {
     journalEntryAdd,
