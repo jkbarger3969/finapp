@@ -48,6 +48,8 @@ import { format, startOfDay } from "date-fns";
 import Fraction from "fraction.js";
 import "mingo/init/system"; // Loads all operators.  Should config later.
 import { Aggregator } from "mingo/aggregator";
+import * as Papa from "papaparse";
+import { saveAs } from "file-saver";
 
 import {
   JournalEntries_1Query as JournalEntriesQuery,
@@ -556,6 +558,8 @@ const Journal = (props: {
     []
   );
 
+  const [totalCount, setTotalCount] = useState(0);
+
   const options = useMemo<Options>(
     () => ({
       rowStyle: (data: Entry) => {
@@ -569,7 +573,7 @@ const Journal = (props: {
       maxBodyHeight: "calc(100vh - 53px - 64px)",
       headerStyle: { position: "sticky", top: 0 },
       pageSize: 25,
-      pageSizeOptions: [25, 50, 100],
+      pageSizeOptions: totalCount ? [25, 50, 100, totalCount] : [25, 50, 100],
       showTitle: !!journalTitle,
       selection: mode === JournalMode.Reconcile,
       showSelectAllCheckbox: false,
@@ -579,8 +583,40 @@ const Journal = (props: {
       filtering: true,
       sorting: true,
       thirdSortClick: false,
+      exportAllData: true,
+      exportButton: true,
+      exportFileName: journalTitle || "lsccBudgetTracking",
+      exportCsv: (columns: Column<Entry>[], renderData: Entry[]) => {
+        const csv = Papa.unparse(
+          renderData.reduce((entries, entry) => {
+            entries.push(
+              columns.reduce((fEntry, { field, title, render }) => {
+                switch (field) {
+                  case "reconciled":
+                  case "date":
+                    fEntry[(title || field) as string] = entry[field];
+                    break;
+                  default:
+                    fEntry[(title || field) as string] = render
+                      ? render(entry, "row")
+                      : (((entry as unknown) as Record<string, unknown>)[
+                          (field as unknown) as string
+                        ] as unknown);
+                }
+                return fEntry;
+              }, {} as Record<string, unknown>)
+            );
+            return entries;
+          }, [] as Record<string, unknown>[])
+        );
+        saveAs(
+          new Blob([csv], { type: "text/plain;charset=utf-8" }),
+          `${journalTitle || "budgetTracking"}.csv`
+        );
+      },
     }),
-    [journalTitle, mode]
+
+    [journalTitle, mode, totalCount]
   );
 
   const actions = useMemo<MaterialTableProps<Entry>["actions"]>(() => {
@@ -1156,14 +1192,14 @@ const Journal = (props: {
       if (aggregate.compare(newAggregate) !== 0) {
         setAggregate(newAggregate);
       }
-
+      setTotalCount(totalCount);
       return {
         data,
         page,
         totalCount,
       };
     },
-    [aggregate, deptId, entries, detailPanelState]
+    [aggregate, deptId, entries, detailPanelState, setTotalCount]
   );
 
   useEffect(() => {
