@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 4000;
     const { DB_PASS, DB_USER } = await secrets();
     const { DB_HOST, DB_PORT } = process.env;
 
-    const db = await mongoDb({
+    const { db, client } = await mongoDb({
       dbHost: DB_HOST,
       dbPort: DB_PORT,
       dbUser: DB_USER,
@@ -46,6 +46,7 @@ const PORT = process.env.PORT || 4000;
       });
 
     const context: Context = {
+      client,
       db,
       nodeMap,
       user: {

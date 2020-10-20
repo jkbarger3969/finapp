@@ -76,6 +76,7 @@ export const entryAddFieldsStage = {
             JournalEntry,
             | "__typename"
             | "id"
+            | "dateOfRecord"
             | "refunds"
             | "items"
             | "lastUpdate"
@@ -98,6 +99,34 @@ export const entryAddFieldsStage = {
         return Object.keys(obj);
       })()
     ),
+    dateOfRecord: {
+      $cond: {
+        if: {
+          $ifNull: ["$dateOfRecord.date", false],
+        },
+        then: {
+          dateOfRecord: {
+            ...DocHistory.getPresentValues(
+              (() => {
+                const obj: {
+                  [P in keyof Omit<
+                    NonNullable<JournalEntry["dateOfRecord"]>,
+                    "__typename"
+                  >]-?: null;
+                } = {
+                  date: null,
+                  overrideFiscalYear: null,
+                  deleted: null,
+                };
+
+                return Object.keys(obj);
+              })()
+            ),
+          },
+        },
+        else: null,
+      },
+    },
     refunds: {
       $ifNull: [
         {

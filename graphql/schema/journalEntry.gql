@@ -3,6 +3,32 @@ enum JournalEntryType {
   DEBIT
 }
 
+type JournalEntryDateOfRecord {
+  """
+  ISO 8601
+  """
+  date: String!
+  overrideFiscalYear: Boolean!
+  deleted: Boolean!
+}
+
+input JournalEntryDateOfRecordAdd {
+  """
+  ISO 8601
+  """
+  date: String!
+  overrideFiscalYear: Boolean!
+  deleted: Boolean
+}
+input JournalEntryDateOfRecordUpdate {
+  """
+  ISO 8601
+  """
+  date: String
+  overrideFiscalYear: Boolean
+  deleted: Boolean
+}
+
 type JournalEntry {
   id: ID!
   refunds: [JournalEntryRefund!]!
@@ -12,6 +38,7 @@ type JournalEntry {
   ISO 8601
   """
   date: String!
+  dateOfRecord: JournalEntryDateOfRecord
   department: Department!
   budget: Budget!
   fiscalYear: FiscalYear!
@@ -41,6 +68,7 @@ input JournalEntryUpdateFields {
   ISO 8601
   """
   date: String
+  dateOfRecord: JournalEntryDateOfRecordUpdate
   department: ID
   type: JournalEntryType
   category: ID
@@ -56,6 +84,7 @@ input JournalEntryAddFields {
   ISO 8601
   """
   date: String!
+  dateOfRecord: JournalEntryDateOfRecordAdd
   department: ID!
   type: JournalEntryType!
   category: ID!
@@ -182,10 +211,8 @@ input JournalEntiresWhereInput {
   ne: ID
   in: [ID!]
   nin: [ID!]
-  """
-  ISO 8601
-  """
   date: WhereDate
+  dateOfRecord: WhereDate
   fiscalYear: JournalEntriesWhereFiscalYear
   department: JournalEntriesWhereDepartment
   category: JournalEntriesWhereCategory

@@ -25,6 +25,25 @@ export interface AsyncIterableIteratorFns<T, TReturn = any, TNext = undefined>
   [Symbol.asyncIterator](): AsyncIterableIteratorFns<T, TReturn, TNext>;
 }
 
+/**
+ * Calls the generator function with the passed args, captures returned
+ * Generator object and calls the next method one time then returns the
+ * Generator object.
+ * */
+export const generatorInit = <
+  TArgs extends unknown[],
+  T,
+  TReturn = any,
+  TNext = undefined
+>(
+  genFn: GeneratorFunctionFns<TArgs, T, TReturn, TNext>,
+  ...args: TArgs
+): Generator<T, TReturn, TNext> => {
+  const gen = genFn(...args);
+  gen.next();
+  return gen;
+};
+
 export const iterateIteratorResults = function* <
   T,
   TReturn = any,
@@ -139,10 +158,20 @@ export type IterateOwnKeysValuesIterableIterator<
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 
+export const iterateOwnKeys = function* <TObj extends object>(
+  obj: TObj
+): IterableIterator<keyof TObj> {
+  for (const key in obj) {
+    if (hasOwnProperty.call(obj, key)) {
+      yield key;
+    }
+  }
+};
+
 export const iterateOwnKeyValues = function* <TObj extends object>(
   obj: TObj
 ): IterateOwnKeysValuesIterableIterator<TObj> {
-  for (const key in obj) {
+  for (const key of iterateOwnKeys<TObj>(obj)) {
     if (hasOwnProperty.call(obj, key)) {
       yield [key, obj[key]];
     }

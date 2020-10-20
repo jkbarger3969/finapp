@@ -176,8 +176,8 @@ export type JournalEntiresWhereInput = {
   ne?: Maybe<Scalars['ID']>;
   in?: Maybe<Array<Scalars['ID']>>;
   nin?: Maybe<Array<Scalars['ID']>>;
-  /** ISO 8601 */
   date?: Maybe<WhereDate>;
+  dateOfRecord?: Maybe<WhereDate>;
   fiscalYear?: Maybe<JournalEntriesWhereFiscalYear>;
   department?: Maybe<JournalEntriesWhereDepartment>;
   category?: Maybe<JournalEntriesWhereCategory>;
@@ -241,6 +241,7 @@ export type JournalEntry = {
   type: JournalEntryType;
   /** ISO 8601 */
   date: Scalars['String'];
+  dateOfRecord?: Maybe<JournalEntryDateOfRecord>;
   department: Department;
   budget: Budget;
   fiscalYear: FiscalYear;
@@ -257,6 +258,7 @@ export type JournalEntry = {
 export type JournalEntryAddFields = {
   /** ISO 8601 */
   date: Scalars['String'];
+  dateOfRecord?: Maybe<JournalEntryDateOfRecordAdd>;
   department: Scalars['ID'];
   type: JournalEntryType;
   category: Scalars['ID'];
@@ -322,6 +324,28 @@ export type JournalEntryCategoryWhereTypeInput = {
   ne?: Maybe<JournalEntryType>;
 };
 
+export type JournalEntryDateOfRecord = {
+  __typename?: 'JournalEntryDateOfRecord';
+  /** ISO 8601 */
+  date: Scalars['String'];
+  overrideFiscalYear: Scalars['Boolean'];
+  deleted: Scalars['Boolean'];
+};
+
+export type JournalEntryDateOfRecordAdd = {
+  /** ISO 8601 */
+  date: Scalars['String'];
+  overrideFiscalYear: Scalars['Boolean'];
+  deleted?: Maybe<Scalars['Boolean']>;
+};
+
+export type JournalEntryDateOfRecordUpdate = {
+  /** ISO 8601 */
+  date?: Maybe<Scalars['String']>;
+  overrideFiscalYear?: Maybe<Scalars['Boolean']>;
+  deleted?: Maybe<Scalars['Boolean']>;
+};
+
 export type JournalEntryItem = {
   __typename?: 'JournalEntryItem';
   id: Scalars['ID'];
@@ -374,6 +398,7 @@ export enum JournalEntryType {
 export type JournalEntryUpdateFields = {
   /** ISO 8601 */
   date?: Maybe<Scalars['String']>;
+  dateOfRecord?: Maybe<JournalEntryDateOfRecordUpdate>;
   department?: Maybe<Scalars['ID']>;
   type?: Maybe<JournalEntryType>;
   category?: Maybe<Scalars['ID']>;
@@ -929,6 +954,7 @@ export type ResolversTypes = {
   JournalEntryItem: ResolverTypeWrapper<JournalEntryItem>;
   JournalEntryCategory: ResolverTypeWrapper<JournalEntryCategory>;
   JournalEntryType: JournalEntryType;
+  JournalEntryDateOfRecord: ResolverTypeWrapper<JournalEntryDateOfRecord>;
   JournalEntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'];
   JournalEntryCategoryWhereInput: JournalEntryCategoryWhereInput;
   JournalEntryCategoryWhereNameInput: JournalEntryCategoryWhereNameInput;
@@ -944,12 +970,14 @@ export type ResolversTypes = {
   PersonAddFields: PersonAddFields;
   PersonNameInput: PersonNameInput;
   JournalEntryAddFields: JournalEntryAddFields;
+  JournalEntryDateOfRecordAdd: JournalEntryDateOfRecordAdd;
   JournalEntrySourceInput: JournalEntrySourceInput;
   PaymentMethodAddFields: PaymentMethodAddFields;
   JournalEntryAddItemFields: JournalEntryAddItemFields;
   JournalEntryItemUpsertResult: ResolverTypeWrapper<JournalEntryItemUpsertResult>;
   JournalEntryAddRefundFields: JournalEntryAddRefundFields;
   JournalEntryUpdateFields: JournalEntryUpdateFields;
+  JournalEntryDateOfRecordUpdate: JournalEntryDateOfRecordUpdate;
   JournalEntryUpdatePaymentMethod: JournalEntryUpdatePaymentMethod;
   PaymentMethodUpdateFields: PaymentMethodUpdateFields;
   JournalEntryUpdateItemFields: JournalEntryUpdateItemFields;
@@ -1009,6 +1037,7 @@ export type ResolversParentTypes = {
   PersonName: PersonName;
   JournalEntryItem: JournalEntryItem;
   JournalEntryCategory: JournalEntryCategory;
+  JournalEntryDateOfRecord: JournalEntryDateOfRecord;
   JournalEntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'];
   JournalEntryCategoryWhereInput: JournalEntryCategoryWhereInput;
   JournalEntryCategoryWhereNameInput: JournalEntryCategoryWhereNameInput;
@@ -1024,12 +1053,14 @@ export type ResolversParentTypes = {
   PersonAddFields: PersonAddFields;
   PersonNameInput: PersonNameInput;
   JournalEntryAddFields: JournalEntryAddFields;
+  JournalEntryDateOfRecordAdd: JournalEntryDateOfRecordAdd;
   JournalEntrySourceInput: JournalEntrySourceInput;
   PaymentMethodAddFields: PaymentMethodAddFields;
   JournalEntryAddItemFields: JournalEntryAddItemFields;
   JournalEntryItemUpsertResult: JournalEntryItemUpsertResult;
   JournalEntryAddRefundFields: JournalEntryAddRefundFields;
   JournalEntryUpdateFields: JournalEntryUpdateFields;
+  JournalEntryDateOfRecordUpdate: JournalEntryDateOfRecordUpdate;
   JournalEntryUpdatePaymentMethod: JournalEntryUpdatePaymentMethod;
   PaymentMethodUpdateFields: PaymentMethodUpdateFields;
   JournalEntryUpdateItemFields: JournalEntryUpdateItemFields;
@@ -1093,6 +1124,7 @@ export type JournalEntryResolvers<ContextType = Context, ParentType = ResolversP
   items?: Resolver<Array<ResolversTypes['JournalEntryItem']>, ParentType, ContextType>;
   type?: Resolver<ResolversTypes['JournalEntryType'], ParentType, ContextType>;
   date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  dateOfRecord?: Resolver<Maybe<ResolversTypes['JournalEntryDateOfRecord']>, ParentType, ContextType>;
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType>;
   budget?: Resolver<ResolversTypes['Budget'], ParentType, ContextType>;
   fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType>;
@@ -1114,6 +1146,13 @@ export type JournalEntryCategoryResolvers<ContextType = Context, ParentType = Re
   parent?: Resolver<Maybe<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>;
   ancestors?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>;
   children?: Resolver<Array<ResolversTypes['JournalEntryCategory']>, ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType>;
+};
+
+export type JournalEntryDateOfRecordResolvers<ContextType = Context, ParentType = ResolversParentTypes['JournalEntryDateOfRecord']> = {
+  date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  overrideFiscalYear?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 
@@ -1258,6 +1297,7 @@ export type Resolvers<ContextType = Context> = {
   FiscalYear?: FiscalYearResolvers<ContextType>;
   JournalEntry?: JournalEntryResolvers<ContextType>;
   JournalEntryCategory?: JournalEntryCategoryResolvers<ContextType>;
+  JournalEntryDateOfRecord?: JournalEntryDateOfRecordResolvers<ContextType>;
   JournalEntryItem?: JournalEntryItemResolvers<ContextType>;
   JournalEntryItemUpsertResult?: JournalEntryItemUpsertResultResolvers<ContextType>;
   JournalEntryRefund?: JournalEntryRefundResolvers<ContextType>;

@@ -1,11 +1,11 @@
 import { ObjectId } from "mongodb";
 
-export type PresentValueExpression = {
-  readonly $ifNull: [{ readonly $arrayElemAt: [string, 0] }, null];
+export type PresentValueExpression<TDefaultValue = null> = {
+  readonly $ifNull: [{ readonly $arrayElemAt: [string, 0] }, TDefaultValue];
 };
 
-export type PresentValueProjection = {
-  readonly [field: string]: PresentValueExpression;
+export type PresentValueProjection<TDefaultValue = null> = {
+  readonly [field: string]: PresentValueExpression<TDefaultValue>;
 };
 
 export interface CreatedBy {
@@ -131,7 +131,7 @@ class UpdateHistoricalDoc {
   }
 }
 
-export interface PresentValueExpressionOpts<TDefaultValue = unknown> {
+export interface PresentValueExpressionOpts<TDefaultValue = null> {
   defaultValue?: TDefaultValue;
   asVar?: string;
 }
@@ -235,37 +235,40 @@ export default class DocHistory {
     ];
   }
 
-  static getPresentValueExpression<TDefaultValue = unknown>(
+  static getPresentValueExpression<TDefaultValue = null>(
     key: string,
     opts: PresentValueExpressionOpts<TDefaultValue> = {}
-  ): PresentValueExpression {
+  ): PresentValueExpression<TDefaultValue> {
     const asVar = opts.asVar ? `$${opts.asVar}.` : "";
-    const defaultValue = "defaultValue" in opts ? opts.defaultValue : null;
+    const defaultValue = opts?.defaultValue ?? null;
 
     return {
-      $ifNull: [
-        { $arrayElemAt: [`$${asVar}${key}.value`, 0] },
-        defaultValue as any,
-      ],
+      $ifNull: [{ $arrayElemAt: [`$${asVar}${key}.value`, 0] }, defaultValue],
     };
   }
 
-  static getPresentValues<TDefaultValue = unknown>(
+  static getPresentValues<TDefaultValue = null>(
     presentValueMap: Iterable<
       string | [string, PresentValueExpressionOpts<TDefaultValue>]
     >,
     opts: PresentValueExpressionOpts<TDefaultValue> = {}
-  ): PresentValueProjection {
+  ): PresentValueProjection<TDefaultValue> {
     const presentValueProjection = {} as {
-      [P in keyof PresentValueProjection]: PresentValueProjection[P];
+      [P in keyof PresentValueProjection]: PresentValueProjection<
+        TDefaultValue
+      >[P];
     };
 
     for (const val of presentValueMap) {
       if (typeof val === "string") {
-        presentValueProjection[val] = this.getPresentValueExpression(val, opts);
+        presentValueProjection[val] = this.getPresentValueExpression<
+          TDefaultValue
+        >(val, opts);
       } else {
         const [key, keyOpts] = val;
-        presentValueProjection[key] = this.getPresentValueExpression(key, {
+        presentValueProjection[key] = this.getPresentValueExpression<
+          TDefaultValue
+        >(key, {
           ...opts,
           ...keyOpts,
         });

@@ -58,6 +58,8 @@ export const addPerson: MutationResolvers["addPerson"] = async (
 ) => {
   const { db } = context;
 
+  const session = context.ephemeral?.session;
+
   const {
     fields: {
       name: { first, last },
@@ -71,14 +73,15 @@ export const addPerson: MutationResolvers["addPerson"] = async (
     throw new Error(`Mutation "addPerson" requires last name.`);
   }
 
-  const { insertedId, insertedCount } = await db
-    .collection("people")
-    .insertOne({
+  const { insertedId, insertedCount } = await db.collection("people").insertOne(
+    {
       name: {
         first,
         last,
       },
-    });
+    },
+    { session }
+  );
 
   if (insertedCount === 0) {
     throw new Error(`Failed to add person: ${JSON.stringify(args, null, 2)}`);
@@ -86,11 +89,14 @@ export const addPerson: MutationResolvers["addPerson"] = async (
 
   const [newPerson] = await db
     .collection("people")
-    .aggregate([
-      { $match: { _id: new ObjectId(insertedId) } },
-      { $limit: 1 },
-      { $addFields: { id: { $toString: "$_id" } } },
-    ])
+    .aggregate(
+      [
+        { $match: { _id: new ObjectId(insertedId) } },
+        { $limit: 1 },
+        { $addFields: { id: { $toString: "$_id" } } },
+      ],
+      { session }
+    )
     .toArray();
 
   return newPerson;
