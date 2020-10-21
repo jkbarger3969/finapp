@@ -9,7 +9,11 @@ import {
 } from "../../graphTypes";
 import { Context } from "../../types";
 import DocHistory, { PresentValueExpressionOpts } from "../utils/DocHistory";
-import { iterateOwnKeyValues } from "../../utils/iterableFns";
+import {
+  iterateOwnKeyValues,
+  generatorChain,
+  iterateOwnKeys,
+} from "../../utils/iterableFns";
 
 export const addFields = {
   $addFields: {
@@ -102,27 +106,30 @@ export const entryAddFieldsStage = {
     dateOfRecord: {
       $cond: {
         if: {
-          $ifNull: ["$dateOfRecord.date", false],
+          $ifNull: [
+            DocHistory.getPresentValueExpression("dateOfRecord.date"),
+            false,
+          ],
         },
         then: {
-          dateOfRecord: {
-            ...DocHistory.getPresentValues(
-              (() => {
-                const obj: {
+          ...DocHistory.getPresentValues(
+            (function* () {
+              for (const [key, value] of iterateOwnKeyValues<
+                {
                   [P in keyof Omit<
                     NonNullable<JournalEntry["dateOfRecord"]>,
                     "__typename"
-                  >]-?: null;
-                } = {
-                  date: null,
-                  overrideFiscalYear: null,
-                  deleted: null,
-                };
-
-                return Object.keys(obj);
-              })()
-            ),
-          },
+                  >]: string;
+                }
+              >({
+                date: "dateOfRecord.date",
+                overrideFiscalYear: "dateOfRecord.overrideFiscalYear",
+                deleted: "dateOfRecord.deleted",
+              })) {
+                yield [value, key] as [string, string];
+              }
+            })()
+          ),
         },
         else: null,
       },
@@ -264,6 +271,19 @@ export const entryTransmutationsStage = {
       },
     },
     date: { $toString: "$date" },
+    dateOfRecord: {
+      $cond: {
+        if: {
+          $ifNull: ["$dateOfRecord.date", false],
+        },
+        then: {
+          date: { $toString: "$dateOfRecord.date" },
+          overrideFiscalYear: "$dateOfRecord.overrideFiscalYear",
+          deleted: "$dateOfRecord.deleted",
+        },
+        else: null,
+      },
+    },
     lastUpdate: { $toString: "$lastUpdate" },
     refunds: {
       $map: {

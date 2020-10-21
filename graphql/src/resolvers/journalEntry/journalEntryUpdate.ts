@@ -4,11 +4,11 @@ import { isValid } from "date-fns";
 
 import {
   MutationResolvers,
-  PaymentMethod,
   JournalEntryUpdateFields,
   JournalEntrySourceType,
   RationalSign,
   JournalEntryDateOfRecordUpdate,
+  JournalEntryType,
 } from "../../graphTypes";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
@@ -448,15 +448,49 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = (
 
               const id = new ObjectId(categoryId);
 
-              if (
-                0 ===
-                (await db
-                  .collection(collection)
-                  .countDocuments({ _id: id }, { session }))
-              ) {
+              const result = await db
+                .collection(collection)
+                .findOne<{ type: "credit" | "debit" }>(
+                  { _id: id },
+                  {
+                    projection: {
+                      type: true,
+                    },
+                  }
+                );
+
+              if (!result) {
                 throw new Error(
                   `Category with id "${categoryId}" does not exist.`
                 );
+              }
+              const catType =
+                result.type === "credit"
+                  ? JournalEntryType.Credit
+                  : JournalEntryType.Debit;
+
+              // Category must match transaction type.
+              if ((type ?? NULLISH) === NULLISH) {
+                filterQuery.addCondition(
+                  "$expr",
+                  {
+                    $eq: [
+                      DocHistory.getPresentValueExpression("type"),
+                      result.type,
+                    ],
+                  },
+                  `Category with id "${categoryId}" and type "${catType}" is incompatible with entry type "${
+                    catType === JournalEntryType.Credit
+                      ? JournalEntryType.Debit
+                      : JournalEntryType.Credit
+                  }".`
+                );
+              } else {
+                if (catType !== type) {
+                  throw new Error(
+                    `Category with id "${categoryId}" and type "${catType}" is incompatible with entry type "${type}".`
+                  );
+                }
               }
 
               updateBuilder.updateField("category", {
@@ -534,27 +568,25 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = (
             if (paymentMethodAdd) {
               // Ensure other checks finish before creating payment method
               // Add payment method
-              const id = new ObjectId(
-                await (paymentMethodAddMutation(
-                  obj,
-                  { fields: paymentMethodAdd },
-                  {
-                    ...context,
-                    ephemeral: {
-                      ...(context.ephemeral || {}),
-                      docHistoryDate: docHistory.date,
-                      session,
-                    },
+              const { id } = await paymentMethodAddMutation(
+                obj,
+                { fields: paymentMethodAdd },
+                {
+                  ...context,
+                  ephemeral: {
+                    ...(context.ephemeral || {}),
+                    docHistoryDate: docHistory.date,
+                    session,
                   },
-                  info
-                ) as Promise<PaymentMethod>).then(({ id }) => id)
+                },
+                info
               );
 
               const { id: node } = nodeMap.typename.get("PaymentMethod");
 
               updateBuilder.updateField("paymentMethod", {
                 node: new ObjectId(node),
-                id,
+                id: new ObjectId(id),
               });
             } else if (paymentMethodUpdate) {
               // Ensure other checks finish before updating payment method
@@ -691,7 +723,6 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = (
           .toArray();
 
         resolver.next(updatedDoc);
-        throw Error("STOP GAP");
       });
     } catch (e) {
       resolver.throw(e);

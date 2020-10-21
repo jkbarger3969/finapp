@@ -249,7 +249,9 @@ export default class DocHistory {
 
   static getPresentValues<TDefaultValue = null>(
     presentValueMap: Iterable<
-      string | [string, PresentValueExpressionOpts<TDefaultValue>]
+      | string
+      | [path: string, projectionKey: string]
+      | [string, PresentValueExpressionOpts<TDefaultValue>]
     >,
     opts: PresentValueExpressionOpts<TDefaultValue> = {}
   ): PresentValueProjection<TDefaultValue> {
@@ -264,6 +266,11 @@ export default class DocHistory {
         presentValueProjection[val] = this.getPresentValueExpression<
           TDefaultValue
         >(val, opts);
+      } else if (typeof val[1] === "string") {
+        const [path, projectionKey] = val;
+        presentValueProjection[projectionKey] = this.getPresentValueExpression<
+          TDefaultValue
+        >(path, opts);
       } else {
         const [key, keyOpts] = val;
         presentValueProjection[key] = this.getPresentValueExpression<
