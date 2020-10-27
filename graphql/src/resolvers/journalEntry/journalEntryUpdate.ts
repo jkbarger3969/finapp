@@ -107,10 +107,6 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = (
           );
         }
 
-        // Async validations
-        // All async validation are run at once instead of in series.
-        // const asyncOps: Promise<void>[] = [];
-
         const docHistory = new DocHistory({ node: userNodeType, id: user.id });
         const updateBuilder = docHistory.updateHistoricalDoc();
 

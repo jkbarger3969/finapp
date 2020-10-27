@@ -336,7 +336,6 @@ export type JournalEntryDateOfRecordAdd = {
   /** ISO 8601 */
   date: Scalars['String'];
   overrideFiscalYear: Scalars['Boolean'];
-  deleted?: Maybe<Scalars['Boolean']>;
 };
 
 export type JournalEntryDateOfRecordUpdate = {

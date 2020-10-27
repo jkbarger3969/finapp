@@ -18,7 +18,6 @@ input JournalEntryDateOfRecordAdd {
   """
   date: String!
   overrideFiscalYear: Boolean!
-  deleted: Boolean
 }
 input JournalEntryDateOfRecordUpdate {
   """
@@ -244,8 +243,14 @@ type Mutation {
   journalEntryUpdate(
     id: ID!
     fields: JournalEntryUpdateFields!
+    """
+    paymentMethodAdd and paymentMethodUpdate are mutually exclusive.
+    """
     paymentMethodAdd: PaymentMethodAddFields
     paymentMethodUpdate: JournalEntryUpdatePaymentMethod
+    """
+    personAdd and businessAdd are mutually exclusive.
+    """
     personAdd: PersonAddFields
     businessAdd: BusinessAddFields
   ): JournalEntry!

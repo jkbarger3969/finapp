@@ -52,6 +52,7 @@ class NewHistoricalDoc<T extends boolean> {
       ? { ..._docHistory_.rootHistory() }
       : {}) as any;
   }
+
   addField<T>(field: string, value: T): this {
     (this._doc_ as any)[field] = this._docHistory_.newValue(value);
     return this;
@@ -62,6 +63,15 @@ class NewHistoricalDoc<T extends boolean> {
     }
     return this;
   }
+
+  /**
+   * Utility method to set a straight key/value to the historical doc.
+   */
+  addNonHistoricalFieldValue(field: string, value: unknown): this {
+    (this._doc_ as Record<string, unknown>)[field] = value;
+    return this;
+  }
+
   doc() {
     return this._doc_;
   }
