@@ -121,7 +121,6 @@ const journalEntryAdd: MutationResolvers["journalEntryAdd"] = (
               .newHistoricalDoc(false)
               .addField("date", date)
               .addField("overrideFiscalYear", dateOfRecord.overrideFiscalYear)
-              .addField("deleted", false)
               .doc()
           );
         }

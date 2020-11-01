@@ -113,17 +113,21 @@ const TopNav = (props: Record<string, unknown>): JSX.Element => {
             <InputLabel>Department</InputLabel>
             <Select value={value} onChange={onChange} autoWidth>
               {rootDepts.map((dept) => {
-                const props = {
-                  component: Link,
-                  to: `/department/${dept.id}`,
-                  value: dept.id,
-                  children: dept.name,
-                };
-
-                if (dept.virtualRoot) {
-                  delete props.component;
-                  delete props.to;
-                }
+                const props = (() => {
+                  if (dept.virtualRoot) {
+                    return {
+                      value: dept.id,
+                      children: dept.name,
+                    };
+                  } else {
+                    return {
+                      component: Link,
+                      to: `/department/${dept.id}`,
+                      value: dept.id,
+                      children: dept.name,
+                    };
+                  }
+                })();
 
                 return <MenuItem key={dept.id} {...props} />;
               })}

@@ -155,6 +155,7 @@ const submitAdd: (
   const variables: O.Required<AddEntryVars, keyof AddEntryVars, "deep"> = {
     fields: {
       date: values.date.value,
+      dateOfRecord: null,
       department: values.department.id,
       type: values.type,
       category: values.category.value[values.category.value.length - 1].id,

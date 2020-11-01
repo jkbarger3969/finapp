@@ -124,7 +124,6 @@ export const entryAddFieldsStage = {
               >({
                 date: "dateOfRecord.date",
                 overrideFiscalYear: "dateOfRecord.overrideFiscalYear",
-                deleted: "dateOfRecord.deleted",
               })) {
                 yield [value, key] as [string, string];
               }

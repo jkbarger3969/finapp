@@ -3,7 +3,7 @@ import { ObjectId } from "mongodb";
 import { stages } from "./utils";
 import {
   QueryResolvers,
-  JournalEntiresWhereInput as Where,
+  JournalEntiresWhere as Where,
   JournalEntriesWhereDepartment,
   JournalEntriesWhereCategory,
   JournalEntriesWherePaymentMethod,
@@ -484,14 +484,6 @@ const parseWhereFiscalYear = async function* (
                     $cond: {
                       if: {
                         $and: [
-                          {
-                            $eq: [
-                              DocHistory.getPresentValueExpression(
-                                "dateOfRecord.deleted"
-                              ),
-                              false,
-                            ],
-                          },
                           {
                             $eq: [
                               DocHistory.getPresentValueExpression(

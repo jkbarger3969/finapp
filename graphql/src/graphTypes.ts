@@ -171,7 +171,7 @@ export type FiscalYearWhereInput = {
   nor?: Maybe<Array<FiscalYearWhereInput>>;
 };
 
-export type JournalEntiresWhereInput = {
+export type JournalEntiresWhere = {
   eq?: Maybe<Scalars['ID']>;
   ne?: Maybe<Scalars['ID']>;
   in?: Maybe<Array<Scalars['ID']>>;
@@ -189,8 +189,8 @@ export type JournalEntiresWhereInput = {
   lastUpdate?: Maybe<WhereDate>;
   lastUpdateRefund?: Maybe<WhereDate>;
   lastUpdateItem?: Maybe<WhereDate>;
-  or?: Maybe<Array<JournalEntiresWhereInput>>;
-  and?: Maybe<Array<JournalEntiresWhereInput>>;
+  or?: Maybe<Array<JournalEntiresWhere>>;
+  and?: Maybe<Array<JournalEntiresWhere>>;
 };
 
 export type JournalEntriesSourceInput = {
@@ -329,7 +329,6 @@ export type JournalEntryDateOfRecord = {
   /** ISO 8601 */
   date: Scalars['String'];
   overrideFiscalYear: Scalars['Boolean'];
-  deleted: Scalars['Boolean'];
 };
 
 export type JournalEntryDateOfRecordAdd = {
@@ -342,7 +341,11 @@ export type JournalEntryDateOfRecordUpdate = {
   /** ISO 8601 */
   date?: Maybe<Scalars['String']>;
   overrideFiscalYear?: Maybe<Scalars['Boolean']>;
-  deleted?: Maybe<Scalars['Boolean']>;
+  /**
+   * When "clear" field is true, the "date" and "overrideFiscalYear" are ignored.
+   * When "clear" field is false or null, it is ignored i.e. does nothing.
+   */
+  clear?: Maybe<Scalars['Boolean']>;
 };
 
 export type JournalEntryItem = {
@@ -696,7 +699,7 @@ export type QueryFiscalYearsArgs = {
 
 
 export type QueryJournalEntriesArgs = {
-  where?: Maybe<JournalEntiresWhereInput>;
+  where?: Maybe<JournalEntiresWhere>;
 };
 
 
@@ -932,7 +935,7 @@ export type ResolversTypes = {
   DepartmentsWhereAncestor: DepartmentsWhereAncestor;
   DepartmentAncestorInput: DepartmentAncestorInput;
   DepartmentAncestorType: DepartmentAncestorType;
-  JournalEntiresWhereInput: JournalEntiresWhereInput;
+  JournalEntiresWhere: JournalEntiresWhere;
   WhereDate: WhereDate;
   WhereDateTime: WhereDateTime;
   JournalEntriesWhereFiscalYear: JournalEntriesWhereFiscalYear;
@@ -1017,7 +1020,7 @@ export type ResolversParentTypes = {
   DepartmentsWhereInput: DepartmentsWhereInput;
   DepartmentsWhereAncestor: DepartmentsWhereAncestor;
   DepartmentAncestorInput: DepartmentAncestorInput;
-  JournalEntiresWhereInput: JournalEntiresWhereInput;
+  JournalEntiresWhere: JournalEntiresWhere;
   WhereDate: WhereDate;
   WhereDateTime: WhereDateTime;
   JournalEntriesWhereFiscalYear: JournalEntriesWhereFiscalYear;
@@ -1151,7 +1154,6 @@ export type JournalEntryCategoryResolvers<ContextType = Context, ParentType = Re
 export type JournalEntryDateOfRecordResolvers<ContextType = Context, ParentType = ResolversParentTypes['JournalEntryDateOfRecord']> = {
   date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   overrideFiscalYear?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
-  deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType>;
 };
 

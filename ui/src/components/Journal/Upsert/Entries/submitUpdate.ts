@@ -13,12 +13,15 @@ import {
   JournalEntrySourceType,
   UpdateEntryMutation as UpdateEntry,
   UpdateEntryMutationVariables as UpdateEntryVars,
+  JournalEntryDateOfRecordUpdate,
 } from "../../../../apollo/graphTypes";
 import { TransmutationValue } from "../../../../utils/formik";
 import { CHECK_ID } from "../../constants";
 import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/JournalEntries.gql";
 import { SourceValue } from "./submitAdd";
 import { rationalToFraction } from "../../../../utils/rational";
+
+const NULLISH = Symbol();
 
 export type UpdateValues = O.NonNullable<
   O.Overwrite<
@@ -33,6 +36,15 @@ export type UpdateValues = O.NonNullable<
         Date,
         NonNullable<JournalEntryUpdateFields["date"]>
       >;
+      dateOfRecord: O.Overwrite<
+        JournalEntryDateOfRecordUpdate,
+        {
+          date: TransmutationValue<
+            Date | null,
+            NonNullable<JournalEntryDateOfRecordUpdate["date"]>
+          >;
+        }
+      > | null;
       total: TransmutationValue<
         string,
         NonNullable<JournalEntryUpdateFields["total"]>
@@ -48,7 +60,7 @@ export type UpdateValues = O.NonNullable<
       >;
     }
   >,
-  keyof Omit<JournalEntryUpdateFields, "description">
+  keyof Omit<JournalEntryUpdateFields, "description" | "dateOfRecord">
 >;
 
 export type IniUpdateValues = O.Overwrite<
@@ -112,6 +124,40 @@ const submitUpdate: (
   const date = isEqual(iniValues.date.inputValue, values.date.inputValue)
     ? null
     : values.date.value;
+
+  // Date of Record
+  const dateOfRecord = (() => {
+    const dateOfRecord = {} as JournalEntryDateOfRecordUpdate;
+    // date
+    if (
+      !isEqual(
+        iniValues?.dateOfRecord?.date?.inputValue ?? 0,
+        values?.dateOfRecord?.date?.inputValue ?? 0
+      )
+    ) {
+      dateOfRecord.date = values?.dateOfRecord?.date?.value ?? null;
+    }
+
+    // overrideFiscalYear
+    if (
+      iniValues?.dateOfRecord?.overrideFiscalYear !==
+      values?.dateOfRecord?.overrideFiscalYear
+    ) {
+      dateOfRecord.overrideFiscalYear =
+        values?.dateOfRecord?.overrideFiscalYear ?? null;
+    }
+
+    // clear
+    if (iniValues?.dateOfRecord?.clear !== values?.dateOfRecord?.clear) {
+      dateOfRecord.clear = values?.dateOfRecord?.clear ?? null;
+    }
+
+    return dateOfRecord.date ||
+      (dateOfRecord.clear ?? NULLISH) !== NULLISH ||
+      (dateOfRecord.overrideFiscalYear ?? NULLISH) !== NULLISH
+      ? dateOfRecord
+      : null;
+  })();
 
   // Department
   const department =
@@ -267,15 +313,21 @@ const submitUpdate: (
     };
   })();
 
-  const variables: O.Required<
-    UpdateEntryVars,
-    keyof UpdateEntryVars,
-    "deep"
+  const variables: O.Overwrite<
+    O.Required<UpdateEntryVars, keyof Omit<UpdateEntryVars, "fields">, "deep">,
+    {
+      fields: O.Required<
+        UpdateEntryVars["fields"],
+        keyof Omit<UpdateEntryVars["fields"], "dateOfRecord">,
+        "deep"
+      >;
+    }
   > = {
     id,
     fields: {
       category,
       date,
+      dateOfRecord,
       department,
       description,
       total,
@@ -289,8 +341,6 @@ const submitUpdate: (
     personAdd,
     businessAdd,
   };
-
-  console.log(variables);
 
   await client.mutate<UpdateEntry, UpdateEntryVars>({
     mutation: UPDATE_ENTRY,

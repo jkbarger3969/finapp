@@ -176,7 +176,7 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = (
                 ...iterateOwnKeys<Required<JournalEntryDateOfRecordUpdate>>({
                   date: "",
                   overrideFiscalYear: true,
-                  deleted: false,
+                  clear: false,
                 }),
               ].join(", ")}`
             );
@@ -184,65 +184,65 @@ const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = (
 
           const dateString = dateOfRecord?.date?.trim();
 
-          if (dateString) {
-            const date = new Date(dateString);
-            if (!isValid(date)) {
-              throw new Error(
-                `Date of record "${dateString}" not a valid ISO 8601 date string.`
+          if (dateOfRecord.clear) {
+            filterQuery.addCondition(
+              "$expr",
+              {
+                $ne: [
+                  DocHistory.getPresentValueExpression("dateOfRecord.date", {
+                    defaultValue: null,
+                  }),
+                  null,
+                ],
+              },
+              "Date of record must NOT be null, to clear."
+            );
+            updateBuilder.updateField("dateOfRecord.date", null);
+            updateBuilder.updateField("dateOfRecord.overrideFiscalYear", null);
+          } else {
+            // Ignore all dateOfRecord fields if clear is true
+
+            if (dateString) {
+              const date = new Date(dateString);
+              if (!isValid(date)) {
+                throw new Error(
+                  `Date of record "${dateString}" not a valid ISO 8601 date string.`
+                );
+              }
+              updateBuilder.updateField("dateOfRecord.date", date);
+            } else {
+              filterQuery.addCondition(
+                "$expr",
+                {
+                  $ne: [
+                    DocHistory.getPresentValueExpression("dateOfRecord.date"),
+                    null,
+                  ],
+                },
+                "Date of record's date value is required."
               );
             }
-            updateBuilder.updateField("dateOfRecord.date", date);
-          } else {
-            filterQuery.addCondition(
-              "$expr",
-              {
-                $ne: [
-                  DocHistory.getPresentValueExpression("dateOfRecord.date"),
-                  null,
-                ],
-              },
-              "Date of record's date value is required."
-            );
-          }
 
-          // overrideFiscalYear must already be set if other dateOfRecord fields.
-          if ((dateOfRecord?.overrideFiscalYear ?? NULLISH) === NULLISH) {
-            filterQuery.addCondition(
-              "$expr",
-              {
-                $ne: [
-                  DocHistory.getPresentValueExpression(
-                    "dateOfRecord.overrideFiscalYear"
-                  ),
-                  null,
-                ],
-              },
-              "Date of record's fiscal year override value is required."
-            );
-          } else {
-            updateBuilder.updateField(
-              "dateOfRecord.overrideFiscalYear",
-              dateOfRecord.overrideFiscalYear
-            );
-          }
-
-          // deleted must already be set if other dateOfRecord fields.
-          if ((dateOfRecord?.deleted ?? NULLISH) === NULLISH) {
-            filterQuery.addCondition(
-              "$expr",
-              {
-                $ne: [
-                  DocHistory.getPresentValueExpression("dateOfRecord.deleted"),
-                  null,
-                ],
-              },
-              "Date of record's deleted value is required."
-            );
-          } else {
-            updateBuilder.updateField(
-              "dateOfRecord.deleted",
-              dateOfRecord.deleted
-            );
+            // overrideFiscalYear must already be set if other dateOfRecord fields.
+            if ((dateOfRecord?.overrideFiscalYear ?? NULLISH) === NULLISH) {
+              filterQuery.addCondition(
+                "$expr",
+                {
+                  $ne: [
+                    DocHistory.getPresentValueExpression(
+                      "dateOfRecord.overrideFiscalYear"
+                    ),
+                    null,
+                  ],
+                },
+                "Date of record's fiscal year override value is required."
+              );
+            } else {
+              updateBuilder.updateField(
+                "dateOfRecord.overrideFiscalYear",
+                dateOfRecord.overrideFiscalYear
+              );
+            }
           }
         }
 

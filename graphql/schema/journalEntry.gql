@@ -9,7 +9,6 @@ type JournalEntryDateOfRecord {
   """
   date: String!
   overrideFiscalYear: Boolean!
-  deleted: Boolean!
 }
 
 input JournalEntryDateOfRecordAdd {
@@ -25,7 +24,11 @@ input JournalEntryDateOfRecordUpdate {
   """
   date: String
   overrideFiscalYear: Boolean
-  deleted: Boolean
+  """
+  When "clear" field is true, the "date" and "overrideFiscalYear" are ignored.
+  When "clear" field is false or null, it is ignored i.e. does nothing.
+  """
+  clear: Boolean
 }
 
 type JournalEntry {
@@ -205,7 +208,7 @@ input JournalEntriesWhereFiscalYear {
   nin: [ID!]
 }
 
-input JournalEntiresWhereInput {
+input JournalEntiresWhere {
   eq: ID
   ne: ID
   in: [ID!]
@@ -223,12 +226,12 @@ input JournalEntiresWhereInput {
   lastUpdate: WhereDate
   lastUpdateRefund: WhereDate
   lastUpdateItem: WhereDate
-  or: [JournalEntiresWhereInput!]
-  and: [JournalEntiresWhereInput!]
+  or: [JournalEntiresWhere!]
+  and: [JournalEntiresWhere!]
 }
 
 type Query {
-  journalEntries(where: JournalEntiresWhereInput): [JournalEntry!]!
+  journalEntries(where: JournalEntiresWhere): [JournalEntry!]!
   journalEntry(id: ID!): JournalEntry
   journalEntryRefund(id: ID!): JournalEntryRefund
   journalEntryItem(id: ID!): JournalEntryItem

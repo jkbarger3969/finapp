@@ -11,7 +11,7 @@ import { DepartmentName_1Query as DepartmentName } from "./apollo/graphTypes";
 import gql from "graphql-tag";
 
 const DashBoardRender = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
 
   return id ? <Dashboard deptId={id} /> : <div>Error: No Dept ID!</div>;
 };
@@ -27,7 +27,7 @@ const DEPARTMENT_NAME = gql`
 `;
 
 const JournalViewRender = () => {
-  const { id, year } = useParams();
+  const { id, year } = useParams<{ id: string; year: string }>();
   const { data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
     variables: { id },
   });
@@ -45,7 +45,7 @@ const JournalViewRender = () => {
 };
 
 const JournalReconcileRender = () => {
-  const { id, year } = useParams();
+  const { id, year } = useParams<{ id: string; year: string }>();
   const { data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
     variables: { id },
   });
