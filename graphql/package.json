@@ -16,7 +16,7 @@
   },
   "scripts": {
     "build": "npm run build:gql-gen && npm run build:ts",
-    "build:ts": "tsc",
+    "build:ts": "tsc -p ./tsconfig.json",
     "build:gql-gen": "graphql-codegen",
     "start:dev": "npm run build:gql-gen && env NODE_ENV=development ts-node src/index.ts",
     "start:dev-watch": "nodemon"

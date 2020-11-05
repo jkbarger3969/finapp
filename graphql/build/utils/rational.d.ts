@@ -4,5 +4,5 @@ export declare const fractionToRational: (fraction: Fraction | {
     s: number;
     n: number;
     d: number;
-}) => Pick<Rational & RationalInput, "d" | "s" | "n">;
+}) => Omit<Rational & RationalInput, "__typename">;
 export declare const rationalToFraction: (rational: Rational | RationalInput) => Fraction;

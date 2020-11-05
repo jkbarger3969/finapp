@@ -1,11 +1,11 @@
 import { ObjectId } from "mongodb";
-export declare type PresentValueExpression = {
+export declare type PresentValueExpression<TDefaultValue = null> = {
     readonly $ifNull: [{
         readonly $arrayElemAt: [string, 0];
-    }, null];
+    }, TDefaultValue];
 };
-export declare type PresentValueProjection = {
-    readonly [field: string]: PresentValueExpression;
+export declare type PresentValueProjection<TDefaultValue = null> = {
+    readonly [field: string]: PresentValueExpression<TDefaultValue>;
 };
 export interface CreatedBy {
     readonly node: ObjectId;
@@ -46,6 +46,10 @@ declare class NewHistoricalDoc<T extends boolean> {
     constructor(_docHistory_: DocHistory, withRootHistory: T);
     addField<T>(field: string, value: T): this;
     addFields(fieldValuesMap: Iterable<[string, any]>): this;
+    /**
+     * Utility method to set a straight key/value to the historical doc.
+     */
+    addNonHistoricalFieldValue(field: string, value: unknown): this;
     doc(): T extends true ? HistoricalRootDoc : HistoricalDoc;
 }
 declare class UpdateHistoricalDoc {
@@ -62,7 +66,7 @@ declare class UpdateHistoricalDoc {
     updateFields(fieldValuesMap: Iterable<[string, any]>): this;
     update(): Update;
 }
-export interface PresentValueExpressionOpts<TDefaultValue = unknown> {
+export interface PresentValueExpressionOpts<TDefaultValue = null> {
     defaultValue?: TDefaultValue;
     asVar?: string;
 }
@@ -77,7 +81,7 @@ export default class DocHistory {
     updateHistoricalDoc(prependFields?: ConstructorParameters<typeof UpdateHistoricalDoc>[1]): UpdateHistoricalDoc;
     historyObject<T>(value: T): HistoryObject<T>;
     newValue<T>(value: T): [HistoryObject<T>];
-    getPresentValues(presentValueMap: Iterable<string>): PresentValueProjection;
+    getPresentValues(presentValueMap: Iterable<string>): PresentValueProjection<null>;
     static getPresentValuesAllFields(args?: {
         path?: string;
         exclude?: Iterable<string>;
@@ -93,11 +97,7 @@ export default class DocHistory {
                         in: {
                             $cond: {
                                 if: {
-                                    $nin: (string | string[])[];
-                                    $eq: (string | {
-                                        $type: string;
-                                    })[];
-                                } | {
+                                    $nin?: (string | string[])[];
                                     $eq: (string | {
                                         $type: string;
                                     })[];
@@ -129,7 +129,7 @@ export default class DocHistory {
         };
         $replaceRoot?: undefined;
     })[];
-    static getPresentValueExpression<TDefaultValue = unknown>(key: string, opts?: PresentValueExpressionOpts<TDefaultValue>): PresentValueExpression;
-    static getPresentValues<TDefaultValue = unknown>(presentValueMap: Iterable<string | [string, PresentValueExpressionOpts<TDefaultValue>]>, opts?: PresentValueExpressionOpts<TDefaultValue>): PresentValueProjection;
+    static getPresentValueExpression<TDefaultValue = null>(key: string, opts?: PresentValueExpressionOpts<TDefaultValue>): PresentValueExpression<TDefaultValue>;
+    static getPresentValues<TDefaultValue = null>(presentValueMap: Iterable<string | [path: string, projectionKey: string] | [string, PresentValueExpressionOpts<TDefaultValue>]>, opts?: PresentValueExpressionOpts<TDefaultValue>): PresentValueProjection<TDefaultValue>;
 }
 export {};

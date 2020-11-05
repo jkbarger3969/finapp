@@ -12,7 +12,7 @@ export declare type ComparisonMongoOpsMap = MongoOpsMap<MongoComparisonOperators
 }>;
 export declare type ComparisonOperators = keyof ComparisonMongoOpsMap;
 export declare type MongoComparisonOperators = keyof Pick<QuerySelector<unknown>, "$eq" | "$gt" | "$gte" | "$in" | "$lt" | "$lte" | "$ne" | "$nin">;
-export declare const comparisonOpsMapper: (op: "eq" | "gt" | "gte" | "in" | "lt" | "lte" | "ne" | "nin") => "$eq" | "$gt" | "$gte" | "$in" | "$lt" | "$lte" | "$ne" | "$nin";
+export declare const comparisonOpsMapper: (op: ComparisonOperators) => "$eq" | "$gt" | "$gte" | "$in" | "$lt" | "$lte" | "$ne" | "$nin";
 declare const comparisonQueryGenerator: <TOpValue, TReturn>(opValueTransmutator?: OperatorValueTransmutator<TOpValue, TReturn, MongoOpsMap<"$eq" | "$gt" | "$gte" | "$in" | "$lt" | "$lte" | "$ne" | "$nin", {
     eq: "$eq";
     gt: "$gt";

@@ -1,6 +1,6 @@
 {
   "include": ["src/**/*"],
-  "exclude": ["node_modules/**/*", "src/**/*.test.ts"],
+  "exclude": ["**/node_modules/**/*", "src/**/*.test.ts"],
   "compilerOptions": {
     "incremental": true,
     "alwaysStrict": true,
@@ -8,6 +8,7 @@
     "declaration": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "extendedDiagnostics": true,
     "inlineSourceMap": true,
     "lib": ["ESNext"],
     "listEmittedFiles": true,

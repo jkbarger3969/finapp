@@ -30,7 +30,7 @@ var __asyncGenerator = (this && this.__asyncGenerator) || function (thisArg, _ar
 Object.defineProperty(exports, "__esModule", { value: true });
 const iterableFns_1 = require("../../../utils/iterableFns");
 const NULLISH = Symbol();
-const _logicOpParser_ = function (filterQuery, where, fieldAndConditionGenerator, options) {
+const _logicOpParser_ = function ($and, where, fieldAndConditionGenerator, options) {
     return __asyncGenerator(this, arguments, function* () {
         var e_1, _a;
         try {
@@ -39,19 +39,38 @@ const _logicOpParser_ = function (filterQuery, where, fieldAndConditionGenerator
                 : iterableFns_1.iterableToAsyncIterable(iterableFns_1.iterateOwnKeyValues(where))), _c; _c = yield __await(_b.next()), !_c.done;) {
                 const [key, value] = _c.value;
                 // skip non-own prop and null or undefined filters
-                if (((value !== null && value !== void 0 ? value : NULLISH)) === NULLISH || typeof key !== "string") {
+                if ((value !== null && value !== void 0 ? value : NULLISH) === NULLISH || typeof key !== "string") {
                     continue;
                 }
                 // Match Logic Operators
                 switch (key) {
                     case "or":
-                        filterQuery.$or = yield __await(Promise.all(where[key].map((where) => filterQueryCreator(where, fieldAndConditionGenerator, options))));
+                        $and.push({
+                            $or: yield __await(Promise.all(where[key].map((where) => filterQueryCreator(where, fieldAndConditionGenerator, options)))),
+                        });
+                        /* filterQuery.$or = await Promise.all(
+                          where[key as "or"].map((where) =>
+                            filterQueryCreator(where, fieldAndConditionGenerator, options)
+                          )
+                        ); */
                         break;
                     case "and":
-                        filterQuery.$and = yield __await(Promise.all(where[key].map((where) => filterQueryCreator(where, fieldAndConditionGenerator, options))));
+                        $and.push(...(yield __await(Promise.all(where[key].map((where) => filterQueryCreator(where, fieldAndConditionGenerator, options))))));
+                        /*  filterQuery.$and = await Promise.all(
+                          where[key as "and"].map((where) =>
+                            filterQueryCreator(where, fieldAndConditionGenerator, options)
+                          )
+                        ); */
                         break;
                     case "nor":
-                        filterQuery.$nor = yield __await(Promise.all(where[key].map((where) => filterQueryCreator(where, fieldAndConditionGenerator, options))));
+                        $and.push({
+                            $nor: yield __await(Promise.all(where[key].map((where) => filterQueryCreator(where, fieldAndConditionGenerator, options)))),
+                        });
+                        /* filterQuery.$nor = await Promise.all(
+                          where[key as "nor"].map((where) =>
+                            filterQueryCreator(where, fieldAndConditionGenerator, options)
+                          )
+                        ); */
                         break;
                     default: {
                         yield yield __await([
@@ -73,38 +92,20 @@ const _logicOpParser_ = function (filterQuery, where, fieldAndConditionGenerator
 };
 const filterQueryCreator = (where, fieldAndConditionGenerator, options) => __awaiter(void 0, void 0, void 0, function* () {
     var e_2, _a;
-    const filterQuery = {};
+    const $and = [];
     try {
-        for (var _b = __asyncValues(fieldAndConditionGenerator(_logicOpParser_(filterQuery, where, fieldAndConditionGenerator, options), options)), _c; _c = yield _b.next(), !_c.done;) {
+        for (var _b = __asyncValues(fieldAndConditionGenerator(_logicOpParser_($and, where, fieldAndConditionGenerator, options), options)), _c; _c = yield _b.next(), !_c.done;) {
             const { field, condition } = _c.value;
-            // Handle multiple "$and" queries.
-            if (field === "$and" && "$and" in filterQuery) {
-                filterQuery.$and = [...filterQuery.$and, ...condition];
-            }
-            // Handle multiple "$or" queries.
-            else if (field === "$or" && "$or" in filterQuery) {
-                if ("$and" in filterQuery) {
-                    filterQuery.$and = [
-                        ...filterQuery.$and,
-                        { $or: condition },
-                    ];
+            if (field === "$and") {
+                if (Array.isArray(condition)) {
+                    $and.push(...condition);
                 }
                 else {
-                    filterQuery.$and = [{ $or: condition }];
+                    $and.push(condition);
                 }
             }
-            // Handle multiple "$nor" queries.
-            else if (field === "$nor" && "$nor" in filterQuery) {
-                filterQuery.$nor = [...filterQuery.$nor, ...condition];
-            }
-            // Handle multiple "$expr" queries.
-            else if (field === "$expr" && "$expr" in filterQuery) {
-                filterQuery.$expr = {
-                    $allElementsTrue: [[filterQuery.$expr, condition]],
-                };
-            }
             else {
-                filterQuery[field] = condition;
+                $and.push({ [field]: condition });
             }
         }
     }
@@ -115,7 +116,7 @@ const filterQueryCreator = (where, fieldAndConditionGenerator, options) => __awa
         }
         finally { if (e_2) throw e_2.error; }
     }
-    return filterQuery;
+    return { $and };
 });
 exports.default = filterQueryCreator;
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiZmlsdGVyLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vLi4vLi4vc3JjL3Jlc29sdmVycy91dGlscy9maWx0ZXJRdWVyeS9maWx0ZXIudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7O0FBRUEsNERBS29DO0FBR3BDLE1BQU0sT0FBTyxHQUFHLE1BQU0sRUFBRSxDQUFDO0FBMEJ6QixNQUFNLGVBQWUsR0FBRyxVQUl0QixXQUFpQyxFQUNqQyxLQUFtRSxFQUNuRSwwQkFBd0UsRUFDeEUsT0FBa0I7Ozs7WUFLbEIsS0FBaUMsSUFBQSxLQUFBLGNBQUEsS0FBSyxDQUFDLE1BQU0sQ0FBQyxhQUFhLENBQUM7Z0JBQzFELENBQUMsQ0FBRSxLQUE2RDtnQkFDaEUsQ0FBQyxDQUFDLHFDQUF1QixDQUFDLGlDQUFtQixDQUFDLEtBQUssQ0FBQyxDQUFDLENBQUEsSUFBQTtnQkFGNUMsTUFBTSxDQUFDLEdBQUcsRUFBRSxLQUFLLENBQUMsV0FBQSxDQUFBO2dCQUczQixrREFBa0Q7Z0JBQ2xELElBQUksRUFBQyxLQUFLLGFBQUwsS0FBSyxjQUFMLEtBQUssR0FBSSxPQUFPLEVBQUMsS0FBSyxPQUFPLElBQUksT0FBTyxHQUFHLEtBQUssUUFBUSxFQUFFO29CQUM3RCxTQUFTO2lCQUNWO2dCQUVELHdCQUF3QjtnQkFDeEIsUUFBUSxHQUFHLEVBQUU7b0JBQ1gsS0FBSyxJQUFJO3dCQUNQLFdBQVcsQ0FBQyxHQUFHLEdBQUcsY0FBTSxPQUFPLENBQUMsR0FBRyxDQUNqQyxLQUFLLENBQUMsR0FBVyxDQUFDLENBQUMsR0FBRyxDQUFDLENBQUMsS0FBSyxFQUFFLEVBQUUsQ0FDL0Isa0JBQWtCLENBQUMsS0FBSyxFQUFFLDBCQUEwQixFQUFFLE9BQU8sQ0FBQyxDQUMvRCxDQUNGLENBQUEsQ0FBQzt3QkFDRixNQUFNO29CQUNSLEtBQUssS0FBSzt3QkFDUixXQUFXLENBQUMsSUFBSSxHQUFHLGNBQU0s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
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiZmlsdGVyLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vLi4vLi4vc3JjL3Jlc29sdmVycy91dGlscy9maWx0ZXJRdWVyeS9maWx0ZXIudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7O0FBRUEsNERBS29DO0FBR3BDLE1BQU0sT0FBTyxHQUFHLE1BQU0sRUFBRSxDQUFDO0FBMEJ6QixNQUFNLGVBQWUsR0FBRyxVQUl0QixJQUFvRCxFQUNwRCxLQUFtRSxFQUNuRSwwQkFBd0UsRUFDeEUsT0FBa0I7Ozs7WUFLbEIsS0FBaUMsSUFBQSxLQUFBLGNBQUEsS0FBSyxDQUFDLE1BQU0sQ0FBQyxhQUFhLENBQUM7Z0JBQzFELENBQUMsQ0FBRSxLQUE2RDtnQkFDaEUsQ0FBQyxDQUFDLHFDQUF1QixDQUFDLGlDQUFtQixDQUFDLEtBQUssQ0FBQyxDQUFDLENBQUEsSUFBQTtnQkFGNUMsTUFBTSxDQUFDLEdBQUcsRUFBRSxLQUFLLENBQUMsV0FBQSxDQUFBO2dCQUczQixrREFBa0Q7Z0JBQ2xELElBQUksQ0FBQyxLQUFLLGFBQUwsS0FBSyxjQUFMLEtBQUssR0FBSSxPQUFPLENBQUMsS0FBSyxPQUFPLElBQUksT0FBTyxHQUFHLEtBQUssUUFBUSxFQUFFO29CQUM3RCxTQUFTO2lCQUNWO2dCQUVELHdCQUF3QjtnQkFDeEIsUUFBUSxHQUFHLEVBQUU7b0JBQ1gsS0FBSyxJQUFJO3dCQUNQLElBQUksQ0FBQyxJQUFJLENBQUM7NEJBQ1IsR0FBRyxFQUFFLGNBQU0sT0FBTyxDQUFDLEdBQUcsQ0FDcEIsS0FBSyxDQUFDLEdBQVcsQ0FBQyxDQUFDLEdBQUcsQ0FBQyxDQUFDLEtBQUssRUFBRSxFQUFFLENBQy9CLGtCQUFrQixDQUFDLEtBQUssRUFBRSwwQkFBMEIsRUFBRSxPQUFPLENBQUMsQ0FDL0QsQ0FDRixDQUFBO3lCQUNGLENBQUMsQ0FBQzt3QkFDSDs7Ozs2QkFJSzt3QkFDTCxNQUFNO29CQUNSLEtBQUssS0FBSzt3QkFDUixJQUFJLENBQUMsSUFBSSxDQUNQLEdBQUcsQ0FBQyxjQUFNLE9BQU8sQ0FBQyxHQUFHLENBQ25CLEtBQUssQ0FBQyxHQUFZLENBQUMsQ0FBQyxHQUFHLENBQUMsQ0FBQyxLQUFLLEVBQUUsRUFBRSxDQUNoQyxrQkFBa0IsQ0FBQyxLQUFLLEVBQUUsMEJBQTBCLEVBQUUsT0FBTyxDQUFDLENBQy9ELENBQ0YsQ0FBQSxDQUFDLENBQ0gsQ0FBQzt3QkFDRjs7Ozs2QkFJSzt3QkFDTCxNQUFNO29CQUVSLEtBQUssS0FBSzt3QkFDUixJQUFJLENBQUMsSUFBSSxDQUFDOzRCQUNSLElBQUksRUFBRSxjQUFNLE9BQU8sQ0FBQyxHQUFHLENBQ3JCLEtBQUssQ0FBQyxHQUFZLENBQUMsQ0FBQyxHQUFHLENBQUMsQ0FBQyxLQUFLLEVBQUUsRUFBRSxDQUNoQyxrQkFBa0IsQ0FBQyxLQUFLLEVBQUUsMEJBQTBCLEVBQUUsT0FBTyxDQUFDLENBQy9ELENBQ0YsQ0FBQTt5QkFDRixDQUFDLENBQUM7d0JBQ0g7Ozs7NkJBSUs7d0JBQ0wsTUFBTTtvQkFDUixPQUFPLENBQUMsQ0FBQzt3QkFDUCxvQkFBTTs0QkFDSixHQUEwRDs0QkFDMUQsS0FBb0U7eUJBQ3JFLENBQUEsQ0FBQztxQkFDSDtpQkFDRjthQUNGOzs7Ozs7Ozs7SUFDSCxDQUFDO0NBQUEsQ0FBQztBQUVGLE1BQU0sa0JBQWtCLEdBQUcsQ0FJekIsS0FBbUUsRUFDbkUsMEJBQXdFLEVBQ3hFLE9BQWtCLEVBQ2EsRUFBRTs7SUFDakMsTUFBTSxJQUFJLEdBQW1ELEVBQUUsQ0FBQzs7UUFFaEUsS0FBeUMsSUFBQSxLQUFBLGNBQUEsMEJBQTBCLENBQ2pFLGVBQWUsQ0FBQyxJQUFJLEVBQUUsS0FBSyxFQUFFLDBCQUEwQixFQUFFLE9BQU8sQ0FBQyxFQUNqRSxPQUFPLENBQ1IsQ0FBQSxJQUFBO1lBSFUsTUFBTSxFQUFFLEtBQUssRUFBRSxTQUFTLEVBQUUsV0FBQSxDQUFBO1lBSW5DLElBQUksS0FBSyxLQUFLLE1BQU0sRUFBRTtnQkFDcEIsSUFBSSxLQUFLLENBQUMsT0FBTyxDQUFDLFNBQVMsQ0FBQyxFQUFFO29CQUM1QixJQUFJLENBQUMsSUFBSSxDQUFDLEdBQUcsU0FBUyxDQUFDLENBQUM7aUJBQ3pCO3FCQUFNO29CQUNMLElBQUksQ0FBQyxJQUFJLENBQUMsU0FBUyxDQUFDLENBQUM7aUJBQ3RCO2FBQ0Y7aUJBQU07Z0JBQ0wsSUFBSSxDQUFDLElBQUksQ0FBQyxFQUFFLENBQUMsS0FBSyxDQUFDLEVBQUUsU0FBUyxFQUFFLENBQUMsQ0FBQzthQUNuQztTQUNGOzs7Ozs7Ozs7SUFFRCxPQUFPLEVBQUUsSUFBSSxFQUEwQixDQUFDO0FBQzFDLENBQUMsQ0FBQSxDQUFDO0FBRUYsa0JBQWUsa0JBQWtCLENBQUMifQ==
