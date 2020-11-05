@@ -1,4 +1,4 @@
-import { Db, ObjectId } from "mongodb";
+import { MongoClient, Db, ObjectId, ClientSession } from "mongodb";
 import { PubSub } from "apollo-server";
 
 export interface NodeValue {
@@ -14,6 +14,7 @@ export interface NodeInfo {
 }
 
 export interface Context {
+  client: MongoClient;
   db: Db;
   nodeMap: {
     id: Map<string, NodeInfo>;
@@ -25,5 +26,6 @@ export interface Context {
   pubSub: PubSub;
   ephemeral?: {
     docHistoryDate?: Date;
+    session?: ClientSession;
   };
 }

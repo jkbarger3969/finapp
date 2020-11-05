@@ -42,7 +42,7 @@ export default async ({
   dbUser: string;
   dbPass: string;
   db: string;
-}): Promise<Db> => {
+}): Promise<{ client: MongoClient; db: Db }> => {
   const uri = `mongodb://${dbHost}:${dbPort}`;
   const clientId = `${uri}${dbUser}${dbPass}`;
 
@@ -52,5 +52,7 @@ export default async ({
     clients.set(clientId, { name: db, client });
   }
 
-  return clients.get(clientId).client.db(db);
+  const client = clients.get(clientId).client;
+
+  return { client, db: client.db(db) };
 };

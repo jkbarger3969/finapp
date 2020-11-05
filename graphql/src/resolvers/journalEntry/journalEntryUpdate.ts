@@ -4,10 +4,11 @@ import { isValid } from "date-fns";
 
 import {
   MutationResolvers,
-  PaymentMethod,
   JournalEntryUpdateFields,
   JournalEntrySourceType,
   RationalSign,
+  JournalEntryDateOfRecordUpdate,
+  JournalEntryType,
 } from "../../graphTypes";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
@@ -18,6 +19,13 @@ import { JOURNAL_ENTRY_UPDATED, JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 import { addBusiness } from "../business";
 import { addPerson } from "../person";
 import { rationalToFraction } from "../../utils/rational";
+import { iterateOwnKeys, generatorInit } from "../../utils/iterableFns";
+import {
+  rationalComparison,
+  addRational,
+  MongoRational,
+} from "../../utils/mongoRational";
+import FilterQueryUtility from "../utils/FilterQueryUtility";
 
 const NULLISH = Symbol();
 
@@ -27,451 +35,697 @@ const addDate = {
   },
 } as const;
 
-const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = async (
+const journalEntryUpdate: MutationResolvers["journalEntryUpdate"] = (
   obj,
   args,
   context,
   info
-) => {
-  const {
-    id,
-    fields: {
-      date: dateString,
-      department: departmentId,
-      type,
-      category: categoryId,
-      paymentMethod: paymentMethodId,
-      source,
-      description,
-      total: totalR,
-      reconciled,
-    },
-    paymentMethodAdd,
-    paymentMethodUpdate,
-    personAdd,
-    businessAdd,
-  } = args;
+) =>
+  new Promise(async (resolve, reject) => {
+    const { client, db, nodeMap, user, pubSub } = context;
 
-  // "paymentMethodAdd" and "paymentMethodUpdate" are mutually exclusive, gql
-  // has no concept of this.
-  if (paymentMethodAdd && paymentMethodUpdate) {
-    throw new Error(
-      `"paymentMethodAdd" and "paymentMethodUpdate" are mutually exclusive arguments.`
-    );
-  }
+    const session = context.ephemeral?.session || client.startSession();
 
-  // "businessAdd" and "personAdd" are mutually exclusive, gql has
-  // no concept of this.
-  if (personAdd && businessAdd) {
-    throw new Error(
-      `"businessAdd" and "personAdd" are mutually exclusive source creation arguments.`
-    );
-  }
-
-  const { db, nodeMap, user, pubSub } = context;
-
-  const entryId = new ObjectId(id);
-
-  // Async validations
-  // All async validation are run at once instead of in series.
-  const asyncOps: Promise<void>[] = [
-    (async () => {
-      const [{ count } = { count: 0 }] = (await db
-        .collection("journalEntries")
-        .aggregate([{ $match: { _id: entryId } }, { $count: "count" }])
-        .toArray()) as [{ count: number }];
-
-      if (count === 0) {
-        throw Error(`Journal entry "${id}" does not exist.`);
+    const resolver = generatorInit<never[], unknown>(function* () {
+      try {
+        // generatorInit calls 1st next. On 2nd next capture update doc
+        const updatedDoc = yield;
+        yield; // Pause
+        // on 3rd next resolve with the update doc and run pubSubs
+        resolve(updatedDoc);
+        pubSub
+          .publish(JOURNAL_ENTRY_UPDATED, {
+            journalEntryUpdated: updatedDoc,
+          })
+          .catch((error) => console.error(error));
+        pubSub
+          .publish(JOURNAL_ENTRY_UPSERTED, { journalEntryUpserted: updatedDoc })
+          .catch((error) => console.error(error));
+      } catch (error) {
+        // on throw reject with error.
+        reject(error);
       }
-    })(),
-  ];
+    });
 
-  const docHistory = new DocHistory({ node: userNodeType, id: user.id });
-  const updateBuilder = docHistory.updateHistoricalDoc();
+    const entryId = new ObjectId(args.id);
 
-  // Date
-  if (dateString) {
-    const date = new Date(dateString);
-    if (!isValid(date)) {
-      throw new Error(`Date "${dateString}" not a valid ISO 8601 date string.`);
-    }
+    try {
+      await session.withTransaction(async () => {
+        const {
+          id,
+          fields: {
+            date: dateString,
+            dateOfRecord,
+            department: departmentId,
+            type,
+            category: categoryId,
+            paymentMethod: paymentMethodId,
+            source,
+            description,
+            total: totalR,
+            reconciled,
+          },
+          paymentMethodAdd,
+          paymentMethodUpdate,
+          personAdd,
+          businessAdd,
+        } = args;
 
-    asyncOps.push(
-      (async () => {
-        const [result] = (await db
-          .collection("journalEntries")
-          .aggregate([
-            { $match: { _id: entryId } },
-            { $limit: 1 },
+        // "paymentMethodAdd" and "paymentMethodUpdate" are mutually exclusive, gql
+        // has no concept of this.
+        if (paymentMethodAdd && paymentMethodUpdate) {
+          throw new Error(
+            `"paymentMethodAdd" and "paymentMethodUpdate" are mutually exclusive arguments.`
+          );
+        }
+
+        // "businessAdd" and "personAdd" are mutually exclusive, gql has
+        // no concept of this.
+        if (personAdd && businessAdd) {
+          throw new Error(
+            `"businessAdd" and "personAdd" are mutually exclusive source creation arguments.`
+          );
+        }
+
+        const docHistory = new DocHistory({ node: userNodeType, id: user.id });
+        const updateBuilder = docHistory.updateHistoricalDoc();
+
+        // Pre condition entry exists.
+        const filterQuery = new FilterQueryUtility(
+          "_id",
+          entryId,
+          `Journal entry "${id}" does not exist.`
+        );
+
+        // Date
+        if (dateString) {
+          const date = new Date(dateString);
+          if (!isValid(date)) {
+            throw new Error(
+              `Date "${dateString}" not a valid ISO 8601 date string.`
+            );
+          }
+
+          updateBuilder.updateField("date", date);
+
+          // Validate against refund dates
+          filterQuery.addCondition(
+            "$expr",
             {
-              $project: {
-                refundDate: {
+              $lte: [
+                date,
+                {
                   $reduce: {
-                    input: "$refunds",
-                    initialValue: docHistory.date,
+                    input: {
+                      $filter: {
+                        input: "$refunds",
+                        cond: {
+                          $not: DocHistory.getPresentValueExpression(
+                            "deleted",
+                            {
+                              asVar: "this",
+                              defaultValue: true,
+                            }
+                          ),
+                        },
+                      },
+                    },
+                    initialValue: "$$NOW",
                     in: {
                       $min: [
                         "$$value",
                         DocHistory.getPresentValueExpression("date", {
                           asVar: "this",
-                          defaultValue: docHistory.date,
+                          defaultValue: "$$NOW",
                         }),
                       ],
                     },
                   },
                 },
-              },
+              ],
             },
-          ])
-          .toArray()) as [{ refundDate: Date }];
-
-        if (result && result.refundDate && date > result.refundDate) {
-          throw new Error(
             "Entry date can not be greater than the earliest refund date."
           );
         }
 
-        updateBuilder.updateField("date", date);
-      })()
-    );
-  }
+        // Date of Record
+        if (dateOfRecord) {
+          if (Object.keys(dateOfRecord).length === 0) {
+            throw new Error(
+              `Updating date of record requires one of the following fields: ${[
+                ...iterateOwnKeys<Required<JournalEntryDateOfRecordUpdate>>({
+                  date: "",
+                  overrideFiscalYear: true,
+                  clear: false,
+                }),
+              ].join(", ")}`
+            );
+          }
 
-  // Type
-  if ((type ?? NULLISH) !== NULLISH) {
-    updateBuilder.updateField("type", type);
-  }
+          const dateString = dateOfRecord?.date?.trim();
 
-  // Description
-  if (description?.trim()) {
-    updateBuilder.updateField("description", description);
-  }
+          if (dateOfRecord.clear) {
+            filterQuery.addCondition(
+              "$expr",
+              {
+                $ne: [
+                  DocHistory.getPresentValueExpression("dateOfRecord.date", {
+                    defaultValue: null,
+                  }),
+                  null,
+                ],
+              },
+              "Date of record must NOT be null, to clear."
+            );
+            updateBuilder.updateField("dateOfRecord.date", null);
+            updateBuilder.updateField("dateOfRecord.overrideFiscalYear", null);
+          } else {
+            // Ignore all dateOfRecord fields if clear is true
 
-  // Total
-  if (totalR) {
-    if (totalR.s === RationalSign.Neg || totalR.n === 0) {
-      throw new Error("Entry total must be greater than 0.");
-    }
+            if (dateString) {
+              const date = new Date(dateString);
+              if (!isValid(date)) {
+                throw new Error(
+                  `Date of record "${dateString}" not a valid ISO 8601 date string.`
+                );
+              }
+              updateBuilder.updateField("dateOfRecord.date", date);
+            } else {
+              filterQuery.addCondition(
+                "$expr",
+                {
+                  $ne: [
+                    DocHistory.getPresentValueExpression("dateOfRecord.date"),
+                    null,
+                  ],
+                },
+                "Date of record's date value is required."
+              );
+            }
 
-    const total = rationalToFraction(totalR);
-
-    asyncOps.push(
-      // Check that new total is not less than refunds and items
-      (async () => {
-        const [result] = (await db
-          .collection("journalEntries")
-          .aggregate([
-            { $match: { _id: new ObjectId(id) } },
-            stages.refundTotals,
-            stages.itemTotals,
-          ])
-          .toArray()) as [{ refundTotals: Fraction[]; itemTotals: Fraction[] }];
-
-        if (!result) {
-          return;
+            // overrideFiscalYear must already be set if other dateOfRecord fields.
+            if ((dateOfRecord?.overrideFiscalYear ?? NULLISH) === NULLISH) {
+              filterQuery.addCondition(
+                "$expr",
+                {
+                  $ne: [
+                    DocHistory.getPresentValueExpression(
+                      "dateOfRecord.overrideFiscalYear"
+                    ),
+                    null,
+                  ],
+                },
+                "Date of record's fiscal year override value is required."
+              );
+            } else {
+              updateBuilder.updateField(
+                "dateOfRecord.overrideFiscalYear",
+                dateOfRecord.overrideFiscalYear
+              );
+            }
+          }
         }
 
-        const refundTotal = result.refundTotals.reduce(
-          (refundTotal, total) => refundTotal.add(total),
-          new Fraction(0)
-        );
+        // Type
+        if ((type ?? NULLISH) !== NULLISH) {
+          updateBuilder.updateField("type", type);
+        }
 
-        const itemTotal = result.itemTotals.reduce(
-          (itemTotal, total) => itemTotal.add(total),
-          new Fraction(0)
-        );
+        // Description
+        if (description?.trim()) {
+          updateBuilder.updateField("description", description);
+        }
 
-        if (total.compare(refundTotal) < 0) {
-          throw new Error(
+        // Total
+        if (totalR) {
+          if (totalR.s === RationalSign.Neg || totalR.n === 0) {
+            throw new Error("Entry total must be greater than 0.");
+          }
+
+          const total = rationalToFraction(totalR);
+
+          updateBuilder.updateField("total", total);
+
+          // Total cannot be less than refunds.
+          filterQuery.addCondition(
+            "$expr",
+            {
+              $let: {
+                vars: {
+                  totalRefunds: {
+                    $reduce: {
+                      input: {
+                        $filter: {
+                          input: "$refunds",
+                          as: "refund",
+                          cond: {
+                            $not: DocHistory.getPresentValueExpression(
+                              "deleted",
+                              {
+                                asVar: "refund",
+                                defaultValue: true,
+                              }
+                            ),
+                          },
+                        },
+                      },
+                      initialValue: {
+                        s: 1,
+                        n: 0,
+                        d: 1,
+                      },
+                      in: {
+                        $let: {
+                          vars: {
+                            refundTotal: DocHistory.getPresentValueExpression(
+                              "total",
+                              {
+                                asVar: "this",
+                                defaultValue: {
+                                  s: 1,
+                                  n: 0,
+                                  d: 1,
+                                },
+                              }
+                            ),
+                          },
+                          in: addRational("$value", "$refundTotal"),
+                        },
+                      },
+                    },
+                  },
+                },
+                in: {
+                  $cond: {
+                    // Ensure refunds have a total greater than zero
+                    if: {
+                      $gt: ["$$totalRefunds.n", 0],
+                    },
+                    then: rationalComparison(
+                      total as MongoRational,
+                      "$gte",
+                      "$totalRefunds"
+                    ),
+                    else: true,
+                  },
+                },
+              },
+            },
             "Entry total cannot be less than entry's total refunds."
           );
-        }
 
-        if (total.compare(itemTotal) < 0) {
-          throw new Error(
+          // Total cannot be less than items.
+          filterQuery.addCondition(
+            "$expr",
+            {
+              $let: {
+                vars: {
+                  totalItems: {
+                    $reduce: {
+                      input: {
+                        $filter: {
+                          input: "$items",
+                          as: "item",
+                          cond: {
+                            $not: DocHistory.getPresentValueExpression(
+                              "deleted",
+                              {
+                                asVar: "item",
+                                defaultValue: true,
+                              }
+                            ),
+                          },
+                        },
+                      },
+                      initialValue: {
+                        s: 1,
+                        n: 0,
+                        d: 1,
+                      },
+                      in: {
+                        $let: {
+                          vars: {
+                            itemTotal: DocHistory.getPresentValueExpression(
+                              "total",
+                              {
+                                asVar: "this",
+                                defaultValue: {
+                                  s: 1,
+                                  n: 0,
+                                  d: 1,
+                                },
+                              }
+                            ),
+                          },
+                          in: addRational("$value", "$itemTotal"),
+                        },
+                      },
+                    },
+                  },
+                },
+                in: {
+                  $cond: {
+                    // Ensure Items have a total greater than zero
+                    if: {
+                      $gt: ["$$totalItems.n", 0],
+                    },
+                    then: rationalComparison(
+                      total as MongoRational,
+                      "$gte",
+                      "$totalItems"
+                    ),
+                    else: true,
+                  },
+                },
+              },
+            },
             "Entry total cannot be less than entry's total items."
           );
         }
-        updateBuilder.updateField("total", total);
-      })()
-    );
-  }
 
-  // Reconciled
-  if ((reconciled ?? NULLISH) !== NULLISH) {
-    updateBuilder.updateField("reconciled", reconciled);
-  }
-
-  // Department
-  if (departmentId) {
-    asyncOps.push(
-      (async () => {
-        const { collection, id: node } = nodeMap.typename.get("Department");
-        const id = new ObjectId(departmentId);
-
-        if (
-          !(await db
-            .collection(collection)
-            .findOne({ _id: id }, { projection: { _id: true } }))
-        ) {
-          throw new Error(`Department with id ${departmentId} does not exist.`);
+        // Reconciled
+        if ((reconciled ?? NULLISH) !== NULLISH) {
+          updateBuilder.updateField("reconciled", reconciled);
         }
 
-        updateBuilder.updateField("department", {
-          node: new ObjectId(node),
-          id,
+        // Async validation and new documents
+        await Promise.allSettled([
+          // Department
+          (async () => {
+            if (departmentId) {
+              const { collection, id: node } = nodeMap.typename.get(
+                "Department"
+              );
+              const id = new ObjectId(departmentId);
+
+              if (
+                0 ===
+                (await db
+                  .collection(collection)
+                  .countDocuments({ _id: id }, { session }))
+              ) {
+                throw new Error(
+                  `Department with id "${departmentId}" does not exist.`
+                );
+              }
+
+              updateBuilder.updateField("department", {
+                node: new ObjectId(node),
+                id,
+              });
+            }
+          })(),
+          // Category
+          (async () => {
+            if (categoryId) {
+              const { collection, id: node } = nodeMap.typename.get(
+                "JournalEntryCategory"
+              );
+
+              const id = new ObjectId(categoryId);
+
+              const result = await db
+                .collection(collection)
+                .findOne<{ type: "credit" | "debit" }>(
+                  { _id: id },
+                  {
+                    projection: {
+                      type: true,
+                    },
+                  }
+                );
+
+              if (!result) {
+                throw new Error(
+                  `Category with id "${categoryId}" does not exist.`
+                );
+              }
+              const catType =
+                result.type === "credit"
+                  ? JournalEntryType.Credit
+                  : JournalEntryType.Debit;
+
+              // Category must match transaction type.
+              if ((type ?? NULLISH) === NULLISH) {
+                filterQuery.addCondition(
+                  "$expr",
+                  {
+                    $eq: [
+                      DocHistory.getPresentValueExpression("type"),
+                      result.type,
+                    ],
+                  },
+                  `Category with id "${categoryId}" and type "${catType}" is incompatible with entry type "${
+                    catType === JournalEntryType.Credit
+                      ? JournalEntryType.Debit
+                      : JournalEntryType.Credit
+                  }".`
+                );
+              } else {
+                if (catType !== type) {
+                  throw new Error(
+                    `Category with id "${categoryId}" and type "${catType}" is incompatible with entry type "${type}".`
+                  );
+                }
+              }
+
+              updateBuilder.updateField("category", {
+                node: new ObjectId(node),
+                id,
+              });
+            }
+          })(),
+          // Source
+          (async () => {
+            if (businessAdd) {
+              const { id } = await addBusiness(
+                obj,
+                { fields: businessAdd },
+                { ...context, ephemeral: { session } },
+                info
+              );
+
+              const { node } = getSrcCollectionAndNode(
+                db,
+                JournalEntrySourceType.Business,
+                nodeMap
+              );
+
+              updateBuilder.updateField("source", {
+                node,
+                id: new ObjectId(id),
+              });
+            } else if (personAdd) {
+              const { id } = await addPerson(
+                obj,
+                { fields: personAdd },
+                { ...context, ephemeral: { session } },
+                info
+              );
+
+              const { node } = getSrcCollectionAndNode(
+                db,
+                JournalEntrySourceType.Person,
+                nodeMap
+              );
+
+              updateBuilder.updateField("source", {
+                node,
+                id: new ObjectId(id),
+              });
+            } else if (source) {
+              const { id: sourceId, sourceType } = source;
+
+              const { collection, node } = getSrcCollectionAndNode(
+                db,
+                sourceType,
+                nodeMap
+              );
+
+              const id = new ObjectId(sourceId);
+
+              if (
+                0 ===
+                (await collection.countDocuments({ _id: id }, { session }))
+              ) {
+                throw new Error(
+                  `Source type "${sourceType}" with id "${sourceId}" does not exist.`
+                );
+              }
+
+              updateBuilder.updateField("source", {
+                node,
+                id,
+              });
+            }
+          })(),
+          // Payment Method
+          (async () => {
+            if (paymentMethodAdd) {
+              // Ensure other checks finish before creating payment method
+              // Add payment method
+              const { id } = await paymentMethodAddMutation(
+                obj,
+                { fields: paymentMethodAdd },
+                {
+                  ...context,
+                  ephemeral: {
+                    ...(context.ephemeral || {}),
+                    docHistoryDate: docHistory.date,
+                    session,
+                  },
+                },
+                info
+              );
+
+              const { id: node } = nodeMap.typename.get("PaymentMethod");
+
+              updateBuilder.updateField("paymentMethod", {
+                node: new ObjectId(node),
+                id: new ObjectId(id),
+              });
+            } else if (paymentMethodUpdate) {
+              // Ensure other checks finish before updating payment method
+              const id = new ObjectId(paymentMethodUpdate.id);
+
+              // Update payment method
+              await paymentMethodUpdateMutation(
+                obj,
+                {
+                  id: paymentMethodUpdate.id,
+                  fields: paymentMethodUpdate.fields,
+                },
+                {
+                  ...context,
+                  ephemeral: {
+                    ...(context.ephemeral || {}),
+                    docHistoryDate: docHistory.date,
+                    session,
+                  },
+                },
+                info
+              );
+
+              const { id: node } = nodeMap.typename.get("PaymentMethod");
+
+              updateBuilder.updateField("paymentMethod", {
+                node: new ObjectId(node),
+                id,
+              });
+            } else if (paymentMethodId) {
+              const id = new ObjectId(paymentMethodId);
+
+              const { collection, id: node } = nodeMap.typename.get(
+                "PaymentMethod"
+              );
+
+              if (
+                0 ===
+                (await db
+                  .collection(collection)
+                  .countDocuments({ _id: id }, { session }))
+              ) {
+                throw new Error(
+                  `Payment method with id "${paymentMethodId}" does not exist.`
+                );
+              }
+
+              updateBuilder.updateField("paymentMethod", {
+                node: new ObjectId(node),
+                id,
+              });
+            }
+          })(),
+        ]).then((results) => {
+          const errorMsgs = results.reduce((errorMsgs, result) => {
+            if (result.status === "rejected") {
+              errorMsgs.push(
+                result.reason instanceof Error
+                  ? result.reason.message
+                  : `${result.reason}`
+              );
+            }
+            return errorMsgs;
+          }, []);
+
+          if (errorMsgs.length > 0) {
+            return Promise.reject(new Error(errorMsgs.join("\n")));
+          }
         });
-      })()
-    );
-  }
 
-  // Category
-  if (categoryId) {
-    asyncOps.push(
-      (async () => {
-        const { collection, id: node } = nodeMap.typename.get(
-          "JournalEntryCategory"
-        );
+        if (!updateBuilder.hasUpdate) {
+          const keys = (() => {
+            const obj: {
+              [P in keyof Omit<JournalEntryUpdateFields, "__typename">]-?: null;
+            } = {
+              date: null,
+              dateOfRecord: null,
+              department: null,
+              type: null,
+              category: null,
+              paymentMethod: null,
+              description: null,
+              total: null,
+              source: null,
+              reconciled: null,
+            };
 
-        const id = new ObjectId(categoryId);
+            return Object.keys(obj);
+          })();
 
-        if (
-          !(await db
-            .collection(collection)
-            .findOne({ _id: id }, { projection: { _id: true } }))
-        ) {
-          throw new Error(`Category with id ${categoryId} does not exist.`);
-        }
-
-        updateBuilder.updateField("category", {
-          node: new ObjectId(node),
-          id,
-        });
-      })()
-    );
-  }
-
-  // Source
-  if (businessAdd) {
-    // Do NOT create a new business until all other checks pass
-    asyncOps.push(
-      Promise.all(asyncOps.splice(0)).then(async () => {
-        const { id } = await addBusiness(
-          obj,
-          { fields: businessAdd },
-          context,
-          info
-        );
-
-        const { node } = getSrcCollectionAndNode(
-          db,
-          JournalEntrySourceType.Business,
-          nodeMap
-        );
-
-        updateBuilder.updateField("source", {
-          node,
-          id: new ObjectId(id),
-        });
-      })
-    );
-  } else if (personAdd) {
-    // Do NOT create a new person until all other checks pass
-    asyncOps.push(
-      Promise.all(asyncOps.splice(0)).then(async () => {
-        const { id } = await addPerson(
-          obj,
-          { fields: personAdd },
-          context,
-          info
-        );
-
-        const { node } = getSrcCollectionAndNode(
-          db,
-          JournalEntrySourceType.Person,
-          nodeMap
-        );
-
-        updateBuilder.updateField("source", {
-          node,
-          id: new ObjectId(id),
-        });
-      })
-    );
-  } else if (source) {
-    const { id: sourceId, sourceType } = source;
-
-    asyncOps.push(
-      (async () => {
-        const { collection, node } = getSrcCollectionAndNode(
-          db,
-          sourceType,
-          nodeMap
-        );
-
-        const id = new ObjectId(sourceId);
-
-        if (
-          !(await collection.findOne(
-            { _id: id },
-            { projection: { _id: true } }
-          ))
-        ) {
           throw new Error(
-            `Source type "${sourceType}" with id ${sourceId} does not exist.`
+            `Entry update requires at least one of the following fields: ${keys.join(
+              ", "
+            )}".`
           );
         }
 
-        updateBuilder.updateField("source", {
-          node,
-          id,
-        });
-      })()
-    );
-  }
+        const updateFilter = filterQuery.filterQuery();
 
-  // Payment method
-  if (paymentMethodAdd) {
-    // Ensure other checks finish before creating payment method
-    asyncOps.push(
-      Promise.all(asyncOps.splice(0)).then(async () => {
-        // Add payment method
-        const id = new ObjectId(
-          await (paymentMethodAddMutation(
-            obj,
-            { fields: paymentMethodAdd },
-            {
-              ...context,
-              ephemeral: {
-                ...(context.ephemeral || {}),
-                docHistoryDate: docHistory.date,
-              },
-            },
-            info
-          ) as Promise<PaymentMethod>).then(({ id }) => id)
-        );
+        const { modifiedCount, matchedCount } = await db
+          .collection("journalEntries")
+          .updateOne(updateFilter, { ...updateBuilder.update() }, { session });
 
-        const { id: node } = nodeMap.typename.get("PaymentMethod");
-
-        updateBuilder.updateField("paymentMethod", {
-          node: new ObjectId(node),
-          id,
-        });
-      })
-    );
-  } else if (paymentMethodUpdate) {
-    // Ensure other checks finish before updating payment method
-    asyncOps.push(
-      Promise.all(asyncOps.splice(0)).then(async () => {
-        const id = new ObjectId(paymentMethodUpdate.id);
-
-        // Update payment method
-        await paymentMethodUpdateMutation(
-          obj,
-          {
-            id: paymentMethodUpdate.id,
-            fields: paymentMethodUpdate.fields,
-          },
-          {
-            ...context,
-            ephemeral: {
-              ...(context.ephemeral || {}),
-              docHistoryDate: docHistory.date,
-            },
-          },
-          info
-        );
-
-        const { id: node } = nodeMap.typename.get("PaymentMethod");
-
-        updateBuilder.updateField("paymentMethod", {
-          node: new ObjectId(node),
-          id,
-        });
-      })
-    );
-  } else if (paymentMethodId) {
-    asyncOps.push(
-      (async () => {
-        const id = new ObjectId(paymentMethodId);
-
-        const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
-
-        if (
-          !(await db
-            .collection(collection)
-            .findOne({ _id: id }, { projection: { _id: true } }))
-        ) {
-          throw new Error(
-            `Payment method with id ${id.toHexString()} does not exist.`
+        if (matchedCount === 0) {
+          const reasons = await filterQuery.explainFailed(
+            db.collection("journalEntries")
           );
+
+          if (reasons.length > 0) {
+            throw new Error(reasons.map((e) => e.message).join("\n"));
+          } else {
+            throw new Error(
+              `Unknown Failure.  Failed to update entry: "${JSON.stringify(
+                args
+              )}".`
+            );
+          }
         }
 
-        updateBuilder.updateField("paymentMethod", {
-          node: new ObjectId(node),
-          id,
-        });
-      })()
-    );
-  }
+        if (modifiedCount === 0) {
+          throw new Error(`Failed to update entry: "${JSON.stringify(args)}".`);
+        }
 
-  await Promise.all(asyncOps);
+        const [updatedDoc] = await db
+          .collection("journalEntries")
+          .aggregate(
+            [
+              { $match: { _id: entryId } },
+              stages.entryAddFields,
+              stages.entryTransmutations,
+            ],
+            { session }
+          )
+          .toArray();
 
-  if (!updateBuilder.hasUpdate) {
-    const keys = (() => {
-      const obj: {
-        [P in keyof Omit<JournalEntryUpdateFields, "__typename">]-?: null;
-      } = {
-        date: null,
-        department: null,
-        type: null,
-        category: null,
-        paymentMethod: null,
-        description: null,
-        total: null,
-        source: null,
-        reconciled: null,
-      };
-
-      return Object.keys(obj);
-    })();
-
-    throw new Error(
-      `Entry update requires at least one of the following fields: ${keys.join(
-        ", "
-      )}".`
-    );
-  }
-
-  const _id = new ObjectId(id);
-
-  const { modifiedCount } = await db
-    .collection("journalEntries")
-    .updateOne({ _id }, updateBuilder.update());
-
-  if (modifiedCount === 0) {
-    throw new Error(`Failed to update entry: "${JSON.stringify(args)}".`);
-  }
-
-  const [updatedDoc] = await db
-    .collection("journalEntries")
-    .aggregate([
-      { $match: { _id } },
-      stages.entryAddFields,
-      stages.entryTransmutations,
-    ])
-    .toArray();
-
-  pubSub
-    .publish(JOURNAL_ENTRY_UPDATED, {
-      journalEntryUpdated: updatedDoc,
-    })
-    .catch((error) => console.error(error));
-  pubSub
-    .publish(JOURNAL_ENTRY_UPSERTED, { journalEntryUpserted: updatedDoc })
-    .catch((error) => console.error(error));
-
-  return updatedDoc;
-};
+        resolver.next(updatedDoc);
+      });
+    } catch (e) {
+      resolver.throw(e);
+    } finally {
+      resolver.next();
+      session.endSession();
+    }
+  });
 
 export default journalEntryUpdate;

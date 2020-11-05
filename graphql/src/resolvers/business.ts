@@ -75,6 +75,8 @@ export const addBusiness: MutationResolvers["addBusiness"] = async (
 ) => {
   const { db } = context;
 
+  const session = context.ephemeral?.session;
+
   const {
     fields: { name },
   } = args;
@@ -85,7 +87,7 @@ export const addBusiness: MutationResolvers["addBusiness"] = async (
 
   const { insertedCount, insertedId } = await db
     .collection("businesses")
-    .insertOne({ name, verified: false });
+    .insertOne({ name, verified: false }, { session });
 
   if (insertedCount === 0) {
     throw new Error(
@@ -95,11 +97,14 @@ export const addBusiness: MutationResolvers["addBusiness"] = async (
 
   const newBusiness = await db
     .collection("businesses")
-    .aggregate([
-      { $match: { _id: new ObjectId(insertedId) } },
-      { $limit: 1 },
-      { $addFields: { id: { $toString: "$_id" } } },
-    ])
+    .aggregate(
+      [
+        { $match: { _id: new ObjectId(insertedId) } },
+        { $limit: 1 },
+        { $addFields: { id: { $toString: "$_id" } } },
+      ],
+      { session }
+    )
     .toArray();
 
   return newBusiness[0];

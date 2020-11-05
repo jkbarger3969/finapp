@@ -3,7 +3,7 @@ import { ObjectId } from "mongodb";
 import { stages } from "./utils";
 import {
   QueryResolvers,
-  JournalEntiresWhereInput as Where,
+  JournalEntiresWhere as Where,
   JournalEntriesWhereDepartment,
   JournalEntriesWhereCategory,
   JournalEntriesWherePaymentMethod,
@@ -29,6 +29,7 @@ import {
 import gqlMongoRational from "../utils/filterQuery/gqlMongoRational";
 import { comparisonOpsMapper } from "../utils/filterQuery/operatorMapping/comparison";
 import { json } from "express";
+import DocHistory from "../utils/DocHistory";
 
 const deptNode = new ObjectId("5dc4addacf96e166daaa008f");
 const bizNode = new ObjectId("5dc476becf96e166daa9fd0b");
@@ -475,15 +476,39 @@ const parseWhereFiscalYear = async function* (
             opValue as JournalEntriesWhereFiscalYear[typeof op]
           );
           yield {
-            field: "$and",
-            condition: [
-              {
-                "date.0.value": {
-                  $gte: begin,
-                  $lt: end,
+            field: "$expr",
+            condition: {
+              $let: {
+                vars: {
+                  fiscalYearDate: {
+                    $cond: {
+                      if: {
+                        $and: [
+                          {
+                            $eq: [
+                              DocHistory.getPresentValueExpression(
+                                "dateOfRecord.overrideFiscalYear"
+                              ),
+                              true,
+                            ],
+                          },
+                        ],
+                      },
+                      then: DocHistory.getPresentValueExpression(
+                        "dateOfRecord.date"
+                      ),
+                      else: DocHistory.getPresentValueExpression("date"),
+                    },
+                  },
+                },
+                in: {
+                  $and: [
+                    { $gte: ["$$fiscalYearDate", begin] },
+                    { $lt: ["$$fiscalYearDate", end] },
+                  ],
                 },
               },
-            ],
+            },
           };
         }
         break;
@@ -493,57 +518,159 @@ const parseWhereFiscalYear = async function* (
             opValue as JournalEntriesWhereFiscalYear[typeof op]
           );
           yield {
-            field: "$and",
-            condition: [
-              {
-                "date.0.value": {
+            field: "$expr",
+            condition: {
+              $let: {
+                vars: {
+                  fiscalYearDate: {
+                    $cond: {
+                      if: {
+                        $and: [
+                          {
+                            $eq: [
+                              DocHistory.getPresentValueExpression(
+                                "dateOfRecord.deleted"
+                              ),
+                              false,
+                            ],
+                          },
+                          {
+                            $eq: [
+                              DocHistory.getPresentValueExpression(
+                                "dateOfRecord.overrideFiscalYear"
+                              ),
+                              true,
+                            ],
+                          },
+                        ],
+                      },
+                      then: DocHistory.getPresentValueExpression(
+                        "dateOfRecord.date"
+                      ),
+                      else: DocHistory.getPresentValueExpression("date"),
+                    },
+                  },
+                },
+                in: {
                   $not: {
-                    $gte: begin,
-                    $lt: end,
+                    $and: [
+                      { $gte: ["$$fiscalYearDate", begin] },
+                      { $lt: ["$$fiscalYearDate", end] },
+                    ],
                   },
                 },
               },
-            ],
+            },
           };
         }
         break;
       case "in":
         if (opValue) {
-          const condition = (opValue as JournalEntriesWhereFiscalYear[typeof op]).map(
-            (opValue) => {
-              const { begin, end } = fiscalYears.get(opValue);
-              return {
-                "date.0.value": {
-                  $gte: begin,
-                  $lt: end,
-                },
-              };
-            }
-          );
           yield {
-            field: "$or",
-            condition,
+            field: "$expr",
+            condition: {
+              $let: {
+                vars: {
+                  fiscalYearDate: {
+                    $cond: {
+                      if: {
+                        $and: [
+                          {
+                            $eq: [
+                              DocHistory.getPresentValueExpression(
+                                "dateOfRecord.deleted"
+                              ),
+                              false,
+                            ],
+                          },
+                          {
+                            $eq: [
+                              DocHistory.getPresentValueExpression(
+                                "dateOfRecord.overrideFiscalYear"
+                              ),
+                              true,
+                            ],
+                          },
+                        ],
+                      },
+                      then: DocHistory.getPresentValueExpression(
+                        "dateOfRecord.date"
+                      ),
+                      else: DocHistory.getPresentValueExpression("date"),
+                    },
+                  },
+                },
+                in: {
+                  $or: (opValue as JournalEntriesWhereFiscalYear[typeof op]).map(
+                    (opValue) => {
+                      const { begin, end } = fiscalYears.get(opValue);
+                      return {
+                        $and: [
+                          { $gte: ["$$fiscalYearDate", begin] },
+                          { $lt: ["$$fiscalYearDate", end] },
+                        ],
+                      };
+                    }
+                  ),
+                },
+              },
+            },
           };
         }
         break;
       case "nin":
         if (opValue) {
-          const condition = (opValue as JournalEntriesWhereFiscalYear[typeof op]).map(
-            (opValue) => {
-              const { begin, end } = fiscalYears.get(opValue);
-              return {
-                "date.0.value": {
-                  $not: {
-                    $gte: begin,
-                    $lt: end,
+          yield {
+            field: "$expr",
+            condition: {
+              $let: {
+                vars: {
+                  fiscalYearDate: {
+                    $cond: {
+                      if: {
+                        $and: [
+                          {
+                            $eq: [
+                              DocHistory.getPresentValueExpression(
+                                "dateOfRecord.deleted"
+                              ),
+                              false,
+                            ],
+                          },
+                          {
+                            $eq: [
+                              DocHistory.getPresentValueExpression(
+                                "dateOfRecord.overrideFiscalYear"
+                              ),
+                              true,
+                            ],
+                          },
+                        ],
+                      },
+                      then: DocHistory.getPresentValueExpression(
+                        "dateOfRecord.date"
+                      ),
+                      else: DocHistory.getPresentValueExpression("date"),
+                    },
                   },
                 },
-              };
-            }
-          );
-          yield {
-            field: "$and",
-            condition,
+                in: {
+                  $not: {
+                    $or: (opValue as JournalEntriesWhereFiscalYear[typeof op]).map(
+                      (opValue) => {
+                        const { begin, end } = fiscalYears.get(opValue);
+                        return {
+                          $and: [
+                            { $gte: ["$$fiscalYearDate", begin] },
+                            { $lt: ["$$fiscalYearDate", end] },
+                          ],
+                        };
+                      }
+                    ),
+                  },
+                },
+              },
+            },
           };
         }
         break;

@@ -38,7 +38,7 @@ const _logicOpParser_ = async function* <
   TWhere extends LogicOperators<TWhere>,
   Toptions = unknown
 >(
-  filterQuery: FilterQuery<unknown>,
+  $and: (FilterQuery<unknown> & { $expr?: unknown })[],
   where: TWhere | AsyncIterable<[keyof TWhere, TWhere[keyof TWhere]]>,
   fieldAndConditionGenerator: FieldAndConditionGenerator<TWhere, Toptions>,
   options?: Toptions
@@ -57,26 +57,47 @@ const _logicOpParser_ = async function* <
     // Match Logic Operators
     switch (key) {
       case "or":
-        filterQuery.$or = await Promise.all(
+        $and.push({
+          $or: await Promise.all(
+            where[key as "or"].map((where) =>
+              filterQueryCreator(where, fieldAndConditionGenerator, options)
+            )
+          ),
+        });
+        /* filterQuery.$or = await Promise.all(
           where[key as "or"].map((where) =>
             filterQueryCreator(where, fieldAndConditionGenerator, options)
           )
-        );
+        ); */
         break;
       case "and":
-        filterQuery.$and = await Promise.all(
+        $and.push(
+          ...(await Promise.all(
+            where[key as "and"].map((where) =>
+              filterQueryCreator(where, fieldAndConditionGenerator, options)
+            )
+          ))
+        );
+        /*  filterQuery.$and = await Promise.all(
           where[key as "and"].map((where) =>
             filterQueryCreator(where, fieldAndConditionGenerator, options)
           )
-        );
+        ); */
         break;
 
       case "nor":
-        filterQuery.$nor = await Promise.all(
+        $and.push({
+          $nor: await Promise.all(
+            where[key as "nor"].map((where) =>
+              filterQueryCreator(where, fieldAndConditionGenerator, options)
+            )
+          ),
+        });
+        /* filterQuery.$nor = await Promise.all(
           where[key as "nor"].map((where) =>
             filterQueryCreator(where, fieldAndConditionGenerator, options)
           )
-        );
+        ); */
         break;
       default: {
         yield [
@@ -96,45 +117,24 @@ const filterQueryCreator = async <
   fieldAndConditionGenerator: FieldAndConditionGenerator<TWhere, Toptions>,
   options?: Toptions
 ): Promise<FilterQuery<unknown>> => {
-  const filterQuery: FilterQuery<unknown> & { $expr?: unknown } = {};
+  const $and: (FilterQuery<unknown> & { $expr?: unknown })[] = [];
 
   for await (const { field, condition } of fieldAndConditionGenerator(
-    _logicOpParser_(filterQuery, where, fieldAndConditionGenerator, options),
+    _logicOpParser_($and, where, fieldAndConditionGenerator, options),
     options
   )) {
-    // Handle multiple "$and" queries.
-    if (field === "$and" && "$and" in filterQuery) {
-      filterQuery.$and = [...filterQuery.$and, ...(condition as unknown[])];
-    }
-
-    // Handle multiple "$or" queries.
-    else if (field === "$or" && "$or" in filterQuery) {
-      if ("$and" in filterQuery) {
-        filterQuery.$and = [
-          ...filterQuery.$and,
-          { $or: condition as unknown[] },
-        ];
+    if (field === "$and") {
+      if (Array.isArray(condition)) {
+        $and.push(...condition);
       } else {
-        filterQuery.$and = [{ $or: condition as unknown[] }];
+        $and.push(condition);
       }
-    }
-
-    // Handle multiple "$nor" queries.
-    else if (field === "$nor" && "$nor" in filterQuery) {
-      filterQuery.$nor = [...filterQuery.$nor, ...(condition as unknown[])];
-    }
-
-    // Handle multiple "$expr" queries.
-    else if (field === "$expr" && "$expr" in filterQuery) {
-      filterQuery.$expr = {
-        $allElementsTrue: [[filterQuery.$expr, condition]],
-      };
     } else {
-      filterQuery[field] = condition;
+      $and.push({ [field]: condition });
     }
   }
 
-  return filterQuery as FilterQuery<unknown>;
+  return { $and } as FilterQuery<unknown>;
 };
 
 export default filterQueryCreator;

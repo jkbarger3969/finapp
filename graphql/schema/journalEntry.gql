@@ -3,6 +3,34 @@ enum JournalEntryType {
   DEBIT
 }
 
+type JournalEntryDateOfRecord {
+  """
+  ISO 8601
+  """
+  date: String!
+  overrideFiscalYear: Boolean!
+}
+
+input JournalEntryDateOfRecordAdd {
+  """
+  ISO 8601
+  """
+  date: String!
+  overrideFiscalYear: Boolean!
+}
+input JournalEntryDateOfRecordUpdate {
+  """
+  ISO 8601
+  """
+  date: String
+  overrideFiscalYear: Boolean
+  """
+  When "clear" field is true, the "date" and "overrideFiscalYear" are ignored.
+  When "clear" field is false or null, it is ignored i.e. does nothing.
+  """
+  clear: Boolean
+}
+
 type JournalEntry {
   id: ID!
   refunds: [JournalEntryRefund!]!
@@ -12,6 +40,7 @@ type JournalEntry {
   ISO 8601
   """
   date: String!
+  dateOfRecord: JournalEntryDateOfRecord
   department: Department!
   budget: Budget!
   fiscalYear: FiscalYear!
@@ -41,6 +70,7 @@ input JournalEntryUpdateFields {
   ISO 8601
   """
   date: String
+  dateOfRecord: JournalEntryDateOfRecordUpdate
   department: ID
   type: JournalEntryType
   category: ID
@@ -56,6 +86,7 @@ input JournalEntryAddFields {
   ISO 8601
   """
   date: String!
+  dateOfRecord: JournalEntryDateOfRecordAdd
   department: ID!
   type: JournalEntryType!
   category: ID!
@@ -177,15 +208,13 @@ input JournalEntriesWhereFiscalYear {
   nin: [ID!]
 }
 
-input JournalEntiresWhereInput {
+input JournalEntiresWhere {
   eq: ID
   ne: ID
   in: [ID!]
   nin: [ID!]
-  """
-  ISO 8601
-  """
   date: WhereDate
+  dateOfRecord: WhereDate
   fiscalYear: JournalEntriesWhereFiscalYear
   department: JournalEntriesWhereDepartment
   category: JournalEntriesWhereCategory
@@ -197,12 +226,12 @@ input JournalEntiresWhereInput {
   lastUpdate: WhereDate
   lastUpdateRefund: WhereDate
   lastUpdateItem: WhereDate
-  or: [JournalEntiresWhereInput!]
-  and: [JournalEntiresWhereInput!]
+  or: [JournalEntiresWhere!]
+  and: [JournalEntiresWhere!]
 }
 
 type Query {
-  journalEntries(where: JournalEntiresWhereInput): [JournalEntry!]!
+  journalEntries(where: JournalEntiresWhere): [JournalEntry!]!
   journalEntry(id: ID!): JournalEntry
   journalEntryRefund(id: ID!): JournalEntryRefund
   journalEntryItem(id: ID!): JournalEntryItem
@@ -217,8 +246,14 @@ type Mutation {
   journalEntryUpdate(
     id: ID!
     fields: JournalEntryUpdateFields!
+    """
+    paymentMethodAdd and paymentMethodUpdate are mutually exclusive.
+    """
     paymentMethodAdd: PaymentMethodAddFields
     paymentMethodUpdate: JournalEntryUpdatePaymentMethod
+    """
+    personAdd and businessAdd are mutually exclusive.
+    """
     personAdd: PersonAddFields
     businessAdd: BusinessAddFields
   ): JournalEntry!

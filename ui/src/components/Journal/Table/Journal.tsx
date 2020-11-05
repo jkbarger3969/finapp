@@ -306,7 +306,10 @@ const Journal = (props: {
         }
 
         if (fiscalYear) {
-          const date = new Date(upsertEntry.date);
+          const date = upsertEntry.dateOfRecord?.overrideFiscalYear
+            ? new Date(upsertEntry.dateOfRecord.date)
+            : new Date(upsertEntry.date);
+
           if (
             date < new Date(fiscalYear.begin) ||
             date >= new Date(fiscalYear.end)
@@ -432,6 +435,25 @@ const Journal = (props: {
           />
         ),
         defaultSort: "desc",
+      },
+      {
+        field: "dateOfRecord",
+        title: "Date Of record",
+        render: ({ date, dateOfRecord }) =>
+          format(new Date(dateOfRecord?.date || date), "MMM dd, yyyy"),
+        searchable: false,
+        filtering: false,
+        sorting: false,
+        // eslint-disable-next-line react/display-name, react/prop-types
+        // filterComponent: ({ columnDef, onFilterChanged }) => (
+        //   <DateFilter
+        //     setFilter={(filter) => {
+        //       // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/prop-types
+        //       onFilterChanged((columnDef as any).tableData?.id ?? "2", filter);
+        //     }}
+        //   />
+        // ),
+        // defaultSort: "desc",
       },
       {
         field: "category",

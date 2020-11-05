@@ -51,6 +51,7 @@ import { min } from "date-fns/esm";
 import OverlayLoading from "../../../utils/OverlayLoading";
 import Overlay from "../../../utils/Overlay";
 import DateEntry from "../EntryFields/DateEntry";
+import { DateOfRecord } from "../EntryFields/DateOfRecord";
 import Description from "../EntryFields/Description";
 import Total from "../EntryFields/Total";
 import Reconcile from "../EntryFields/Reconcile";
@@ -76,6 +77,10 @@ const UPDATE_ENTRY_INI_STATE = gql`
       __typename
       type
       date
+      dateOfRecord {
+        date
+        overrideFiscalYear
+      }
       department {
         ...DeptEntryOptFragment
       }
@@ -292,6 +297,13 @@ const UpdateEntryDialog = (
               />
             </Grid>
             <Grid {...gridEntryResponsiveProps}>
+              <DateOfRecord
+                disabled={isSubmitting || loading || !!fatalError}
+                maxDate={maxDate === MAX_DATE ? undefined : maxDate}
+                fullWidth
+              />
+            </Grid>
+            <Grid {...gridEntryResponsiveProps}>
               <Source
                 disabled={isSubmitting || loading || !!fatalError}
                 fullWidth
@@ -409,6 +421,17 @@ const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
       inputValue: new Date(journalEntry.date),
       value: journalEntry.date,
     };
+
+    const dateOfRecord: IniUpdateValues["dateOfRecord"] = journalEntry.dateOfRecord
+      ? {
+          date: {
+            inputValue: new Date(journalEntry.dateOfRecord.date),
+            value: journalEntry.dateOfRecord.date,
+          },
+          overrideFiscalYear: journalEntry.dateOfRecord.overrideFiscalYear,
+          clear: false,
+        }
+      : null;
 
     const category = (() => {
       const { ancestors, ...category } = journalEntry.category;
@@ -534,6 +557,7 @@ const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
 
     const iniUpdateValues: IniUpdateValues = {
       date,
+      dateOfRecord,
       category,
       paymentMethod,
       department,

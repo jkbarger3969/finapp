@@ -16,6 +16,8 @@ const paymentMethodAdd: MutationResolvers["paymentMethodAdd"] = async (
 
   const { db, user } = context;
 
+  const session = context.ephemeral?.session;
+
   const docHistory = new DocHistory(
     { node: userNodeType, id: user.id },
     context.ephemeral?.docHistoryDate
@@ -27,7 +29,7 @@ const paymentMethodAdd: MutationResolvers["paymentMethodAdd"] = async (
 
   const parentDoc = await collection.findOne(
     { _id: parent },
-    { projection: { _id: true, allowChildren: true } }
+    { projection: { _id: true, allowChildren: true }, session }
   );
 
   if (!parentDoc) {
@@ -47,14 +49,17 @@ const paymentMethodAdd: MutationResolvers["paymentMethodAdd"] = async (
     docBuilder.addField("refId", refId);
   }
 
-  const { insertedId } = await collection.insertOne({
-    parent,
-    allowChildren: false, //Not exposed to GQL api at this time
-    ...docBuilder.doc(),
-  });
+  const { insertedId } = await collection.insertOne(
+    {
+      parent,
+      allowChildren: false, //Not exposed to GQL api at this time
+      ...docBuilder.doc(),
+    },
+    { session }
+  );
 
   const [result] = await collection
-    .aggregate([{ $match: { _id: insertedId } }, { $addFields }])
+    .aggregate([{ $match: { _id: insertedId } }, { $addFields }], { session })
     .toArray();
 
   return result;

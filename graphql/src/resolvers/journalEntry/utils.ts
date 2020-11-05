@@ -9,7 +9,11 @@ import {
 } from "../../graphTypes";
 import { Context } from "../../types";
 import DocHistory, { PresentValueExpressionOpts } from "../utils/DocHistory";
-import { iterateOwnKeyValues } from "../../utils/iterableFns";
+import {
+  iterateOwnKeyValues,
+  generatorChain,
+  iterateOwnKeys,
+} from "../../utils/iterableFns";
 
 export const addFields = {
   $addFields: {
@@ -76,6 +80,7 @@ export const entryAddFieldsStage = {
             JournalEntry,
             | "__typename"
             | "id"
+            | "dateOfRecord"
             | "refunds"
             | "items"
             | "lastUpdate"
@@ -98,6 +103,36 @@ export const entryAddFieldsStage = {
         return Object.keys(obj);
       })()
     ),
+    dateOfRecord: {
+      $cond: {
+        if: {
+          $ifNull: [
+            DocHistory.getPresentValueExpression("dateOfRecord.date"),
+            false,
+          ],
+        },
+        then: {
+          ...DocHistory.getPresentValues(
+            (function* () {
+              for (const [key, value] of iterateOwnKeyValues<
+                {
+                  [P in keyof Omit<
+                    NonNullable<JournalEntry["dateOfRecord"]>,
+                    "__typename"
+                  >]: string;
+                }
+              >({
+                date: "dateOfRecord.date",
+                overrideFiscalYear: "dateOfRecord.overrideFiscalYear",
+              })) {
+                yield [value, key] as [string, string];
+              }
+            })()
+          ),
+        },
+        else: null,
+      },
+    },
     refunds: {
       $ifNull: [
         {
@@ -235,6 +270,19 @@ export const entryTransmutationsStage = {
       },
     },
     date: { $toString: "$date" },
+    dateOfRecord: {
+      $cond: {
+        if: {
+          $ifNull: ["$dateOfRecord.date", false],
+        },
+        then: {
+          date: { $toString: "$dateOfRecord.date" },
+          overrideFiscalYear: "$dateOfRecord.overrideFiscalYear",
+          deleted: "$dateOfRecord.deleted",
+        },
+        else: null,
+      },
+    },
     lastUpdate: { $toString: "$lastUpdate" },
     refunds: {
       $map: {

@@ -90,6 +90,10 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
     __typename
     id
     date
+    dateOfRecord {
+      date
+      overrideFiscalYear
+    }
     department {
       __typename
       id
@@ -158,7 +162,7 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
 `;
 
 export const JOURNAL_ENTRIES = gql`
-  query JournalEntries_1($where: JournalEntiresWhereInput!) {
+  query JournalEntries_1($where: JournalEntiresWhere!) {
     journalEntries(where: $where)
       @connection(key: "JournalEntries_1", filter: ["where"]) {
       ...JournalEntry_1Fragment

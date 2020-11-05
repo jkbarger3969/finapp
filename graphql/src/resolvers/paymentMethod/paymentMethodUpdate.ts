@@ -23,6 +23,8 @@ const paymentMethodUpdate: MutationResolvers["paymentMethodUpdate"] = async (
     context.ephemeral?.docHistoryDate
   );
 
+  const session = context.ephemeral?.session;
+
   const updateBuilder = docHistory.updateHistoricalDoc();
 
   const { id, fields } = args;
@@ -67,7 +69,10 @@ const paymentMethodUpdate: MutationResolvers["paymentMethodUpdate"] = async (
 
   const collection = db.collection("paymentMethods");
 
-  const doc = await collection.findOne({ _id }, { projection: { _id: true } });
+  const doc = await collection.findOne(
+    { _id },
+    { projection: { _id: true }, session }
+  );
 
   if (!doc) {
     throw new Error(`Payment method "${id}" does not exist.`);
@@ -75,7 +80,8 @@ const paymentMethodUpdate: MutationResolvers["paymentMethodUpdate"] = async (
 
   const { modifiedCount } = await collection.updateOne(
     { _id },
-    updateBuilder.update()
+    { ...updateBuilder.update() },
+    { session }
   );
 
   if (modifiedCount === 0) {
@@ -85,7 +91,7 @@ const paymentMethodUpdate: MutationResolvers["paymentMethodUpdate"] = async (
   }
 
   const [result] = await collection
-    .aggregate([{ $match: { _id } }, { $addFields }])
+    .aggregate([{ $match: { _id } }, { $addFields }], { session })
     .toArray();
 
   return result;
