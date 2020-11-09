@@ -77,7 +77,12 @@ export type DepartmentProps = {
 } & Omit<TextFieldProps, "value">;
 
 const Department = (props: DepartmentProps): JSX.Element => {
-  const { disabled: disabledFromProps = false, required, fiscalYearId } = props;
+  const {
+    disabled: disabledFromProps = false,
+    required,
+    fiscalYearId,
+    ...textFieldProps
+  } = props;
 
   const fiscalYearRequired = typeof fiscalYearId === "string";
 
@@ -149,7 +154,7 @@ const Department = (props: DepartmentProps): JSX.Element => {
       !deptValue.budgets.every(
         (budget) => budget.fiscalYear.id !== fiscalYearId
       ),
-    [deptValue]
+    [deptValue, fiscalYearId]
   );
 
   const idDeptMap = useMemo(
@@ -201,7 +206,7 @@ const Department = (props: DepartmentProps): JSX.Element => {
       return "Department requires a date.";
     }
     return "";
-  }, [error, touched, gqlError]);
+  }, [error, touched, gqlError, fiscalYearId]);
 
   const disabled = useMemo(
     () =>
@@ -224,7 +229,7 @@ const Department = (props: DepartmentProps): JSX.Element => {
     (params: RenderInputParams) => {
       return (
         <TextField
-          {...props}
+          {...textFieldProps}
           required={fiscalYearRequired ? !hasBudget : !!props.required}
           variant={props.variant || "filled"}
           {...params}
@@ -236,7 +241,16 @@ const Department = (props: DepartmentProps): JSX.Element => {
         />
       );
     },
-    [props, touched, error, helperText, disabled, fiscalYearRequired, hasBudget]
+    [
+      props,
+      touched,
+      error,
+      helperText,
+      textFieldProps,
+      disabled,
+      fiscalYearRequired,
+      hasBudget,
+    ]
   );
 
   const onFocus = useCallback(() => setHasFocus(true), [setHasFocus]);
