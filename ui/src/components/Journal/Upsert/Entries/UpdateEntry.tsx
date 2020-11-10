@@ -164,7 +164,7 @@ const UpdateEntryDialog = (
     resetForm,
     isSubmitting,
     isValid,
-    values: { date },
+    values: { date, dateOfRecord },
   } = useFormikContext<UpdateValues>();
 
   const [formikStatus, setFormikStatus] = useFormikStatus();
@@ -178,20 +178,29 @@ const UpdateEntryDialog = (
     [setFormikStatus]
   );
 
+  const dateStr = useMemo<string>(() => {
+    if (dateOfRecord?.overrideFiscalYear) {
+      return dateOfRecord?.date?.value ?? "";
+    }
+    return date?.value ?? "";
+  }, [date, dateOfRecord]);
+
   const { data } = useQuery<FiscalYearQuery, FiscalYearQueryVariables>(
     FISCAL_YEAR,
     {
-      skip: !date?.inputValue,
+      skip: !dateStr,
       variables: {
-        date: date?.value || "",
+        date: dateStr || "",
       },
+      returnPartialData: true,
       onError,
     }
   );
 
-  const fiscalYearId = useMemo<string>(() => data?.fiscalYears[0]?.id ?? "", [
-    data,
-  ]);
+  const fiscalYearId = useMemo<string>(
+    () => (data?.fiscalYears ?? [])[0]?.id ?? "",
+    [data]
+  );
 
   const refunds = journalEntry?.refunds || [];
 
@@ -299,7 +308,7 @@ const UpdateEntryDialog = (
             <Grid {...gridEntryResponsiveProps}>
               <DateOfRecord
                 disabled={isSubmitting || loading || !!fatalError}
-                maxDate={maxDate === MAX_DATE ? undefined : maxDate}
+                // maxDate={maxDate === MAX_DATE ? undefined : maxDate}
                 fullWidth
               />
             </Grid>
@@ -394,11 +403,6 @@ const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
       id: entryId as string,
     },
   });
-
-  if (error) {
-    console.log(entryId, UPDATE_ENTRY_INI_STATE);
-    console.error(error);
-  }
 
   const initialStatus = useMemo(
     () =>
