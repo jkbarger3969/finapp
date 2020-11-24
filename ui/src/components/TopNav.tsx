@@ -102,7 +102,7 @@ const TopNav = (props: Record<string, unknown>): JSX.Element => {
       flexDirection="column"
       clone
     >
-      <Container>
+      <Container style={{ display: "flex" }}>
         <Box padding={4} clone>
           <Typography align="center" color="primary" variant="h3">
             Select Department

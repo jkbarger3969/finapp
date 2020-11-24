@@ -27,7 +27,7 @@
       },
       {
         "kind": "UNION",
-        "name": "PaymentMethodAuthorizedEntity",
+        "name": "JournalEntrySource",
         "possibleTypes": [
           {
             "name": "Person"
@@ -42,7 +42,7 @@
       },
       {
         "kind": "UNION",
-        "name": "JournalEntrySource",
+        "name": "PaymentMethodAuthorizedEntity",
         "possibleTypes": [
           {
             "name": "Person"

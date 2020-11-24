@@ -7,7 +7,7 @@ interface GetCacheKeyArg {
 }
 
 export interface Context {
-  client: ApolloClient<any>;
+  client: ApolloClient<Record<string, unknown>>;
   cache: InMemoryCache;
   getCacheKey<T extends GetCacheKeyArg>(arg: T): string;
 }

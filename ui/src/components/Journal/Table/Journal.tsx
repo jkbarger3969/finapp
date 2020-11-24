@@ -945,45 +945,63 @@ const Journal = (props: {
           threshold: 0.4,
           useExtendedSearch: true,
           getFn: (entry, key) => {
-            switch (key) {
-              case "date": {
-                const date = new Date(entry.date);
+            return (Array.isArray(key) ? key : [key]).reduce((values, key) => {
+              switch (key) {
+                case "date": {
+                  const date = new Date(entry.date);
 
-                return [
-                  entry.date,
-                  format(date, "M/d/yy"),
-                  format(date, "MM/d/yy"),
-                  format(date, "M/d/yyyy"),
-                  format(date, "MM/d/yyyy"),
-                  format(date, "MMM dd, yyyy"),
-                ];
-              }
-              case "total": {
-                const total = rationalToFraction(entry.total).valueOf();
-
-                return [numeral(total).format("$0,0.00"), total.toFixed(2)];
-              }
-              case "description":
-                return entry.description?.trim() || "";
-              case "department":
-                return entry.department.name;
-              case "category":
-                return entry.category.name;
-              case "paymentMethod":
-                return entry.paymentMethod.name;
-              case "source":
-                switch (entry.source.__typename) {
-                  case "Person":
-                    return [entry.source.name.first, entry.source.name.last];
-                  case "Business":
-                    return entry.source.bizName;
-                  case "Department":
-                    return entry.source.deptName;
+                  values.push(
+                    entry.date,
+                    format(date, "M/d/yy"),
+                    format(date, "MM/d/yy"),
+                    format(date, "M/d/yyyy"),
+                    format(date, "MM/d/yyyy"),
+                    format(date, "MMM dd, yyyy")
+                  );
+                  break;
                 }
-                break;
-              default:
-                return "";
-            }
+                case "total": {
+                  const total = rationalToFraction(entry.total).valueOf();
+
+                  values.push(
+                    numeral(total).format("$0,0.00"),
+                    total.toFixed(2)
+                  );
+                  break;
+                }
+                case "description":
+                  values.push(entry.description?.trim() || "");
+                  break;
+                case "department":
+                  values.push(entry.department.name);
+                  break;
+                case "category":
+                  values.push(entry.category.name);
+                  break;
+                case "paymentMethod":
+                  values.push(entry.paymentMethod.name);
+                  break;
+                case "source":
+                  switch (entry.source.__typename) {
+                    case "Person":
+                      values.push(
+                        entry.source.name.first,
+                        entry.source.name.last
+                      );
+                      break;
+                    case "Business":
+                      values.push(entry.source.bizName);
+                      break;
+                    case "Department":
+                      values.push(entry.source.deptName);
+                      break;
+                  }
+                  break;
+                default:
+                  break;
+              }
+              return values;
+            }, [] as string[]);
           },
         })
           .search(search)
