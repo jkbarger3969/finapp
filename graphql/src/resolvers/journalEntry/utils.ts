@@ -9,11 +9,7 @@ import {
 } from "../../graphTypes";
 import { Context } from "../../types";
 import DocHistory, { PresentValueExpressionOpts } from "../utils/DocHistory";
-import {
-  iterateOwnKeyValues,
-  generatorChain,
-  iterateOwnKeys,
-} from "../../utils/iterableFns";
+import { iterateOwnKeyValues } from "../../utils/iterableFns";
 
 export const addFields = {
   $addFields: {

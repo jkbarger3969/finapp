@@ -1,60 +1,22 @@
 {
-  "__schema": {
-    "types": [
-      {
-        "kind": "UNION",
-        "name": "BudgetOwner",
-        "possibleTypes": [
-          {
-            "name": "Department"
-          },
-          {
-            "name": "Business"
-          }
-        ]
-      },
-      {
-        "kind": "UNION",
-        "name": "DepartmentAncestor",
-        "possibleTypes": [
-          {
-            "name": "Department"
-          },
-          {
-            "name": "Business"
-          }
-        ]
-      },
-      {
-        "kind": "UNION",
-        "name": "PaymentMethodAuthorizedEntity",
-        "possibleTypes": [
-          {
-            "name": "Person"
-          },
-          {
-            "name": "Business"
-          },
-          {
-            "name": "Department"
-          }
-        ]
-      },
-      {
-        "kind": "UNION",
-        "name": "JournalEntrySource",
-        "possibleTypes": [
-          {
-            "name": "Person"
-          },
-          {
-            "name": "Business"
-          },
-          {
-            "name": "Department"
-          }
-        ]
-      }
+  "possibleTypes": {
+    "BudgetOwner": [
+      "Department",
+      "Business"
+    ],
+    "DepartmentAncestor": [
+      "Department",
+      "Business"
+    ],
+    "JournalEntrySource": [
+      "Person",
+      "Business",
+      "Department"
+    ],
+    "PaymentMethodAuthorizedEntity": [
+      "Person",
+      "Business",
+      "Department"
     ]
   }
 }
