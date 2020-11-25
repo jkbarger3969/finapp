@@ -16,7 +16,7 @@ import {
   useApolloClient,
   useQuery,
   QueryHookOptions,
-} from "@apollo/react-hooks";
+} from "@apollo/client";
 import { Add as AddIcon, Cancel as CancelIcon } from "@material-ui/icons";
 import gql from "graphql-tag";
 import Fraction from "fraction.js";

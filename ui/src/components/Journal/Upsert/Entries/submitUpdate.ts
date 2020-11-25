@@ -1,7 +1,7 @@
 import { O, U } from "ts-toolbelt";
 import { FormikConfig } from "formik";
 import gql from "graphql-tag";
-import ApolloClient from "apollo-client";
+import { ApolloClient } from "@apollo/client";
 import { isEqual } from "date-fns";
 import { parseName } from "humanparser";
 

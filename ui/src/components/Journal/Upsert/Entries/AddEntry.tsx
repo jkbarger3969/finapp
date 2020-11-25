@@ -18,11 +18,7 @@ import {
   Queue as QueueIcon,
 } from "@material-ui/icons";
 import { Formik, FormikConfig, FormikProps, useFormikContext } from "formik";
-import {
-  useApolloClient,
-  useQuery,
-  QueryHookOptions,
-} from "@apollo/react-hooks";
+import { useApolloClient, useQuery, QueryHookOptions } from "@apollo/client";
 import gql from "graphql-tag";
 
 import {
@@ -49,7 +45,7 @@ import Category from "../EntryFields/Category";
 import Department from "../EntryFields/Department";
 import Source from "../EntryFields/Source";
 import Type from "../EntryFields/Type";
-import { ApolloError } from "apollo-client";
+import { ApolloError } from "@apollo/client";
 
 export interface AddEntryProps {
   deptId?: string | null;

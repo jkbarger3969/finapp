@@ -6,7 +6,7 @@ import Journal from "./components/Journal/Table/Journal";
 import { JournalMode } from "./components/Journal/Table/Journal";
 import Dashboard from "./components/Dashboard/Dashboard";
 import TopNav from "./components/TopNav";
-import { useQuery } from "@apollo/react-hooks";
+import { useQuery } from "@apollo/client";
 import { DepartmentName_1Query as DepartmentName } from "./apollo/graphTypes";
 import gql from "graphql-tag";
 

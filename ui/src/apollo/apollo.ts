@@ -1,4 +1,4 @@
-import { ApolloClient } from "apollo-client";
+import { ApolloClient } from "@apollo/client";
 
 import cache from "./inMemoryCache";
 import resolvers from "./resolvers";

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery } from "@apollo/react-hooks";
+import { useQuery } from "@apollo/client";
 import { Link } from "react-router-dom";
 import Grid from "@material-ui/core/Grid";
 import Container from "@material-ui/core/Container";
@@ -393,7 +393,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
         }
       }
     };
-
+    console.log("data?.fiscalYears", data?.fiscalYears);
     return (
       <Box minWidth={120} clone>
         <FormControl variant="outlined">
@@ -404,7 +404,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
             value={fiscalYear?.id || ""}
             onChange={onChange}
           >
-            {(data?.fiscalYears || [])
+            {[...(data?.fiscalYears || [])]
               .sort(
                 (a, b) =>
                   new Date(a.begin).getTime() - new Date(b.begin).getTime()

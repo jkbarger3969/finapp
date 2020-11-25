@@ -1,9 +1,10 @@
-import * as pathN from 'path';
-import * as mergeGraphqlSchemas from 'merge-graphql-schemas';
+import * as pathN from "path";
 
-const fileLoader = mergeGraphqlSchemas.fileLoader;
-const mergeTypes = mergeGraphqlSchemas.mergeTypes;
+import { mergeTypeDefs } from "@graphql-tools/merge";
+import { loadFilesSync } from "@graphql-tools/load-files";
 
-const typesArray = fileLoader(pathN.resolve(__dirname, '../schema/**/*.gql'));
+const typesArray = loadFilesSync(
+  pathN.resolve(__dirname, "../schema/**/*.gql")
+);
 
-export default mergeTypes(typesArray, { all: true });
+export default mergeTypeDefs(typesArray);

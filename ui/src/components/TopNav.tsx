@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useMemo } from "react";
-import { useQuery } from "@apollo/react-hooks";
+import { useQuery } from "@apollo/client";
 import gql from "graphql-tag";
 import Typography from "@material-ui/core/Typography";
 import Container from "@material-ui/core/Container";
@@ -102,7 +102,7 @@ const TopNav = (props: Record<string, unknown>): JSX.Element => {
       flexDirection="column"
       clone
     >
-      <Container>
+      <Container style={{ display: "flex" }}>
         <Box padding={4} clone>
           <Typography align="center" color="primary" variant="h3">
             Select Department

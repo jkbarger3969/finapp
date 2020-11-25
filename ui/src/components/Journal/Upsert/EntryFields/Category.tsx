@@ -1,12 +1,12 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import Autocomplete, {
   AutocompleteProps as AutocompletePropsRaw,
-  RenderInputParams,
+  AutocompleteRenderInputParams,
 } from "@material-ui/lab/Autocomplete";
-import { UseAutocompleteMultipleProps } from "@material-ui/lab/useAutocomplete";
+import { UseAutocompleteProps } from "@material-ui/lab/useAutocomplete";
 import { useField, useFormikContext } from "formik";
 import gql from "graphql-tag";
-import { useQuery, QueryHookOptions } from "@apollo/react-hooks";
+import { useQuery, QueryHookOptions } from "@apollo/client";
 import { TextFieldProps, TextField, Box, Chip } from "@material-ui/core";
 import { ChevronRight } from "@material-ui/icons";
 
@@ -35,8 +35,8 @@ const CAT_OPTS_QUERY = gql`
 
 type CatValueBeta = TransmutationValue<string, CatEntryOptFragment[]>;
 
-type AutocompleteProps = AutocompletePropsRaw<CatValue> &
-  UseAutocompleteMultipleProps<CatValue>;
+type AutocompleteProps = AutocompletePropsRaw<CatValue, true, false, false> &
+  UseAutocompleteProps<CatValue, true, false, false>;
 
 const getOptionLabel = (opt: CatValue) => opt.name;
 const renderTags: AutocompleteProps["renderTags"] = (
@@ -217,7 +217,7 @@ const Category = (props: CategoryProps): JSX.Element => {
   );
 
   const renderInput = useCallback(
-    (params: RenderInputParams) => {
+    (params: AutocompleteRenderInputParams) => {
       return (
         <TextField
           {...textFieldProps}
@@ -248,8 +248,8 @@ const Category = (props: CategoryProps): JSX.Element => {
   );
 
   const onChange = useCallback<NonNullable<AutocompleteProps["onChange"]>>(
-    (event, value) => {
-      setValue({ inputValue, value });
+    (event: unknown, value: unknown) => {
+      setValue({ inputValue, value: value as CatValue[] });
     },
     [setValue, inputValue]
   );

@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from "react";
-import { useQuery, useApolloClient } from "@apollo/react-hooks";
+import { useQuery, useApolloClient } from "@apollo/client";
 import gql from "graphql-tag";
 import { Formik, FormikConfig, FormikProps, useFormikContext } from "formik";
 import {

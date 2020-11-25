@@ -1,9 +1,5 @@
 import React, { useMemo, useCallback } from "react";
-import {
-  useQuery,
-  useApolloClient,
-  QueryHookOptions,
-} from "@apollo/react-hooks";
+import { useQuery, useApolloClient, QueryHookOptions } from "@apollo/client";
 import gql from "graphql-tag";
 import { Formik, FormikConfig, FormikProps, useFormikContext } from "formik";
 import {
@@ -49,7 +45,7 @@ import Total from "../EntryFields/Total";
 import Category from "../EntryFields/Category";
 import Units from "./ItemFields/Units";
 import { rationalToFraction } from "../../../../utils/rational";
-import { ApolloError } from "apollo-client";
+import { ApolloError } from "@apollo/client";
 
 export interface UpdateItemProps {
   entryId: string | null;

@@ -1,5 +1,5 @@
-import {Resolvers} from "apollo-client";
+import { Resolvers } from "@apollo/client";
 
-const resolvers:Resolvers = {};
+const resolvers: Resolvers = {};
 
 export default resolvers;
