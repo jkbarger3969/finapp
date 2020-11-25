@@ -1,5 +1,5 @@
-import { ApolloClient } from "apollo-client";
-import { InMemoryCache } from "apollo-cache-inmemory";
+import { ApolloClient } from "@apollo/client";
+import { InMemoryCache } from "@apollo/client";
 
 interface GetCacheKeyArg {
   __typename: string;

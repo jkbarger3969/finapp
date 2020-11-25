@@ -5,7 +5,7 @@ import Autocomplete, {
 } from "@material-ui/lab/Autocomplete";
 import { UseAutocompleteMultipleProps } from "@material-ui/lab/useAutocomplete";
 import { useField } from "formik";
-import { useQuery, QueryHookOptions } from "@apollo/react-hooks";
+import { useQuery, QueryHookOptions } from "@apollo/client";
 import { TextFieldProps, TextField, Box, Chip } from "@material-ui/core";
 import { ChevronRight } from "@material-ui/icons";
 import { parseName } from "humanparser";

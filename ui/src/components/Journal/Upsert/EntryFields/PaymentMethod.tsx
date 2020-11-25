@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { TextField, TextFieldProps, Box, Chip } from "@material-ui/core";
 import gql from "graphql-tag";
-import { useQuery, QueryHookOptions } from "@apollo/react-hooks";
+import { useQuery, QueryHookOptions } from "@apollo/client";
 import { useField, FieldInputProps } from "formik";
 
 import { PAY_METHOD_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";

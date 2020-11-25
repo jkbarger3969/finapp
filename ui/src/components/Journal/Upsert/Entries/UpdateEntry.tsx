@@ -1,11 +1,7 @@
 import React, { useMemo, useCallback } from "react";
 import gql from "graphql-tag";
 import { Formik, FormikConfig, FormikProps, useFormikContext } from "formik";
-import {
-  useQuery,
-  useApolloClient,
-  QueryHookOptions,
-} from "@apollo/react-hooks";
+import { useQuery, useApolloClient, QueryHookOptions } from "@apollo/client";
 import {
   Dialog,
   DialogTitle,
@@ -61,7 +57,7 @@ import Department from "../EntryFields/Department";
 import Source from "../EntryFields/Source";
 import Type from "../EntryFields/Type";
 import { rationalToFraction } from "../../../../utils/rational";
-import { ApolloError } from "apollo-client";
+import { ApolloError } from "@apollo/client";
 
 export interface UpdateEntryProps {
   entryId: string | null;

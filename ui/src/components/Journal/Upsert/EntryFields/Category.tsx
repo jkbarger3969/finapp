@@ -6,7 +6,7 @@ import Autocomplete, {
 import { UseAutocompleteMultipleProps } from "@material-ui/lab/useAutocomplete";
 import { useField, useFormikContext } from "formik";
 import gql from "graphql-tag";
-import { useQuery, QueryHookOptions } from "@apollo/react-hooks";
+import { useQuery, QueryHookOptions } from "@apollo/client";
 import { TextFieldProps, TextField, Box, Chip } from "@material-ui/core";
 import { ChevronRight } from "@material-ui/icons";
 

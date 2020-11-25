@@ -17,7 +17,7 @@ import MaterialTable, {
   MTableBodyRow,
   Action,
 } from "material-table";
-import { useQuery, useMutation } from "@apollo/react-hooks";
+import { useQuery, useMutation } from "@apollo/client";
 import numeral from "numeral";
 import { capitalCase } from "change-case";
 import Fuse from "fuse.js";

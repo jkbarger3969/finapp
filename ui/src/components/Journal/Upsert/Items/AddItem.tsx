@@ -13,11 +13,7 @@ import {
   Box,
   GridProps,
 } from "@material-ui/core";
-import {
-  useApolloClient,
-  useQuery,
-  QueryHookOptions,
-} from "@apollo/react-hooks";
+import { useApolloClient, useQuery, QueryHookOptions } from "@apollo/client";
 import {
   Add as AddIcon,
   Cancel as CancelIcon,
@@ -47,7 +43,7 @@ import OverlayLoading from "../../../utils/OverlayLoading";
 import Overlay from "../../../utils/Overlay";
 import { JOURNAL_FRAGMENT } from "./items.gql";
 import { rationalToFraction } from "../../../../utils/rational";
-import { ApolloError } from "apollo-client";
+import { ApolloError } from "@apollo/client";
 import { FISCAL_YEAR } from "../upsertEntry.gql";
 
 const ENTRY_ITEM_STATE = gql`
@@ -81,9 +77,12 @@ const AddItemDialog = (
 ) => {
   const { entryId, open, onClose, onExited: onExitedCb } = props;
 
-  const { resetForm, isSubmitting, isValid, submitForm } = useFormikContext<
-    AddValues
-  >();
+  const {
+    resetForm,
+    isSubmitting,
+    isValid,
+    submitForm,
+  } = useFormikContext<AddValues>();
 
   const [formikStatus, setFormikStatus] = useFormikStatus();
 

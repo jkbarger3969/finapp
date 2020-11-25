@@ -11,7 +11,7 @@ import {
 } from "@material-ui/core";
 import { Delete as DeleteIcon, Cancel as CancelIcon } from "@material-ui/icons";
 import gql from "graphql-tag";
-import { useMutation } from "@apollo/react-hooks";
+import { useMutation } from "@apollo/client";
 
 import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/JournalEntries.gql";
 import {
