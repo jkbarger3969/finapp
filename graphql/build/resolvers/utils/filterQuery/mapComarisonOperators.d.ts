@@ -10,5 +10,5 @@ export interface ComparisonOperators {
     nin?: any[];
 }
 export declare type OperatorValueTransformer<T = any> = (val: T) => any | Promise<any>;
-declare const mapComparisonOperators: (comparisonOperators: ComparisonOperators, operatorValueTransformer?: OperatorValueTransformer) => Promise<Partial<Pick<QuerySelector<any>, "$eq" | "$gt" | "$gte" | "$in" | "$lt" | "$lte" | "$ne" | "$nin">>>;
+declare const mapComparisonOperators: (comparisonOperators: ComparisonOperators, operatorValueTransformer?: OperatorValueTransformer) => Promise<Partial<Pick<QuerySelector<any>, "$eq" | "$gt" | "$gte" | "$lt" | "$lte" | "$ne" | "$in" | "$nin">>>;
 export default mapComparisonOperators;
