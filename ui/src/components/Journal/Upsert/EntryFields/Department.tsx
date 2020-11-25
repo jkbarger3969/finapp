@@ -1,9 +1,9 @@
 import React, { useCallback, useMemo, useState } from "react";
 import Autocomplete, {
   AutocompleteProps as AutocompletePropsRaw,
-  RenderInputParams,
+  AutocompleteRenderInputParams,
 } from "@material-ui/lab/Autocomplete";
-import { UseAutocompleteMultipleProps } from "@material-ui/lab/useAutocomplete";
+import { UseAutocompleteProps } from "@material-ui/lab/useAutocomplete";
 import { useField } from "formik";
 import gql from "graphql-tag";
 import { useQuery, QueryHookOptions } from "@apollo/client";
@@ -37,8 +37,8 @@ const DEPT_OPTS_QUERY = gql`
 
 const businessId = "5dc4b09bcf96e166daaa0090";
 
-type AutocompleteProps = AutocompletePropsRaw<DeptValue> &
-  UseAutocompleteMultipleProps<DeptValue>;
+type AutocompleteProps = AutocompletePropsRaw<DeptValue, true, false, false> &
+  UseAutocompleteProps<DeptValue, true, false, false>;
 
 const getOptionLabel = (opt: DeptValue) => opt.name;
 const renderTags: AutocompleteProps["renderTags"] = (
@@ -226,7 +226,7 @@ const Department = (props: DepartmentProps): JSX.Element => {
   );
 
   const renderInput = useCallback(
-    (params: RenderInputParams) => {
+    (params: AutocompleteRenderInputParams) => {
       return (
         <TextField
           {...textFieldProps}

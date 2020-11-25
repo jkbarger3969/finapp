@@ -12,9 +12,10 @@ import {
 } from "../../../../apollo/graphTypes";
 import Autocomplete, {
   AutocompleteProps as AutocompletePropsRaw,
-  RenderInputParams,
+  AutocompleteRenderInputParams,
+  AutocompleteGetTagProps,
 } from "@material-ui/lab/Autocomplete";
-import { UseAutocompleteMultipleProps } from "@material-ui/lab/useAutocomplete";
+import { UseAutocompleteProps } from "@material-ui/lab/useAutocomplete";
 import { ChevronRight } from "@material-ui/icons";
 import { CHECK_ID } from "../../constants";
 import {
@@ -25,8 +26,8 @@ import {
 
 type Value = PayMethodEntryOptFragment | string;
 
-type AutocompleteProps = AutocompletePropsRaw<Value> &
-  UseAutocompleteMultipleProps<Value>;
+type AutocompleteProps = AutocompletePropsRaw<Value, true, false, boolean> &
+  UseAutocompleteProps<Value, true, false, boolean>;
 
 const PAY_METHOD_ENTRY_OPTS = gql`
   query PayMethodEntryOpts($where: PaymentMethodWhereInput!) {
@@ -63,7 +64,10 @@ const getOptionLabel: AutocompleteProps["getOptionLabel"] = (opt): string => {
   return typeof opt === "string" ? opt : opt.name;
 };
 
-const renderTags: AutocompleteProps["renderTags"] = (values, getTagProps) => {
+const renderTags: AutocompleteProps["renderTags"] = (
+  values: Value[],
+  getTagProps: AutocompleteGetTagProps
+) => {
   const lastIndex = values.length - 1;
   return values.map((value: Value, index: number) => {
     const isLastIndex = lastIndex === index;
@@ -130,7 +134,7 @@ const PaymentMethod = (
     | "name"
     | "label"
     | keyof FieldInputProps<unknown>
-    | keyof Omit<RenderInputParams, "id" | "disabled">
+    | keyof Omit<AutocompleteRenderInputParams, "id" | "disabled" | "fullWidth">
   >
 ): JSX.Element => {
   const { disabled = false, ...textFieldProps } = props;
@@ -250,7 +254,7 @@ const PaymentMethod = (
   }, [curValue]);
 
   const renderInput = useCallback(
-    (params: RenderInputParams) => {
+    (params: AutocompleteRenderInputParams) => {
       params.InputProps = {
         ...(params.InputProps ?? {}),
         ...InputProps,

@@ -1,9 +1,9 @@
 import React, { useCallback, useMemo, useState, useRef } from "react";
 import Autocomplete, {
   AutocompleteProps as AutocompletePropsRaw,
-  RenderInputParams,
+  AutocompleteRenderInputParams,
 } from "@material-ui/lab/Autocomplete";
-import { UseAutocompleteMultipleProps } from "@material-ui/lab/useAutocomplete";
+import { UseAutocompleteProps } from "@material-ui/lab/useAutocomplete";
 import { useField } from "formik";
 import { useQuery, QueryHookOptions } from "@apollo/client";
 import { TextFieldProps, TextField, Box, Chip } from "@material-ui/core";
@@ -66,8 +66,8 @@ export type Value = SourceValue | JournalEntrySourceType;
 type Options = Value[];
 export type FieldValue = TransmutationValue<string, Value[]>;
 
-type AutocompleteProps = AutocompletePropsRaw<Value> &
-  UseAutocompleteMultipleProps<Value>;
+type AutocompleteProps = AutocompletePropsRaw<Value, true, false, boolean> &
+  UseAutocompleteProps<Value, true, false, boolean>;
 
 export const isFreeSoloOpt = (opt: Value): boolean | JournalEntrySourceType => {
   switch (opt) {
@@ -283,7 +283,9 @@ const Source = function (props: SourceProps): JSX.Element {
 
   const renderInput = useCallback(
     (
-      params: RenderInputParams & { inputProps?: TextFieldProps["inputProps"] }
+      params: AutocompleteRenderInputParams & {
+        inputProps?: TextFieldProps["inputProps"];
+      }
     ) => {
       // Disable input?
       if (

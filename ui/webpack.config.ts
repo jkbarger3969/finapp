@@ -15,7 +15,9 @@ const config = (env): WebpackConfig => {
     entry: "./src/index.tsx",
     output: {
       filename:
-        mode === "production" ? "[name].[contenthash].js" : "[name].[hash].js",
+        mode === "production"
+          ? "[name].[contenthash].js"
+          : "[name].[chunkhash].js",
       path: BUILD_DIR,
       publicPath: "/",
     },
