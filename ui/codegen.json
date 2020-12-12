@@ -1,23 +1,24 @@
 {
-  "schema": [
-    "http://localhost:4000/graphql",
-    "./src/apollo/schema/**/*.ts"
-  ],
+  "schema": ["http://localhost:4000/graphql"],
   "documents": "./src/**/*.{ts,tsx}",
   "overwrite": true,
-  "generates":{
-    "./src/apollo/graphTypes.ts":{
-      "plugins":["typescript", "typescript-operations", "typescript-resolvers"],
-      "config":{
+  "generates": {
+    "./src/apollo/graphTypes.ts": {
+      "plugins": [
+        "typescript",
+        "typescript-operations",
+        "typescript-resolvers"
+      ],
+      "config": {
         "contextType": "./types#Context",
-        "dedupeOperationSuffix":true,
-        "exportFragmentSpreadSubTypes":true,
-        "noSchemaStitching":true,
-        "preResolveTypes":true
+        "dedupeOperationSuffix": true,
+        "exportFragmentSpreadSubTypes": true,
+        "noSchemaStitching": true,
+        "preResolveTypes": true
       }
     },
-    "./src/apollo/fragmentTypes.json":{
-      "plugins":["fragment-matcher"]
+    "./src/apollo/fragmentTypes.json": {
+      "plugins": ["fragment-matcher"]
     }
   }
 }

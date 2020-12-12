@@ -28,7 +28,6 @@ import {
 } from "../../utils/iterableFns";
 import gqlMongoRational from "../utils/filterQuery/gqlMongoRational";
 import { comparisonOpsMapper } from "../utils/filterQuery/operatorMapping/comparison";
-import { json } from "express";
 import DocHistory from "../utils/DocHistory";
 
 const deptNode = new ObjectId("5dc4addacf96e166daaa008f");
@@ -849,7 +848,7 @@ const journalEntries: QueryResolvers["journalEntries"] = async (
 
   await Promise.all([
     (async () => {
-      if (!args.where) {
+      if (!args.where || Object.keys(args).length === 0) {
         return;
       }
 

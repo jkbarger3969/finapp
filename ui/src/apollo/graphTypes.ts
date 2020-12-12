@@ -911,6 +911,54 @@ export type JournalEntryUpdated_2Subscription = { __typename?: 'Subscription', j
     & GetReportDataEntry_1Fragment
   ) };
 
+export type GridEntrySrcPersonFragment = { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } };
+
+export type GridEntrySrcBusinessFragment = { __typename: 'Business', id: string, name: string };
+
+export type GridEntrySrcDeptFragment = { __typename: 'Department', id: string, name: string };
+
+export type GridPaymentMethodFragment = { __typename: 'PaymentMethod', id: string, name: string };
+
+export type GridRationalFragment = { __typename?: 'Rational', s: RationalSign, n: number, d: number };
+
+export type GridRefundFragment = { __typename: 'JournalEntryRefund', id: string, date: string, description?: Maybe<string>, reconciled: boolean, deleted: boolean, paymentMethod: (
+    { __typename?: 'PaymentMethod' }
+    & GridPaymentMethodFragment
+  ), total: (
+    { __typename?: 'Rational' }
+    & GridRationalFragment
+  ) };
+
+export type GridEntryFragment = { __typename: 'JournalEntry', id: string, date: string, type: JournalEntryType, description?: Maybe<string>, reconciled: boolean, deleted: boolean, dateOfRecord?: Maybe<{ __typename?: 'JournalEntryDateOfRecord', date: string }>, department: { __typename: 'Department', id: string, name: string }, category: { __typename: 'JournalEntryCategory', id: string, name: string }, paymentMethod: (
+    { __typename?: 'PaymentMethod' }
+    & GridPaymentMethodFragment
+  ), total: (
+    { __typename?: 'Rational' }
+    & GridRationalFragment
+  ), source: (
+    { __typename?: 'Person' }
+    & GridEntrySrcPersonFragment
+  ) | (
+    { __typename?: 'Business' }
+    & GridEntrySrcBusinessFragment
+  ) | (
+    { __typename?: 'Department' }
+    & GridEntrySrcDeptFragment
+  ), refunds: Array<(
+    { __typename?: 'JournalEntryRefund' }
+    & GridRefundFragment
+  )> };
+
+export type GridEntriesQueryVariables = Exact<{
+  where?: Maybe<JournalEntiresWhere>;
+}>;
+
+
+export type GridEntriesQuery = { __typename?: 'Query', journalEntries: Array<(
+    { __typename?: 'JournalEntry' }
+    & GridEntryFragment
+  )> };
+
 export type OnEntryUpsert_1SubscriptionVariables = Exact<{ [key: string]: never; }>;
 
 

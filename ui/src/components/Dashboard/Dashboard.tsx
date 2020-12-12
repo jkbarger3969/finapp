@@ -393,7 +393,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
         }
       }
     };
-    console.log("data?.fiscalYears", data?.fiscalYears);
+
     return (
       <Box minWidth={120} clone>
         <FormControl variant="outlined">
