@@ -917,7 +917,7 @@ export type GridEntrySrcBusinessFragment = { __typename: 'Business', id: string,
 
 export type GridEntrySrcDeptFragment = { __typename: 'Department', id: string, name: string };
 
-export type GridPaymentMethodFragment = { __typename: 'PaymentMethod', id: string, name: string };
+export type GridPaymentMethodFragment = { __typename: 'PaymentMethod', id: string, name: string, parent?: Maybe<{ __typename: 'PaymentMethod', id: string }> };
 
 export type GridRationalFragment = { __typename?: 'Rational', s: RationalSign, n: number, d: number };
 

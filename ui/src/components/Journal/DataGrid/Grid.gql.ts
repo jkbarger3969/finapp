@@ -30,6 +30,10 @@ export const PAYMENT_METHOD = gql`
     __typename
     id
     name
+    parent {
+      __typename
+      id
+    }
   }
 `;
 export const RATIONAL = gql`

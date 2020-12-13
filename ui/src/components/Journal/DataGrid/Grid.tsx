@@ -9,6 +9,9 @@ import {
   IntegratedSummary,
   IntegratedSummaryProps,
   TableColumnWidthInfo,
+  SortingState,
+  Sorting,
+  IntegratedSorting,
 } from "@devexpress/dx-react-grid";
 import {
   Grid,
@@ -29,9 +32,11 @@ import {
 } from "@devexpress/dx-react-grid-material-ui";
 import { green, red } from "@material-ui/core/colors";
 import { makeStyles } from "@material-ui/core/styles";
+import { Done as DoneIcon } from "@material-ui/icons";
 import { useQuery } from "@apollo/client";
-import { format } from "date-fns";
+import { format, compareAsc } from "date-fns";
 import Fraction from "fraction.js";
+import md5 from "md5";
 
 import {
   JournalEntiresWhere,
@@ -40,16 +45,11 @@ import {
   GridEntriesQuery,
   GridEntriesQueryVariables,
   JournalEntryType,
-  RationalSign,
 } from "../../../apollo/graphTypes";
-
 import { GRID_ENTRIES } from "./Grid.gql";
-import {
-  rationalToFraction,
-  Rational,
-  fractionToRational,
-} from "../../../utils/rational";
+import { rationalToFraction } from "../../../utils/rational";
 import OverlayLoading from "../../utils/OverlayLoading";
+import { CHECK_ID } from "../constants";
 
 // Styles
 const useStyles = makeStyles({
@@ -69,7 +69,7 @@ const CurrencyFormatter: NonNullable<
   DataTypeProviderProps["formatterComponent"]
 > = ({ value }: DataTypeProvider.ValueFormatterProps) => (
   <span>
-    {rationalToFraction(value as Rational)
+    {(value as Fraction)
       .valueOf()
       .toLocaleString("en-US", { style: "currency", currency: "USD" })}
   </span>
@@ -89,8 +89,17 @@ const DateFormatter: NonNullable<
 const DateTypeProvider = (props: DataTypeProviderProps) => (
   <DataTypeProvider {...props} formatterComponent={DateFormatter} />
 );
-
 const dateColumns: DataTypeProviderProps["for"] = ["date", "dateOfRecord"];
+
+const BoolFormatter: NonNullable<
+  DataTypeProviderProps["formatterComponent"]
+> = ({ value }: DataTypeProvider.ValueFormatterProps) =>
+  (value as boolean) ? <DoneIcon /> : null;
+
+const BoolProvider = (props: DataTypeProviderProps) => (
+  <DataTypeProvider {...props} formatterComponent={BoolFormatter} />
+);
+const boolColumns: DataTypeProviderProps["for"] = ["reconciled"];
 
 const TableCell: React.FC<Table.DataCellProps> = (
   props: Table.DataCellProps
@@ -139,7 +148,10 @@ const columns: ReadonlyArray<Column> = [
   {
     name: "paymentMethod",
     title: "Payment Method",
-    getCellValue: ({ paymentMethod }: GridEntryFragment) => paymentMethod.name,
+    getCellValue: ({ paymentMethod }: GridEntryFragment) =>
+      paymentMethod.parent?.id === CHECK_ID
+        ? `CK-${paymentMethod.name}`
+        : paymentMethod.name,
   },
   {
     name: "description",
@@ -148,10 +160,7 @@ const columns: ReadonlyArray<Column> = [
   {
     name: "total",
     title: "Total",
-    getCellValue: ({ total, type }: GridEntryFragment) =>
-      type === JournalEntryType.Credit
-        ? total
-        : { ...total, s: RationalSign.Neg },
+    getCellValue: ({ total }: GridEntryFragment) => rationalToFraction(total),
   },
   {
     name: "source",
@@ -176,11 +185,12 @@ const summaryCalculator: NonNullable<IntegratedSummaryProps["calculator"]> = (
   getValue
 ) => {
   if (type === "totalAggregate") {
-    return fractionToRational(
-      rows.reduce(
-        (sum: Fraction, row) => sum.add(rationalToFraction(getValue(row))),
-        new Fraction(0)
-      )
+    return rows.reduce(
+      (sum: Fraction, row: GridEntryFragment) =>
+        row.type === JournalEntryType.Credit
+          ? sum.add(getValue(row))
+          : sum.sub(getValue(row)),
+      new Fraction(0)
     );
   } else {
     return IntegratedSummary.defaultCalculator(type, rows, getValue);
@@ -246,16 +256,16 @@ const defaultColumnWidths: ReadonlyArray<TableColumnWidthInfo> = [
 type ColumnVisibility = NonNullable<
   TableColumnVisibilityProps["hiddenColumnNames"]
 >;
-const COLUMN_VISIBILITY_KEY = "COLUMN_VISIBILITY_KEY" as const;
-const useColumnVisibility = (): [
-  ColumnVisibility,
-  Dispatch<ColumnVisibility>
-] => {
-  const iniState: ColumnVisibility = (() => {
+const useColumnVisibility = (
+  cachePrefix = ""
+): [ColumnVisibility, Dispatch<ColumnVisibility>] => {
+  const key = useMemo(() => `${md5(cachePrefix)}_COLUMN_VISIBILITY_KEY`, [
+    cachePrefix,
+  ]);
+
+  const iniState: ColumnVisibility = useMemo(() => {
     if (window.localStorage) {
-      const cachedColumnVisibility = window.localStorage.getItem(
-        COLUMN_VISIBILITY_KEY
-      );
+      const cachedColumnVisibility = window.localStorage.getItem(key);
       if (cachedColumnVisibility) {
         return JSON.parse(cachedColumnVisibility) as ColumnVisibility;
       } else {
@@ -264,7 +274,7 @@ const useColumnVisibility = (): [
     } else {
       return [];
     }
-  })();
+  }, [key]);
 
   const [columnOrder, setColumnVisibilityNative] = useState<ColumnVisibility>(
     iniState
@@ -272,10 +282,10 @@ const useColumnVisibility = (): [
 
   const setColumnVisibility = useCallback<Dispatch<ColumnVisibility>>(
     (value) => {
-      window.localStorage.setItem(COLUMN_VISIBILITY_KEY, JSON.stringify(value));
+      window.localStorage.setItem(key, JSON.stringify(value));
       setColumnVisibilityNative(value);
     },
-    [setColumnVisibilityNative]
+    [setColumnVisibilityNative, key]
   );
 
   return [columnOrder, setColumnVisibility];
@@ -283,11 +293,16 @@ const useColumnVisibility = (): [
 
 type ColumnOrder = NonNullable<TableColumnReorderingProps["defaultOrder"]>;
 const defaultColumnOrder: ColumnOrder = columns.map((column) => column.name);
-const COLUMN_ORDER_KEY = "COLUMN_ORDER_KEY" as const;
-const useColumnOrder = (): [ColumnOrder, Dispatch<ColumnOrder>] => {
-  const iniState: ColumnOrder = (() => {
+const useColumnOrder = (
+  cachePrefix = ""
+): [ColumnOrder, Dispatch<ColumnOrder>] => {
+  const key = useMemo(() => `${md5(cachePrefix)}_COLUMN_ORDER_KEY`, [
+    cachePrefix,
+  ]);
+
+  const iniState: ColumnOrder = useMemo(() => {
     if (window.localStorage) {
-      const cachedColumnOrder = window.localStorage.getItem(COLUMN_ORDER_KEY);
+      const cachedColumnOrder = window.localStorage.getItem(key);
       if (cachedColumnOrder) {
         return JSON.parse(cachedColumnOrder) as ColumnOrder;
       } else {
@@ -296,29 +311,31 @@ const useColumnOrder = (): [ColumnOrder, Dispatch<ColumnOrder>] => {
     } else {
       return defaultColumnOrder;
     }
-  })();
+  }, [key]);
 
   const [columnOrder, setColumnOrderNative] = useState<ColumnOrder>(iniState);
 
   const setColumnOrder = useCallback<Dispatch<ColumnOrder>>(
     (value) => {
-      window.localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(value));
+      window.localStorage.setItem(key, JSON.stringify(value));
       setColumnOrderNative(value);
     },
-    [setColumnOrderNative]
+    [setColumnOrderNative, key]
   );
 
   return [columnOrder, setColumnOrder];
 };
 
-const COLUMN_WIDTHS_KEY = "COLUMN_WIDTHS_KEY" as const;
-const useColumnWidths = (): [
-  TableColumnWidthInfo[],
-  Dispatch<TableColumnWidthInfo[]>
-] => {
-  const iniState: TableColumnWidthInfo[] = (() => {
+const useColumnWidths = (
+  cachePrefix = ""
+): [TableColumnWidthInfo[], Dispatch<TableColumnWidthInfo[]>] => {
+  const key = useMemo(() => `${md5(cachePrefix)}_COLUMN_WIDTHS_KEY`, [
+    cachePrefix,
+  ]);
+
+  const iniState: TableColumnWidthInfo[] = useMemo(() => {
     if (window.localStorage) {
-      const cachedColumnWidths = window.localStorage.getItem(COLUMN_WIDTHS_KEY);
+      const cachedColumnWidths = window.localStorage.getItem(key);
       if (cachedColumnWidths) {
         return JSON.parse(cachedColumnWidths) as TableColumnWidthInfo[];
       } else {
@@ -327,7 +344,7 @@ const useColumnWidths = (): [
     } else {
       return defaultColumnWidths as TableColumnWidthInfo[];
     }
-  })();
+  }, [key]);
 
   const [columnWidths, setColumnWidthsNative] = useState<
     TableColumnWidthInfo[]
@@ -335,17 +352,57 @@ const useColumnWidths = (): [
 
   const setColumnWidths = useCallback<Dispatch<TableColumnWidthInfo[]>>(
     (value) => {
-      window.localStorage.setItem(COLUMN_WIDTHS_KEY, JSON.stringify(value));
+      window.localStorage.setItem(key, JSON.stringify(value));
       setColumnWidthsNative(value);
     },
-    [setColumnWidthsNative]
+    [setColumnWidthsNative, key]
   );
 
   return [columnWidths, setColumnWidths];
 };
 
+const defaultSorting: Sorting[] = [
+  { columnName: "dateOfRecord", direction: "asc" },
+];
+const useSorting = (cachePrefix = ""): [Sorting[], Dispatch<Sorting[]>] => {
+  const key = useMemo(() => `${md5(cachePrefix)}_SORTING_KEY`, [cachePrefix]);
+
+  const iniState: Sorting[] = useMemo(() => {
+    if (window.localStorage) {
+      const cachedSorting = window.localStorage.getItem(key);
+      if (cachedSorting) {
+        return JSON.parse(cachedSorting) as Sorting[];
+      } else {
+        return defaultSorting;
+      }
+    } else {
+      return defaultSorting;
+    }
+  }, [key]);
+
+  const [sorting, setSortingNative] = useState<Sorting[]>(iniState);
+
+  const setSorting = useCallback<Dispatch<Sorting[]>>(
+    (value) => {
+      window.localStorage.setItem(key, JSON.stringify(value));
+      setSortingNative(value);
+    },
+    [setSortingNative, key]
+  );
+
+  return [sorting, setSorting];
+};
+
+const integratedSortingColumnExtensions: IntegratedSorting.ColumnExtension[] = [
+  { columnName: "total", compare: (a: Fraction, b: Fraction) => a.compare(b) },
+  { columnName: "date", compare: compareAsc },
+  { columnName: "dateOfRecord", compare: compareAsc },
+  { columnName: "dateOfRecord", compare: compareAsc },
+];
+
 export type Props = {
   where?: JournalEntiresWhere;
+  layoutCacheKey?: string;
 };
 const JournalGrid: React.FC<Props> = (props: Props) => {
   const variables = useMemo<GridEntriesQueryVariables>(
@@ -353,6 +410,12 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
       where: props.where,
     }),
     [props.where]
+  );
+
+  const cachePrefix = useMemo<string>(
+    () => props.layoutCacheKey ?? JSON.stringify(props.where),
+
+    [props.where, props.layoutCacheKey]
   );
 
   const { loading, error, data } = useQuery<
@@ -400,11 +463,15 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     );
   }, [data?.journalEntries]);
 
-  const [columnOrder, setColumnOrder] = useColumnOrder();
+  const [columnOrder, setColumnOrder] = useColumnOrder(cachePrefix);
 
-  const [columnWidths, setColumnWidths] = useColumnWidths();
+  const [columnWidths, setColumnWidths] = useColumnWidths(cachePrefix);
 
-  const [hiddenColumnNames, setHiddenColumnNames] = useColumnVisibility();
+  const [hiddenColumnNames, setHiddenColumnNames] = useColumnVisibility(
+    cachePrefix
+  );
+
+  const [sorting, setSorting] = useSorting(cachePrefix);
 
   if (error) {
     return <div>{error.message}</div>;
@@ -417,9 +484,13 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
           <DragDropProvider />
           <DateTypeProvider for={dateColumns} />
           <CurrencyTypeProvider for={currencyColumns} />
+          <BoolProvider for={boolColumns} />
           <SummaryState totalItems={(totalItems as unknown) as SummaryItem[]} />
           <IntegratedSummary calculator={summaryCalculator} />
-
+          <SortingState sorting={sorting} onSortingChange={setSorting} />
+          <IntegratedSorting
+            columnExtensions={integratedSortingColumnExtensions}
+          />
           <VirtualTable cellComponent={TableCell} />
 
           <TableColumnResizing
@@ -430,7 +501,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
             order={columnOrder}
             onOrderChange={setColumnOrder}
           />
-          <TableHeaderRow />
+          <TableHeaderRow showSortingControls />
           <TableColumnVisibility
             hiddenColumnNames={hiddenColumnNames}
             onHiddenColumnNamesChange={setHiddenColumnNames}
