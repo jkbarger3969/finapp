@@ -1,0 +1,28 @@
+type Category {
+  id: ID!
+  name: String!
+  type: EntryType!
+  parent: Category
+  children: [Category!]!
+}
+
+input CategoryWhere {
+  # Fields
+  id: WhereTreeId
+  name: WhereRegex
+  type: EntryType
+  parent: WhereId
+
+  # Logic Operators
+  and: [CategoryWhere!]
+  or: [CategoryWhere!]
+  nor: [CategoryWhere!]
+
+  "Root Categories i.e. NO parent."
+  root: Boolean
+}
+
+extend type Query {
+  categories(where: CategoryWhere): [Category!]!
+  category(id: ID!): Category!
+}

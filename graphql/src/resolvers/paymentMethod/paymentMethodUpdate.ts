@@ -18,10 +18,7 @@ const paymentMethodUpdate: MutationResolvers["paymentMethodUpdate"] = async (
 ) => {
   const { db, user } = context;
 
-  const docHistory = new DocHistory(
-    { node: userNodeType, id: user.id },
-    context.ephemeral?.docHistoryDate
-  );
+  const docHistory = new DocHistory(user.id, context.ephemeral?.docHistoryDate);
 
   const session = context.ephemeral?.session;
 

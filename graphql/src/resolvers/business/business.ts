@@ -1,7 +1,6 @@
 import { QueryResolvers } from "../../graphTypes";
 import { NodeValue } from "../../types";
 import { ObjectId } from "mongodb";
-import { addId } from "../utils/mongoUtils";
 
 export interface Returns {
   id: string;
@@ -13,20 +12,5 @@ export interface Returns {
   };
 }
 
-const business: QueryResolvers["business"] = async (
-  parent,
-  args,
-  context,
-  info
-) => {
-  return (
-    (
-      await context.db
-        .collection("businesses")
-        .aggregate([{ $match: { _id: new ObjectId(args.id) } }, addId])
-        .toArray()
-    )[0] || null
-  );
-};
-
-export default business;
+export const business: QueryResolvers["business"] = (_, { id }, { db }) =>
+  db.collection("businesses").findOne({ _id: new ObjectId(id) });

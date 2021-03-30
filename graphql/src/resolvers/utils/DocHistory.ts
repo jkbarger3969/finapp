@@ -8,21 +8,16 @@ export type PresentValueProjection<TDefaultValue = null> = {
   readonly [field: string]: PresentValueExpression<TDefaultValue>;
 };
 
-export interface CreatedBy {
-  readonly node: ObjectId;
-  readonly id: ObjectId;
-}
-
 export interface HistoryObject<T> {
   readonly value: T;
-  readonly createdBy: CreatedBy;
+  readonly createdBy: ObjectId;
   readonly createdOn: Date;
 }
 
 export interface HistoricalRoot {
   readonly lastUpdate: Date;
   readonly createdOn: Date;
-  readonly createdBy: CreatedBy;
+  readonly createdBy: ObjectId;
 }
 
 export interface HistoricalDoc {
@@ -148,7 +143,7 @@ export interface PresentValueExpressionOpts<TDefaultValue = null> {
 
 export default class DocHistory {
   constructor(
-    private readonly _by_: CreatedBy,
+    private readonly _by_: ObjectId,
     private readonly _date_ = new Date()
   ) {}
 
@@ -266,26 +261,24 @@ export default class DocHistory {
     opts: PresentValueExpressionOpts<TDefaultValue> = {}
   ): PresentValueProjection<TDefaultValue> {
     const presentValueProjection = {} as {
-      [P in keyof PresentValueProjection]: PresentValueProjection<
-        TDefaultValue
-      >[P];
+      [P in keyof PresentValueProjection]: PresentValueProjection<TDefaultValue>[P];
     };
 
     for (const val of presentValueMap) {
       if (typeof val === "string") {
-        presentValueProjection[val] = this.getPresentValueExpression<
-          TDefaultValue
-        >(val, opts);
+        presentValueProjection[
+          val
+        ] = this.getPresentValueExpression<TDefaultValue>(val, opts);
       } else if (typeof val[1] === "string") {
         const [path, projectionKey] = val;
-        presentValueProjection[projectionKey] = this.getPresentValueExpression<
-          TDefaultValue
-        >(path, opts);
+        presentValueProjection[
+          projectionKey
+        ] = this.getPresentValueExpression<TDefaultValue>(path, opts);
       } else {
         const [key, keyOpts] = val;
-        presentValueProjection[key] = this.getPresentValueExpression<
-          TDefaultValue
-        >(key, {
+        presentValueProjection[
+          key
+        ] = this.getPresentValueExpression<TDefaultValue>(key, {
           ...opts,
           ...keyOpts,
         });

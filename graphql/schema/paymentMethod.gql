@@ -1,9 +1,9 @@
-union PaymentMethodAuthorizedEntity = Person | Business | Department
+# union PaymentMethodAuthorizedEntity = Person | Business | Department
 
-type PaymentMethodAuthorization {
-  owner: Boolean!
-  entity: PaymentMethodAuthorizedEntity
-}
+# type PaymentMethodAuthorization {
+#   owner: Boolean!
+#   entity: PaymentMethodAuthorizedEntity
+# }
 
 type PaymentMethod {
   id: ID!
@@ -11,10 +11,9 @@ type PaymentMethod {
   refId: String
   name: String!
   parent: PaymentMethod
-  ancestors: [PaymentMethod!]!
   children: [PaymentMethod!]!
   allowChildren: Boolean!
-  authorization: [PaymentMethodAuthorization!]!
+  # authorization: [PaymentMethodAuthorization!]!
 }
 
 input PaymentMethodWhereParentInput {
@@ -48,11 +47,25 @@ input PaymentMethodWhereInput {
   and: [PaymentMethodWhereInput]
 }
 
+input PaymentMethodWhere {
+  # Fields
+  id: WhereTreeId
+  active: Boolean
+  name: WhereRegex
+  parent: WhereId
+  allowChildren: Boolean
+
+  # Logic
+  and: [PaymentMethodWhere!]
+  or: [PaymentMethodWhere!]
+  nor: [PaymentMethodWhere!]
+}
+
 input PaymentMethodAddFields {
   active: Boolean!
   refId: String
   name: String!
-  parent: ID! #Do NOT allow root level payment methods
+  parent: ID! # Do NOT allow root level payment methods
 }
 
 input PaymentMethodUpdateFields {
@@ -62,7 +75,7 @@ input PaymentMethodUpdateFields {
 }
 
 extend type Query {
-  paymentMethods(where: PaymentMethodWhereInput): [PaymentMethod!]!
+  paymentMethods(where: PaymentMethodWhere): [PaymentMethod!]!
   paymentMethod(id: ID!): PaymentMethod
 }
 

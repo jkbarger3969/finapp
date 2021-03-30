@@ -7,7 +7,11 @@
       "config": {
         "noSchemaStitching": true,
         "contextType": "./types#Context",
-        "allowParentTypeOverride": true
+        "allowParentTypeOverride": true,
+        "scalars": {
+          "Date": "Date",
+          "Rational": "fraction.js#default as Fraction"
+        }
       }
     },
     "./public/fragmentTypes.json": {

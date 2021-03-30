@@ -1,7 +1,6 @@
 import { ObjectId } from "mongodb";
 
 import { QueryResolvers } from "../../graphTypes";
-import { addId } from "../utils/mongoUtils";
 import { NodeValue } from "../../types";
 
 export interface Returns {
@@ -10,20 +9,10 @@ export interface Returns {
   parent: NodeValue;
 }
 
-const department: QueryResolvers["department"] = async (
-  parent,
-  args,
-  context,
-  info
+export const department: QueryResolvers["department"] = async (
+  _,
+  { id },
+  { db }
 ) => {
-  return (
-    (
-      await context.db
-        .collection("departments")
-        .aggregate([{ $match: { _id: new ObjectId(args.id) } }, addId])
-        .toArray()
-    )[0] || null
-  );
+  return db.collection("departments").findOne({ _id: new ObjectId(id) });
 };
-
-export default department;

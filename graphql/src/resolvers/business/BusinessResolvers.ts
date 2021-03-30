@@ -1,51 +1,73 @@
-import {
-  BusinessResolvers as TBusinessResolvers,
-  BudgetOwnerType,
-  DepartmentAncestorType,
-} from "../../graphTypes";
+import { ObjectId } from "mongodb";
+import { BusinessResolvers, Department } from "../../graphTypes";
+import { Context } from "../../types";
 
-import budgetsQuery from "../budget/budgets";
-import { getDeptDescendants } from "../department/DepartmentResolvers";
+import { DepartmentDbRecord } from "../department";
 
-const budgets: TBusinessResolvers["budgets"] = async (
-  doc,
-  args,
-  context,
-  info
+export interface BusinessDbRecord {
+  _id: ObjectId;
+  name: string;
+  vendor?: {
+    approved: boolean;
+    vendorId: string | ObjectId;
+  };
+  budget?: {
+    id: ObjectId;
+    node: ObjectId;
+  };
+}
+
+const budgets: BusinessResolvers<Context, BusinessDbRecord>["budgets"] = (
+  { _id },
+  _,
+  { db }
 ) => {
-  return budgetsQuery(
-    {},
-    {
-      where: {
-        owner: {
-          eq: {
-            id: doc.id,
-            type: BudgetOwnerType.Business,
+  return db
+    .collection("budgets")
+    .find({
+      "owner.type": "Business",
+      "owner.id": _id,
+    })
+    .toArray();
+};
+
+const departments: BusinessResolvers<
+  Context,
+  BusinessDbRecord
+>["departments"] = async ({ _id }, _, { db }) => {
+  const results: DepartmentDbRecord[] = [];
+
+  const query = await db
+    .collection<DepartmentDbRecord>("departments")
+    .find({
+      "parent.type": "Business",
+      "parent.id": _id,
+    })
+    .toArray();
+
+  while (query.length) {
+    results.push(...query);
+
+    query.push(
+      ...(await db
+        .collection<DepartmentDbRecord>("departments")
+        .find({
+          "parent.type": "Department",
+          "parent.id": {
+            $in: query.splice(0).map(({ _id }) => _id),
           },
-        },
-      },
-    },
-    context,
-    info
-  );
+        })
+        .toArray())
+    );
+  }
+
+  return (results as unknown[]) as Department[];
 };
 
-const departments: TBusinessResolvers["departments"] = (
-  doc,
-  args,
-  context,
-  info
-) => {
-  return getDeptDescendants(
-    { id: doc.id, type: DepartmentAncestorType.Business },
-    context,
-    info
-  );
-};
-
-const BusinessResolvers: TBusinessResolvers = {
+const BusinessResolver: BusinessResolvers<Context, BusinessDbRecord> = {
+  id: ({ _id }) => _id.toString(),
   budgets,
   departments,
 } as const;
 
-export default BusinessResolvers;
+export const Business = (BusinessResolver as unknown) as BusinessResolvers;

@@ -1,26 +1,10 @@
-enum RationalSign {
-  POS
-  NEG
-}
-type Rational {
-  n: Int!
-  d: Int!
-  s: RationalSign!
-}
-
-input RationalInput {
-  n: Int!
-  d: Int!
-  s: RationalSign!
-}
-
 input WhereRational {
-  eq: RationalInput
-  ne: RationalInput
-  in: [RationalInput!]
-  nin: [RationalInput!]
-  gt: RationalInput
-  lt: RationalInput
-  gte: RationalInput
-  lte: RationalInput
+  eq: Rational
+  ne: Rational
+  in: [Rational!]
+  nin: [Rational!]
+  gt: Rational
+  lt: Rational
+  gte: Rational
+  lte: Rational
 }

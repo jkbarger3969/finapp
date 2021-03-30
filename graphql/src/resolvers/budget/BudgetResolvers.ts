@@ -1,34 +1,59 @@
-import Fraction from "fraction.js";
-
-import { BudgetResolvers as TBudgetResolvers } from "../../graphTypes";
-import { Returns as BudgetReturns } from "./budget";
-import { nodeDocResolver } from "../utils/nodeResolver";
-import { fractionToRational } from "../../utils/rational";
-import { default as fiscalYearQuery } from "../fiscalYear/fiscalYear";
 import { ObjectId } from "mongodb";
 
-const owner: TBudgetResolvers["owner"] = (doc, args, context, info) => {
-  return nodeDocResolver(((doc as unknown) as BudgetReturns).owner, context);
-};
+import { BudgetResolvers, BudgetOwnerResolvers } from "../../graphTypes";
+import { Rational } from "../../utils/mongoRational";
+import { Context } from "../../types";
+import { addTypename } from "../utils/queryUtils";
+import Fraction from "fraction.js";
 
-const fiscalYear: TBudgetResolvers["fiscalYear"] = async (
-  doc,
-  args,
-  context,
-  info
+export interface BudgetDbRecord {
+  _id: ObjectId;
+  amount: Rational;
+  fiscalYear: ObjectId;
+  owner: {
+    type: "Department" | "Business";
+    id: ObjectId;
+  };
+}
+
+const owner: BudgetResolvers<Context, BudgetDbRecord>["owner"] = (
+  { owner },
+  _,
+  { db }
 ) => {
-  return fiscalYearQuery(
-    {},
-    { id: ((doc.fiscalYear as unknown) as ObjectId).toHexString() },
-    context,
-    info
-  );
+  if (owner.type === "Business") {
+    return addTypename(
+      owner.type,
+      db.collection("businesses").findOne({
+        _id: new ObjectId(owner.id),
+      })
+    );
+  } else {
+    return addTypename(
+      owner.type,
+      db.collection("departments").findOne({
+        _id: new ObjectId(owner.id),
+      })
+    );
+  }
 };
 
-const BudgetResolvers: TBudgetResolvers = {
+const fiscalYear: BudgetResolvers<Context, BudgetDbRecord>["fiscalYear"] = (
+  { fiscalYear },
+  _,
+  { db }
+) => db.collection("fiscalYears").findOne({ _id: new ObjectId(fiscalYear) });
+
+export const BudgetOwner: BudgetOwnerResolvers = {
+  // __typename added with addTypename
+  __resolveType: ({ __typename }) => __typename,
+};
+
+const BudgetResolver: BudgetResolvers<Context, BudgetDbRecord> = {
+  id: ({ _id }) => _id.toString(),
   owner,
-  amount: (doc) => fractionToRational((doc.amount as unknown) as Fraction),
+  amount: ({ amount }) => new Fraction(amount),
   fiscalYear,
 } as const;
 
-export default BudgetResolvers;
+export const Budget = (BudgetResolver as unknown) as BudgetResolvers;

@@ -1,237 +1,299 @@
-import { ObjectId } from "mongodb";
+import { Db, FilterQuery, ObjectId } from "mongodb";
 
-import {
-  DepartmentsWhereInput as Where,
-  DepartmentsWhereAncestor,
-  DepartmentAncestorType,
-  QueryResolvers,
-} from "../../graphTypes";
-import { Context, NodeValue } from "../../types";
-import filterQueryCreator, {
-  FieldAndConditionGenerator,
-  FieldAndCondition,
-} from "../utils/filterQuery/filter";
-import parseOps from "../utils/filterQuery/querySelectors/parseOps";
-import parseComparisonOps from "../utils/filterQuery/querySelectors/parseComparisonOps";
-import { OpsParser } from "../utils/filterQuery/querySelectors/types";
-import {
-  iterateOwnKeyValues,
-  resolveWithAsyncReturn,
-} from "../../utils/iterableFns";
-import { addId } from "../utils/mongoUtils";
-import { Returns as DeptReturns } from "./department";
-import gqlMongoRegex from "../utils/filterQuery/gqlMongoRegex";
-import { comparisonOpsMapper } from "../utils/filterQuery/operatorMapping/comparison";
+import { QueryResolvers, DepartmentWhere } from "../../graphTypes";
+import { iterateOwnKeys } from "../../utils/iterableFns";
 
-const deptNode = new ObjectId("5dc4addacf96e166daaa008f");
-const bizNode = new ObjectId("5dc476becf96e166daa9fd0b");
+import { whereRegex, whereTreeId, whereNode } from "../utils/queryUtils";
 
-const parseWhereParentDept = function* (
-  whereBudgetOwnerIter: Iterable<
-    [
-      keyof DepartmentsWhereAncestor,
-      DepartmentsWhereAncestor[keyof DepartmentsWhereAncestor]
-    ]
-  >
-): IterableIterator<FieldAndCondition<unknown>> {
-  for (const [op, opValue] of whereBudgetOwnerIter) {
-    switch (op) {
-      case "eq":
-        if (opValue) {
-          const mongoOp = comparisonOpsMapper(op);
-          yield {
-            field: "$and",
-            condition: [
-              {
-                "parent.node": {
-                  [mongoOp]:
-                    (opValue as DepartmentsWhereAncestor[typeof op]).type ===
-                    DepartmentAncestorType.Business
-                      ? bizNode
-                      : deptNode,
-                },
-              },
-              {
-                "parent.id": {
-                  [mongoOp]: new ObjectId(
-                    (opValue as DepartmentsWhereAncestor[typeof op]).id
-                  ),
-                },
-              },
-            ],
+export const whereDepartments = (
+  deptWhere: DepartmentWhere,
+  db: Db
+): Promise<FilterQuery<unknown>> | FilterQuery<unknown> => {
+  const filterQuery: FilterQuery<unknown> = {};
+
+  const promises: Promise<void>[] = [];
+
+  const getRangeIds = async (rangeOp, id: ObjectId) => {
+    const result: ObjectId[] =
+      rangeOp === "gte" || rangeOp === "lte" ? [id] : [];
+
+    switch (rangeOp) {
+      case "gt":
+      case "gte":
+        {
+          const opts = {
+            projection: {
+              parent: true,
+            },
           };
-        }
-        break;
-      case "ne":
-        if (opValue) {
-          const mongoOp = comparisonOpsMapper(op);
-          yield {
-            field: "$or",
-            condition: [
-              {
-                "parent.node": {
-                  [mongoOp]:
-                    (opValue as DepartmentsWhereAncestor[typeof op]).type ===
-                    DepartmentAncestorType.Business
-                      ? bizNode
-                      : deptNode,
-                },
-              },
-              {
-                "parent.id": {
-                  [mongoOp]: new ObjectId(
-                    (opValue as DepartmentsWhereAncestor[typeof op]).id
-                  ),
-                },
-              },
-            ],
+
+          type Doc = {
+            parent: {
+              type: "Business" | "Department";
+              id: ObjectId;
+            };
           };
+          let parentDoc = await db
+            .collection("departments")
+            .findOne<Doc>({ _id: id }, opts);
+
+          // Departments ALWAYS have a parent
+          // Do NOT included business parents.
+          while (parentDoc && parentDoc.parent.type === "Department") {
+            result.push(parentDoc.parent.id);
+
+            parentDoc = await db
+              .collection("departments")
+              .findOne<Doc>({ _id: parentDoc.parent.id }, opts);
+          }
         }
         break;
-      case "in":
-        if (opValue) {
-          const orArr: unknown[] = [];
+      case "lt":
+      case "lte":
+        {
+          const opts = {
+            projection: {
+              _id: true,
+            },
+          };
 
-          for (const { field, condition } of parseWhereParentDept(
-            (function* () {
-              for (const opV of opValue as DepartmentsWhereAncestor[typeof op]) {
-                yield ["eq", opV] as [
-                  keyof DepartmentsWhereAncestor,
-                  DepartmentsWhereAncestor[keyof DepartmentsWhereAncestor]
-                ];
-              }
-            })()
-          )) {
-            orArr.push({ [field]: condition });
+          type Doc = { _id: ObjectId };
+          const mapFn = ({ _id }: Doc) => _id;
+
+          const queue = (
+            await db
+              .collection("departments")
+              .find<Doc>(
+                {
+                  "parent.type": "Department",
+                  "parent.id": id,
+                },
+                opts
+              )
+              .toArray()
+          ).map(mapFn);
+
+          while (queue.length) {
+            result.push(...queue);
+
+            queue.push(
+              ...(
+                await db
+                  .collection("departments")
+                  .find<Doc>(
+                    {
+                      "parent.type": "Department",
+                      "parent.id": { $in: queue.splice(0) },
+                    },
+                    opts
+                  )
+                  .toArray()
+              ).map(mapFn)
+            );
           }
-
-          yield { field: "$or", condition: orArr };
-        }
-        break;
-      case "nin":
-        if (opValue) {
-          const andArr: unknown[] = [];
-
-          for (const { field, condition } of parseWhereParentDept(
-            (function* () {
-              for (const opV of opValue as DepartmentsWhereAncestor[typeof op]) {
-                yield ["ne", opV] as [
-                  keyof DepartmentsWhereAncestor,
-                  DepartmentsWhereAncestor[keyof DepartmentsWhereAncestor]
-                ];
-              }
-            })()
-          )) {
-            andArr.push({ [field]: condition });
-          }
-
-          yield { field: "$and", condition: andArr };
         }
         break;
     }
-  }
-};
 
-const parseWhereDeptId: Readonly<OpsParser<Where>[]> = [
-  // Convert "eq" and "ne" to ObjectId and "in" and "nin" to ObjectId[]
-  async function* (opValues, querySelector) {
-    for await (const [op, opVal] of opValues) {
-      switch (op) {
-        case "eq":
-        case "ne":
-          if (opVal) {
-            yield [op, new ObjectId(opVal as NonNullable<Where[typeof op]>)];
+    return result;
+  };
+
+  for (const whereKey of iterateOwnKeys(deptWhere)) {
+    switch (whereKey) {
+      case "id":
+        {
+          const result = whereTreeId(deptWhere[whereKey], getRangeIds);
+
+          if (result instanceof Promise) {
+            promises.push(
+              result.then((result) => {
+                filterQuery["_id"] = result;
+              })
+            );
+          } else {
+            filterQuery["_id"] = result;
           }
-          break;
-        case "in":
-        case "nin":
-          if (opVal) {
-            yield [
-              op,
-              (opVal as NonNullable<Where[typeof op]>).map(
-                (id) => new ObjectId(id)
-              ),
-            ];
-          }
-          break;
-        default:
-          yield [op, opVal];
-      }
-    }
-
-    return querySelector;
-  } as OpsParser<Where>,
-  // Parse the comparison ops and add to querySelector
-  parseComparisonOps<Where>(),
-] as const;
-
-const fieldAndConditionGenerator: FieldAndConditionGenerator<
-  Where,
-  Context
-> = async function* (keyValueIterator, opts: Context) {
-  const [asyncIterator, asyncReturn] = resolveWithAsyncReturn(
-    parseOps(true, keyValueIterator, parseWhereDeptId, opts)
-  );
-
-  for await (const [key, value] of asyncIterator) {
-    switch (key) {
+        }
+        break;
       case "name":
-        if (value) {
-          yield {
-            field: "name",
-            condition: gqlMongoRegex(value as Where[typeof key]),
-          };
-        }
+        filterQuery["name"] = whereRegex(deptWhere[whereKey]);
+        break;
+      case "code":
+        filterQuery["code"] = deptWhere[whereKey];
         break;
       case "parent":
-        if (value) {
-          yield* parseWhereParentDept(
-            iterateOwnKeyValues(value as Where[typeof key])
+        {
+          const $and = whereNode(deptWhere[whereKey], "parent");
+          if ("$and" in filterQuery) {
+            filterQuery.$and.push(...$and);
+          } else {
+            filterQuery.$and = $and;
+          }
+        }
+        break;
+      case "business":
+        {
+          promises.push(
+            (async () => {
+              const $in = (
+                await Promise.all(
+                  (
+                    await db
+                      .collection<{ _id: ObjectId }>("departments")
+                      .find(
+                        {
+                          "parent.type": "Business",
+                          "parent.id": new ObjectId(deptWhere[whereKey]),
+                        },
+                        {
+                          projection: {
+                            _id: true,
+                          },
+                        }
+                      )
+                      .toArray()
+                  ).map(({ _id }) => getRangeIds("lte", _id))
+                )
+              ).reduce(($in, ids) => {
+                $in.push(...ids);
+                return $in;
+              }, [] as ObjectId[]);
+
+              if ($in.length) {
+                if ("$and" in filterQuery) {
+                  filterQuery.$and.push({ _id: { $in } });
+                } else {
+                  filterQuery.$and = [{ _id: { $in } }];
+                }
+              }
+            })()
           );
         }
         break;
+      case "and":
+        {
+          let hasPromise = false;
+          const $and: (
+            | FilterQuery<unknown>
+            | Promise<FilterQuery<unknown>>
+          )[] = deptWhere[whereKey].map((where) => {
+            const result = whereDepartments(where, db);
+            if (result instanceof Promise) {
+              hasPromise = true;
+            }
+            return result;
+          });
+
+          if (hasPromise) {
+            promises.push(
+              Promise.all($and).then(($and) => {
+                if ("$and" in filterQuery) {
+                  filterQuery.$and.push(...$and);
+                } else {
+                  filterQuery.$and = $and;
+                }
+              })
+            );
+          } else {
+            if ("$and" in filterQuery) {
+              filterQuery.$and.push(...($and as FilterQuery<unknown>[]));
+            } else {
+              filterQuery.$and = $and as FilterQuery<unknown>[];
+            }
+          }
+        }
+        break;
+      case "or":
+        {
+          let hasPromise = false;
+          const $or: (
+            | FilterQuery<unknown>
+            | Promise<FilterQuery<unknown>>
+          )[] = deptWhere[whereKey].map((where) => {
+            const result = whereDepartments(where, db);
+            if (result instanceof Promise) {
+              hasPromise = true;
+            }
+            return result;
+          });
+
+          if (hasPromise) {
+            promises.push(
+              Promise.all($or).then(($or) => {
+                if ("$or" in filterQuery) {
+                  filterQuery.$or.push(...$or);
+                } else {
+                  filterQuery.$or = $or;
+                }
+              })
+            );
+          } else {
+            if ("$or" in filterQuery) {
+              filterQuery.$or.push(...($or as FilterQuery<unknown>[]));
+            } else {
+              filterQuery.$or = $or as FilterQuery<unknown>[];
+            }
+          }
+        }
+        break;
+      case "nor":
+        {
+          let hasPromise = false;
+          const $nor: (
+            | FilterQuery<unknown>
+            | Promise<FilterQuery<unknown>>
+          )[] = deptWhere[whereKey].map((where) => {
+            const result = whereDepartments(where, db);
+            if (result instanceof Promise) {
+              hasPromise = true;
+            }
+            return result;
+          });
+
+          if (hasPromise) {
+            promises.push(
+              Promise.all($nor).then(($nor) => {
+                if ("$nor" in filterQuery) {
+                  filterQuery.$nor.push(...$nor);
+                } else {
+                  filterQuery.$nor = $nor;
+                }
+              })
+            );
+          } else {
+            if ("$nor" in filterQuery) {
+              filterQuery.$nor.push(...($nor as FilterQuery<unknown>[]));
+            } else {
+              filterQuery.$nor = $nor as FilterQuery<unknown>[];
+            }
+          }
+        }
+        break;
     }
   }
 
-  const condition = await asyncReturn;
-
-  // Check that operators have been set on condition.
-  if (Object.keys(condition).length > 0) {
-    yield {
-      field: "_id",
-      condition,
-    };
+  if (promises.length) {
+    return Promise.all(promises).then(() => filterQuery);
   }
+
+  return filterQuery;
 };
 
-export type Returns = DeptReturns[];
-
-const departments: QueryResolvers["departments"] = async (
-  parent,
-  args,
-  context,
-  info
+export const departments: QueryResolvers["departments"] = async (
+  _,
+  { where },
+  { db }
 ) => {
-  const pipeline: Record<string, unknown>[] = [];
+  const query = where ? whereDepartments(where, db) : {};
 
-  await Promise.all([
-    (async () => {
-      if (!args.where) {
-        return;
-      }
+  if (query instanceof Promise) {
+    return db
+      .collection("departments")
+      .find(await query)
+      .toArray();
+  }
 
-      const $match = await filterQueryCreator(
-        args.where,
-        fieldAndConditionGenerator,
-        context
-      );
-      pipeline.push({ $match });
-    })(),
-  ]);
-
-  pipeline.push(addId);
-
-  return context.db.collection("departments").aggregate(pipeline).toArray();
+  return db.collection("departments").find(query).toArray();
 };
 
 export default departments;

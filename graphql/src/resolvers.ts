@@ -1,78 +1,76 @@
 import { Resolvers } from "./graphTypes";
 // import { Budget, budgets } from "./resolvers/budget";
-import budget from "./resolvers/budget/budget";
-import budgets from "./resolvers/budget/budgets";
-import Budget from "./resolvers/budget/BudgetResolvers";
+import { budget, budgets, Budget, BudgetOwner } from "./resolvers/budget";
 import { addBusiness } from "./resolvers/business";
-import business from "./resolvers/business/business";
-import businesses from "./resolvers/business/businesses";
-import Business from "./resolvers/business/BusinessResolvers";
+import { business, businesses, Business } from "./resolvers/business/index";
 // import { Department, departments, department } from "./resolvers/departments";
-import department from "./resolvers/department/department";
-import departments from "./resolvers/department/departments";
-import Department from "./resolvers/department/DepartmentResolvers";
 import {
-  journalEntryAdded,
-  journalEntryUpdated,
-  journalEntryDelete,
-} from "./resolvers/journalEntry";
-import journalEntries from "./resolvers/journalEntry/journalEntries";
-import journalEntry from "./resolvers/journalEntry/journalEntry";
-import journalEntryAdd from "./resolvers/journalEntry/journalEntryAdd";
-import journalEntryUpdate from "./resolvers/journalEntry/journalEntryUpdate";
-import journalEntryRefund from "./resolvers/journalEntry/journalEntryRefund";
-import journalEntryAddRefund from "./resolvers/journalEntry/journalEntryAddRefund";
-import journalEntryUpdateRefund from "./resolvers/journalEntry/journalEntryUpdateRefund";
-import journalEntryDeleteRefund from "./resolvers/journalEntry/journalEntryDeleteRefund";
-import journalEntryAddItem from "./resolvers/journalEntry/journalEntryAddItem";
-import journalEntryUpdateItem from "./resolvers/journalEntry/journalEntryUpdateItem";
-import journalEntryDeleteItem from "./resolvers/journalEntry/journalEntryDeleteItem";
-import journalEntryItem from "./resolvers/journalEntry/journalEntryItem";
-import JournalEntry from "./resolvers/journalEntry/JournalEntryResolver";
-import JournalEntryRefund from "./resolvers/journalEntry/JournalEntryRefundResolver";
-import JournalEntryItem from "./resolvers/journalEntry/JournalEntryItemResolver";
-import journalEntryUpserted from "./resolvers/journalEntry/journalEntryUpserted";
-import { journalEntrySources } from "./resolvers/journalEntrySource";
+  department,
+  departments,
+  Department,
+  DepartmentAncestor,
+} from "./resolvers/department";
+import { entryAdded, entryUpdated, entryDelete } from "./resolvers/entry";
+import entries from "./resolvers/entry/entries";
+import entry from "./resolvers/entry/entry";
+import entryAdd from "./resolvers/entry/entryAdd";
+import entryUpdate from "./resolvers/entry/entryUpdate";
+import entryRefund from "./resolvers/entry/entryRefund";
+import entryAddRefund from "./resolvers/entry/entryAddRefund";
+import entryUpdateRefund from "./resolvers/entry/entryUpdateRefund";
+import entryDeleteRefund from "./resolvers/entry/entryDeleteRefund";
+import entryAddItem from "./resolvers/entry/entryAddItem";
+import entryUpdateItem from "./resolvers/entry/entryUpdateItem";
+import entryDeleteItem from "./resolvers/entry/entryDeleteItem";
+import entryItem from "./resolvers/entry/entryItem";
+import Entry from "./resolvers/entry/EntryResolver";
+import EntryRefund from "./resolvers/entry/EntryRefundResolver";
+import EntryItem from "./resolvers/entry/EntryItemResolver";
+import entryUpserted from "./resolvers/entry/entryUpserted";
+import { sources } from "./resolvers/entrySource";
+import { Category, category, categories } from "./resolvers/category/index";
 import {
-  JournalEntryCategory,
-  // journalEntryCategories,
-  journalEntryCategory,
-} from "./resolvers/journalEntryCategory";
-import journalEntryCategories from "./resolvers/journalEntryCategory/journalEntryCategories";
-import paymentMethods from "./resolvers/paymentMethod/paymentMethods";
-import paymentMethod from "./resolvers/paymentMethod/paymentMethod";
+  paymentMethod,
+  paymentMethods,
+  PaymentMethod,
+} from "./resolvers/paymentMethod";
 import paymentMethodAdd from "./resolvers/paymentMethod/paymentMethodAdd";
 import paymentMethodUpdate from "./resolvers/paymentMethod/paymentMethodUpdate";
-import PaymentMethod from "./resolvers/paymentMethod/PaymehtMethodResolver";
 import { addPerson } from "./resolvers/person";
-import people from "./resolvers/person/people";
-import person from "./resolvers/person/person";
-import fiscalYear from "./resolvers/fiscalYear/fiscalYear";
-import fiscalYears from "./resolvers/fiscalYear/fiscalYears";
+import { people, person, Person } from "./resolvers/person/index";
+import { fiscalYear, fiscalYears, FiscalYear } from "./resolvers/fiscalYear";
 import { User } from "./resolvers/user";
 
+import { dateScalar, rationalScalar } from "./resolvers/scalars";
+
 const resolvers: Resolvers = {
+  Date: dateScalar,
+  Rational: rationalScalar,
   Budget,
+  BudgetOwner,
   Business,
   Department,
-  JournalEntry,
-  JournalEntryRefund,
-  JournalEntryItem,
+  DepartmentAncestor,
+  Entry,
+  EntryRefund,
+  EntryItem,
+  FiscalYear,
   PaymentMethod,
-  JournalEntryCategory,
+  Person,
+  Category,
   User,
   Query: {
     budget,
     businesses,
     business,
     budgets,
-    journalEntry,
-    journalEntryRefund,
-    journalEntryItem,
-    journalEntries,
-    journalEntrySources,
-    journalEntryCategories,
-    journalEntryCategory,
+    entry,
+    entryRefund,
+    entryItem,
+    entries,
+    sources,
+    categories,
+    category,
     departments,
     department,
     paymentMethods,
@@ -83,24 +81,24 @@ const resolvers: Resolvers = {
     fiscalYears,
   },
   Mutation: {
-    journalEntryAdd,
-    journalEntryUpdate,
-    journalEntryDelete,
-    journalEntryAddRefund,
-    journalEntryUpdateRefund,
-    journalEntryDeleteRefund,
-    journalEntryAddItem,
-    journalEntryUpdateItem,
-    journalEntryDeleteItem,
+    entryAdd,
+    entryUpdate,
+    entryDelete,
+    entryAddRefund,
+    entryUpdateRefund,
+    entryDeleteRefund,
+    entryAddItem,
+    entryUpdateItem,
+    entryDeleteItem,
     addPerson,
     addBusiness,
     paymentMethodAdd,
     paymentMethodUpdate,
   },
   Subscription: {
-    journalEntryAdded,
-    journalEntryUpdated,
-    journalEntryUpserted,
+    entryAdded,
+    entryUpdated,
+    entryUpserted,
   },
 };
 

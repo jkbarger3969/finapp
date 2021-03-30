@@ -1,5 +1,0 @@
-union JournalEntrySource = Person | Business | Department
-
-extend type Query {
-  journalEntrySources(searchByName:String!):[JournalEntrySource!]!
-}

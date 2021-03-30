@@ -1,0 +1,291 @@
+enum EntryType {
+  CREDIT
+  DEBIT
+}
+
+type EntryDateOfRecord {
+  """
+  ISO 8601
+  """
+  date: Date!
+  overrideFiscalYear: Boolean!
+}
+
+input EntryDateOfRecordAdd {
+  """
+  ISO 8601
+  """
+  date: Date!
+  overrideFiscalYear: Boolean!
+}
+input EntryDateOfRecordUpdate {
+  """
+  ISO 8601
+  """
+  date: Date
+  overrideFiscalYear: Boolean
+  """
+  When "clear" field is true, the "date" and "overrideFiscalYear" are ignored.
+  When "clear" field is false or null, it is ignored i.e. does nothing.
+  """
+  clear: Boolean
+}
+
+type Entry {
+  id: ID!
+  refunds: [EntryRefund!]!
+  items: [EntryItem!]!
+  type: EntryType!
+  """
+  ISO 8601
+  """
+  date: Date!
+  dateOfRecord: EntryDateOfRecord
+  department: Department!
+  budget: Budget!
+  fiscalYear: FiscalYear!
+  category: Category!
+  paymentMethod: PaymentMethod!
+  description: String
+  total: Rational!
+  source: Source!
+  reconciled: Boolean!
+  lastUpdate: Date!
+  deleted: Boolean!
+}
+
+enum SourceType {
+  BUSINESS
+  DEPARTMENT
+  PERSON
+}
+
+input SourceInput {
+  sourceType: SourceType!
+  id: ID!
+}
+
+input EntryUpdateFields {
+  """
+  ISO 8601
+  """
+  date: Date
+  dateOfRecord: EntryDateOfRecordUpdate
+  department: ID
+  type: EntryType
+  category: ID
+  paymentMethod: ID
+  description: String
+  total: Rational
+  source: SourceInput
+  reconciled: Boolean
+}
+
+input EntryAddFields {
+  """
+  ISO 8601
+  """
+  date: Date!
+  dateOfRecord: EntryDateOfRecordAdd
+  department: ID!
+  type: EntryType!
+  category: ID!
+  paymentMethod: ID!
+  description: String
+  total: Rational!
+  source: SourceInput!
+  reconciled: Boolean
+}
+
+# Refunds
+type EntryRefund {
+  id: ID!
+  """
+  ISO 8601
+  """
+  date: Date!
+  description: String
+  paymentMethod: PaymentMethod!
+  total: Rational!
+  reconciled: Boolean!
+  lastUpdate: Date!
+  deleted: Boolean!
+}
+
+input EntryAddRefundFields {
+  """
+  ISO 8601
+  """
+  date: Date!
+  description: String
+  paymentMethod: ID!
+  total: Rational!
+  reconciled: Boolean
+}
+
+input EntryUpdateRefundFields {
+  """
+  ISO 8601
+  """
+  date: Date
+  description: String
+  paymentMethod: ID
+  total: Rational
+  reconciled: Boolean
+}
+
+# Items
+type EntryItem {
+  id: ID!
+  department: Department
+  category: Category
+  description: String
+  units: Int!
+  total: Rational!
+  lastUpdate: Date!
+  deleted: Boolean!
+}
+
+input EntryAddItemFields {
+  department: ID
+  category: ID
+  description: String
+  units: Int!
+  total: Rational!
+}
+
+input EntryUpdateItemFields {
+  department: ID
+  category: ID
+  description: String
+  units: Int
+  total: Rational
+}
+
+type EntryItemUpsertResult {
+  entryItem: EntryItem!
+  entry: Entry!
+}
+
+# Where
+input EntriesWhereDepartment {
+  eq: WhereTreeNodeInput
+  ne: WhereTreeNodeInput
+  in: [WhereTreeNodeInput!]
+  nin: [WhereTreeNodeInput!]
+}
+
+input EntriesWhereCategory {
+  eq: WhereTreeNodeInput
+  ne: WhereTreeNodeInput
+  in: [WhereTreeNodeInput!]
+  nin: [WhereTreeNodeInput!]
+}
+
+input EntriesSourceInput {
+  id: ID!
+  type: SourceType!
+}
+
+input EntriesWhereSource {
+  eq: EntriesSourceInput
+  ne: EntriesSourceInput
+  in: [EntriesSourceInput!]
+  nin: [EntriesSourceInput!]
+}
+
+input EntriesWherePaymentMethod {
+  eq: WhereTreeNodeInput
+  ne: WhereTreeNodeInput
+  in: [WhereTreeNodeInput!]
+  nin: [WhereTreeNodeInput!]
+}
+
+input EntriesWhereFiscalYear {
+  eq: ID
+  ne: ID
+  in: [ID!]
+  nin: [ID!]
+}
+
+input EntriesWhere {
+  eq: ID
+  ne: ID
+  in: [ID!]
+  nin: [ID!]
+  date: WhereDate
+  dateOfRecord: WhereDate
+  fiscalYear: EntriesWhereFiscalYear
+  department: EntriesWhereDepartment
+  category: EntriesWhereCategory
+  source: EntriesWhereSource
+  paymentMethod: EntriesWherePaymentMethod
+  total: WhereRational
+  reconciled: Boolean
+  deleted: Boolean
+  lastUpdate: WhereDate
+  lastUpdateRefund: WhereDate
+  lastUpdateItem: WhereDate
+  or: [EntriesWhere!]
+  and: [EntriesWhere!]
+}
+
+type Query {
+  entries(where: EntriesWhere): [Entry!]!
+  entry(id: ID!): Entry
+  entryRefund(id: ID!): EntryRefund
+  entryItem(id: ID!): EntryItem
+}
+
+input EntryUpdatePaymentMethod {
+  id: ID!
+  fields: PaymentMethodUpdateFields!
+}
+
+type Mutation {
+  entryUpdate(
+    id: ID!
+    fields: EntryUpdateFields!
+    """
+    paymentMethodAdd and paymentMethodUpdate are mutually exclusive.
+    """
+    paymentMethodAdd: PaymentMethodAddFields
+    paymentMethodUpdate: EntryUpdatePaymentMethod
+    """
+    personAdd and businessAdd are mutually exclusive.
+    """
+    personAdd: PersonAddFields
+    businessAdd: BusinessAddFields
+  ): Entry!
+  entryAdd(
+    fields: EntryAddFields!
+    paymentMethodAdd: PaymentMethodAddFields
+    personAdd: PersonAddFields
+    businessAdd: BusinessAddFields
+  ): Entry!
+  entryDelete(id: ID!): Entry!
+  entryAddRefund(
+    id: ID!
+    fields: EntryAddRefundFields!
+    paymentMethodAdd: PaymentMethodAddFields
+  ): Entry!
+  entryUpdateRefund(
+    id: ID!
+    fields: EntryUpdateRefundFields!
+    paymentMethodAdd: PaymentMethodAddFields
+    paymentMethodUpdate: EntryUpdatePaymentMethod
+  ): Entry!
+  entryDeleteRefund(id: ID!): Entry!
+  entryAddItem(id: ID!, fields: EntryAddItemFields!): EntryItemUpsertResult!
+  entryUpdateItem(
+    id: ID!
+    fields: EntryUpdateItemFields!
+  ): EntryItemUpsertResult!
+  entryDeleteItem(id: ID!): EntryItemUpsertResult!
+}
+
+type Subscription {
+  entryAdded: Entry!
+  entryUpdated: Entry!
+  entryUpserted: Entry!
+}

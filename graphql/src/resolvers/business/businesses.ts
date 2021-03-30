@@ -1,111 +1,54 @@
-import { ObjectId } from "mongodb";
+import { FilterQuery } from "mongodb";
 
-import {
-  QueryResolvers,
-  BusinessesWhereInput as Where,
-} from "../../graphTypes";
-import { addId } from "../utils/mongoUtils";
+import { QueryResolvers, BusinessWhere } from "../../graphTypes";
 
 import { Returns as BusinessReturns } from "./business";
-import filterQueryCreator, {
-  FieldAndConditionGenerator,
-} from "../utils/filterQuery/filter";
-import { Context } from "../../types";
-import gqlMongoRegex from "../utils/filterQuery/gqlMongoRegex";
-import { resolveWithAsyncReturn } from "../../utils/iterableFns";
-import parseOps from "../utils/filterQuery/querySelectors/parseOps";
-import { OpsParser } from "../utils/filterQuery/querySelectors/types";
-import parseComparisonOps from "../utils/filterQuery/querySelectors/parseComparisonOps";
+import { iterateOwnKeys } from "../../utils/iterableFns";
+
+import { whereId, whereRegex } from "../utils/queryUtils";
 
 export type Returns = BusinessReturns[];
 
-const parseWhereBusinessId: Readonly<OpsParser<Where, Context>[]> = [
-  async function* (opValues, querySelector) {
-    for await (const [op, opVal] of opValues) {
-      switch (op) {
-        case "eq":
-        case "ne":
-          if (opVal) {
-            yield [op, new ObjectId(opVal as Where[typeof op])];
-          }
-          break;
-        case "in":
-        case "nin":
-          if (opVal) {
-            yield [
-              op,
-              (opVal as Where[typeof op]).map((id) => new ObjectId(id)),
-            ];
-          }
-          break;
-        default:
-          yield [op, opVal];
-      }
-    }
-    return querySelector;
-  } as OpsParser<Where, Context>,
-  parseComparisonOps<Where, Context>((opVal) => opVal),
-] as const;
+export const whereBusiness = (
+  businessWhere: BusinessWhere
+): FilterQuery<unknown> => {
+  const filterQuery: FilterQuery<unknown> = {};
 
-const fieldAndConditionGen: FieldAndConditionGenerator<Where> = async function* (
-  keyValueIterator,
-  opts
-) {
-  const [asyncIterator, asyncReturn] = resolveWithAsyncReturn(
-    parseOps(true, keyValueIterator, parseWhereBusinessId, opts)
-  );
-
-  for await (const [key, value] of asyncIterator) {
-    switch (key) {
+  for (const whereKey of iterateOwnKeys(businessWhere)) {
+    switch (whereKey) {
+      case "id":
+        filterQuery["_id"] = whereId(businessWhere[whereKey]);
+        break;
       case "name":
-        if (value) {
-          yield {
-            field: "name",
-            condition: gqlMongoRegex(value as Where[typeof key]),
-          };
-        }
+        filterQuery["name"] = whereRegex(businessWhere[whereKey]);
+        break;
+      case "and":
+        filterQuery.$and = businessWhere[whereKey].map((where) =>
+          whereBusiness(where)
+        );
+        break;
+      case "or":
+        filterQuery.$or = businessWhere[whereKey].map((where) =>
+          whereBusiness(where)
+        );
+        break;
+      case "nor":
+        filterQuery.$nor = businessWhere[whereKey].map((where) =>
+          whereBusiness(where)
+        );
         break;
     }
   }
 
-  const condition = await asyncReturn;
-
-  // Check that operators have been set on condition.
-  if (Object.keys(condition).length > 0) {
-    yield {
-      field: "_id",
-      condition,
-    };
-  }
+  return filterQuery;
 };
 
-const businesses: QueryResolvers["businesses"] = async (
-  parent,
-  args,
-  context,
-  info
+export const businesses: QueryResolvers["businesses"] = (
+  _,
+  { where },
+  { db }
 ) => {
-  const pipeline: Record<string, unknown>[] = [];
+  const query = where ? whereBusiness(where) : {};
 
-  await Promise.all([
-    (async () => {
-      if (!args.where) {
-        return;
-      }
-
-      const $match = await filterQueryCreator<Where, Context>(
-        args.where,
-        fieldAndConditionGen,
-        context
-      );
-
-      pipeline.push({ $match });
-    })(),
-  ]);
-
-  pipeline.push(addId);
-
-  return context.db.collection("businesses").aggregate(pipeline).toArray();
+  return db.collection("businesses").find(query).toArray();
 };
-
-export default businesses;

@@ -26,8 +26,19 @@ input BusinessesWhereInput {
   nor: [BusinessesWhereInput!]
 }
 
+input BusinessWhere {
+  # Fields
+  id: WhereId
+  name: WhereRegex
+
+  # Logic
+  and: [BusinessWhere!]
+  or: [BusinessWhere!]
+  nor: [BusinessWhere!]
+}
+
 extend type Query {
-  businesses(where: BusinessesWhereInput): [Business!]!
+  businesses(where: BusinessWhere): [Business!]!
   business(id: ID!): Business!
 }
 

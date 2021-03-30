@@ -29,8 +29,24 @@ input PeopleWhereInput {
   nor: [PeopleWhereInput!]
 }
 
+input PeopleNameWhere {
+  first: WhereRegex
+  last: WhereRegex
+}
+
+input PeopleWhere {
+  # Fields
+  id: WhereId
+  name: PeopleNameWhere
+
+  # Logical
+  and: [PeopleWhere!]
+  or: [PeopleWhere!]
+  nor: [PeopleWhere!]
+}
+
 extend type Query {
-  people(where: PeopleWhereInput): [Person!]!
+  people(where: PeopleWhere): [Person!]!
   person(id: ID!): Person!
 }
 

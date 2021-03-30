@@ -7,42 +7,20 @@ type Budget {
   fiscalYear: FiscalYear!
 }
 
-enum BudgetOwnerType {
-  BUSINESS
-  DEPARTMENT
-}
-
-input BudgetOwnerInput {
-  id: ID!
-  type: BudgetOwnerType!
-}
-
-input BudgetsWhereOwner {
-  eq: BudgetOwnerInput
-  ne: BudgetOwnerInput
-  in: [BudgetOwnerInput!]
-  nin: [BudgetOwnerInput!]
-}
-
-input BudgetsWhereInput {
-  eq: ID
-  ne: ID
-  in: [ID!]
-  nin: [ID!]
-  and: [BudgetsWhereInput!]
-  or: [BudgetsWhereInput!]
-  nor: [BudgetsWhereInput!]
+input BudgetWhere {
+  # Fields
+  id: WhereId
   amount: WhereRational
-  owner: BudgetsWhereOwner
-  """
-  Matches Budgets assigned to the Department or first ancestor of the
-  Department.
-  """
-  department: ID
-  fiscalYear: FiscalYearWhereInput
+  owner: WhereNode
+  fiscalYear: FiscalYearWhere
+
+  # Logic
+  and: [BudgetWhere!]
+  or: [BudgetWhere!]
+  nor: [BudgetWhere!]
 }
 
 extend type Query {
-  budgets(where: BudgetsWhereInput): [Budget!]!
+  budgets(where: BudgetWhere): [Budget!]!
   budget(id: ID!): Budget!
 }

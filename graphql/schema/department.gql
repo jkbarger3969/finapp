@@ -4,15 +4,12 @@ type Department {
   id: ID!
   name: String!
   code: String
-  """
-  Budgets are the FIRST Budget per FiscalYear assigned to
-  the Department or an ancestor of the Department.
-  """
   budgets: [Budget!]!
   business: Business!
   parent: DepartmentAncestor!
+  children: [Department!]!
   ancestors: [DepartmentAncestor!]!
-  descendants: [Department!]!
+  decedents: [Department!]!
   virtualRoot: Boolean
 }
 
@@ -49,7 +46,22 @@ input DepartmentAddFields {
   name: String!
 }
 
+input DepartmentWhere {
+  # Felids
+  id: WhereTreeId
+  name: WhereRegex
+  code: String
+  parent: WhereNode
+  "Matches all departments that are a decedents of the business."
+  business: ID
+
+  # Logic Operators
+  and: [DepartmentWhere!]
+  or: [DepartmentWhere!]
+  nor: [DepartmentWhere!]
+}
+
 type Query {
-  departments(where: DepartmentsWhereInput): [Department!]!
+  departments(where: DepartmentWhere): [Department!]!
   department(id: ID!): Department!
 }

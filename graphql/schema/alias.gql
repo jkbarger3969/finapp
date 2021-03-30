@@ -1,0 +1,34 @@
+enum AliasType {
+  ALIAS
+  PREFIX_DESCENDANTS
+  POSTFIX_DESCENDANTS
+}
+
+type Alias {
+  id: ID!
+  target: Node!
+  name: String!
+  type: AliasType!
+}
+
+input AliasWhereTarget {
+  eq: NodeInput
+  ne: NodeInput
+  in: [NodeInput!]
+  nin: [NodeInput!]
+}
+input AliasWhereNode {
+  eq: String
+  ne: String
+  in: [String!]
+  nin: [String!]
+}
+
+input AliasesWhere {
+  target: AliasWhereTarget
+  node: AliasWhereNode
+}
+
+extend type Query {
+  aliases: [Alias!]!
+}
