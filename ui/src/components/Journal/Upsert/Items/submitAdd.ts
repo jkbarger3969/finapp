@@ -4,23 +4,23 @@ import gql from "graphql-tag";
 import { ApolloClient } from "@apollo/client";
 
 import {
-  JournalEntryAddItemFields,
+  EntryAddItemFields,
   DeptEntryOptFragment,
   CatEntryOptFragment,
   AddEntryItemMutation as AddItem,
   AddEntryItemMutationVariables as AddItemVars,
 } from "../../../../apollo/graphTypes";
 import { TransmutationValue } from "../../../../utils/formik";
-import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/JournalEntries.gql";
+import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/Entries.gql";
 
 export type AddValues = O.Overwrite<
   O.Required<
-    JournalEntryAddItemFields,
-    keyof JournalEntryAddItemFields,
+    EntryAddItemFields,
+    keyof EntryAddItemFields,
     "deep"
   >,
   {
-    total: TransmutationValue<string, JournalEntryAddItemFields["total"]>;
+    total: TransmutationValue<string, EntryAddItemFields["total"]>;
     units: number;
     category: TransmutationValue<string, CatEntryOptFragment[]> | null;
     department: DeptEntryOptFragment | null;
@@ -28,10 +28,10 @@ export type AddValues = O.Overwrite<
 >;
 
 const ADD_ENTRY_ITEM = gql`
-  mutation AddEntryItem($id: ID!, $fields: JournalEntryAddItemFields!) {
-    journalEntryAddItem(id: $id, fields: $fields) {
-      journalEntry {
-        ...JournalEntry_1Fragment
+  mutation AddEntryItem($id: ID!, $fields: EntryAddItemFields!) {
+    entryAddItem(id: $id, fields: $fields) {
+      entry {
+        ...Entry_1Fragment
       }
     }
   }

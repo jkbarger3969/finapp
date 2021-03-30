@@ -1,25 +1,17 @@
 import gql from "graphql-tag";
 
 export const JOURNAL_FRAGMENT = gql`
-  fragment JournalEntry_3Fragment on JournalEntry {
+  fragment Entry_3Fragment on Entry {
     __typename
     id
     type
-    total {
-      n
-      d
-      s
-    }
+    total 
     date
     items {
       id
       __typename
       deleted
-      total {
-        n
-        d
-        s
-      }
+      total 
     }
   }
 `;

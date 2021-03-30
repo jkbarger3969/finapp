@@ -52,11 +52,11 @@ import * as Papa from "papaparse";
 import { saveAs } from "file-saver";
 
 import {
-  JournalEntries_1Query as JournalEntriesQuery,
-  JournalEntries_1QueryVariables as JournalEntriesQueryVars,
-  JournalEntry_1Fragment as JournalEntryFragment,
-  JournalEntryRefund_1Fragment as JournalEntryRefundFragment,
-  JournalEntryType,
+  Entries_1Query as EntriesQuery,
+  Entries_1QueryVariables as EntriesQueryVars,
+  Entry_1Fragment as EntryFragment,
+  EntryRefund_1Fragment as EntryRefundFragment,
+  EntryType,
   OnEntryUpsert_1Subscription as OnEntryUpsert,
   ReconcileEntryMutation as ReconcileEntry,
   ReconcileEntryMutationVariables as ReconcileEntryVars,
@@ -64,7 +64,8 @@ import {
   ReconcileRefundMutationVariables as ReconcileRefundVars,
   FiscalYear,
 } from "../../../apollo/graphTypes";
-import { JOURNAL_ENTRIES, JOURNAL_ENTRY_FRAGMENT } from "./JournalEntries.gql";
+import { deserializeRational } from "../../../apollo/scalars";
+import { JOURNAL_ENTRIES, JOURNAL_ENTRY_FRAGMENT } from "./Entries.gql";
 import { CHECK_ID } from "../constants";
 import tableIcons from "../../utils/materialTableIcons";
 import AddRefund from "../Upsert/Refunds/AddRefund";
@@ -74,7 +75,6 @@ import UpdateEntry from "../Upsert/Entries/UpdateEntry";
 import DeleteEntry from "../Upsert/Entries/DeleteEntry";
 import DeleteRefund from "../Upsert/Refunds/DeleteRefund";
 import ItemsTable from "./Items";
-import { rationalToFraction } from "../../../utils/rational";
 import ReconciledFilter from "./FilterFields/Reconciled";
 import CategoryFilter from "./FilterFields/Category";
 import PaymentMethodFilter from "./FilterFields/PaymentMethod";
@@ -90,19 +90,17 @@ export enum JournalMode {
 }
 
 export type Entry =
-  | JournalEntryFragment
-  | (Omit<JournalEntryFragment, "__typename" | "refunds"> &
-      JournalEntryRefundFragment & { refunds: string });
+  | EntryFragment
+  | (Omit<EntryFragment, "__typename" | "refunds"> &
+      EntryRefundFragment & { refunds: string });
 
 const entriesGen = function* (
-  entries: Iterable<JournalEntryFragment>
+  entries: Iterable<EntryFragment>
 ): IterableIterator<Entry> {
   for (const entry of entries) {
     yield entry;
     const refundType =
-      entry.type === JournalEntryType.Credit
-        ? JournalEntryType.Debit
-        : JournalEntryType.Credit;
+      entry.type === EntryType.Credit ? EntryType.Debit : EntryType.Credit;
     for (const refund of entry.refunds) {
       yield {
         ...entry,
@@ -119,8 +117,8 @@ export const CLEAR_FILTER = Symbol();
 
 const ON_ENTRY_UPSERT = gql`
   subscription OnEntryUpsert_1 {
-    journalEntryUpserted {
-      ...JournalEntry_1Fragment
+    entryUpserted {
+      ...Entry_1Fragment
       department {
         ancestors {
           ... on Department {
@@ -136,8 +134,8 @@ const ON_ENTRY_UPSERT = gql`
 
 const RECONCILE_ENTRY = gql`
   mutation ReconcileEntry($id: ID!) {
-    journalEntryUpdate(id: $id, fields: { reconciled: true }) {
-      ...JournalEntry_1Fragment
+    entryUpdate(id: $id, fields: { reconciled: true }) {
+      ...Entry_1Fragment
     }
   }
   ${JOURNAL_ENTRY_FRAGMENT}
@@ -145,8 +143,8 @@ const RECONCILE_ENTRY = gql`
 
 const RECONCILE_REFUND = gql`
   mutation ReconcileRefund($id: ID!) {
-    journalEntryUpdateRefund(id: $id, fields: { reconciled: true }) {
-      ...JournalEntry_1Fragment
+    entryUpdateRefund(id: $id, fields: { reconciled: true }) {
+      ...Entry_1Fragment
     }
   }
   ${JOURNAL_ENTRY_FRAGMENT}
@@ -231,7 +229,7 @@ const Journal = (props: {
     ReconcileRefundVars
   >(RECONCILE_REFUND);
 
-  const variables = useMemo<JournalEntriesQueryVars | undefined>(() => {
+  const variables = useMemo<EntriesQueryVars | undefined>(() => {
     if (deptId && fiscalYearId) {
       return {
         where: {
@@ -258,14 +256,14 @@ const Journal = (props: {
   }, [deptId, fiscalYearId]);
 
   const { loading, error, data, subscribeToMore } = useQuery<
-    JournalEntriesQuery,
-    JournalEntriesQueryVars
+    EntriesQuery,
+    EntriesQueryVars
   >(JOURNAL_ENTRIES, {
     variables,
     fetchPolicy: "cache-and-network",
   });
 
-  const isLoading = loading && !data?.journalEntries;
+  const isLoading = loading && !data?.entries;
 
   const fiscalYear = useMemo<null | FiscalYear>(
     () =>
@@ -284,7 +282,7 @@ const Journal = (props: {
           return prev;
         }
 
-        const upsertEntry = subscriptionData.data.journalEntryUpserted;
+        const upsertEntry = subscriptionData.data.entryUpserted;
 
         const ancestors = upsertEntry.department.ancestors;
 
@@ -296,12 +294,12 @@ const Journal = (props: {
           )
         ) {
           // Filter entry out of query results if department changes.
-          const journalEntriesFiltered = prev.journalEntries.filter(
+          const entriesFiltered = prev.entries.filter(
             (entry) => entry.id !== upsertEntry.id
           );
 
           return Object.assign({}, prev, {
-            journalEntries: journalEntriesFiltered,
+            entries: entriesFiltered,
           });
         }
 
@@ -315,28 +313,28 @@ const Journal = (props: {
             date >= new Date(fiscalYear.end)
           ) {
             // Filter entry out of query results if fiscal year changes.
-            const journalEntriesFiltered = prev.journalEntries.filter(
+            const entriesFiltered = prev.entries.filter(
               (entry) => entry.id !== upsertEntry.id
             );
             return Object.assign({}, prev, {
-              journalEntries: journalEntriesFiltered,
+              entries: entriesFiltered,
             });
           }
         }
 
         // Apollo will take care of updating if entry already exists in cache.
-        if (prev.journalEntries.some((entry) => entry.id === upsertEntry.id)) {
+        if (prev.entries.some((entry) => entry.id === upsertEntry.id)) {
           return prev;
         }
 
         return Object.assign({}, prev, {
-          journalEntries: [upsertEntry, ...prev.journalEntries],
+          entries: [upsertEntry, ...prev.entries],
         });
       },
     });
   }, [deptId, fiscalYear, subscribeToMore]);
 
-  const journalEntries = data?.journalEntries || [];
+  const rawEntries = data?.entries || [];
 
   const [entries, filterOptions] = useMemo(() => {
     const filterOptions = {
@@ -348,7 +346,7 @@ const Journal = (props: {
 
     const entries: Entry[] = [];
 
-    for (const entry of entriesGen(journalEntries)) {
+    for (const entry of entriesGen(rawEntries)) {
       if (
         entry.deleted ||
         (mode === JournalMode.Reconcile && entry.reconciled)
@@ -382,7 +380,7 @@ const Journal = (props: {
         source: [...filterOptions.source.values()],
       },
     ] as const;
-  }, [journalEntries, mode]);
+  }, [rawEntries, mode]);
 
   const columns = useMemo<Column<Entry>[]>(() => {
     return [
@@ -408,7 +406,7 @@ const Journal = (props: {
         field: "total",
         title: "Total",
         render: ({ total }) =>
-          numeral(rationalToFraction(total).valueOf()).format("$0,0.00"),
+          numeral(deserializeRational(total).valueOf()).format("$0,0.00"),
         searchable: false,
         // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
@@ -461,7 +459,7 @@ const Journal = (props: {
         render: (data, type) => {
           const name =
             type === "group"
-              ? ((data as unknown) as JournalEntryFragment["category"]).name
+              ? ((data as unknown) as EntryFragment["category"]).name
               : data.category.name;
           return capitalCase(name);
         },
@@ -587,8 +585,7 @@ const Journal = (props: {
       rowStyle: (data: Entry) => {
         const style = {} as React.CSSProperties;
 
-        style.color =
-          data.type === JournalEntryType.Credit ? green[900] : red[900];
+        style.color = data.type === EntryType.Credit ? green[900] : red[900];
 
         return style;
       },
@@ -663,7 +660,7 @@ const Journal = (props: {
                   }
 
                   try {
-                    if (entry.__typename === "JournalEntryRefund") {
+                    if (entry.__typename === "EntryRefund") {
                       await reconcileRefund({ variables: { id: entry.id } });
                     } else {
                       await reconcileEntry({ variables: { id: entry.id } });
@@ -683,20 +680,20 @@ const Journal = (props: {
       (rowData) => {
         const { tooltip, onClick } = (() => {
           switch (rowData.__typename) {
-            case "JournalEntry":
+            case "Entry":
               return {
                 tooltip: "Delete Entry",
                 onClick: (event: unknown, rowData: Entry | unknown) =>
                   setDeleteEntry((rowData as Entry).id),
               };
-            // case "JournalEntryItem":
+            // case "EntryItem":
             //   return {
             //     tooltip: "Delete Item",
             //     onClick: (event:unknown, rowData:Entry | unknown) => {
             //       // setDeleteItem((rowData as Entry).id)
             //     },
             //   };
-            case "JournalEntryRefund":
+            case "EntryRefund":
               return {
                 tooltip: "Delete Refund",
                 onClick: (event: unknown, rowData: Entry | unknown) =>
@@ -714,7 +711,7 @@ const Journal = (props: {
       (rowData) => {
         const { tooltip, onClick } = (() => {
           switch (rowData.__typename) {
-            case "JournalEntry":
+            case "Entry":
               return {
                 tooltip: "Edit Entry",
                 onClick: (event: unknown, rowData: Entry | unknown) => {
@@ -722,7 +719,7 @@ const Journal = (props: {
                   setUpdateEntry((rowData as Entry).id);
                 },
               };
-            // case "JournalEntryItem":
+            // case "EntryItem":
             //   return {
             //     tooltip: "Edit Item",
             //     onClick: (event:unknown, rowData:Entry | unknown) => {
@@ -733,7 +730,7 @@ const Journal = (props: {
             //       });
             //     },
             //   };
-            case "JournalEntryRefund":
+            case "EntryRefund":
               return {
                 tooltip: "Edit Refund",
                 onClick: (event: unknown, rowData: Entry | unknown) => {
@@ -754,12 +751,12 @@ const Journal = (props: {
         };
       },
       (rowData) => {
-        if (rowData.__typename !== "JournalEntry") {
+        if (rowData.__typename !== "Entry") {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return null as any;
         }
 
-        const isCredit = rowData.type === JournalEntryType.Credit;
+        const isCredit = rowData.type === EntryType.Credit;
 
         return {
           icon: ((props: Record<string, unknown>) =>
@@ -776,7 +773,7 @@ const Journal = (props: {
           } as IconProps,
           onClick: (event: unknown, rowData: Entry | unknown) => {
             setAddRefundOpen(true);
-            setAddRefundToEntry((rowData as JournalEntryFragment).id);
+            setAddRefundToEntry((rowData as EntryFragment).id);
           },
         };
       },
@@ -853,11 +850,11 @@ const Journal = (props: {
   >(
     () => [
       (rowData) => {
-        const isJournalEntry = rowData.__typename === "JournalEntry";
-        const hasItems = isJournalEntry ? rowData.items.length > 0 : false;
+        const isEntry = rowData.__typename === "Entry";
+        const hasItems = isEntry ? rowData.items.length > 0 : false;
         return {
           icon: (props: Record<string, unknown>) =>
-            isJournalEntry ? (
+            isEntry ? (
               hasItems ? (
                 <FileTreeIcon {...props} />
               ) : (
@@ -871,11 +868,11 @@ const Journal = (props: {
             ) : (
               <FileTreeOutlineIcon {...props} color="primary" />
             ),
-          disabled: !isJournalEntry,
-          tooltip: isJournalEntry ? "Itemize" : undefined,
+          disabled: !isEntry,
+          tooltip: isEntry ? "Itemize" : undefined,
           // eslint-disable-next-line react/display-name
           render: (rowData) => {
-            if (rowData.__typename !== "JournalEntry") {
+            if (rowData.__typename !== "Entry") {
               return null;
             }
             return <ItemsTable entry={rowData} />;
@@ -961,7 +958,7 @@ const Journal = (props: {
                   break;
                 }
                 case "total": {
-                  const total = rationalToFraction(entry.total).valueOf();
+                  const total = deserializeRational(entry.total).valueOf();
 
                   values.push(
                     numeral(total).format("$0,0.00"),
@@ -1036,7 +1033,7 @@ const Journal = (props: {
               _totalRational_: "$total",
               total: {
                 $expressionCb: (obj: Entry) =>
-                  rationalToFraction(obj.total).valueOf(),
+                  deserializeRational(obj.total).valueOf(),
               },
             },
           },
@@ -1080,7 +1077,7 @@ const Journal = (props: {
               $addFields: {
                 _sortBy_: {
                   $expressionCb: (entry: Entry) =>
-                    rationalToFraction(entry.total).valueOf(),
+                    deserializeRational(entry.total).valueOf(),
                 },
               },
             });
@@ -1159,7 +1156,7 @@ const Journal = (props: {
       const [result] = new Aggregator(pipeline).run(collection);
 
       // https://github.com/mbrn/material-table/issues/563
-      const data = result.data.map((entry: Entry) => {
+      const data = (result.data as Entry[]).map((entry: Entry) => {
         if (detailPanelState.has(entry.id)) {
           return {
             ...entry,
@@ -1170,9 +1167,9 @@ const Journal = (props: {
         }
 
         return entry;
-      });
+      }) as Entry[];
 
-      const raw = result.raw;
+      const raw = result.raw as unknown[];
 
       // Cleanup detailPanelState
       // https://github.com/mbrn/material-table/issues/563
@@ -1196,7 +1193,7 @@ const Journal = (props: {
             continue;
           }
 
-          let entryTotal = rationalToFraction(entry.total);
+          let entryTotal = deserializeRational(entry.total);
 
           // BUG Story ID: CH58
           // Itemization Adjustments
@@ -1215,11 +1212,11 @@ const Journal = (props: {
               }
 
               // Item has been applied to another department budget.
-              entryTotal = entryTotal.sub(rationalToFraction(item.total));
+              entryTotal = entryTotal.sub(deserializeRational(item.total));
             }
           }
 
-          if (entry.type === JournalEntryType.Credit) {
+          if (entry.type === EntryType.Credit) {
             newAggregate = newAggregate.add(entryTotal);
           } else {
             newAggregate = newAggregate.sub(entryTotal);

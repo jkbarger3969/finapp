@@ -8,12 +8,12 @@
       "Department",
       "Business"
     ],
-    "JournalEntrySource": [
+    "PaymentMethodAuthorizedEntity": [
       "Person",
       "Business",
       "Department"
     ],
-    "PaymentMethodAuthorizedEntity": [
+    "Source": [
       "Person",
       "Business",
       "Department"

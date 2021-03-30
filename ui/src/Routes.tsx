@@ -15,7 +15,7 @@ import TopNav from "./components/TopNav";
 import { useQuery } from "@apollo/client";
 import {
   DepartmentName_1Query as DepartmentName,
-  JournalEntiresWhere,
+  EntriesWhere,
 } from "./apollo/graphTypes";
 import gql from "graphql-tag";
 
@@ -74,7 +74,7 @@ const JournalReconcileRender = () => {
 const GridChild: React.FC<
   RouteComponentProps<{ id: string; fiscalYear: string }>
 > = (props: RouteComponentProps<{ id: string; fiscalYear: string }>) => {
-  const where = useMemo<JournalEntiresWhere>(
+  const where = useMemo<EntriesWhere>(
     () => ({
       department: {
         eq: {

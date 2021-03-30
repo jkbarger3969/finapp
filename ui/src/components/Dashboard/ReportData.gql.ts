@@ -8,11 +8,7 @@ export const GET_REPORT_DATA_DEPT_FRAGMENT = gql`
     budgets {
       id
       __typename
-      amount {
-        n
-        d
-        s
-      }
+      amount
       fiscalYear {
         __typename
         id
@@ -22,7 +18,7 @@ export const GET_REPORT_DATA_DEPT_FRAGMENT = gql`
 `;
 
 export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
-  fragment GetReportDataEntry_1Fragment on JournalEntry {
+  fragment GetReportDataEntry_1Fragment on Entry {
     id
     __typename
     category {
@@ -31,11 +27,7 @@ export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
       name
     }
     type
-    total {
-      n
-      d
-      s
-    }
+    total
     fiscalYear {
       __typename
       id
@@ -56,22 +48,14 @@ export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
     refunds {
       __typename
       id
-      total {
-        n
-        d
-        s
-      }
+      total
       deleted
       lastUpdate
     }
     items {
       __typename
       id
-      total {
-        n
-        d
-        s
-      }
+      total
       department {
         __typename
         id
@@ -84,14 +68,14 @@ export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
 `;
 
 export const GET_REPORT_DATA = gql`
-  query GetReportData($deptId:ID!, $where:JournalEntiresWhere!) {
+  query GetReportData($deptId:ID!, $where:EntriesWhere!) {
     department(id:$deptId) {
       ...GetReportDataDept_1Fragment
       descendants {
         ...GetReportDataDept_1Fragment
       }
     }
-    journalEntries(where:$where) {
+    entries(where:$where) {
       ...GetReportDataEntry_1Fragment
     }
     fiscalYears {
@@ -107,8 +91,8 @@ export const GET_REPORT_DATA = gql`
 `;
 
 export const JOURNAL_ENTRY_ADDED_SUB = gql`
-  subscription JournalEntryAdded_2 {
-    journalEntryAdded {
+  subscription EntryAdded_2 {
+    entryAdded {
       ...GetReportDataEntry_1Fragment
     }
   }
@@ -116,8 +100,8 @@ export const JOURNAL_ENTRY_ADDED_SUB = gql`
 `;
 
 export const JOURNAL_ENTRY_UPDATED_SUB = gql`
-  subscription JournalEntryUpdated_2 {
-    journalEntryUpdated {
+  subscription EntryUpdated_2 {
+    entryUpdated {
       ...GetReportDataEntry_1Fragment
     }
   }

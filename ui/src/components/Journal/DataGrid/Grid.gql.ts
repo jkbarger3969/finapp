@@ -36,16 +36,9 @@ export const PAYMENT_METHOD = gql`
     }
   }
 `;
-export const RATIONAL = gql`
-  fragment GridRational on Rational {
-    s
-    n
-    d
-  }
-`;
 
 export const REFUND = gql`
-  fragment GridRefund on JournalEntryRefund {
+  fragment GridRefund on EntryRefund {
     __typename
     id
     date
@@ -53,18 +46,15 @@ export const REFUND = gql`
     paymentMethod {
       ...GridPaymentMethod
     }
-    total {
-      ...GridRational
-    }
+    total
     reconciled
     deleted
   }
-  ${RATIONAL}
   ${PAYMENT_METHOD}
 `;
 
 export const ENTRY = gql`
-  fragment GridEntry on JournalEntry {
+  fragment GridEntry on Entry {
     __typename
     id
     date
@@ -86,9 +76,7 @@ export const ENTRY = gql`
       ...GridPaymentMethod
     }
     description
-    total {
-      ...GridRational
-    }
+    total
     source {
       ...GridEntrySrcPerson
       ...GridEntrySrcBusiness
@@ -103,14 +91,13 @@ export const ENTRY = gql`
   ${SOURCE_PERSON}
   ${SOURCE_BUSINESS}
   ${SOURCE_DEPT}
-  ${RATIONAL}
   ${PAYMENT_METHOD}
   ${REFUND}
 `;
 
 export const GRID_ENTRIES = gql`
-  query GridEntries($where: JournalEntiresWhere) {
-    journalEntries(where: $where) {
+  query GridEntries($where: EntriesWhere) {
+    entries(where: $where) {
       ...GridEntry
     }
   }

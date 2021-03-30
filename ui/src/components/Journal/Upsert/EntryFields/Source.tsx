@@ -15,7 +15,7 @@ import * as namecase from "namecase";
 import gql from "graphql-tag";
 
 import {
-  JournalEntrySourceType,
+  SourceType,
   SrcEntryOptsQuery,
   SrcEntryOptsQueryVariables as SrcEntryOptsQueryVars,
   SrcEntryBizOptFragment as BizOpt,
@@ -62,18 +62,18 @@ export type SourceProps = {
 
 export type SrcObjectValue = BizOpt | DeptOpt | PersonOpt;
 export type SourceValue = SrcObjectValue | string;
-export type Value = SourceValue | JournalEntrySourceType;
+export type Value = SourceValue | SourceType;
 type Options = Value[];
 export type FieldValue = TransmutationValue<string, Value[]>;
 
 type AutocompleteProps = AutocompletePropsRaw<Value, true, false, boolean> &
   UseAutocompleteProps<Value, true, false, boolean>;
 
-export const isFreeSoloOpt = (opt: Value): boolean | JournalEntrySourceType => {
+export const isFreeSoloOpt = (opt: Value): boolean | SourceType => {
   switch (opt) {
-    case JournalEntrySourceType.Business:
-    case JournalEntrySourceType.Department:
-    case JournalEntrySourceType.Person:
+    case SourceType.Business:
+    case SourceType.Department:
+    case SourceType.Person:
       break;
     default:
       return typeof opt === "string";
@@ -83,11 +83,11 @@ export const isFreeSoloOpt = (opt: Value): boolean | JournalEntrySourceType => {
 
 const getOptionLabel: AutocompleteProps["getOptionLabel"] = (opt): string => {
   switch (opt) {
-    case JournalEntrySourceType.Business:
+    case SourceType.Business:
       return "Vendor";
-    case JournalEntrySourceType.Department:
+    case SourceType.Department:
       return "Department";
-    case JournalEntrySourceType.Person:
+    case SourceType.Person:
       return "Person";
     default:
       if (typeof opt === "string") {
@@ -143,14 +143,14 @@ const filterOptions: AutocompleteProps["filterOptions"] = (
 };
 const validate = (transmutationVal?: FieldValue) => {
   const value = transmutationVal?.value || [];
-  const srcType = (value[0] ?? null) as JournalEntrySourceType | null;
+  const srcType = (value[0] ?? null) as SourceType | null;
   const srcValue = value.length > 1 ? value[value.length - 1] : null;
 
   if (srcType === null || srcValue === null || srcValue === "") {
     return "Source Required";
   } else if (
     isFreeSoloOpt(srcValue) &&
-    srcType === JournalEntrySourceType.Person
+    srcType === SourceType.Person
   ) {
     // Validate Free Solo Person name
     const parsedName = parseName(srcValue as string);
@@ -178,7 +178,7 @@ const Source = function (props: SourceProps): JSX.Element {
   const { error, touched } = meta;
   const { setValue } = helpers;
 
-  const srcType = (value[0] ?? null) as JournalEntrySourceType | null;
+  const srcType = (value[0] ?? null) as SourceType | null;
   const srcValue = value.length > 1 ? value[value.length - 1] : null;
 
   const searchedName = useRef("");
@@ -205,13 +205,17 @@ const Source = function (props: SourceProps): JSX.Element {
     skip: !searchedName.current && !value[1],
     variables: {
       name: searchedName.current,
-      isBiz: srcType !== JournalEntrySourceType.Person,
+      isBiz: srcType !== SourceType.Person,
     },
     onError,
   });
 
   const idDeptMap = useMemo(() => {
     const idDeptMap = new Map<string, DeptOpt>();
+
+    // https://github.com/dotansimha/graphql-code-generator/pull/5326
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     for (const bizOpt of data?.businesses || []) {
       for (const deptOpt of bizOpt.departments) {
         idDeptMap.set(deptOpt.id, deptOpt);
@@ -220,14 +224,20 @@ const Source = function (props: SourceProps): JSX.Element {
     return idDeptMap;
   }, [data]);
 
+  // https://github.com/dotansimha/graphql-code-generator/pull/5326
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
   const options = useMemo<Options>(() => {
     if (srcType === null) {
-      return [JournalEntrySourceType.Business, JournalEntrySourceType.Person];
+      return [SourceType.Business, SourceType.Person];
       // Person ONLY person options
-    } else if (srcType === JournalEntrySourceType.Person) {
+    } else if (srcType === SourceType.Person) {
       return srcValue === null ? data?.people || [] : [];
       // Only Business options
     } else if (!srcValue) {
+      // https://github.com/dotansimha/graphql-code-generator/pull/5326
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       return data?.businesses || [];
       // Free solo no options
     } else if (typeof srcValue === "string") {
@@ -259,7 +269,7 @@ const Source = function (props: SourceProps): JSX.Element {
   const label = useMemo(() => {
     if (srcType === null) {
       return "Source Type";
-    } else if (srcType === JournalEntrySourceType.Person) {
+    } else if (srcType === SourceType.Person) {
       return "Person Name";
     } else if (value.length === 1) {
       return "Vendor";

@@ -1,7 +1,7 @@
 import gql from "graphql-tag";
 
 export const FISCAL_YEAR = gql`
-  query FiscalYear($date: String) {
+  query FiscalYear($date: Date) {
     fiscalYears(where: { hasDate: { eq: $date } }) {
       __typename
       id
@@ -35,7 +35,7 @@ export const DEPT_ENTRY_OPT_FRAGMENT = gql`
 `;
 
 export const CAT_ENTRY_OPT_FRAGMENT = gql`
-  fragment CatEntryOptFragment on JournalEntryCategory {
+  fragment CatEntryOptFragment on Category {
     __typename
     id
     name

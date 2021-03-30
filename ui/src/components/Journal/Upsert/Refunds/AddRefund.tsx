@@ -12,11 +12,7 @@ import {
   useTheme,
   Box,
 } from "@material-ui/core";
-import {
-  useApolloClient,
-  useQuery,
-  QueryHookOptions,
-} from "@apollo/client";
+import { useApolloClient, useQuery, QueryHookOptions } from "@apollo/client";
 import { Add as AddIcon, Cancel as CancelIcon } from "@material-ui/icons";
 import gql from "graphql-tag";
 import Fraction from "fraction.js";
@@ -25,8 +21,9 @@ import submitAdd, { AddValues } from "./submitAdd";
 import {
   GetEntryRefundInfo_1Query as GetEntryRefundInfo,
   GetEntryRefundInfo_1QueryVariables as GetEntryRefundInfoVars,
-  JournalEntryType,
+  EntryType,
 } from "../../../../apollo/graphTypes";
+import { deserializeRational } from "../../../../apollo/scalars";
 import DateEntry from "../EntryFields/DateEntry";
 import Description from "../EntryFields/Description";
 import Total from "../EntryFields/Total";
@@ -40,12 +37,11 @@ import {
 import OverlayLoading from "../../../utils/OverlayLoading";
 import Overlay from "../../../utils/Overlay";
 import { JOURNAL_FRAGMENT } from "./refunds.gql";
-import { rationalToFraction } from "../../../../utils/rational";
 
 const GET_ENTRY_REFUND_INFO = gql`
   query GetEntryRefundInfo_1($id: ID!) {
-    journalEntry(id: $id) {
-      ...JournalEntry_2Fragment
+    entry(id: $id) {
+      ...Entry_2Fragment
     }
   }
   ${JOURNAL_FRAGMENT}
@@ -94,21 +90,21 @@ const AddRefundDialog = (
     onError,
   });
 
-  const total = data?.journalEntry?.total;
-  const refunds = data?.journalEntry?.refunds || [];
+  const total = data?.entry?.total;
+  const refunds = data?.entry?.refunds || [];
   const maxTotal = useMemo(() => {
     if (total) {
       const totalRefunds = refunds.reduce(
         (totalRefunds, { deleted, total }) =>
-          deleted ? totalRefunds : totalRefunds.add(rationalToFraction(total)),
+          deleted ? totalRefunds : totalRefunds.add(deserializeRational(total)),
         new Fraction(0)
       );
-      return rationalToFraction(total).sub(totalRefunds);
+      return deserializeRational(total).sub(totalRefunds);
     }
     return new Fraction(Number.MAX_SAFE_INTEGER);
   }, [total, refunds]);
 
-  const date = data?.journalEntry?.date;
+  const date = data?.entry?.date;
   const minDate = useMemo<Date | undefined>(
     () => (date ? new Date(date) : undefined),
     [date]
@@ -136,12 +132,12 @@ const AddRefundDialog = (
     return [null, null];
   }, [formikStatus]);
 
-  const journalEntryType = data?.journalEntry?.type;
+  const entryType = data?.entry?.type;
   const title = useMemo(() => {
     const title =
-      !loading && !error && (journalEntryType ?? NULLISH) !== NULLISH
+      !loading && !error && (entryType ?? NULLISH) !== NULLISH
         ? `${
-            journalEntryType === JournalEntryType.Credit ? "Give" : "Add"
+            entryType === EntryType.Credit ? "Give" : "Add"
           } Refund`
         : "Refund";
 
@@ -153,7 +149,7 @@ const AddRefundDialog = (
       return `Submitting ${title}`;
     }
     return title;
-  }, [loading, error, journalEntryType, fatalError, isSubmitting]);
+  }, [loading, error, entryType, fatalError, isSubmitting]);
 
   const theme = useTheme();
 

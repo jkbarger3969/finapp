@@ -21,12 +21,13 @@ import Fraction from "fraction.js";
 import {
   UpdateEntryIniStateQuery as UpdateEntryIniState,
   UpdateEntryIniStateQueryVariables as UpdateEntryIniStateVars,
-  JournalEntrySourceType,
+  SourceType,
   SrcEntryDeptOptFragment,
   SrcEntryBizOptFragment,
   FiscalYearQuery,
   FiscalYearQueryVariables,
 } from "../../../../apollo/graphTypes";
+import { deserializeRational } from "../../../../apollo/scalars";
 import {
   FormikStatus,
   FormikStatusType,
@@ -56,7 +57,6 @@ import Category from "../EntryFields/Category";
 import Department from "../EntryFields/Department";
 import Source from "../EntryFields/Source";
 import Type from "../EntryFields/Type";
-import { rationalToFraction } from "../../../../utils/rational";
 import { ApolloError } from "@apollo/client";
 
 export interface UpdateEntryProps {
@@ -68,7 +68,7 @@ export interface UpdateEntryProps {
 
 const UPDATE_ENTRY_INI_STATE = gql`
   query UpdateEntryIniState($id: ID!) {
-    journalEntry(id: $id) {
+    entry(id: $id) {
       id
       __typename
       type
@@ -104,21 +104,13 @@ const UPDATE_ENTRY_INI_STATE = gql`
         }
       }
       description
-      total {
-        n
-        d
-        s
-      }
+      total
       refunds {
         id
         __typename
         deleted
         date
-        total {
-          n
-          d
-          s
-        }
+        total
       }
       reconciled
     }
@@ -142,7 +134,7 @@ const gridEntryResponsiveProps: GridProps = {
 
 const UpdateEntryDialog = (
   props: Omit<UpdateEntryProps, "entryId"> & {
-    journalEntry: NonNullable<UpdateEntryIniState["journalEntry"]> | null;
+    entry: NonNullable<UpdateEntryIniState["entry"]> | null;
     loading: boolean;
     handleSubmit: FormikProps<UpdateValues>["handleSubmit"];
   }
@@ -151,7 +143,7 @@ const UpdateEntryDialog = (
     open,
     onClose,
     onExited: onExitedCb,
-    journalEntry,
+    entry,
     loading,
     handleSubmit,
   } = props;
@@ -198,14 +190,14 @@ const UpdateEntryDialog = (
     [data]
   );
 
-  const refunds = journalEntry?.refunds || [];
+  const refunds = entry?.refunds || [];
 
   // Updates to total cannot be less than current refunds.
   const [minTotal, maxDate] = useMemo(
     () =>
       refunds.reduce(
         ([minTotal, maxDate], { deleted, total, date }) => [
-          deleted ? minTotal : minTotal.add(rationalToFraction(total)),
+          deleted ? minTotal : minTotal.add(deserializeRational(total)),
           deleted ? maxDate : min([maxDate, new Date(date)]),
         ],
         [new Fraction(0), MAX_DATE]
@@ -411,30 +403,30 @@ const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
     [error]
   );
 
-  const journalEntry = data?.journalEntry;
+  const entry = data?.entry;
   const initialValues = useMemo<IniUpdateValues>(() => {
-    if (!journalEntry) {
+    if (!entry) {
       return {} as IniUpdateValues;
     }
 
     const date = {
-      inputValue: new Date(journalEntry.date),
-      value: journalEntry.date,
+      inputValue: new Date(entry.date),
+      value: entry.date,
     };
 
-    const dateOfRecord: IniUpdateValues["dateOfRecord"] = journalEntry.dateOfRecord
+    const dateOfRecord: IniUpdateValues["dateOfRecord"] = entry.dateOfRecord
       ? {
           date: {
-            inputValue: new Date(journalEntry.dateOfRecord.date),
-            value: journalEntry.dateOfRecord.date,
+            inputValue: new Date(entry.dateOfRecord.date),
+            value: entry.dateOfRecord.date,
           },
-          overrideFiscalYear: journalEntry.dateOfRecord.overrideFiscalYear,
+          overrideFiscalYear: entry.dateOfRecord.overrideFiscalYear,
           clear: false,
         }
       : null;
 
     const category = (() => {
-      const { ancestors, ...category } = journalEntry.category;
+      const { ancestors, ...category } = entry.category;
 
       // Array.prototype.sort mutates the array, create copy.
       const value = [...ancestors].sort((a, b) => {
@@ -457,7 +449,7 @@ const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
     })();
 
     const paymentMethod = (() => {
-      const { ancestors, ...paymentMethod } = journalEntry.paymentMethod;
+      const { ancestors, ...paymentMethod } = entry.paymentMethod;
 
       // Array.prototype.sort mutates the array, create copy.
       const value = [...ancestors].sort((a, b) => {
@@ -480,33 +472,33 @@ const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
     })();
 
     const total = {
-      inputValue: rationalToFraction(journalEntry.total).round(2).toString(),
-      value: journalEntry.total,
+      inputValue: deserializeRational(entry.total).round(2).toString(),
+      value: entry.total,
     };
 
-    const department = journalEntry.department;
+    const department = entry.department;
 
-    const reconciled = journalEntry.reconciled;
+    const reconciled = entry.reconciled;
 
-    const description = journalEntry.description ?? null;
+    const description = entry.description ?? null;
 
-    const type = journalEntry.type;
+    const type = entry.type;
 
     const source = (() => {
       const value: IniUpdateValues["source"]["value"] = [];
 
-      const src = journalEntry?.source;
+      const src = entry?.source;
 
       switch (src?.__typename) {
         case "Person":
-          value.push(JournalEntrySourceType.Person, src);
+          value.push(SourceType.Person, src);
           break;
         case "Business":
-          value.push(JournalEntrySourceType.Business, src);
+          value.push(SourceType.Business, src);
           break;
         case "Department": {
           // The source type is the root, for Dept is always a business.
-          value.push(JournalEntrySourceType.Business);
+          value.push(SourceType.Business);
           const ancestorDeptQueue: string[] = [];
           for (const ancestor of src.ancestors) {
             if (ancestor.__typename === "Business") {
@@ -569,7 +561,7 @@ const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
     };
 
     return iniUpdateValues;
-  }, [journalEntry]);
+  }, [entry]);
 
   const client = useApolloClient();
   const onSubmit = useCallback<FormikConfig<UpdateValues>["onSubmit"]>(
@@ -602,18 +594,18 @@ const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
         onClose={onClose}
         onExited={onExited}
         loading={loading}
-        journalEntry={journalEntry ?? null}
+        entry={entry ?? null}
         handleSubmit={props.handleSubmit}
       />
     ),
-    [open, onClose, onExited, loading, journalEntry]
+    [open, onClose, onExited, loading, entry]
   );
 
   return (
     <Formik
       initialValues={initialValues as UpdateValues}
       initialStatus={initialStatus}
-      journalEntry={data?.journalEntry ?? null}
+      entry={data?.entry ?? null}
       loading={loading}
       onSubmit={onSubmit}
       enableReinitialize={true}

@@ -6,48 +6,48 @@ import { isEqual } from "date-fns";
 import { parseName } from "humanparser";
 
 import {
-  JournalEntryUpdateFields,
+  EntryUpdateFields,
   PayMethodEntryOptFragment,
   DeptEntryOptFragment,
   CatEntryOptFragment,
-  JournalEntrySourceType,
+  SourceType,
   UpdateEntryMutation as UpdateEntry,
   UpdateEntryMutationVariables as UpdateEntryVars,
-  JournalEntryDateOfRecordUpdate,
+  EntryDateOfRecordUpdate,
 } from "../../../../apollo/graphTypes";
+import { deserializeRational } from "../../../../apollo/scalars";
 import { TransmutationValue } from "../../../../utils/formik";
 import { CHECK_ID } from "../../constants";
-import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/JournalEntries.gql";
+import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/Entries.gql";
 import { SourceValue } from "./submitAdd";
-import { rationalToFraction } from "../../../../utils/rational";
 
 const NULLISH = Symbol();
 
 export type UpdateValues = O.NonNullable<
   O.Overwrite<
     O.Required<
-      JournalEntryUpdateFields,
-      keyof JournalEntryUpdateFields,
+      EntryUpdateFields,
+      keyof EntryUpdateFields,
       "deep"
     >,
     {
       category: TransmutationValue<string, CatEntryOptFragment[]>;
       date: TransmutationValue<
         Date,
-        NonNullable<JournalEntryUpdateFields["date"]>
+        NonNullable<EntryUpdateFields["date"]>
       >;
       dateOfRecord: O.Overwrite<
-        JournalEntryDateOfRecordUpdate,
+        EntryDateOfRecordUpdate,
         {
           date: TransmutationValue<
             Date | null,
-            NonNullable<JournalEntryDateOfRecordUpdate["date"]>
+            NonNullable<EntryDateOfRecordUpdate["date"]>
           >;
         }
       > | null;
       total: TransmutationValue<
         string,
-        NonNullable<JournalEntryUpdateFields["total"]>
+        NonNullable<EntryUpdateFields["total"]>
       >;
       paymentMethod: TransmutationValue<
         string,
@@ -56,11 +56,11 @@ export type UpdateValues = O.NonNullable<
       department: DeptEntryOptFragment;
       source: TransmutationValue<
         string,
-        (JournalEntrySourceType | SourceValue)[]
+        (SourceType | SourceValue)[]
       >;
     }
   >,
-  keyof Omit<JournalEntryUpdateFields, "description" | "dateOfRecord">
+  keyof Omit<EntryUpdateFields, "description" | "dateOfRecord">
 >;
 
 export type IniUpdateValues = O.Overwrite<
@@ -69,7 +69,7 @@ export type IniUpdateValues = O.Overwrite<
     paymentMethod: TransmutationValue<string, PayMethodEntryOptFragment[]>;
     source: TransmutationValue<
       string,
-      (JournalEntrySourceType | U.Exclude<SourceValue, string>)[]
+      (SourceType | U.Exclude<SourceValue, string>)[]
     >;
   }
 >;
@@ -77,13 +77,13 @@ export type IniUpdateValues = O.Overwrite<
 const UPDATE_ENTRY = gql`
   mutation UpdateEntry(
     $id: ID!
-    $fields: JournalEntryUpdateFields!
+    $fields: EntryUpdateFields!
     $paymentMethodAdd: PaymentMethodAddFields
-    $paymentMethodUpdate: JournalEntryUpdatePaymentMethod
+    $paymentMethodUpdate: EntryUpdatePaymentMethod
     $personAdd: PersonAddFields
     $businessAdd: BusinessAddFields
   ) {
-    journalEntryUpdate(
+    entryUpdate(
       id: $id
       fields: $fields
       paymentMethodAdd: $paymentMethodAdd
@@ -91,7 +91,7 @@ const UPDATE_ENTRY = gql`
       personAdd: $personAdd
       businessAdd: $businessAdd
     ) {
-      ...JournalEntry_1Fragment
+      ...Entry_1Fragment
     }
   }
   ${JOURNAL_ENTRY_FRAGMENT}
@@ -127,7 +127,7 @@ const submitUpdate: (
 
   // Date of Record
   const dateOfRecord = (() => {
-    const dateOfRecord = {} as JournalEntryDateOfRecordUpdate;
+    const dateOfRecord = {} as EntryDateOfRecordUpdate;
     // date
     if (
       !isEqual(
@@ -173,8 +173,8 @@ const submitUpdate: (
 
   // Total
   const total =
-    rationalToFraction(values.total.value).compare(
-      rationalToFraction(iniValues.total.value)
+    deserializeRational(values.total.value).compare(
+      deserializeRational(iniValues.total.value)
     ) === 0
       ? null
       : values.total.value;
@@ -246,23 +246,23 @@ const submitUpdate: (
 
   // Source
   const { source, personAdd, businessAdd } = (() => {
-    const srcType = values.source.value[0] as JournalEntrySourceType;
+    const srcType = values.source.value[0] as SourceType;
     const src = values.source.value[
       values.source.value.length - 1
     ] as SourceValue;
 
-    const iniSrcType = iniValues.source.value[0] as JournalEntrySourceType;
+    const iniSrcType = iniValues.source.value[0] as SourceType;
     const iniSrc = iniValues.source.value[
       iniValues.source.value.length - 1
     ] as Exclude<SourceValue, string>;
 
     if (typeof src === "string") {
-      if (srcType === JournalEntrySourceType.Person) {
+      if (srcType === SourceType.Person) {
         const parsedName = parseName(src);
 
         return {
           source: {
-            sourceType: JournalEntrySourceType.Person,
+            sourceType: SourceType.Person,
             id: "",
           },
           businessAdd: null,
@@ -276,7 +276,7 @@ const submitUpdate: (
       } else {
         return {
           source: {
-            sourceType: JournalEntrySourceType.Business,
+            sourceType: SourceType.Business,
             id: "",
           },
           businessAdd: {
@@ -299,11 +299,11 @@ const submitUpdate: (
         sourceType: (() => {
           switch (src.__typename) {
             case "Business":
-              return JournalEntrySourceType.Business;
+              return SourceType.Business;
             case "Department":
-              return JournalEntrySourceType.Department;
+              return SourceType.Department;
             case "Person":
-              return JournalEntrySourceType.Person;
+              return SourceType.Person;
           }
         })(),
         id: src.id,

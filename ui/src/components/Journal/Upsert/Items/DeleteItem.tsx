@@ -21,8 +21,8 @@ import OverlayLoading from "../../../utils/OverlayLoading";
 
 const DELETE_ITEM = gql`
   mutation DeleteItem($id: ID!) {
-    journalEntryDeleteItem(id: $id) {
-      journalEntryItem {
+    entryDeleteItem(id: $id) {
+      entryItem {
         id
         __typename
         deleted

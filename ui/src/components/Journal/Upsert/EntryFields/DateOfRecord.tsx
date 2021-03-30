@@ -23,7 +23,7 @@ import {
   useFormikStatus,
   FormikStatusType,
 } from "../../../../utils/formik";
-import { JournalEntryDateOfRecordUpdate } from "../../../../apollo/graphTypes";
+import { EntryDateOfRecordUpdate } from "../../../../apollo/graphTypes";
 import { O } from "ts-toolbelt";
 
 const inputProps = {
@@ -44,11 +44,11 @@ const dateValueTransmutator = createValueTransmutator(
   }
 );
 export type DateOfRecordValue = O.Overwrite<
-  JournalEntryDateOfRecordUpdate,
+  EntryDateOfRecordUpdate,
   {
     date: TransmutationValue<
       Date | null,
-      NonNullable<JournalEntryDateOfRecordUpdate["date"]>
+      NonNullable<EntryDateOfRecordUpdate["date"]>
     >;
   }
 > | null;

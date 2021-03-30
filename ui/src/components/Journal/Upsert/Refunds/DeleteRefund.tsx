@@ -13,7 +13,7 @@ import { Delete as DeleteIcon, Cancel as CancelIcon } from "@material-ui/icons";
 import gql from "graphql-tag";
 import { useMutation } from "@apollo/client";
 
-import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/JournalEntries.gql";
+import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/Entries.gql";
 import {
   DeleteRefundMutation,
   DeleteRefundMutationVariables as DeleteRefundVars,
@@ -22,8 +22,8 @@ import OverlayLoading from "../../../utils/OverlayLoading";
 
 const DELETE_REFUND = gql`
   mutation DeleteRefund($id: ID!) {
-    journalEntryDeleteRefund(id: $id) {
-      ...JournalEntry_1Fragment
+    entryDeleteRefund(id: $id) {
+      ...Entry_1Fragment
     }
   }
   ${JOURNAL_ENTRY_FRAGMENT}

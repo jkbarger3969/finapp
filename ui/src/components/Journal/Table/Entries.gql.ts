@@ -1,7 +1,7 @@
 import gql from "graphql-tag";
 
 export const JOURNAL_ENTRY_PAY_METHOD_FRAGMENT = gql`
-  fragment JournalEntryPayMethod_1Fragment on PaymentMethod {
+  fragment EntryPayMethod_1Fragment on PaymentMethod {
     __typename
     id
     name
@@ -13,7 +13,7 @@ export const JOURNAL_ENTRY_PAY_METHOD_FRAGMENT = gql`
 `;
 
 export const JOURNAL_ENTRY_CATEGORY_FRAGMENT = gql`
-  fragment JournalEntryCategory_1Fragment on JournalEntryCategory {
+  fragment Category_1Fragment on Category {
     __typename
     id
     type
@@ -22,7 +22,7 @@ export const JOURNAL_ENTRY_CATEGORY_FRAGMENT = gql`
 `;
 
 export const JOURNAL_ENTRY_DEPT_FRAGMENT = gql`
-  fragment JournalEntryDept_1Fragment on Department {
+  fragment EntryDept_1Fragment on Department {
     __typename
     id
     name
@@ -41,18 +41,14 @@ export const JOURNAL_ENTRY_DEPT_FRAGMENT = gql`
 `;
 
 export const JOURNAL_ENTRY_REFUND = gql`
-  fragment JournalEntryRefund_1Fragment on JournalEntryRefund {
+  fragment EntryRefund_1Fragment on EntryRefund {
     __typename
     id
     date
     description
-    total {
-      n
-      d
-      s
-    }
+    total
     paymentMethod {
-      ...JournalEntryPayMethod_1Fragment
+      ...EntryPayMethod_1Fragment
     }
     reconciled
     lastUpdate
@@ -62,20 +58,16 @@ export const JOURNAL_ENTRY_REFUND = gql`
 `;
 
 export const JOURNAL_ENTRY_ITEM = gql`
-  fragment JournalEntryItem_1Fragment on JournalEntryItem {
+  fragment EntryItem_1Fragment on EntryItem {
     __typename
     id
     category {
-      ...JournalEntryCategory_1Fragment
+      ...Category_1Fragment
     }
     department {
-      ...JournalEntryDept_1Fragment
+      ...EntryDept_1Fragment
     }
-    total {
-      n
-      d
-      s
-    }
+    total
     units
     description
     lastUpdate
@@ -86,7 +78,7 @@ export const JOURNAL_ENTRY_ITEM = gql`
 `;
 
 export const JOURNAL_ENTRY_FRAGMENT = gql`
-  fragment JournalEntry_1Fragment on JournalEntry {
+  fragment Entry_1Fragment on Entry {
     __typename
     id
     date
@@ -112,14 +104,14 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
     }
     type
     category {
-      ...JournalEntryCategory_1Fragment
+      ...Category_1Fragment
     }
     department {
-      ...JournalEntryDept_1Fragment
+      ...EntryDept_1Fragment
     }
     description
     paymentMethod {
-      ...JournalEntryPayMethod_1Fragment
+      ...EntryPayMethod_1Fragment
     }
     source {
       __typename
@@ -139,16 +131,12 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
         deptName: name
       }
     }
-    total {
-      n
-      d
-      s
-    }
+    total
     refunds {
-      ...JournalEntryRefund_1Fragment
+      ...EntryRefund_1Fragment
     }
     items {
-      ...JournalEntryItem_1Fragment
+      ...EntryItem_1Fragment
     }
     deleted
     lastUpdate
@@ -162,10 +150,10 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
 `;
 
 export const JOURNAL_ENTRIES = gql`
-  query JournalEntries_1($where: JournalEntiresWhere!) {
-    journalEntries(where: $where)
-      @connection(key: "JournalEntries_1", filter: ["where"]) {
-      ...JournalEntry_1Fragment
+  query Entries_1($where: EntriesWhere!) {
+    entries(where: $where)
+      @connection(key: "Entries_1", filter: ["where"]) {
+      ...Entry_1Fragment
     }
     fiscalYears {
       __typename
@@ -179,18 +167,18 @@ export const JOURNAL_ENTRIES = gql`
 `;
 
 export const JOURNAL_ENTRY_ADDED_SUB = gql`
-  subscription JournalEntryAdded_1 {
-    journalEntryAdded {
-      ...JournalEntry_1Fragment
+  subscription EntryAdded_1 {
+    entryAdded {
+      ...Entry_1Fragment
     }
   }
   ${JOURNAL_ENTRY_FRAGMENT}
 `;
 
 export const JOURNAL_ENTRY_UPDATED_SUB = gql`
-  subscription JournalEntryUpdated_1 {
-    journalEntryUpdated {
-      ...JournalEntry_1Fragment
+  subscription EntryUpdated_1 {
+    entryUpdated {
+      ...Entry_1Fragment
     }
   }
   ${JOURNAL_ENTRY_FRAGMENT}

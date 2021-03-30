@@ -21,10 +21,11 @@ import Fraction from "fraction.js";
 import {
   UpdateItemIniStateQuery as UpdateItemIniState,
   UpdateItemIniStateQueryVariables as UpdateItemIniStateVars,
-  JournalEntry_3Fragment as JournalEntryFragment,
+  Entry_3Fragment as EntryFragment,
   FiscalYearQuery,
   FiscalYearQueryVariables,
 } from "../../../../apollo/graphTypes";
+import { deserializeRational } from "../../../../apollo/scalars";
 import submitUpdate, { UpdateValues } from "./submitUpdate";
 import { JOURNAL_FRAGMENT } from "./items.gql";
 import {
@@ -44,7 +45,6 @@ import Department from "../EntryFields/Department";
 import Total from "../EntryFields/Total";
 import Category from "../EntryFields/Category";
 import Units from "./ItemFields/Units";
-import { rationalToFraction } from "../../../../utils/rational";
 import { ApolloError } from "@apollo/client";
 
 export interface UpdateItemProps {
@@ -57,10 +57,10 @@ export interface UpdateItemProps {
 
 const UPDATE_ITEM_INI_STATE = gql`
   query UpdateItemIniState($entryId: ID!, $itemId: ID!) {
-    journalEntry(id: $entryId) {
-      ...JournalEntry_3Fragment
+    entry(id: $entryId) {
+      ...Entry_3Fragment
     }
-    journalEntryItem(id: $itemId) {
+    entryItem(id: $itemId) {
       __typename
       id
       department {
@@ -74,11 +74,7 @@ const UPDATE_ITEM_INI_STATE = gql`
       }
       description
       units
-      total {
-        n
-        d
-        s
-      }
+      total
     }
   }
   ${JOURNAL_FRAGMENT}
@@ -95,7 +91,7 @@ const gridEntryResponsiveProps: GridProps = {
 
 const UpdateItemDialog = (
   props: UpdateItemProps & {
-    journalEntry: JournalEntryFragment | null;
+    entry: EntryFragment | null;
     loading: boolean;
     handleSubmit: FormikProps<UpdateValues>["handleSubmit"];
   }
@@ -105,7 +101,7 @@ const UpdateItemDialog = (
     open,
     onClose,
     onExited: onExitedCb,
-    journalEntry,
+    entry,
     loading,
     handleSubmit,
   } = props;
@@ -123,7 +119,7 @@ const UpdateItemDialog = (
     [setFormikStatus]
   );
 
-  const date = journalEntry?.date || "";
+  const date = entry?.date || "";
 
   const { data: fiscalYearData } = useQuery<
     FiscalYearQuery,
@@ -141,10 +137,10 @@ const UpdateItemDialog = (
     [fiscalYearData]
   );
 
-  const type = journalEntry?.type ?? null;
+  const type = entry?.type ?? null;
 
-  const total = journalEntry?.total;
-  const items = journalEntry?.items || [];
+  const total = entry?.total;
+  const items = entry?.items || [];
   const maxTotal = useMemo(() => {
     if (total) {
       const totalItems = items.reduce(
@@ -152,10 +148,10 @@ const UpdateItemDialog = (
           // Do NOT include item being updated in max total calculation
           deleted || id === itemId
             ? totalItems
-            : totalItems.add(rationalToFraction(total)),
+            : totalItems.add(deserializeRational(total)),
         new Fraction(0)
       );
-      return rationalToFraction(total).sub(totalItems);
+      return deserializeRational(total).sub(totalItems);
     }
     return new Fraction(Number.MAX_SAFE_INTEGER);
   }, [total, items, itemId]);
@@ -314,28 +310,28 @@ const UpdateItem = (props: UpdateItemProps): JSX.Element => {
     [error]
   );
 
-  const journalEntryItem = data?.journalEntryItem;
+  const entryItem = data?.entryItem;
   const initialValues = useMemo<UpdateValues>(() => {
-    if (!journalEntryItem) {
+    if (!entryItem) {
       return {} as UpdateValues;
     }
 
     const total = {
-      inputValue: rationalToFraction(journalEntryItem.total)
+      inputValue: deserializeRational(entryItem.total)
         .round(2)
         .toString(),
-      value: journalEntryItem.total,
+      value: entryItem.total,
     };
 
     const category = (() => {
-      if (!journalEntryItem.category) {
+      if (!entryItem.category) {
         return {
           inputValue: "",
           value: [],
         };
       }
 
-      const { ancestors, ...category } = journalEntryItem.category;
+      const { ancestors, ...category } = entryItem.category;
 
       // Array.prototype.sort mutates the array, create copy.
       const value = [...ancestors].sort((a, b) => {
@@ -357,11 +353,11 @@ const UpdateItem = (props: UpdateItemProps): JSX.Element => {
       };
     })();
 
-    const department = journalEntryItem.department ?? null;
+    const department = entryItem.department ?? null;
 
-    const description = journalEntryItem.description ?? null;
+    const description = entryItem.description ?? null;
 
-    const units = journalEntryItem.units;
+    const units = entryItem.units;
 
     return {
       total,
@@ -370,7 +366,7 @@ const UpdateItem = (props: UpdateItemProps): JSX.Element => {
       department,
       description,
     };
-  }, [journalEntryItem]);
+  }, [entryItem]);
 
   const client = useApolloClient();
   const onSubmit = useCallback<FormikConfig<UpdateValues>["onSubmit"]>(
@@ -418,7 +414,7 @@ const UpdateItem = (props: UpdateItemProps): JSX.Element => {
           open={open}
           onClose={onClose}
           onExited={onExited}
-          journalEntry={data?.journalEntry ?? null}
+          entry={data?.entry ?? null}
           loading={loading}
           handleSubmit={props.handleSubmit}
         />

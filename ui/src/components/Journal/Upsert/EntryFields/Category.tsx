@@ -16,7 +16,7 @@ import {
   CatEntryOptsQueryVariables as CatEntryOptsVars,
   CatEntryOptFragment as CatValue,
   CatEntryOptFragment,
-  JournalEntryType,
+  EntryType,
 } from "../../../../apollo/graphTypes";
 import {
   TransmutationValue,
@@ -25,8 +25,8 @@ import {
 } from "../../../../utils/formik";
 
 const CAT_OPTS_QUERY = gql`
-  query CatEntryOpts($where: JournalEntryCategoryWhereInput!) {
-    catOpts: journalEntryCategories(where: $where) {
+  query CatEntryOpts($where: CategoryWhereInput!) {
+    catOpts: categories(where: $where) {
       ...CatEntryOptFragment
     }
   }
@@ -74,7 +74,7 @@ const renderTags: AutocompleteProps["renderTags"] = (
 const NULLISH = Symbol();
 
 export type CategoryProps = {
-  entryType?: JournalEntryType | null;
+  entryType?: EntryType | null;
   variant?: "filled" | "outlined";
   autoFocus?: boolean;
 } & Omit<TextFieldProps, "value">;
@@ -82,7 +82,7 @@ export type CategoryProps = {
 const Category = (props: CategoryProps): JSX.Element => {
   const formikContext = useFormikContext<{
     category?: CatValueBeta;
-    type?: JournalEntryType;
+    type?: EntryType;
   }>();
 
   const { disabled: disabledFromProps = false, required } = props;

@@ -29,6 +29,7 @@ import {
   FiscalYearQuery,
   FiscalYearQueryVariables,
 } from "../../../../apollo/graphTypes";
+import { deserializeRational } from "../../../../apollo/scalars";
 import Description from "../EntryFields/Description";
 import Total from "../EntryFields/Total";
 import Category from "../EntryFields/Category";
@@ -42,14 +43,13 @@ import {
 import OverlayLoading from "../../../utils/OverlayLoading";
 import Overlay from "../../../utils/Overlay";
 import { JOURNAL_FRAGMENT } from "./items.gql";
-import { rationalToFraction } from "../../../../utils/rational";
 import { ApolloError } from "@apollo/client";
 import { FISCAL_YEAR } from "../upsertEntry.gql";
 
 const ENTRY_ITEM_STATE = gql`
   query GetEntryItemState_1($id: ID!) {
-    journalEntry(id: $id) {
-      ...JournalEntry_3Fragment
+    entry(id: $id) {
+      ...Entry_3Fragment
     }
   }
   ${JOURNAL_FRAGMENT}
@@ -117,7 +117,7 @@ const AddItemDialog = (
     [setFormikStatus]
   );
 
-  const date = data?.journalEntry?.date || "";
+  const date = data?.entry?.date || "";
 
   const { data: fiscalYearData } = useQuery<
     FiscalYearQuery,
@@ -135,16 +135,18 @@ const AddItemDialog = (
     [fiscalYearData]
   );
 
-  const type = data?.journalEntry?.type ?? null;
+  const type = data?.entry?.type ?? null;
 
-  const total = data?.journalEntry?.total;
-  const items = data?.journalEntry?.items || [];
+  const total = data?.entry?.total;
+  const items = data?.entry?.items || [];
   const maxTotal = useMemo(() => {
     if (total) {
       const totalItems = items.reduce((totalItems, { deleted, total }) => {
-        return deleted ? totalItems : totalItems.add(rationalToFraction(total));
+        return deleted
+          ? totalItems
+          : totalItems.add(deserializeRational(total));
       }, new Fraction(0));
-      return rationalToFraction(total).sub(totalItems);
+      return deserializeRational(total).sub(totalItems);
     }
     return new Fraction(Number.MAX_SAFE_INTEGER);
   }, [total, items]);

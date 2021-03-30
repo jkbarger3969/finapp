@@ -20,8 +20,9 @@ import Fraction from "fraction.js";
 import {
   UpdateRefundIniStateQuery as UpdateRefundIniState,
   UpdateRefundIniStateQueryVariables as UpdateRefundIniStateVars,
-  JournalEntry_2Fragment as JournalEntryFragment,
+  Entry_2Fragment as EntryFragment,
 } from "../../../../apollo/graphTypes";
+import { deserializeRational } from "../../../../apollo/scalars";
 import submitUpdate, { UpdateValues, IniUpdateValues } from "./submitUpdate";
 import { JOURNAL_FRAGMENT } from "./refunds.gql";
 import { PAY_METHOD_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";
@@ -37,7 +38,6 @@ import PaymentMethod from "../EntryFields/PaymentMethod";
 import Total from "../EntryFields/Total";
 import DateEntry from "../EntryFields/DateEntry";
 import Reconcile from "../EntryFields/Reconcile";
-import { rationalToFraction } from "../../../../utils/rational";
 
 export interface UpdateRefundProps {
   entryId: string | null;
@@ -49,10 +49,10 @@ export interface UpdateRefundProps {
 
 const UPDATE_REFUND_INI_STATE = gql`
   query UpdateRefundIniState($entryId: ID!, $refundId: ID!) {
-    journalEntry(id: $entryId) {
-      ...JournalEntry_2Fragment
+    entry(id: $entryId) {
+      ...Entry_2Fragment
     }
-    journalEntryRefund(id: $refundId) {
+    entryRefund(id: $refundId) {
       __typename
       id
       date
@@ -63,11 +63,7 @@ const UPDATE_REFUND_INI_STATE = gql`
           ...PayMethodEntryOptFragment
         }
       }
-      total {
-        n
-        d
-        s
-      }
+      total
       reconciled
     }
   }
@@ -77,7 +73,7 @@ const UPDATE_REFUND_INI_STATE = gql`
 
 const UpdateRefundDialog = (
   props: UpdateRefundProps & {
-    journalEntry: JournalEntryFragment | null;
+    entry: EntryFragment | null;
     loading: boolean;
     handleSubmit: FormikProps<UpdateValues>["handleSubmit"];
   }
@@ -87,7 +83,7 @@ const UpdateRefundDialog = (
     open,
     onClose,
     onExited: onExitedCb,
-    journalEntry,
+    entry,
     loading,
     handleSubmit,
   } = props;
@@ -96,8 +92,8 @@ const UpdateRefundDialog = (
 
   const [formikStatus, setFormikStatus] = useFormikStatus();
 
-  const total = journalEntry?.total;
-  const refunds = journalEntry?.refunds || [];
+  const total = entry?.total;
+  const refunds = entry?.refunds || [];
   const maxTotal = useMemo(() => {
     if (total) {
       const totalRefunds = refunds.reduce(
@@ -105,15 +101,15 @@ const UpdateRefundDialog = (
           // Do NOT include refund being updated in max total calculation
           deleted || id === refundId
             ? totalRefunds
-            : totalRefunds.add(rationalToFraction(total)),
+            : totalRefunds.add(deserializeRational(total)),
         new Fraction(0)
       );
-      return rationalToFraction(total).sub(totalRefunds);
+      return deserializeRational(total).sub(totalRefunds);
     }
     return new Fraction(Number.MAX_SAFE_INTEGER);
   }, [total, refunds, refundId]);
 
-  const date = journalEntry?.date;
+  const date = entry?.date;
   const minDate = useMemo<Date | undefined>(
     () => (date ? new Date(date) : undefined),
     [date]
@@ -286,19 +282,19 @@ const UpdateRefund = (props: UpdateRefundProps): JSX.Element => {
     [error]
   );
 
-  const journalEntryRefund = data?.journalEntryRefund;
+  const entryRefund = data?.entryRefund;
   const initialValues = useMemo<IniUpdateValues>(() => {
-    if (!journalEntryRefund) {
+    if (!entryRefund) {
       return {} as IniUpdateValues;
     }
 
     const date = {
-      inputValue: new Date(journalEntryRefund.date),
-      value: journalEntryRefund.date,
+      inputValue: new Date(entryRefund.date),
+      value: entryRefund.date,
     };
 
     const paymentMethod = (() => {
-      const { ancestors, ...paymentMethod } = journalEntryRefund.paymentMethod;
+      const { ancestors, ...paymentMethod } = entryRefund.paymentMethod;
 
       // Array.prototype.sort mutates the array, create copy.
       const value = [...ancestors].sort((a, b) => {
@@ -321,15 +317,15 @@ const UpdateRefund = (props: UpdateRefundProps): JSX.Element => {
     })();
 
     const total = {
-      inputValue: rationalToFraction(journalEntryRefund.total)
+      inputValue: deserializeRational(entryRefund.total)
         .round(2)
         .toString(),
-      value: journalEntryRefund.total,
+      value: entryRefund.total,
     };
 
-    const reconciled = journalEntryRefund.reconciled;
+    const reconciled = entryRefund.reconciled;
 
-    const description = journalEntryRefund.description ?? null;
+    const description = entryRefund.description ?? null;
 
     return {
       date,
@@ -338,7 +334,7 @@ const UpdateRefund = (props: UpdateRefundProps): JSX.Element => {
       reconciled,
       description,
     };
-  }, [journalEntryRefund]);
+  }, [entryRefund]);
 
   const client = useApolloClient();
   const onSubmit = useCallback<FormikConfig<UpdateValues>["onSubmit"]>(
@@ -386,7 +382,7 @@ const UpdateRefund = (props: UpdateRefundProps): JSX.Element => {
           open={open}
           onClose={onClose}
           onExited={onExited}
-          journalEntry={data?.journalEntry ?? null}
+          entry={data?.entry ?? null}
           loading={loading}
           handleSubmit={props.handleSubmit}
         />

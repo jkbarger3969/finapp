@@ -14,7 +14,11 @@
         "dedupeOperationSuffix": true,
         "exportFragmentSpreadSubTypes": true,
         "noSchemaStitching": true,
-        "preResolveTypes": true
+        "preResolveTypes": true,
+        "scalars": {
+          "Date": "string",
+          "Rational": "string"
+        }
       }
     },
     "./src/apollo/fragmentTypes.json": {

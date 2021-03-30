@@ -13,12 +13,12 @@ import {
   FormControl,
   FormHelperText,
 } from "@material-ui/core";
-import { JournalEntryType } from "../../../../apollo/graphTypes";
+import { EntryType } from "../../../../apollo/graphTypes";
 import { useFormikStatus, FormikStatusType } from "../../../../utils/formik";
 
 const NULLISH: unique symbol = Symbol();
 
-const validate = (value?: JournalEntryType): void | string => {
+const validate = (value?: EntryType): void | string => {
   if (((value ?? NULLISH) as unknown) === NULLISH) {
     return "Type Required";
   }
@@ -37,7 +37,7 @@ const Type = (
 
   const { isSubmitting } = useFormikContext();
 
-  const [field, meta, helpers] = useField<JournalEntryType | null>({
+  const [field, meta, helpers] = useField<EntryType | null>({
     name: "type",
     validate,
   });
@@ -51,7 +51,7 @@ const Type = (
       exclusive: true,
       disabled: isSubmitting,
       ...field,
-      onChange: async (event, value: JournalEntryType) => {
+      onChange: async (event, value: EntryType) => {
         if (((value ?? NULLISH) as unknown) === NULLISH) {
           return;
         }
@@ -73,12 +73,12 @@ const Type = (
     () => (
       <Box pl={1} clone>
         <ToggleButtonGroup {...props} {...toggleButtonGroupProps}>
-          <ToggleButton disabled={disabled} value={JournalEntryType.Credit}>
+          <ToggleButton disabled={disabled} value={EntryType.Credit}>
             <Tooltip arrow placement="top" title="Credit">
               <BankPlus />
             </Tooltip>
           </ToggleButton>
-          <ToggleButton disabled={disabled} value={JournalEntryType.Debit}>
+          <ToggleButton disabled={disabled} value={EntryType.Debit}>
             <Tooltip arrow placement="top" title="Debit">
               <BankMinus />
             </Tooltip>

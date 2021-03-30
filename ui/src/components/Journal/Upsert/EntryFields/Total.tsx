@@ -2,7 +2,6 @@ import React, { useMemo, useCallback } from "react";
 import { TextField, TextFieldProps, InputAdornment } from "@material-ui/core";
 import { useField, FieldInputProps } from "formik";
 import numeral from "numeral";
-import Fraction from "fraction.js";
 
 import {
   createValueTransmutator,
@@ -10,13 +9,9 @@ import {
   useFormikStatus,
   FormikStatusType,
 } from "../../../../utils/formik";
-import { RationalInput } from "../../../../apollo/graphTypes";
-import {
-  fractionToRational,
-  rationalToFraction,
-} from "../../../../utils/rational";
+import { Rational } from "../../../../apollo/scalars";
 
-export type TotalValue = TransmutationValue<string, RationalInput>;
+export type TotalValue = TransmutationValue<string, Rational>;
 
 const inputProps = {
   min: "0.00",
@@ -26,19 +21,17 @@ const inputProps = {
 export const totalValueTransmutator = createValueTransmutator(
   (inputValue: string) => {
     if (typeof inputValue === "string" && !inputValue.trim()) {
-      return fractionToRational(new Fraction(0));
+      return new Rational(0);
     }
-    return fractionToRational(
-      new Fraction(inputValue as string | number).round(2)
-    );
+    return new Rational(inputValue as string | number).round(2);
   }
 );
 
 const Total = (
   props: {
     variant?: "filled" | "outlined";
-    minTotal?: Fraction;
-    maxTotal?: Fraction;
+    minTotal?: Rational;
+    maxTotal?: Rational;
   } & Omit<
     TextFieldProps,
     | "variant"
@@ -61,14 +54,14 @@ const Total = (
     autoFocus = false,
     disabled = false,
     variant = "filled",
-    maxTotal = new Fraction(Number.MAX_SAFE_INTEGER),
-    minTotal: minTotalProp = new Fraction(0),
+    maxTotal = new Rational(Number.MAX_SAFE_INTEGER),
+    minTotal: minTotalProp = new Rational(0),
     ...textFieldProps
   } = props;
 
   const minTotal =
-    new Fraction(1, 100).compare(minTotalProp) > 0
-      ? new Fraction(1, 100)
+    new Rational(1, 100).compare(minTotalProp) > 0
+      ? new Rational(1, 100)
       : minTotalProp;
 
   // Math.max(0.01, minTotalProp);
@@ -79,7 +72,7 @@ const Total = (
         return "Total Required";
       }
 
-      const num = rationalToFraction(value.value);
+      const num = value.value;
 
       if (Number.isNaN(Number.parseInt(value.inputValue))) {
         return "Invalid Number";
@@ -87,7 +80,7 @@ const Total = (
         return `Cannot be greater than ${numeral(maxTotal.valueOf()).format(
           "$0,0.00"
         )}`;
-      } else if (num.compare(new Fraction(0)) === 0) {
+      } else if (num.compare(new Rational(0)) === 0) {
         return "Cannot be 0";
       } else if (num.compare(minTotal) < 0) {
         return `Cannot be less than ${numeral(minTotal.valueOf()).format(
@@ -124,8 +117,8 @@ const Total = (
   );
 
   const helperText = useMemo(() => {
-    const maxSafe = new Fraction(Number.MAX_SAFE_INTEGER);
-    const minValid = new Fraction(1, 100);
+    const maxSafe = new Rational(Number.MAX_SAFE_INTEGER);
+    const minValid = new Rational(1, 100);
     if (touched && error) {
       return error;
     } else if (

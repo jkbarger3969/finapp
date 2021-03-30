@@ -10,9 +10,10 @@ import numeral from "numeral";
 import { Box, useTheme, Divider } from "@material-ui/core";
 
 import {
-  JournalEntry_1Fragment as JournalEntryFragment,
-  JournalEntryItem_1Fragment as JournalEntryItemFragment,
+  Entry_1Fragment as EntryFragment,
+  EntryItem_1Fragment as EntryItemFragment,
 } from "../../../apollo/graphTypes";
+import { deserializeRational } from "../../../apollo/scalars";
 import tableIcons from "../../utils/materialTableIcons";
 import AddItem from "../Upsert/Items/AddItem";
 import UpdateItem from "../Upsert/Items/UpdateItem";
@@ -22,10 +23,9 @@ import {
   AddCircle as AddCircleIcon,
   Edit as EditIcon,
 } from "@material-ui/icons";
-import { rationalToFraction } from "../../../utils/rational";
 
 export interface ItemsProps {
-  entry: JournalEntryFragment;
+  entry: EntryFragment;
 }
 
 const Items = (props: ItemsProps): JSX.Element => {
@@ -63,30 +63,30 @@ const Items = (props: ItemsProps): JSX.Element => {
   ]);
 
   const actions = useMemo<
-    MaterialTableProps<JournalEntryItemFragment>["actions"]
+    MaterialTableProps<EntryItemFragment>["actions"]
   >(() => {
     return [
       {
-        icon: DeleteIcon as Action<JournalEntryItemFragment>["icon"],
+        icon: DeleteIcon as Action<EntryItemFragment>["icon"],
         tooltip: "Delete Item",
         onClick: (event, rowData) =>
-          setDeleteItem((rowData as JournalEntryItemFragment).id),
+          setDeleteItem((rowData as EntryItemFragment).id),
       },
       {
-        icon: EditIcon as Action<JournalEntryItemFragment>["icon"],
+        icon: EditIcon as Action<EntryItemFragment>["icon"],
         tooltip: "Edit Item",
         onClick: (event, rowData) => {
           setUpdateItemOpen(true);
           setUpdateItem({
             entryId,
-            itemId: (rowData as JournalEntryItemFragment).id,
+            itemId: (rowData as EntryItemFragment).id,
           });
         },
       },
       {
         icon: ((props: Record<string, unknown>) => (
           <AddCircleIcon {...props} />
-        )) as Action<JournalEntryItemFragment>["icon"],
+        )) as Action<EntryItemFragment>["icon"],
         iconProps: {
           color: "secondary",
           fontSize: "large",
@@ -101,13 +101,13 @@ const Items = (props: ItemsProps): JSX.Element => {
     ];
   }, [entryId]);
 
-  const columns = useMemo<Column<JournalEntryItemFragment>[]>(() => {
+  const columns = useMemo<Column<EntryItemFragment>[]>(() => {
     return [
       {
         field: "total",
         title: "Total",
         render: ({ total }) =>
-          numeral(rationalToFraction(total).valueOf()).format("$0,0.00"),
+          numeral(deserializeRational(total).valueOf()).format("$0,0.00"),
       },
       {
         field: "units",

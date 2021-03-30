@@ -5,19 +5,19 @@ import { ApolloClient } from "@apollo/client";
 import { parseName } from "humanparser";
 
 import {
-  JournalEntryAddFields,
+  EntryAddFields,
   PayMethodEntryOptFragment,
   DeptEntryOptFragment,
   CatEntryOptFragment,
   SrcEntryBizOptFragment,
   SrcEntryDeptOptFragment,
   SrcEntryPersonOptFragment,
-  JournalEntrySourceType,
+  SourceType,
   AddEntryMutation as AddEntry,
   AddEntryMutationVariables as AddEntryVars,
 } from "../../../../apollo/graphTypes";
 import { TransmutationValue } from "../../../../utils/formik";
-import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/JournalEntries.gql";
+import { JOURNAL_ENTRY_FRAGMENT } from "../../Table/Entries.gql";
 
 export type SourceValue =
   | SrcEntryBizOptFragment
@@ -26,11 +26,11 @@ export type SourceValue =
   | string;
 
 export type AddValues = O.Overwrite<
-  O.Required<JournalEntryAddFields, keyof JournalEntryAddFields, "deep">,
+  O.Required<EntryAddFields, keyof EntryAddFields, "deep">,
   {
     category: TransmutationValue<string, CatEntryOptFragment[]>;
-    date: TransmutationValue<Date | null, JournalEntryAddFields["date"]>;
-    total: TransmutationValue<string, JournalEntryAddFields["total"]>;
+    date: TransmutationValue<Date | null, EntryAddFields["date"]>;
+    total: TransmutationValue<string, EntryAddFields["total"]>;
     paymentMethod: TransmutationValue<
       string,
       (PayMethodEntryOptFragment | string)[]
@@ -38,25 +38,25 @@ export type AddValues = O.Overwrite<
     department: DeptEntryOptFragment;
     source: TransmutationValue<
       string,
-      (JournalEntrySourceType | SourceValue)[]
+      (SourceType | SourceValue)[]
     >;
   }
 >;
 
 const ADD_ENTRY = gql`
   mutation AddEntry(
-    $fields: JournalEntryAddFields!
+    $fields: EntryAddFields!
     $paymentMethodAdd: PaymentMethodAddFields
     $personAdd: PersonAddFields
     $businessAdd: BusinessAddFields
   ) {
-    journalEntryAdd(
+    entryAdd(
       fields: $fields
       paymentMethodAdd: $paymentMethodAdd
       personAdd: $personAdd
       businessAdd: $businessAdd
     ) {
-      ...JournalEntry_1Fragment
+      ...Entry_1Fragment
     }
   }
   ${JOURNAL_ENTRY_FRAGMENT}
@@ -97,18 +97,18 @@ const submitAdd: (
   })();
 
   const { source, personAdd, businessAdd } = (() => {
-    const srcType = values.source.value[0] as JournalEntrySourceType;
+    const srcType = values.source.value[0] as SourceType;
     const src = values.source.value[
       values.source.value.length - 1
     ] as SourceValue;
 
     if (typeof src === "string") {
-      if (srcType === JournalEntrySourceType.Person) {
+      if (srcType === SourceType.Person) {
         const parsedName = parseName(src);
 
         return {
           source: {
-            sourceType: JournalEntrySourceType.Person,
+            sourceType: SourceType.Person,
             id: "",
           },
           businessAdd: null,
@@ -122,7 +122,7 @@ const submitAdd: (
       } else {
         return {
           source: {
-            sourceType: JournalEntrySourceType.Business,
+            sourceType: SourceType.Business,
             id: "",
           },
           businessAdd: {
@@ -138,11 +138,11 @@ const submitAdd: (
         sourceType: (() => {
           switch (src.__typename) {
             case "Business":
-              return JournalEntrySourceType.Business;
+              return SourceType.Business;
             case "Department":
-              return JournalEntrySourceType.Department;
+              return SourceType.Department;
             case "Person":
-              return JournalEntrySourceType.Person;
+              return SourceType.Person;
           }
         })(),
         id: src.id,

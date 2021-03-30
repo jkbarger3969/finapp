@@ -5,27 +5,27 @@ import { ApolloClient } from "@apollo/client";
 import { isEqual } from "date-fns";
 
 import {
-  JournalEntryUpdateRefundFields,
+  EntryUpdateRefundFields,
   PayMethodEntryOptFragment,
   UpdateRefundMutation as UpdateRefund,
   UpdateRefundMutationVariables as UpdateRefundVars,
 } from "../../../../apollo/graphTypes";
+import { deserializeRational } from "../../../../apollo/scalars";
 import { TransmutationValue } from "../../../../utils/formik";
-import { JOURNAL_ENTRY_REFUND } from "../../Table/JournalEntries.gql";
+import { JOURNAL_ENTRY_REFUND } from "../../Table/Entries.gql";
 import { CHECK_ID } from "../../constants";
-import { rationalToFraction } from "../../../../utils/rational";
 
 export type UpdateValues = O.NonNullable<
   O.Overwrite<
-    O.Required<JournalEntryUpdateRefundFields>,
+    O.Required<EntryUpdateRefundFields>,
     {
       date: TransmutationValue<
         Date,
-        NonNullable<JournalEntryUpdateRefundFields["date"]>
+        NonNullable<EntryUpdateRefundFields["date"]>
       >;
       total: TransmutationValue<
         string,
-        NonNullable<JournalEntryUpdateRefundFields["total"]>
+        NonNullable<EntryUpdateRefundFields["total"]>
       >;
       paymentMethod: TransmutationValue<
         string,
@@ -33,7 +33,7 @@ export type UpdateValues = O.NonNullable<
       >;
     }
   >,
-  keyof Omit<JournalEntryUpdateRefundFields, "description">
+  keyof Omit<EntryUpdateRefundFields, "description">
 >;
 
 export type IniUpdateValues = O.Overwrite<
@@ -46,11 +46,11 @@ export type IniUpdateValues = O.Overwrite<
 const UPDATE_REFUND = gql`
   mutation UpdateRefund(
     $id: ID!
-    $fields: JournalEntryUpdateRefundFields!
+    $fields: EntryUpdateRefundFields!
     $paymentMethodAdd: PaymentMethodAddFields
-    $paymentMethodUpdate: JournalEntryUpdatePaymentMethod
+    $paymentMethodUpdate: EntryUpdatePaymentMethod
   ) {
-    journalEntryUpdateRefund(
+    entryUpdateRefund(
       id: $id
       fields: $fields
       paymentMethodAdd: $paymentMethodAdd
@@ -59,7 +59,7 @@ const UPDATE_REFUND = gql`
       id
       __typename
       refunds {
-        ...JournalEntryRefund_1Fragment
+        ...EntryRefund_1Fragment
       }
     }
   }
@@ -90,8 +90,8 @@ const submitUpdate: (
 
   // Total
   const total =
-    rationalToFraction(values.total.value).compare(
-      rationalToFraction(iniValues.total.value)
+    deserializeRational(values.total.value).compare(
+      deserializeRational(iniValues.total.value)
     ) === 0
       ? null
       : values.total.value;

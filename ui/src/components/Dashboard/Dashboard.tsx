@@ -24,18 +24,18 @@ import { MenuItem } from "@material-ui/core";
 import {
   GetReportDataQuery,
   GetReportDataQueryVariables,
-  JournalEntryType,
+  EntryType,
   OnEntryUpsert_2Subscription as OnEntryUpsert,
   GetReportDataDept_1Fragment as DepartmentFragment,
   FiscalYear,
 } from "../../apollo/graphTypes";
+import { deserializeRational } from "../../apollo/scalars";
 import {
   GET_REPORT_DATA,
   GET_REPORT_DATA_ENTRY_FRAGMENT,
 } from "./ReportData.gql";
 import { DEPT_ENTRY_OPT_FRAGMENT } from "../Journal/Upsert/upsertEntry.gql";
 import AddEntry from "../Journal/Upsert/Entries/AddEntry";
-import { rationalToFraction } from "../../utils/rational";
 
 const colorMeter = (percentSpent: number, shade: keyof Color = 800) => {
   if (percentSpent < 0.75) {
@@ -83,7 +83,7 @@ export const DEPT_FOR_UPSERT_ADD = gql`
 
 const ON_ENTRY_UPSERT = gql`
   subscription OnEntryUpsert_2 {
-    journalEntryUpserted {
+    entryUpserted {
       ...GetReportDataEntry_1Fragment
       department {
         ancestors {
@@ -125,7 +125,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     fetchPolicy: "cache-and-network",
   });
 
-  const isLoading = loading && !data?.journalEntries;
+  const isLoading = loading && !data?.entries;
 
   // Subscribe to updates
   useEffect(() => {
@@ -136,7 +136,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
           return prev;
         }
 
-        const upsertEntry = subscriptionData.data.journalEntryUpserted;
+        const upsertEntry = subscriptionData.data.entryUpserted;
 
         const ancestors = upsertEntry.department.ancestors;
 
@@ -148,26 +148,26 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
           )
         ) {
           // Filter entry out of query results if department changes.
-          const journalEntriesFiltered = prev.journalEntries.filter(
+          const entriesFiltered = prev.entries.filter(
             (entry) => entry.id !== upsertEntry.id
           );
 
-          if (journalEntriesFiltered.length === prev.journalEntries.length) {
+          if (entriesFiltered.length === prev.entries.length) {
             return prev;
           }
 
           return Object.assign({}, prev, {
-            journalEntries: journalEntriesFiltered,
+            entries: entriesFiltered,
           });
         }
 
         // Apollo will take care of updating if entry already exists in cache.
-        if (prev.journalEntries.some((entry) => entry.id === upsertEntry.id)) {
+        if (prev.entries.some((entry) => entry.id === upsertEntry.id)) {
           return prev;
         }
 
         return Object.assign({}, prev, {
-          journalEntries: [upsertEntry, ...prev.journalEntries],
+          entries: [upsertEntry, ...prev.entries],
         });
       },
     });
@@ -188,7 +188,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
   }, [year, data]);
 
   const entries = useMemo(() => {
-    return (data?.journalEntries || []).filter(
+    return (data?.entries || []).filter(
       (entry) => !entry.deleted && fiscalYear?.id === entry.fiscalYear.id
     );
   }, [data, fiscalYear]);
@@ -236,7 +236,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
         if (budgetFound) {
           const amount = budgetFound.amount;
           budgetsAccountedFor.add(budgetFound.id);
-          budget = rationalToFraction(amount);
+          budget = deserializeRational(amount);
           uBudget = uBudget.add(budget);
         }
 
@@ -255,7 +255,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
       }
       const deptReport = deptReports.get(entry.department.id) as DeptReport;
 
-      let entryTotal = rationalToFraction(entry.total);
+      let entryTotal = deserializeRational(entry.total);
 
       // BUG Story ID: CH58
 
@@ -264,7 +264,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
         if (refund.deleted) {
           continue;
         }
-        entryTotal = entryTotal.sub(rationalToFraction(refund.total));
+        entryTotal = entryTotal.sub(deserializeRational(refund.total));
       }
 
       // Itemization Adjustments
@@ -279,11 +279,11 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
           }
 
           // Item has been applied  to another department budget.
-          entryTotal = entryTotal.sub(rationalToFraction(item.total));
+          entryTotal = entryTotal.sub(deserializeRational(item.total));
         }
       }
 
-      if (entry.type === JournalEntryType.Credit) {
+      if (entry.type === EntryType.Credit) {
         uSpent = uSpent.sub(entryTotal);
         deptReport.spent = deptReport.spent.sub(entryTotal);
       } else {

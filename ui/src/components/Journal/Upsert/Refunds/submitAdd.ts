@@ -4,23 +4,23 @@ import gql from "graphql-tag";
 import { ApolloClient } from "@apollo/client";
 
 import {
-  JournalEntryAddRefundFields,
+  EntryAddRefundFields,
   PayMethodEntryOptFragment,
   AddEntryRefundMutation as AddRefund,
   AddEntryRefundMutationVariables as AddRefundVars,
 } from "../../../../apollo/graphTypes";
 import { TransmutationValue } from "../../../../utils/formik";
-import { JOURNAL_ENTRY_REFUND } from "../../Table/JournalEntries.gql";
+import { JOURNAL_ENTRY_REFUND } from "../../Table/Entries.gql";
 
 export type AddValues = O.Overwrite<
   O.Required<
-    JournalEntryAddRefundFields,
-    keyof JournalEntryAddRefundFields,
+    EntryAddRefundFields,
+    keyof EntryAddRefundFields,
     "deep"
   >,
   {
-    date: TransmutationValue<Date | null, JournalEntryAddRefundFields["date"]>;
-    total: TransmutationValue<string, JournalEntryAddRefundFields["total"]>;
+    date: TransmutationValue<Date | null, EntryAddRefundFields["date"]>;
+    total: TransmutationValue<string, EntryAddRefundFields["total"]>;
     paymentMethod: TransmutationValue<
       string,
       (PayMethodEntryOptFragment | string)[]
@@ -31,10 +31,10 @@ export type AddValues = O.Overwrite<
 const ADD_REFUND = gql`
   mutation AddEntryRefund(
     $id: ID!
-    $fields: JournalEntryAddRefundFields!
+    $fields: EntryAddRefundFields!
     $paymentMethodAdd: PaymentMethodAddFields
   ) {
-    journalEntryAddRefund(
+    entryAddRefund(
       id: $id
       fields: $fields
       paymentMethodAdd: $paymentMethodAdd
@@ -42,7 +42,7 @@ const ADD_REFUND = gql`
       id
       __typename
       refunds {
-        ...JournalEntryRefund_1Fragment
+        ...EntryRefund_1Fragment
       }
     }
   }

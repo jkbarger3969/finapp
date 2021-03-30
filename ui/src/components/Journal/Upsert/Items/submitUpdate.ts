@@ -4,37 +4,37 @@ import gql from "graphql-tag";
 import { ApolloClient } from "@apollo/client";
 
 import {
-  JournalEntryUpdateItemFields,
+  EntryUpdateItemFields,
   DeptEntryOptFragment,
   CatEntryOptFragment,
   UpdateEntryItemMutation as UpdateItem,
   UpdateEntryItemMutationVariables as UpdateItemVars,
 } from "../../../../apollo/graphTypes";
+import { deserializeRational } from "../../../../apollo/scalars";
 import { TransmutationValue } from "../../../../utils/formik";
-import { JOURNAL_ENTRY_ITEM } from "../../Table/JournalEntries.gql";
-import { rationalToFraction } from "../../../../utils/rational";
+import { JOURNAL_ENTRY_ITEM } from "../../Table/Entries.gql";
 
 export type UpdateValues = O.NonNullable<
   O.Overwrite<
-    O.Required<JournalEntryUpdateItemFields>,
+    O.Required<EntryUpdateItemFields>,
     {
       total: TransmutationValue<
         string,
-        NonNullable<JournalEntryUpdateItemFields["total"]>
+        NonNullable<EntryUpdateItemFields["total"]>
       >;
       category: TransmutationValue<string, CatEntryOptFragment[]>;
       department: DeptEntryOptFragment | null;
     }
   >,
-  keyof Pick<JournalEntryUpdateItemFields, "total">,
+  keyof Pick<EntryUpdateItemFields, "total">,
   "deep"
 >;
 
 const UPDATE_ITEM = gql`
-  mutation UpdateEntryItem($id: ID!, $fields: JournalEntryUpdateItemFields!) {
-    journalEntryUpdateItem(id: $id, fields: $fields) {
-      journalEntryItem {
-        ...JournalEntryItem_1Fragment
+  mutation UpdateEntryItem($id: ID!, $fields: EntryUpdateItemFields!) {
+    entryUpdateItem(id: $id, fields: $fields) {
+      entryItem {
+        ...EntryItem_1Fragment
       }
     }
   }
@@ -81,8 +81,8 @@ const submitUpdate: (
 
   // Total
   const total =
-    rationalToFraction(values.total.value).compare(
-      rationalToFraction(iniValues.total.value)
+    deserializeRational(values.total.value).compare(
+      deserializeRational(iniValues.total.value)
     ) === 0
       ? null
       : values.total.value;
