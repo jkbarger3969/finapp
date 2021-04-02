@@ -25,7 +25,7 @@ import {
 } from "../../../../utils/formik";
 
 const CAT_OPTS_QUERY = gql`
-  query CatEntryOpts($where: CategoryWhereInput!) {
+  query CatEntryOpts($where: CategoriesWhere!) {
     catOpts: categories(where: $where) {
       ...CatEntryOptFragment
     }
@@ -104,17 +104,13 @@ const Category = (props: CategoryProps): JSX.Element => {
               parent: {
                 eq: catValue.id,
               },
-              type: {
-                eq: entryType,
-              },
+              type: entryType,
             },
           }
         : {
             where: {
-              hasParent: false,
-              type: {
-                eq: entryType,
-              },
+              root: true,
+              type: entryType,
             },
           },
     [catValue, entryType]

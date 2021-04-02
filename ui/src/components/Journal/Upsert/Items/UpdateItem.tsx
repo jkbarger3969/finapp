@@ -68,9 +68,6 @@ const UPDATE_ITEM_INI_STATE = gql`
       }
       category {
         ...CatEntryOptFragment
-        ancestors {
-          ...CatEntryOptFragment
-        }
       }
       description
       units
@@ -317,9 +314,7 @@ const UpdateItem = (props: UpdateItemProps): JSX.Element => {
     }
 
     const total = {
-      inputValue: deserializeRational(entryItem.total)
-        .round(2)
-        .toString(),
+      inputValue: deserializeRational(entryItem.total).round(2).toString(),
       value: entryItem.total,
     };
 
@@ -331,10 +326,11 @@ const UpdateItem = (props: UpdateItemProps): JSX.Element => {
         };
       }
 
-      const { ancestors, ...category } = entryItem.category;
+      const { ...category } = entryItem.category;
 
       // Array.prototype.sort mutates the array, create copy.
-      const value = [...ancestors].sort((a, b) => {
+      const value = [];
+      /* [...ancestors].sort((a, b) => {
         // a is the parent of b
         if (a.id === b.parent?.id) {
           return -1;
@@ -343,7 +339,7 @@ const UpdateItem = (props: UpdateItemProps): JSX.Element => {
           return 1;
         }
         return 0;
-      });
+      }); */
 
       value.push(category);
 

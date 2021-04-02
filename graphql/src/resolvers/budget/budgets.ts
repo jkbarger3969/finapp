@@ -1,12 +1,12 @@
 import { Db, FilterQuery, ObjectId } from "mongodb";
 
-import { QueryResolvers, BudgetWhere } from "../../graphTypes";
+import { QueryResolvers, BudgetsWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";
 import { whereFiscalYear } from "../fiscalYear";
 import { whereRational, whereId, whereNode } from "../utils/queryUtils";
 
 export const whereBudgets = (
-  budgetWhere: BudgetWhere,
+  budgetWhere: BudgetsWhere,
   db: Db
 ): FilterQuery<unknown> | Promise<FilterQuery<unknown>> => {
   const filterQuery: FilterQuery<unknown> = {};

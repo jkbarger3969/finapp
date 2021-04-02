@@ -35,15 +35,15 @@ import {
 
 const SRC_ENTRY_OPTS_QUERY = gql`
   query SrcEntryOpts($name: String!, $isBiz: Boolean!) {
-    businesses(where: { name: { pattern: $name, options: I } })
+    businesses(where: { name: { pattern: $name, flags: [I] } })
       @include(if: $isBiz) {
       ...SrcEntryBizOptFragment
     }
     people(
       where: {
         or: [
-          { firstName: { pattern: $name, options: I } }
-          { lastName: { pattern: $name, options: I } }
+          { name: { first: { pattern: $name, flags: [I] } } }
+          { name: { last: { pattern: $name, flags: [I] } } }
         ]
       }
     ) @skip(if: $isBiz) {
@@ -148,10 +148,7 @@ const validate = (transmutationVal?: FieldValue) => {
 
   if (srcType === null || srcValue === null || srcValue === "") {
     return "Source Required";
-  } else if (
-    isFreeSoloOpt(srcValue) &&
-    srcType === SourceType.Person
-  ) {
+  } else if (isFreeSoloOpt(srcValue) && srcType === SourceType.Person) {
     // Validate Free Solo Person name
     const parsedName = parseName(srcValue as string);
     if (!parsedName.firstName.trim()) {

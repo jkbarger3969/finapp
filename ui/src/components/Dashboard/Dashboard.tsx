@@ -110,7 +110,11 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     () => ({
       deptId,
       where: {
-        department: { eq: { id: deptId, matchDescendants: true } },
+        department: {
+          id: {
+            lte: deptId,
+          },
+        },
         deleted: false,
       },
     }),

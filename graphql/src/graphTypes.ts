@@ -80,7 +80,7 @@ export type QueryBudgetArgs = {
 
 
 export type QueryBudgetsArgs = {
-  where?: Maybe<BudgetWhere>;
+  where?: Maybe<BudgetsWhere>;
 };
 
 
@@ -90,12 +90,12 @@ export type QueryBusinessArgs = {
 
 
 export type QueryBusinessesArgs = {
-  where?: Maybe<BusinessWhere>;
+  where?: Maybe<BusinessesWhere>;
 };
 
 
 export type QueryCategoriesArgs = {
-  where?: Maybe<CategoryWhere>;
+  where?: Maybe<CategoriesWhere>;
 };
 
 
@@ -110,7 +110,7 @@ export type QueryDepartmentArgs = {
 
 
 export type QueryDepartmentsArgs = {
-  where?: Maybe<DepartmentWhere>;
+  where?: Maybe<DepartmentsWhere>;
 };
 
 
@@ -140,7 +140,7 @@ export type QueryFiscalYearArgs = {
 
 
 export type QueryFiscalYearsArgs = {
-  where?: Maybe<FiscalYearWhere>;
+  where?: Maybe<FiscalYearsWhere>;
 };
 
 
@@ -150,7 +150,7 @@ export type QueryPaymentMethodArgs = {
 
 
 export type QueryPaymentMethodsArgs = {
-  where?: Maybe<PaymentMethodWhere>;
+  where?: Maybe<PaymentMethodsWhere>;
 };
 
 
@@ -178,14 +178,14 @@ export type Budget = {
   fiscalYear: FiscalYear;
 };
 
-export type BudgetWhere = {
+export type BudgetsWhere = {
   id?: Maybe<WhereId>;
   amount?: Maybe<WhereRational>;
   owner?: Maybe<WhereNode>;
-  fiscalYear?: Maybe<FiscalYearWhere>;
-  and?: Maybe<Array<BudgetWhere>>;
-  or?: Maybe<Array<BudgetWhere>>;
-  nor?: Maybe<Array<BudgetWhere>>;
+  fiscalYear?: Maybe<FiscalYearsWhere>;
+  and?: Maybe<Array<BudgetsWhere>>;
+  or?: Maybe<Array<BudgetsWhere>>;
+  nor?: Maybe<Array<BudgetsWhere>>;
 };
 
 export type Vendor = {
@@ -218,12 +218,12 @@ export type BusinessesWhereInput = {
   nor?: Maybe<Array<BusinessesWhereInput>>;
 };
 
-export type BusinessWhere = {
+export type BusinessesWhere = {
   id?: Maybe<WhereId>;
   name?: Maybe<WhereRegex>;
-  and?: Maybe<Array<BusinessWhere>>;
-  or?: Maybe<Array<BusinessWhere>>;
-  nor?: Maybe<Array<BusinessWhere>>;
+  and?: Maybe<Array<BusinessesWhere>>;
+  or?: Maybe<Array<BusinessesWhere>>;
+  nor?: Maybe<Array<BusinessesWhere>>;
 };
 
 export type Mutation = {
@@ -333,14 +333,14 @@ export type Category = {
   children: Array<Category>;
 };
 
-export type CategoryWhere = {
+export type CategoriesWhere = {
   id?: Maybe<WhereTreeId>;
   name?: Maybe<WhereRegex>;
   type?: Maybe<EntryType>;
   parent?: Maybe<WhereId>;
-  and?: Maybe<Array<CategoryWhere>>;
-  or?: Maybe<Array<CategoryWhere>>;
-  nor?: Maybe<Array<CategoryWhere>>;
+  and?: Maybe<Array<CategoriesWhere>>;
+  or?: Maybe<Array<CategoriesWhere>>;
+  nor?: Maybe<Array<CategoriesWhere>>;
   /** Root Categories i.e. NO parent. */
   root?: Maybe<Scalars['Boolean']>;
 };
@@ -357,7 +357,7 @@ export type Department = {
   parent: DepartmentAncestor;
   children: Array<Department>;
   ancestors: Array<DepartmentAncestor>;
-  decedents: Array<Department>;
+  descendants: Array<Department>;
   virtualRoot?: Maybe<Scalars['Boolean']>;
 };
 
@@ -394,16 +394,16 @@ export type DepartmentAddFields = {
   name: Scalars['String'];
 };
 
-export type DepartmentWhere = {
+export type DepartmentsWhere = {
   id?: Maybe<WhereTreeId>;
   name?: Maybe<WhereRegex>;
   code?: Maybe<Scalars['String']>;
   parent?: Maybe<WhereNode>;
   /** Matches all departments that are a decedents of the business. */
   business?: Maybe<Scalars['ID']>;
-  and?: Maybe<Array<DepartmentWhere>>;
-  or?: Maybe<Array<DepartmentWhere>>;
-  nor?: Maybe<Array<DepartmentWhere>>;
+  and?: Maybe<Array<DepartmentsWhere>>;
+  or?: Maybe<Array<DepartmentsWhere>>;
+  nor?: Maybe<Array<DepartmentsWhere>>;
 };
 
 export type EntrySource = Person | Business | Department;
@@ -459,8 +459,8 @@ export type Entry = {
 };
 
 export type EntriesWhereSourceBeta = {
-  businesses?: Maybe<BusinessWhere>;
-  departments?: Maybe<DepartmentWhere>;
+  businesses?: Maybe<BusinessesWhere>;
+  departments?: Maybe<DepartmentsWhere>;
   people?: Maybe<PeopleWhere>;
 };
 
@@ -476,10 +476,10 @@ export type EntriesWhereBeta = {
   type?: Maybe<EntryType>;
   date?: Maybe<WhereDateBeta>;
   dateOfRecord?: Maybe<EntriesWhereDateOfRecord>;
-  department?: Maybe<DepartmentWhere>;
-  fiscalYear?: Maybe<FiscalYearWhere>;
-  category?: Maybe<CategoryWhere>;
-  paymentMethod?: Maybe<PaymentMethodWhere>;
+  department?: Maybe<DepartmentsWhere>;
+  fiscalYear?: Maybe<FiscalYearsWhere>;
+  category?: Maybe<CategoriesWhere>;
+  paymentMethod?: Maybe<PaymentMethodsWhere>;
   description?: Maybe<WhereRegex>;
   total?: Maybe<WhereRational>;
   source?: Maybe<EntriesWhereSourceBeta>;
@@ -546,7 +546,7 @@ export type EntryRefund = {
 export type EntryRefundsWhere = {
   id?: Maybe<WhereId>;
   date?: Maybe<WhereDateBeta>;
-  paymentMethod?: Maybe<PaymentMethodWhere>;
+  paymentMethod?: Maybe<PaymentMethodsWhere>;
   total?: Maybe<WhereRational>;
   reconciled?: Maybe<Scalars['Boolean']>;
   lastUpdate?: Maybe<WhereDateBeta>;
@@ -588,8 +588,8 @@ export type EntryItem = {
 
 export type EntryItemsWhere = {
   id?: Maybe<WhereId>;
-  department?: Maybe<DepartmentWhere>;
-  category?: Maybe<CategoryWhere>;
+  department?: Maybe<DepartmentsWhere>;
+  category?: Maybe<CategoriesWhere>;
   units?: Maybe<WhereInt>;
   total?: Maybe<WhereRational>;
   lastUpdate?: Maybe<WhereDateBeta>;
@@ -723,7 +723,7 @@ export type FiscalYearWhereInput = {
   nor?: Maybe<Array<FiscalYearWhereInput>>;
 };
 
-export type FiscalYearWhere = {
+export type FiscalYearsWhere = {
   id?: Maybe<WhereId>;
   name?: Maybe<WhereRegex>;
   /**
@@ -736,9 +736,9 @@ export type FiscalYearWhere = {
    *   lte: Any fiscal year that contains the date or ends on or before the date.
    */
   date?: Maybe<WhereDateBeta>;
-  and?: Maybe<Array<FiscalYearWhere>>;
-  or?: Maybe<Array<FiscalYearWhere>>;
-  nor?: Maybe<Array<FiscalYearWhere>>;
+  and?: Maybe<Array<FiscalYearsWhere>>;
+  or?: Maybe<Array<FiscalYearsWhere>>;
+  nor?: Maybe<Array<FiscalYearsWhere>>;
 };
 
 export type PaymentMethod = {
@@ -783,15 +783,15 @@ export type PaymentMethodWhereInput = {
   and?: Maybe<Array<Maybe<PaymentMethodWhereInput>>>;
 };
 
-export type PaymentMethodWhere = {
+export type PaymentMethodsWhere = {
   id?: Maybe<WhereTreeId>;
   active?: Maybe<Scalars['Boolean']>;
   name?: Maybe<WhereRegex>;
   parent?: Maybe<WhereId>;
   allowChildren?: Maybe<Scalars['Boolean']>;
-  and?: Maybe<Array<PaymentMethodWhere>>;
-  or?: Maybe<Array<PaymentMethodWhere>>;
-  nor?: Maybe<Array<PaymentMethodWhere>>;
+  and?: Maybe<Array<PaymentMethodsWhere>>;
+  or?: Maybe<Array<PaymentMethodsWhere>>;
+  nor?: Maybe<Array<PaymentMethodsWhere>>;
 };
 
 export type PaymentMethodAddFields = {
@@ -1092,16 +1092,16 @@ export type ResolversTypes = {
   Query: ResolverTypeWrapper<{}>;
   BudgetOwner: ResolversTypes['Department'] | ResolversTypes['Business'];
   Budget: ResolverTypeWrapper<Omit<Budget, 'owner'> & { owner: ResolversTypes['BudgetOwner'] }>;
-  BudgetWhere: BudgetWhere;
+  BudgetsWhere: BudgetsWhere;
   Vendor: ResolverTypeWrapper<Vendor>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']>;
   Business: ResolverTypeWrapper<Business>;
   BusinessAddFields: BusinessAddFields;
   BusinessesWhereInput: BusinessesWhereInput;
-  BusinessWhere: BusinessWhere;
+  BusinessesWhere: BusinessesWhere;
   Mutation: ResolverTypeWrapper<{}>;
   Category: ResolverTypeWrapper<Category>;
-  CategoryWhere: CategoryWhere;
+  CategoriesWhere: CategoriesWhere;
   DepartmentAncestor: ResolversTypes['Department'] | ResolversTypes['Business'];
   Department: ResolverTypeWrapper<Omit<Department, 'parent' | 'ancestors'> & { parent: ResolversTypes['DepartmentAncestor'], ancestors: Array<ResolversTypes['DepartmentAncestor']> }>;
   DepartmentAncestorType: DepartmentAncestorType;
@@ -1109,7 +1109,7 @@ export type ResolversTypes = {
   DepartmentsWhereAncestor: DepartmentsWhereAncestor;
   DepartmentsWhereInput: DepartmentsWhereInput;
   DepartmentAddFields: DepartmentAddFields;
-  DepartmentWhere: DepartmentWhere;
+  DepartmentsWhere: DepartmentsWhere;
   EntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'];
   EntryType: EntryType;
   EntryDateOfRecord: ResolverTypeWrapper<EntryDateOfRecord>;
@@ -1145,13 +1145,13 @@ export type ResolversTypes = {
   FiscalYear: ResolverTypeWrapper<FiscalYear>;
   FiscalYearWhereHasDate: FiscalYearWhereHasDate;
   FiscalYearWhereInput: FiscalYearWhereInput;
-  FiscalYearWhere: FiscalYearWhere;
+  FiscalYearsWhere: FiscalYearsWhere;
   PaymentMethod: ResolverTypeWrapper<PaymentMethod>;
   PaymentMethodWhereParentInput: PaymentMethodWhereParentInput;
   PaymentMethodWhereRefIdInput: PaymentMethodWhereRefIdInput;
   PaymentMethodWhereNameInput: PaymentMethodWhereNameInput;
   PaymentMethodWhereInput: PaymentMethodWhereInput;
-  PaymentMethodWhere: PaymentMethodWhere;
+  PaymentMethodsWhere: PaymentMethodsWhere;
   PaymentMethodAddFields: PaymentMethodAddFields;
   PaymentMethodUpdateFields: PaymentMethodUpdateFields;
   PersonName: ResolverTypeWrapper<PersonName>;
@@ -1198,23 +1198,23 @@ export type ResolversParentTypes = {
   Query: {};
   BudgetOwner: ResolversParentTypes['Department'] | ResolversParentTypes['Business'];
   Budget: Omit<Budget, 'owner'> & { owner: ResolversParentTypes['BudgetOwner'] };
-  BudgetWhere: BudgetWhere;
+  BudgetsWhere: BudgetsWhere;
   Vendor: Vendor;
   Boolean: Scalars['Boolean'];
   Business: Business;
   BusinessAddFields: BusinessAddFields;
   BusinessesWhereInput: BusinessesWhereInput;
-  BusinessWhere: BusinessWhere;
+  BusinessesWhere: BusinessesWhere;
   Mutation: {};
   Category: Category;
-  CategoryWhere: CategoryWhere;
+  CategoriesWhere: CategoriesWhere;
   DepartmentAncestor: ResolversParentTypes['Department'] | ResolversParentTypes['Business'];
   Department: Omit<Department, 'parent' | 'ancestors'> & { parent: ResolversParentTypes['DepartmentAncestor'], ancestors: Array<ResolversParentTypes['DepartmentAncestor']> };
   DepartmentAncestorInput: DepartmentAncestorInput;
   DepartmentsWhereAncestor: DepartmentsWhereAncestor;
   DepartmentsWhereInput: DepartmentsWhereInput;
   DepartmentAddFields: DepartmentAddFields;
-  DepartmentWhere: DepartmentWhere;
+  DepartmentsWhere: DepartmentsWhere;
   EntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'];
   EntryDateOfRecord: EntryDateOfRecord;
   EntryDateOfRecordAdd: EntryDateOfRecordAdd;
@@ -1248,13 +1248,13 @@ export type ResolversParentTypes = {
   FiscalYear: FiscalYear;
   FiscalYearWhereHasDate: FiscalYearWhereHasDate;
   FiscalYearWhereInput: FiscalYearWhereInput;
-  FiscalYearWhere: FiscalYearWhere;
+  FiscalYearsWhere: FiscalYearsWhere;
   PaymentMethod: PaymentMethod;
   PaymentMethodWhereParentInput: PaymentMethodWhereParentInput;
   PaymentMethodWhereRefIdInput: PaymentMethodWhereRefIdInput;
   PaymentMethodWhereNameInput: PaymentMethodWhereNameInput;
   PaymentMethodWhereInput: PaymentMethodWhereInput;
-  PaymentMethodWhere: PaymentMethodWhere;
+  PaymentMethodsWhere: PaymentMethodsWhere;
   PaymentMethodAddFields: PaymentMethodAddFields;
   PaymentMethodUpdateFields: PaymentMethodUpdateFields;
   PersonName: PersonName;
@@ -1382,7 +1382,7 @@ export type DepartmentResolvers<ContextType = Context, ParentType = ResolversPar
   parent?: Resolver<ResolversTypes['DepartmentAncestor'], ParentType, ContextType>;
   children?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>;
   ancestors?: Resolver<Array<ResolversTypes['DepartmentAncestor']>, ParentType, ContextType>;
-  decedents?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>;
+  descendants?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>;
   virtualRoot?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };

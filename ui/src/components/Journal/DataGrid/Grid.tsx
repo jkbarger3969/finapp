@@ -49,7 +49,7 @@ import { Plugin, Getter } from "@devexpress/dx-react-core";
 import Fuse from "fuse.js";
 
 import {
-  EntriesWhere,
+  EntriesWhereBeta,
   GridEntryFragment,
   GridRefundFragment,
   GridEntriesQuery,
@@ -485,7 +485,7 @@ const DevExplorer = (props: {
 };
 
 export type Props = {
-  where?: EntriesWhere;
+  where?: EntriesWhereBeta;
   layoutCacheKey?: string;
   filterColumnsState?: FilterColumnsStateProviderProps;
 };

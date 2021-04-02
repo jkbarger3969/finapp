@@ -30,7 +30,7 @@ type AutocompleteProps = AutocompletePropsRaw<Value, true, false, boolean> &
   UseAutocompleteProps<Value, true, false, boolean>;
 
 const PAY_METHOD_ENTRY_OPTS = gql`
-  query PayMethodEntryOpts($where: PaymentMethodWhereInput!) {
+  query PayMethodEntryOpts($where: PaymentMethodsWhere!) {
     paymentMethods(where: $where) {
       ...PayMethodEntryOptFragment
     }

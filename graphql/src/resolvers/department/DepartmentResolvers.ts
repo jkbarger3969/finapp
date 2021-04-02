@@ -119,11 +119,11 @@ const ancestors: DepartmentResolvers<
   return results;
 };
 
-const decedents: DepartmentResolvers<
+const descendants: DepartmentResolvers<
   Context,
   DepartmentDbRecord
->["decedents"] = async ({ _id }, _, { db }) => {
-  const decedents: unknown[] = [];
+>["descendants"] = async ({ _id }, _, { db }) => {
+  const descendants: unknown[] = [];
 
   const query = await db
     .collection("departments")
@@ -131,7 +131,7 @@ const decedents: DepartmentResolvers<
     .toArray();
 
   while (query.length) {
-    decedents.push(...query);
+    descendants.push(...query);
     query.push(
       ...(await db
         .collection("departments")
@@ -145,7 +145,7 @@ const decedents: DepartmentResolvers<
     );
   }
 
-  return decedents as TDepartment[];
+  return descendants as TDepartment[];
 };
 
 const DepartmentAncestorResolver: DepartmentAncestorResolvers<
@@ -166,7 +166,7 @@ const DepartmentResolver: DepartmentResolvers<Context, DepartmentDbRecord> = {
   parent,
   children,
   ancestors,
-  decedents,
+  descendants,
   virtualRoot: ({ virtualRoot }) => !!virtualRoot,
 };
 

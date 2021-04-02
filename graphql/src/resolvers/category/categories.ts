@@ -1,12 +1,12 @@
 import { ObjectId, FilterQuery, Db } from "mongodb";
 import { pascalCase } from "change-case";
 
-import { QueryResolvers, CategoryWhere } from "../../graphTypes";
+import { QueryResolvers, CategoriesWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";
 import { whereRegex, whereId, whereTreeId } from "../utils/queryUtils";
 
 export const whereCategories = (
-  categoryWhere: CategoryWhere,
+  categoryWhere: CategoriesWhere,
   db: Db
 ): Promise<FilterQuery<unknown>> | FilterQuery<unknown> => {
   const filterQuery: FilterQuery<unknown> = {};

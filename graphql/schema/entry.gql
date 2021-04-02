@@ -56,8 +56,8 @@ type Entry {
 }
 
 input EntriesWhereSourceBeta {
-  businesses: BusinessWhere
-  departments: DepartmentWhere
+  businesses: BusinessesWhere
+  departments: DepartmentsWhere
   people: PeopleWhere
 }
 
@@ -74,10 +74,10 @@ input EntriesWhereBeta {
   type: EntryType
   date: WhereDateBeta
   dateOfRecord: EntriesWhereDateOfRecord
-  department: DepartmentWhere
-  fiscalYear: FiscalYearWhere
-  category: CategoryWhere
-  paymentMethod: PaymentMethodWhere
+  department: DepartmentsWhere
+  fiscalYear: FiscalYearsWhere
+  category: CategoriesWhere
+  paymentMethod: PaymentMethodsWhere
   description: WhereRegex
   total: WhereRational
   source: EntriesWhereSourceBeta
@@ -153,7 +153,7 @@ input EntryRefundsWhere {
   # Fields
   id: WhereId
   date: WhereDateBeta
-  paymentMethod: PaymentMethodWhere
+  paymentMethod: PaymentMethodsWhere
   total: WhereRational
   reconciled: Boolean
   lastUpdate: WhereDateBeta
@@ -202,8 +202,8 @@ type EntryItem {
 input EntryItemsWhere {
   # Fields
   id: WhereId
-  department: DepartmentWhere
-  category: CategoryWhere
+  department: DepartmentsWhere
+  category: CategoriesWhere
   units: WhereInt
   total: WhereRational
   lastUpdate: WhereDateBeta

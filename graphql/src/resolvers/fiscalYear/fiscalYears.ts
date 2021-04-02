@@ -1,16 +1,12 @@
 import { FilterQuery } from "mongodb";
 
-import {
-  QueryResolvers,
-  FiscalYearWhereInput as Where,
-  FiscalYearWhere,
-} from "../../graphTypes";
+import { QueryResolvers, FiscalYearsWhere } from "../../graphTypes";
 import { iterateOwnKeyValues, iterateOwnKeys } from "../../utils/iterableFns";
 
 import { whereRegex, whereId } from "../utils/queryUtils";
 
 export const whereFiscalYear = (
-  fiscalYearWhere: FiscalYearWhere
+  fiscalYearWhere: FiscalYearsWhere
 ): FilterQuery<unknown> => {
   const filterQuery: FilterQuery<unknown> = {};
 

@@ -233,21 +233,35 @@ const Journal = (props: {
     if (deptId && fiscalYearId) {
       return {
         where: {
-          department: { eq: { id: deptId, matchDescendants: true } },
+          department: {
+            id: {
+              lte: deptId,
+            },
+          },
           fiscalYear: {
-            eq: fiscalYearId,
+            id: {
+              eq: fiscalYearId,
+            },
           },
         },
       };
     } else if (deptId) {
       return {
-        where: { department: { eq: { id: deptId, matchDescendants: true } } },
+        where: {
+          department: {
+            id: {
+              lte: deptId,
+            },
+          },
+        },
       };
     } else if (fiscalYearId) {
       return {
         where: {
           fiscalYear: {
-            eq: fiscalYearId,
+            id: {
+              eq: fiscalYearId,
+            },
           },
         },
       };

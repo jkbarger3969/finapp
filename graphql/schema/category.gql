@@ -6,7 +6,7 @@ type Category {
   children: [Category!]!
 }
 
-input CategoryWhere {
+input CategoriesWhere {
   # Fields
   id: WhereTreeId
   name: WhereRegex
@@ -14,15 +14,15 @@ input CategoryWhere {
   parent: WhereId
 
   # Logic Operators
-  and: [CategoryWhere!]
-  or: [CategoryWhere!]
-  nor: [CategoryWhere!]
+  and: [CategoriesWhere!]
+  or: [CategoriesWhere!]
+  nor: [CategoriesWhere!]
 
   "Root Categories i.e. NO parent."
   root: Boolean
 }
 
 extend type Query {
-  categories(where: CategoryWhere): [Category!]!
+  categories(where: CategoriesWhere): [Category!]!
   category(id: ID!): Category!
 }

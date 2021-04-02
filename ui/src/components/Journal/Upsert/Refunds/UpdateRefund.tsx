@@ -59,9 +59,6 @@ const UPDATE_REFUND_INI_STATE = gql`
       description
       paymentMethod {
         ...PayMethodEntryOptFragment
-        ancestors {
-          ...PayMethodEntryOptFragment
-        }
       }
       total
       reconciled
@@ -294,10 +291,11 @@ const UpdateRefund = (props: UpdateRefundProps): JSX.Element => {
     };
 
     const paymentMethod = (() => {
-      const { ancestors, ...paymentMethod } = entryRefund.paymentMethod;
+      const { ...paymentMethod } = entryRefund.paymentMethod;
 
       // Array.prototype.sort mutates the array, create copy.
-      const value = [...ancestors].sort((a, b) => {
+      const value = [];
+      /* [...ancestors].sort((a, b) => {
         // a is the parent of b
         if (a.id === b.parent?.id) {
           return -1;
@@ -306,7 +304,7 @@ const UpdateRefund = (props: UpdateRefundProps): JSX.Element => {
           return 1;
         }
         return 0;
-      });
+      }); */
 
       value.push(paymentMethod);
 
@@ -317,9 +315,7 @@ const UpdateRefund = (props: UpdateRefundProps): JSX.Element => {
     })();
 
     const total = {
-      inputValue: deserializeRational(entryRefund.total)
-        .round(2)
-        .toString(),
+      inputValue: deserializeRational(entryRefund.total).round(2).toString(),
       value: entryRefund.total,
     };
 

@@ -1,11 +1,11 @@
 import { Db, FilterQuery, ObjectId } from "mongodb";
-import { QueryResolvers, PaymentMethodWhere } from "../../graphTypes";
+import { QueryResolvers, PaymentMethodsWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";
 import { whereRegex, whereId, whereTreeId } from "../utils/queryUtils";
 import { projection } from "./paymentMethod";
 
 export const wherePaymentMethods = (
-  payMethodWhere: PaymentMethodWhere,
+  payMethodWhere: PaymentMethodsWhere,
   db: Db
 ) => {
   const filterQuery: FilterQuery<unknown> = {};

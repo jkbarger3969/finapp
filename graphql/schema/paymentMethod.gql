@@ -47,7 +47,7 @@ input PaymentMethodWhereInput {
   and: [PaymentMethodWhereInput]
 }
 
-input PaymentMethodWhere {
+input PaymentMethodsWhere {
   # Fields
   id: WhereTreeId
   active: Boolean
@@ -56,9 +56,9 @@ input PaymentMethodWhere {
   allowChildren: Boolean
 
   # Logic
-  and: [PaymentMethodWhere!]
-  or: [PaymentMethodWhere!]
-  nor: [PaymentMethodWhere!]
+  and: [PaymentMethodsWhere!]
+  or: [PaymentMethodsWhere!]
+  nor: [PaymentMethodsWhere!]
 }
 
 input PaymentMethodAddFields {
@@ -75,7 +75,7 @@ input PaymentMethodUpdateFields {
 }
 
 extend type Query {
-  paymentMethods(where: PaymentMethodWhere): [PaymentMethod!]!
+  paymentMethods(where: PaymentMethodsWhere): [PaymentMethod!]!
   paymentMethod(id: ID!): PaymentMethod
 }
 

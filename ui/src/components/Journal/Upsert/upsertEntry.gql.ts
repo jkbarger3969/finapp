@@ -2,7 +2,7 @@ import gql from "graphql-tag";
 
 export const FISCAL_YEAR = gql`
   query FiscalYear($date: Date) {
-    fiscalYears(where: { hasDate: { eq: $date } }) {
+    fiscalYears(where: { date: { eq: $date } }) {
       __typename
       id
     }

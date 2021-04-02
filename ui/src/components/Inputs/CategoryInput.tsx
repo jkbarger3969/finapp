@@ -11,7 +11,7 @@ import {
   CategoryInputOptsQuery as CategoryOpts,
   CategoryInputOptsQueryVariables as CategoryOptsVars,
   CategoryInputOptFragment,
-  CategoryWhereInput,
+  CategoriesWhere,
 } from "../../apollo/graphTypes";
 
 export type CategoryInputOpt = Omit<CategoryInputOptFragment, "children"> &
@@ -28,7 +28,7 @@ const CATEGORY_INPUT_CHILD_OPTS = gql`
     }
   }
 
-  query CategoryInputOpts($where: CategoryWhereInput!) {
+  query CategoryInputOpts($where: CategoriesWhere!) {
     categories(where: $where) {
       ...CategoryInputOpt
     }
@@ -41,7 +41,7 @@ export type CategoryInputPropsWithQuery<
   FreeSolo extends boolean | undefined = undefined
 > = {
   onGQLError: (e: ApolloError) => void;
-  rootOptions: CategoryWhereInput;
+  rootOptions: CategoriesWhere;
   selectable?: (categoryInputOpt: CategoryInputOpt) => boolean;
 } & Omit<
   TreeSelectProps<CategoryInputOpt, Multiple, DisableClearable, FreeSolo>,

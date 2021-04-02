@@ -29,7 +29,7 @@ const DEPT_INPUT_CHILD_OPTS = gql`
     }
   }
 
-  query DeptInputOpts($where: DepartmentsWhereInput!) {
+  query DeptInputOpts($where: DepartmentsWhere!) {
     departments(where: $where) {
       ...DeptInputOpt
     }

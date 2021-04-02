@@ -82,9 +82,6 @@ const UPDATE_ENTRY_INI_STATE = gql`
       }
       category {
         ...CatEntryOptFragment
-        ancestors {
-          ...CatEntryOptFragment
-        }
       }
       source {
         ...SrcEntryPersonOptFragment
@@ -99,9 +96,6 @@ const UPDATE_ENTRY_INI_STATE = gql`
       }
       paymentMethod {
         ...PayMethodEntryOptFragment
-        ancestors {
-          ...PayMethodEntryOptFragment
-        }
       }
       description
       total
@@ -426,10 +420,11 @@ const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
       : null;
 
     const category = (() => {
-      const { ancestors, ...category } = entry.category;
+      const { ...category } = entry.category;
 
       // Array.prototype.sort mutates the array, create copy.
-      const value = [...ancestors].sort((a, b) => {
+      const value = [];
+      /* [...ancestors].sort((a, b) => {
         // a is the parent of b
         if (a.id === b.parent?.id) {
           return -1;
@@ -438,7 +433,7 @@ const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
           return 1;
         }
         return 0;
-      });
+      }); */
 
       value.push(category);
 
@@ -449,10 +444,11 @@ const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
     })();
 
     const paymentMethod = (() => {
-      const { ancestors, ...paymentMethod } = entry.paymentMethod;
+      const { ...paymentMethod } = entry.paymentMethod;
 
       // Array.prototype.sort mutates the array, create copy.
-      const value = [...ancestors].sort((a, b) => {
+      const value = [];
+      /* [...ancestors].sort((a, b) => {
         // a is the parent of b
         if (a.id === b.parent?.id) {
           return -1;
@@ -461,7 +457,7 @@ const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
           return 1;
         }
         return 0;
-      });
+      }); */
 
       value.push(paymentMethod);
 

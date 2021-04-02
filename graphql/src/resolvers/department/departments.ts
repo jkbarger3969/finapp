@@ -1,12 +1,12 @@
 import { Db, FilterQuery, ObjectId } from "mongodb";
 
-import { QueryResolvers, DepartmentWhere } from "../../graphTypes";
+import { QueryResolvers, DepartmentsWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";
 
 import { whereRegex, whereTreeId, whereNode } from "../utils/queryUtils";
 
 export const whereDepartments = (
-  deptWhere: DepartmentWhere,
+  deptWhere: DepartmentsWhere,
   db: Db
 ): Promise<FilterQuery<unknown>> | FilterQuery<unknown> => {
   const filterQuery: FilterQuery<unknown> = {};

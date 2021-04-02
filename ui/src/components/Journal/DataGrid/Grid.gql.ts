@@ -96,7 +96,7 @@ export const ENTRY = gql`
 `;
 
 export const GRID_ENTRIES = gql`
-  query GridEntries($where: EntriesWhere) {
+  query GridEntries($where: EntriesWhereBeta) {
     entries(where: $where) {
       ...GridEntry
     }

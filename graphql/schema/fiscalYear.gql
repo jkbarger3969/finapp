@@ -27,7 +27,7 @@ input FiscalYearWhereInput {
   nor: [FiscalYearWhereInput!]
 }
 
-input FiscalYearWhere {
+input FiscalYearsWhere {
   # Fields
   id: WhereId
   name: WhereRegex
@@ -43,12 +43,12 @@ input FiscalYearWhere {
   date: WhereDateBeta
 
   # Logic
-  and: [FiscalYearWhere!]
-  or: [FiscalYearWhere!]
-  nor: [FiscalYearWhere!]
+  and: [FiscalYearsWhere!]
+  or: [FiscalYearsWhere!]
+  nor: [FiscalYearsWhere!]
 }
 
 extend type Query {
-  fiscalYears(where: FiscalYearWhere): [FiscalYear!]!
+  fiscalYears(where: FiscalYearsWhere): [FiscalYear!]!
   fiscalYear(id: ID!): FiscalYear!
 }

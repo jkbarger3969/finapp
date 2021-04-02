@@ -7,20 +7,20 @@ type Budget {
   fiscalYear: FiscalYear!
 }
 
-input BudgetWhere {
+input BudgetsWhere {
   # Fields
   id: WhereId
   amount: WhereRational
   owner: WhereNode
-  fiscalYear: FiscalYearWhere
+  fiscalYear: FiscalYearsWhere
 
   # Logic
-  and: [BudgetWhere!]
-  or: [BudgetWhere!]
-  nor: [BudgetWhere!]
+  and: [BudgetsWhere!]
+  or: [BudgetsWhere!]
+  nor: [BudgetsWhere!]
 }
 
 extend type Query {
-  budgets(where: BudgetWhere): [Budget!]!
+  budgets(where: BudgetsWhere): [Budget!]!
   budget(id: ID!): Budget!
 }

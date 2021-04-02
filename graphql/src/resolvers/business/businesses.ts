@@ -1,6 +1,6 @@
 import { FilterQuery } from "mongodb";
 
-import { QueryResolvers, BusinessWhere } from "../../graphTypes";
+import { QueryResolvers, BusinessesWhere } from "../../graphTypes";
 
 import { Returns as BusinessReturns } from "./business";
 import { iterateOwnKeys } from "../../utils/iterableFns";
@@ -10,7 +10,7 @@ import { whereId, whereRegex } from "../utils/queryUtils";
 export type Returns = BusinessReturns[];
 
 export const whereBusiness = (
-  businessWhere: BusinessWhere
+  businessWhere: BusinessesWhere
 ): FilterQuery<unknown> => {
   const filterQuery: FilterQuery<unknown> = {};
 

@@ -11,7 +11,7 @@ import {
   PayMethodInputOptsQuery as PayMethodOpts,
   PayMethodInputOptsQueryVariables as PayMethodOptsVars,
   PayMethodInputOptFragment,
-  PaymentMethodWhereInput,
+  PaymentMethodsWhere,
 } from "../../apollo/graphTypes";
 
 export type PayMethodInputOpt = Omit<PayMethodInputOptFragment, "children"> &
@@ -28,7 +28,7 @@ const PAY_METHOD_INPUT_CHILD_OPTS = gql`
     }
   }
 
-  query PayMethodInputOpts($where: PaymentMethodWhereInput!) {
+  query PayMethodInputOpts($where: PaymentMethodsWhere!) {
     paymentMethods(where: $where) {
       ...PayMethodInputOpt
     }
@@ -41,7 +41,7 @@ export type PayMethodInputPropsWithQuery<
   FreeSolo extends boolean | undefined = undefined
 > = {
   onGQLError: (e: ApolloError) => void;
-  rootOptions: PaymentMethodWhereInput;
+  rootOptions: PaymentMethodsWhere;
   selectable?: (categoryInputOpt: PayMethodInputOpt) => boolean;
 } & Omit<
   TreeSelectProps<PayMethodInputOpt, Multiple, DisableClearable, FreeSolo>,

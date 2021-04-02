@@ -8,7 +8,7 @@
       "Department",
       "Business"
     ],
-    "PaymentMethodAuthorizedEntity": [
+    "EntrySource": [
       "Person",
       "Business",
       "Department"

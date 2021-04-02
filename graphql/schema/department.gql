@@ -9,7 +9,7 @@ type Department {
   parent: DepartmentAncestor!
   children: [Department!]!
   ancestors: [DepartmentAncestor!]!
-  decedents: [Department!]!
+  descendants: [Department!]!
   virtualRoot: Boolean
 }
 
@@ -46,7 +46,7 @@ input DepartmentAddFields {
   name: String!
 }
 
-input DepartmentWhere {
+input DepartmentsWhere {
   # Felids
   id: WhereTreeId
   name: WhereRegex
@@ -56,12 +56,12 @@ input DepartmentWhere {
   business: ID
 
   # Logic Operators
-  and: [DepartmentWhere!]
-  or: [DepartmentWhere!]
-  nor: [DepartmentWhere!]
+  and: [DepartmentsWhere!]
+  or: [DepartmentsWhere!]
+  nor: [DepartmentsWhere!]
 }
 
 type Query {
-  departments(where: DepartmentWhere): [Department!]!
+  departments(where: DepartmentsWhere): [Department!]!
   department(id: ID!): Department!
 }
