@@ -5,7 +5,7 @@ import { isValid } from "date-fns";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
 import { MutationResolvers, PaymentMethod } from "../../graphTypes";
-import entry from "./entry";
+import { entry } from "./entry";
 import { getUniqueId } from "../utils/mongoUtils";
 import { stages } from "./utils";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";

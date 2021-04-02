@@ -18,7 +18,7 @@ import {
   JOURNAL_ENTRY_UPDATED,
   JOURNAL_ENTRY_UPSERTED,
 } from "./entry/pubSubs";
-import entry from "./entry/entry";
+import { entry } from "./entry/entry";
 
 const userNodeType = new ObjectId("5dca0427bccd5c6f26b0cde2");
 

@@ -8,7 +8,7 @@ import {
   EntryItemUpsertResult,
   Entry,
 } from "../../graphTypes";
-import entry from "./entry";
+import { entry } from "./entry";
 import { getUniqueId } from "../utils/mongoUtils";
 import { stages } from "./utils";
 import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";

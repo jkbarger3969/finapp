@@ -1,871 +1,814 @@
-import { ObjectId } from "mongodb";
+import { Db, FilterQuery, ObjectId } from "mongodb";
 
-import { stages } from "./utils";
 import {
   QueryResolvers,
-  EntriesWhere as Where,
-  EntriesWhereDepartment,
-  EntriesWhereCategory,
-  EntriesWherePaymentMethod,
-  Entry,
-  SourceType,
-  EntriesWhereSource,
-  EntriesWhereFiscalYear,
+  EntriesWhereBeta,
+  EntryRefundsWhere,
+  EntryItemsWhere,
 } from "../../graphTypes";
-import { Context } from "../../types";
-
-import filterQueryCreator, {
-  FieldAndConditionGenerator,
-  FieldAndCondition,
-} from "../utils/filterQuery/filter";
-import parseOps from "../utils/filterQuery/querySelectors/parseOps";
-import parseComparisonOps from "../utils/filterQuery/querySelectors/parseComparisonOps";
-import { OpsParser } from "../utils/filterQuery/querySelectors/types";
-import dateOpsParser from "../utils/filterQuery/dateOpsParser";
+import { iterateOwnKeys, iterateOwnKeyValues } from "../../utils/iterableFns";
 import {
-  iterateOwnKeyValues,
-  resolveWithAsyncReturn,
-} from "../../utils/iterableFns";
-import gqlMongoRational from "../utils/filterQuery/gqlMongoRational";
-import { comparisonOpsMapper } from "../utils/filterQuery/operatorMapping/comparison";
-import DocHistory from "../utils/DocHistory";
+  whereDate,
+  whereId,
+  whereInt,
+  whereRational,
+  whereRegex,
+} from "../utils/queryUtils";
+import { pascalCase } from "pascal-case";
+import { whereDepartments } from "../department/departments";
+import { whereCategories } from "../category";
+import { wherePaymentMethods } from "../paymentMethod";
+import { whereBusiness } from "../business/index";
+import { wherePeople } from "../person/people";
+import { whereFiscalYear, FiscalYearDbRecord } from "../fiscalYear";
+import { projection } from "./entry";
 
-const deptNode = new ObjectId("5dc4addacf96e166daaa008f");
-const bizNode = new ObjectId("5dc476becf96e166daa9fd0b");
-const personNode = new ObjectId("5dc476becf96e166daa9fd0a");
-const categoryNode = new ObjectId("5e288fb9aa938a2bcfcdf9f9");
+export const whereEntryRefunds = (
+  entryRefundsWhere: EntryRefundsWhere,
+  db: Db,
+  filterQuery: FilterQuery<unknown> = {}
+) => {
+  const promises: Promise<void>[] = [];
 
-// Where condition parsing
-// Where Department
-const getDeptDescendentIds = async (
-  id: ObjectId,
-  context: Context
-): Promise<ObjectId[]> => {
-  const descendants: ObjectId[] = [];
-
-  await Promise.all([
-    ...(
-      await context.db
-        .collection("departments")
-        .find<{ _id: ObjectId }>(
-          {
-            parent: {
-              $eq: {
-                id,
-                node: deptNode,
-              },
-            },
-          },
-          { projection: { _id: true } }
-        )
-        .toArray()
-    ).map(async ({ _id }) => {
-      descendants.push(_id, ...(await getDeptDescendentIds(_id, context)));
-    }),
-  ]);
-
-  return descendants;
-};
-
-const parseWhereEntryDept = async function* (
-  opValues: IterableIterator<
-    [
-      keyof EntriesWhereDepartment,
-      EntriesWhereDepartment[keyof EntriesWhereDepartment]
-    ]
-  >,
-  context: Context
-): AsyncIterableIterator<FieldAndCondition> {
-  for (const [op, opVal] of opValues) {
-    switch (op) {
-      case "eq":
-      case "in":
-        if (opVal) {
-          const $in: ObjectId[] = [];
-
-          await Promise.all(
-            (Array.isArray(opVal) ? opVal : [opVal]).map(async (opVal) => {
-              const id = new ObjectId(opVal.id);
-
-              $in.push(id);
-
-              if (opVal.matchDescendants) {
-                $in.push(...(await getDeptDescendentIds(id, context)));
-              }
-            })
-          );
-
-          yield {
-            field: "$and",
-            condition: [
-              {
-                "department.0.value.id": { $in },
-              },
-            ],
-          };
-        }
+  for (const whereKey of iterateOwnKeys(entryRefundsWhere)) {
+    switch (whereKey) {
+      case "id":
+        filterQuery["refunds.id"] = whereId(entryRefundsWhere[whereKey]);
         break;
-      case "ne":
-      case "nin":
-        if (opVal) {
-          const $nin: ObjectId[] = [];
-
-          await Promise.all(
-            (Array.isArray(opVal) ? opVal : [opVal]).map(async (opVal) => {
-              const id = new ObjectId(opVal.id);
-
-              $nin.push(id);
-
-              if (opVal.matchDescendants) {
-                $nin.push(...(await getDeptDescendentIds(id, context)));
-              }
-            })
-          );
-
-          yield {
-            field: "$and",
-            condition: [
-              {
-                "department.0.value.id": { $nin },
-              },
-            ],
-          };
-        }
+      case "date":
+        filterQuery["refunds.date.0.value"] = whereDate(
+          entryRefundsWhere[whereKey]
+        );
         break;
-    }
-  }
-};
-// Where Category
-const getCategoryDescendentIds = async (
-  id: ObjectId,
-  context: Context
-): Promise<ObjectId[]> => {
-  const descendants: ObjectId[] = [];
-
-  await Promise.all([
-    ...(
-      await context.db
-        .collection("journalEntryCategories")
-        .find<{ _id: ObjectId }>(
-          {
-            parent: {
-              $eq: {
-                id,
-                node: categoryNode,
-              },
-            },
-          },
-          { projection: { _id: true } }
-        )
-        .toArray()
-    ).map(async ({ _id }) => {
-      descendants.push(_id, ...(await getCategoryDescendentIds(_id, context)));
-    }),
-  ]);
-
-  return descendants;
-};
-
-const parseWhereCategory = async function* (
-  opValues: IterableIterator<
-    [
-      keyof EntriesWhereCategory,
-      EntriesWhereCategory[keyof EntriesWhereCategory]
-    ]
-  >,
-  context: Context
-): AsyncIterableIterator<FieldAndCondition> {
-  for (const [op, opVal] of opValues) {
-    switch (op) {
-      case "eq":
-      case "in":
-        if (opVal) {
-          const $in: ObjectId[] = [];
-
-          await Promise.all(
-            (Array.isArray(opVal) ? opVal : [opVal]).map(async (opVal) => {
-              const id = new ObjectId(opVal.id);
-
-              $in.push(id);
-
-              if (opVal.matchDescendants) {
-                $in.push(...(await getCategoryDescendentIds(id, context)));
-              }
-            })
-          );
-
-          yield {
-            field: "$and",
-            condition: [
-              {
-                "category.0.value.id": { $in },
-              },
-            ],
-          };
-        }
-        break;
-      case "ne":
-      case "nin":
-        if (opVal) {
-          const $nin: ObjectId[] = [];
-
-          await Promise.all(
-            (Array.isArray(opVal) ? opVal : [opVal]).map(async (opVal) => {
-              const id = new ObjectId(opVal.id);
-
-              $nin.push(id);
-
-              if (opVal.matchDescendants) {
-                $nin.push(...(await getCategoryDescendentIds(id, context)));
-              }
-            })
-          );
-
-          yield {
-            field: "$and",
-            condition: [
-              {
-                "category.0.value.id": { $nin },
-              },
-            ],
-          };
-        }
-        break;
-    }
-  }
-};
-// Where Payment Method
-const getPayMethodDescendentIds = async (
-  id: ObjectId,
-  context: Context
-): Promise<ObjectId[]> => {
-  const descendants: ObjectId[] = [];
-
-  await Promise.all([
-    ...(
-      await context.db
-        .collection("paymentMethods")
-        .find<{ _id: ObjectId }>(
-          {
-            parent: {
-              $eq: id,
-            },
-          },
-          { projection: { _id: true } }
-        )
-        .toArray()
-    ).map(async ({ _id }) => {
-      descendants.push(_id, ...(await getPayMethodDescendentIds(_id, context)));
-    }),
-  ]);
-
-  return descendants;
-};
-
-const parseWhereEntryPayMethod = async function* (
-  opValues: IterableIterator<
-    [
-      keyof EntriesWherePaymentMethod,
-      EntriesWherePaymentMethod[keyof EntriesWherePaymentMethod]
-    ]
-  >,
-  context: Context
-): AsyncIterableIterator<FieldAndCondition> {
-  for (const [op, opVal] of opValues) {
-    switch (op) {
-      case "eq":
-      case "in":
-        if (opVal) {
-          const $in: ObjectId[] = [];
-
-          await Promise.all(
-            (Array.isArray(opVal) ? opVal : [opVal]).map(async (opVal) => {
-              const id = new ObjectId(opVal.id);
-
-              $in.push(id);
-
-              if (opVal.matchDescendants) {
-                $in.push(...(await getPayMethodDescendentIds(id, context)));
-              }
-            })
-          );
-
-          yield {
-            field: "$and",
-            condition: [
-              {
-                "paymentMethod.0.value.id": { $in },
-              },
-            ],
-          };
-        }
-        break;
-      case "ne":
-      case "nin":
-        if (opVal) {
-          const $nin: ObjectId[] = [];
-
-          await Promise.all(
-            (Array.isArray(opVal) ? opVal : [opVal]).map(async (opVal) => {
-              const id = new ObjectId(opVal.id);
-
-              $nin.push(id);
-
-              if (opVal.matchDescendants) {
-                $nin.push(...(await getPayMethodDescendentIds(id, context)));
-              }
-            })
-          );
-
-          yield {
-            field: "$and",
-            condition: [
-              {
-                "paymentMethod.0.value.id": { $nin },
-              },
-            ],
-          };
-        }
-        break;
-    }
-  }
-};
-
-const getSourceNode = (srcType: SourceType) => {
-  switch (srcType) {
-    case SourceType.Business:
-      return bizNode;
-    case SourceType.Department:
-      return deptNode;
-    case SourceType.Person:
-      return personNode;
-  }
-};
-
-const parseWhereParentDept = function* (
-  whereBudgetOwnerIter: Iterable<
-    [keyof EntriesWhereSource, EntriesWhereSource[keyof EntriesWhereSource]]
-  >
-): IterableIterator<FieldAndCondition<unknown>> {
-  for (const [op, opValue] of whereBudgetOwnerIter) {
-    switch (op) {
-      case "eq":
-        if (opValue) {
-          const mongoOp = comparisonOpsMapper(op);
-          yield {
-            field: "$and",
-            condition: [
-              {
-                "source.0.value.node": {
-                  [mongoOp]: getSourceNode(
-                    (opValue as EntriesWhereSource[typeof op]).type
-                  ),
-                },
-              },
-              {
-                "source.0.value.id": {
-                  [mongoOp]: new ObjectId(
-                    (opValue as EntriesWhereSource[typeof op]).id
-                  ),
-                },
-              },
-            ],
-          };
-        }
-        break;
-      case "ne":
-        if (opValue) {
-          const mongoOp = comparisonOpsMapper(op);
-          yield {
-            field: "$or",
-            condition: [
-              {
-                "source.0.value.node": {
-                  [mongoOp]: getSourceNode(
-                    (opValue as EntriesWhereSource[typeof op]).type
-                  ),
-                },
-              },
-              {
-                "source.0.value.id": {
-                  [mongoOp]: new ObjectId(
-                    (opValue as EntriesWhereSource[typeof op]).id
-                  ),
-                },
-              },
-            ],
-          };
-        }
-        break;
-      case "in":
-        if (opValue) {
-          const orArr: unknown[] = [];
-
-          for (const { field, condition } of parseWhereParentDept(
-            (function* () {
-              for (const opV of opValue as EntriesWhereSource[typeof op]) {
-                yield ["eq", opV] as [
-                  keyof EntriesWhereSource,
-                  EntriesWhereSource[keyof EntriesWhereSource]
-                ];
-              }
-            })()
-          )) {
-            orArr.push({ [field]: condition });
-          }
-
-          yield { field: "$or", condition: orArr };
-        }
-        break;
-      case "nin":
-        if (opValue) {
-          const andArr: unknown[] = [];
-
-          for (const { field, condition } of parseWhereParentDept(
-            (function* () {
-              for (const opV of opValue as EntriesWhereSource[typeof op]) {
-                yield ["ne", opV] as [
-                  keyof EntriesWhereSource,
-                  EntriesWhereSource[keyof EntriesWhereSource]
-                ];
-              }
-            })()
-          )) {
-            andArr.push({ [field]: condition });
-          }
-
-          yield { field: "$and", condition: andArr };
-        }
-        break;
-    }
-  }
-};
-
-const parseWhereFiscalYear = async function* (
-  whereFiscalYearIter: Iterable<
-    [
-      keyof EntriesWhereFiscalYear,
-      EntriesWhereFiscalYear[keyof EntriesWhereFiscalYear]
-    ]
-  >,
-  context: Context
-): AsyncIterableIterator<FieldAndCondition<unknown>> {
-  const fiscalYears = (
-    await context.db
-      .collection("fiscalYears")
-      .find<{
-        _id: ObjectId;
-        begin: Date;
-        end: Date;
-      }>({}, { projection: { _id: true, begin: true, end: true } })
-      .toArray()
-  ).reduce((fiscalYears, { _id, ...rest }) => {
-    fiscalYears.set(_id.toHexString(), rest);
-    return fiscalYears;
-  }, new Map<string, { begin: Date; end: Date }>());
-
-  for (const [op, opValue] of whereFiscalYearIter) {
-    switch (op) {
-      case "eq":
-        if (opValue) {
-          const { begin, end } = fiscalYears.get(
-            opValue as EntriesWhereFiscalYear[typeof op]
-          );
-          yield {
-            field: "$expr",
-            condition: {
-              $let: {
-                vars: {
-                  fiscalYearDate: {
-                    $cond: {
-                      if: {
-                        $and: [
-                          {
-                            $eq: [
-                              DocHistory.getPresentValueExpression(
-                                "dateOfRecord.overrideFiscalYear"
-                              ),
-                              true,
-                            ],
-                          },
-                        ],
-                      },
-                      then: DocHistory.getPresentValueExpression(
-                        "dateOfRecord.date"
-                      ),
-                      else: DocHistory.getPresentValueExpression("date"),
+      case "paymentMethod":
+        promises.push(
+          (async () => {
+            const result = wherePaymentMethods(entryRefundsWhere[whereKey], db);
+            const query = result instanceof Promise ? await result : result;
+            filterQuery["refunds.paymentMethod.0.value"] = {
+              $in: (
+                await db
+                  .collection<{
+                    _id: ObjectId;
+                  }>("paymentMethods")
+                  .find(query, {
+                    projection: {
+                      _id: true,
                     },
-                  },
-                },
-                in: {
-                  $and: [
-                    { $gte: ["$$fiscalYearDate", begin] },
-                    { $lt: ["$$fiscalYearDate", end] },
-                  ],
-                },
-              },
-            },
-          };
-        }
+                  })
+                  .toArray()
+              ).map(({ _id }) => _id),
+            };
+          })()
+        );
         break;
-      case "ne":
-        if (opValue) {
-          const { begin, end } = fiscalYears.get(
-            opValue as EntriesWhereFiscalYear[typeof op]
-          );
-          yield {
-            field: "$expr",
-            condition: {
-              $let: {
-                vars: {
-                  fiscalYearDate: {
-                    $cond: {
-                      if: {
-                        $and: [
-                          {
-                            $eq: [
-                              DocHistory.getPresentValueExpression(
-                                "dateOfRecord.deleted"
-                              ),
-                              false,
-                            ],
-                          },
-                          {
-                            $eq: [
-                              DocHistory.getPresentValueExpression(
-                                "dateOfRecord.overrideFiscalYear"
-                              ),
-                              true,
-                            ],
-                          },
-                        ],
-                      },
-                      then: DocHistory.getPresentValueExpression(
-                        "dateOfRecord.date"
-                      ),
-                      else: DocHistory.getPresentValueExpression("date"),
-                    },
-                  },
-                },
-                in: {
-                  $not: {
-                    $and: [
-                      { $gte: ["$$fiscalYearDate", begin] },
-                      { $lt: ["$$fiscalYearDate", end] },
-                    ],
-                  },
-                },
-              },
-            },
-          };
+      case "total":
+        if (!("$and" in filterQuery)) {
+          filterQuery.$and = [];
         }
+        filterQuery.$and.push(
+          ...whereRational(
+            ["refunds.total.value", 0],
+            entryRefundsWhere[whereKey]
+          )
+        );
         break;
-      case "in":
-        if (opValue) {
-          yield {
-            field: "$expr",
-            condition: {
-              $let: {
-                vars: {
-                  fiscalYearDate: {
-                    $cond: {
-                      if: {
-                        $and: [
-                          {
-                            $eq: [
-                              DocHistory.getPresentValueExpression(
-                                "dateOfRecord.deleted"
-                              ),
-                              false,
-                            ],
-                          },
-                          {
-                            $eq: [
-                              DocHistory.getPresentValueExpression(
-                                "dateOfRecord.overrideFiscalYear"
-                              ),
-                              true,
-                            ],
-                          },
-                        ],
-                      },
-                      then: DocHistory.getPresentValueExpression(
-                        "dateOfRecord.date"
-                      ),
-                      else: DocHistory.getPresentValueExpression("date"),
-                    },
-                  },
-                },
-                in: {
-                  $or: (opValue as EntriesWhereFiscalYear[typeof op]).map(
-                    (opValue) => {
-                      const { begin, end } = fiscalYears.get(opValue);
-                      return {
-                        $and: [
-                          { $gte: ["$$fiscalYearDate", begin] },
-                          { $lt: ["$$fiscalYearDate", end] },
-                        ],
-                      };
-                    }
-                  ),
-                },
-              },
-            },
-          };
-        }
+      case "reconciled":
+        filterQuery["refunds.reconciled.0.value"] = entryRefundsWhere[whereKey];
         break;
-      case "nin":
-        if (opValue) {
-          yield {
-            field: "$expr",
-            condition: {
-              $let: {
-                vars: {
-                  fiscalYearDate: {
-                    $cond: {
-                      if: {
-                        $and: [
-                          {
-                            $eq: [
-                              DocHistory.getPresentValueExpression(
-                                "dateOfRecord.deleted"
-                              ),
-                              false,
-                            ],
-                          },
-                          {
-                            $eq: [
-                              DocHistory.getPresentValueExpression(
-                                "dateOfRecord.overrideFiscalYear"
-                              ),
-                              true,
-                            ],
-                          },
-                        ],
-                      },
-                      then: DocHistory.getPresentValueExpression(
-                        "dateOfRecord.date"
-                      ),
-                      else: DocHistory.getPresentValueExpression("date"),
-                    },
-                  },
-                },
-                in: {
-                  $not: {
-                    $or: (opValue as EntriesWhereFiscalYear[typeof op]).map(
-                      (opValue) => {
-                        const { begin, end } = fiscalYears.get(opValue);
-                        return {
-                          $and: [
-                            { $gte: ["$$fiscalYearDate", begin] },
-                            { $lt: ["$$fiscalYearDate", end] },
-                          ],
-                        };
-                      }
-                    ),
-                  },
-                },
-              },
-            },
-          };
-        }
+      case "lastUpdate":
+        filterQuery["refunds.lastUpdate"] = whereDate(
+          entryRefundsWhere[whereKey]
+        );
         break;
-    }
-  }
-};
-
-const parseWhereEntryId: Readonly<OpsParser<Where, Context>[]> = [
-  parseComparisonOps<Where, Context>((opVal, op) => {
-    switch (op) {
-      case "eq":
-      case "ne":
-        return new ObjectId(opVal as Where[typeof op]);
-      case "in":
-      case "nin":
-        return (opVal as Where[typeof op]).map((id) => new ObjectId(id));
-      default:
-        return opVal;
-    }
-  }),
-] as const;
-
-const NULLISH = Symbol();
-
-const fieldAndConditionGen: FieldAndConditionGenerator<
-  Where,
-  Context
-> = async function* (keyValueIterator, opts: Context) {
-  const [asyncIterator, asyncReturn] = resolveWithAsyncReturn(
-    parseOps(true, keyValueIterator, parseWhereEntryId, opts)
-  );
-
-  for await (const [key, value] of asyncIterator) {
-    switch (key) {
       case "deleted":
-        if ((value ?? NULLISH) !== NULLISH) {
-          yield {
-            field: "deleted.0.value",
-            condition: { $eq: value as Where[typeof key] },
-          };
+        filterQuery["refunds.deleted.0.value"] = entryRefundsWhere[whereKey];
+        break;
+      case "and":
+        {
+          let hasPromise = false;
+          const $and: (
+            | FilterQuery<unknown>
+            | Promise<FilterQuery<unknown>>
+          )[] = entryRefundsWhere[whereKey].map((where) => {
+            const result = whereEntryRefunds(where, db);
+            if (result instanceof Promise) {
+              hasPromise = true;
+            }
+            return result;
+          });
+
+          if (hasPromise) {
+            promises.push(
+              Promise.all($and).then(($and) => {
+                if (!("$and" in filterQuery)) {
+                  filterQuery.$and = [];
+                }
+                filterQuery.$and.push(...$and);
+              })
+            );
+          } else {
+            if (!("$and" in filterQuery)) {
+              filterQuery.$and = [];
+            }
+            filterQuery.$and.push(...($and as FilterQuery<unknown>[]));
+          }
+        }
+        break;
+      case "or":
+        {
+          let hasPromise = false;
+          const $or: (
+            | FilterQuery<unknown>
+            | Promise<FilterQuery<unknown>>
+          )[] = entryRefundsWhere[whereKey].map((where) => {
+            const result = whereEntryRefunds(where, db);
+            if (result instanceof Promise) {
+              hasPromise = true;
+            }
+            return result;
+          });
+
+          if (hasPromise) {
+            promises.push(
+              Promise.all($or).then(($or) => {
+                if (!("$or" in filterQuery)) {
+                  filterQuery.$or = [];
+                }
+                filterQuery.$or.push(...$or);
+              })
+            );
+          } else {
+            if (!("$or" in filterQuery)) {
+              filterQuery.$or = [];
+            }
+            filterQuery.$or.push(...($or as FilterQuery<unknown>[]));
+          }
+        }
+        break;
+      case "nor":
+        {
+          let hasPromise = false;
+          const $nor: (
+            | FilterQuery<unknown>
+            | Promise<FilterQuery<unknown>>
+          )[] = entryRefundsWhere[whereKey].map((where) => {
+            const result = whereEntryRefunds(where, db);
+            if (result instanceof Promise) {
+              hasPromise = true;
+            }
+            return result;
+          });
+
+          if (hasPromise) {
+            promises.push(
+              Promise.all($nor).then(($nor) => {
+                if (!("$nor" in filterQuery)) {
+                  filterQuery.$nor = [];
+                }
+                filterQuery.$nor.push(...$nor);
+              })
+            );
+          } else {
+            if (!("$nor" in filterQuery)) {
+              filterQuery.$nor = [];
+            }
+            filterQuery.$nor.push(...($nor as FilterQuery<unknown>[]));
+          }
+        }
+        break;
+    }
+  }
+
+  if (promises.length) {
+    return Promise.all(promises).then(() => filterQuery);
+  }
+
+  return filterQuery;
+};
+
+export const whereEntryItems = (
+  itemRefundsWhere: EntryItemsWhere,
+  db: Db,
+  filterQuery: FilterQuery<unknown> = {}
+) => {
+  const promises: Promise<void>[] = [];
+
+  for (const whereKey of iterateOwnKeys(itemRefundsWhere)) {
+    switch (whereKey) {
+      case "id":
+        filterQuery["items.id"] = whereId(itemRefundsWhere[whereKey]);
+        break;
+      case "department":
+        promises.push(
+          (async () => {
+            const result = whereDepartments(itemRefundsWhere[whereKey], db);
+            const query = result instanceof Promise ? await result : result;
+            filterQuery["items.department.0.value"] = {
+              $in: (
+                await db
+                  .collection<{
+                    _id: ObjectId;
+                  }>("departments")
+                  .find(query, {
+                    projection: {
+                      _id: true,
+                    },
+                  })
+                  .toArray()
+              ).map(({ _id }) => _id),
+            };
+          })()
+        );
+        break;
+      case "category":
+        promises.push(
+          (async () => {
+            const result = whereCategories(itemRefundsWhere[whereKey], db);
+            const query = result instanceof Promise ? await result : result;
+            filterQuery["items.category.0.value"] = {
+              $in: (
+                await db
+                  .collection<{
+                    _id: ObjectId;
+                  }>("categories")
+                  .find(query, {
+                    projection: {
+                      _id: true,
+                    },
+                  })
+                  .toArray()
+              ).map(({ _id }) => _id),
+            };
+          })()
+        );
+        break;
+      case "units":
+        filterQuery["items.units.0.value"] = whereInt(
+          itemRefundsWhere[whereKey]
+        );
+        break;
+      case "total":
+        if (!("$and" in filterQuery)) {
+          filterQuery.$and = [];
+        }
+        filterQuery.$and.push(
+          ...whereRational(["items.total.value", 0], itemRefundsWhere[whereKey])
+        );
+        break;
+      case "lastUpdate":
+        filterQuery["items.lastUpdate"] = whereDate(itemRefundsWhere[whereKey]);
+        break;
+      case "deleted":
+        filterQuery["items.deleted.0.value"] = itemRefundsWhere[whereKey];
+        break;
+      case "and":
+        {
+          let hasPromise = false;
+          const $and: (
+            | FilterQuery<unknown>
+            | Promise<FilterQuery<unknown>>
+          )[] = itemRefundsWhere[whereKey].map((where) => {
+            const result = whereEntryItems(where, db);
+            if (result instanceof Promise) {
+              hasPromise = true;
+            }
+            return result;
+          });
+
+          if (hasPromise) {
+            promises.push(
+              Promise.all($and).then(($and) => {
+                if (!("$and" in filterQuery)) {
+                  filterQuery.$and = [];
+                }
+                filterQuery.$and.push(...$and);
+              })
+            );
+          } else {
+            if (!("$and" in filterQuery)) {
+              filterQuery.$and = [];
+            }
+            filterQuery.$and.push(...($and as FilterQuery<unknown>[]));
+          }
+        }
+        break;
+      case "or":
+        {
+          let hasPromise = false;
+          const $or: (
+            | FilterQuery<unknown>
+            | Promise<FilterQuery<unknown>>
+          )[] = itemRefundsWhere[whereKey].map((where) => {
+            const result = whereEntryItems(where, db);
+            if (result instanceof Promise) {
+              hasPromise = true;
+            }
+            return result;
+          });
+
+          if (hasPromise) {
+            promises.push(
+              Promise.all($or).then(($or) => {
+                if (!("$or" in filterQuery)) {
+                  filterQuery.$or = [];
+                }
+                filterQuery.$or.push(...$or);
+              })
+            );
+          } else {
+            if (!("$or" in filterQuery)) {
+              filterQuery.$or = [];
+            }
+            filterQuery.$or.push(...($or as FilterQuery<unknown>[]));
+          }
+        }
+        break;
+      case "nor":
+        {
+          let hasPromise = false;
+          const $nor: (
+            | FilterQuery<unknown>
+            | Promise<FilterQuery<unknown>>
+          )[] = itemRefundsWhere[whereKey].map((where) => {
+            const result = whereEntryItems(where, db);
+            if (result instanceof Promise) {
+              hasPromise = true;
+            }
+            return result;
+          });
+
+          if (hasPromise) {
+            promises.push(
+              Promise.all($nor).then(($nor) => {
+                if (!("$nor" in filterQuery)) {
+                  filterQuery.$nor = [];
+                }
+                filterQuery.$nor.push(...$nor);
+              })
+            );
+          } else {
+            if (!("$nor" in filterQuery)) {
+              filterQuery.$nor = [];
+            }
+            filterQuery.$nor.push(...($nor as FilterQuery<unknown>[]));
+          }
+        }
+        break;
+    }
+  }
+
+  if (promises.length) {
+    return Promise.all(promises).then(() => filterQuery);
+  }
+
+  return filterQuery;
+};
+
+export const whereEntries = (entriesWhere: EntriesWhereBeta, db: Db) => {
+  const filterQuery: FilterQuery<unknown> = {};
+
+  const promises: Promise<void | unknown>[] = [];
+
+  for (const whereKey of iterateOwnKeys(entriesWhere)) {
+    switch (whereKey) {
+      case "id":
+        filterQuery["_id"] = whereId(entriesWhere[whereKey]);
+        break;
+      case "refunds":
+        {
+          const result = whereEntryRefunds(
+            entriesWhere[whereKey],
+            db,
+            filterQuery
+          );
+          if (result instanceof Promise) {
+            promises.push(result);
+          }
+        }
+        break;
+      case "items":
+        {
+          const result = whereEntryItems(
+            entriesWhere[whereKey],
+            db,
+            filterQuery
+          );
+          if (result instanceof Promise) {
+            promises.push(result);
+          }
+        }
+        break;
+      case "type":
+        filterQuery["type.0.value"] = pascalCase(entriesWhere[whereKey]);
+        break;
+      case "date":
+        filterQuery["date.0.value"] = whereDate(entriesWhere[whereKey]);
+        break;
+      case "dateOfRecord":
+        for (const dateOfRecordKey of iterateOwnKeys(entriesWhere[whereKey])) {
+          switch (dateOfRecordKey) {
+            case "date":
+              {
+                const dateOfRecordAnd: unknown[] = [];
+                const dateAnd: unknown[] = [];
+
+                for (const [op, value] of iterateOwnKeyValues(
+                  whereDate(entriesWhere[whereKey][dateOfRecordKey])
+                )) {
+                  dateOfRecordAnd.push({
+                    [op]: [
+                      { $arrayElemAt: ["$dateOfRecord.date.value", 0] },
+                      value,
+                    ],
+                  });
+                  dateAnd.push({
+                    [op]: [{ $arrayElemAt: ["$date.value", 0] }, value],
+                  });
+                }
+
+                if (!("$and" in filterQuery)) {
+                  filterQuery.$and = [];
+                }
+
+                filterQuery.$and.push({
+                  $expr: {
+                    $cond: {
+                      if: {
+                        $ne: [{ $type: "$dateOfRecord.date.value" }, "missing"],
+                      },
+                      then: {
+                        $and: dateOfRecordAnd,
+                      },
+                      else: {
+                        $and: dateAnd,
+                      },
+                    },
+                  },
+                });
+              }
+              break;
+            case "overrideFiscalYear":
+              filterQuery["dateOfRecord.overrideFiscalYear.0.value"] =
+                entriesWhere[whereKey][dateOfRecordKey];
+              break;
+          }
         }
         break;
       case "department":
-        if (value) {
-          yield* parseWhereEntryDept(
-            iterateOwnKeyValues(value as Where[typeof key]),
-            opts
-          );
-        }
+        promises.push(
+          (async () => {
+            const result = whereDepartments(entriesWhere[whereKey], db);
+            const query = result instanceof Promise ? await result : result;
+            filterQuery["department.0.value"] = {
+              $in: (
+                await db
+                  .collection<{
+                    _id: ObjectId;
+                  }>("departments")
+                  .find(query, {
+                    projection: {
+                      _id: true,
+                    },
+                  })
+                  .toArray()
+              ).map(({ _id }) => _id),
+            };
+          })()
+        );
+        break;
+      case "fiscalYear":
+        promises.push(
+          (async () => {
+            const fiscalYearsQuery = whereFiscalYear(entriesWhere[whereKey]);
+
+            const fiscalYears = await db
+              .collection<Pick<FiscalYearDbRecord, "end" | "begin">>(
+                "fiscalYears"
+              )
+              .find(fiscalYearsQuery, {
+                projection: {
+                  begin: true,
+                  end: true,
+                },
+              })
+              .toArray();
+
+            const dateOr: FilterQuery<unknown>[] = [];
+            const dateOfRecordOr: FilterQuery<unknown>[] = [];
+
+            for (const { begin, end } of fiscalYears) {
+              dateOr.push({
+                "date.0.value": {
+                  $gte: begin,
+                  $lt: end,
+                },
+              });
+
+              dateOfRecordOr.push({
+                "dateOfRecord.date.0.value": {
+                  $gte: begin,
+                  $lt: end,
+                },
+              });
+            }
+
+            if (!("$and" in filterQuery)) {
+              filterQuery.$and = [];
+            }
+
+            filterQuery.$and.push({
+              $or: [
+                {
+                  "dateOfRecord.overrideFiscalYear.0.value": { $ne: true },
+                  $or: dateOr,
+                },
+                {
+                  "dateOfRecord.overrideFiscalYear.0.value": true,
+                  $or: dateOfRecordOr,
+                },
+              ],
+            });
+          })()
+        );
         break;
       case "category":
-        if (value) {
-          yield* parseWhereCategory(
-            iterateOwnKeyValues(value as Where[typeof key]),
-            opts
-          );
-        }
+        promises.push(
+          (async () => {
+            const result = whereCategories(entriesWhere[whereKey], db);
+            const query = result instanceof Promise ? await result : result;
+            filterQuery["category.0.value"] = {
+              $in: (
+                await db
+                  .collection<{
+                    _id: ObjectId;
+                  }>("categories")
+                  .find(query, {
+                    projection: {
+                      _id: true,
+                    },
+                  })
+                  .toArray()
+              ).map(({ _id }) => _id),
+            };
+          })()
+        );
         break;
       case "paymentMethod":
-        if (value) {
-          yield* parseWhereEntryPayMethod(
-            iterateOwnKeyValues(value as Where[typeof key]),
-            opts
-          );
-        }
+        promises.push(
+          (async () => {
+            const result = wherePaymentMethods(entriesWhere[whereKey], db);
+            const query = result instanceof Promise ? await result : result;
+            filterQuery["paymentMethod.0.value"] = {
+              $in: (
+                await db
+                  .collection<{
+                    _id: ObjectId;
+                  }>("paymentMethods")
+                  .find(query, {
+                    projection: {
+                      _id: true,
+                    },
+                  })
+                  .toArray()
+              ).map(({ _id }) => _id),
+            };
+          })()
+        );
+        break;
+      case "description":
+        filterQuery["description.0.value"] = whereRegex(entriesWhere[whereKey]);
         break;
       case "total":
-        if (value) {
-          const fieldCond = gqlMongoRational(value as Where[typeof key], [
-            "total.value",
-            0,
-          ]);
-          if (fieldCond) {
-            yield fieldCond;
+        if (!("$and" in filterQuery)) {
+          filterQuery.$and = [];
+        }
+        filterQuery.$and.push(
+          ...whereRational(["total.value", 0], entriesWhere[whereKey])
+        );
+        break;
+      case "source":
+        for (const sourceKey of iterateOwnKeys(entriesWhere[whereKey])) {
+          switch (sourceKey) {
+            case "businesses":
+              promises.push(
+                (async () => {
+                  const result = whereBusiness(
+                    entriesWhere[whereKey][sourceKey]
+                  );
+                  const query =
+                    result instanceof Promise ? await result : result;
+
+                  if (!("$and" in filterQuery)) {
+                    filterQuery.$and = [];
+                  }
+
+                  filterQuery.$and.push({
+                    "source.0.value.type": "Business",
+                    "source.0.value.id": {
+                      $in: (
+                        await db
+                          .collection<{
+                            _id: ObjectId;
+                          }>("businesses")
+                          .find(query, {
+                            projection: {
+                              _id: true,
+                            },
+                          })
+                          .toArray()
+                      ).map(({ _id }) => _id),
+                    },
+                  });
+                })()
+              );
+              break;
+            case "departments":
+              promises.push(
+                (async () => {
+                  const result = whereDepartments(
+                    entriesWhere[whereKey][sourceKey],
+                    db
+                  );
+                  const query =
+                    result instanceof Promise ? await result : result;
+
+                  if (!("$and" in filterQuery)) {
+                    filterQuery.$and = [];
+                  }
+
+                  filterQuery.$and.push({
+                    "source.0.value.type": "Department",
+                    "source.0.value.id": {
+                      $in: (
+                        await db
+                          .collection<{
+                            _id: ObjectId;
+                          }>("departments")
+                          .find(query, {
+                            projection: {
+                              _id: true,
+                            },
+                          })
+                          .toArray()
+                      ).map(({ _id }) => _id),
+                    },
+                  });
+                })()
+              );
+              break;
+            case "people":
+              promises.push(
+                (async () => {
+                  const query = wherePeople(entriesWhere[whereKey][sourceKey]);
+
+                  if (!("$and" in filterQuery)) {
+                    filterQuery.$and = [];
+                  }
+
+                  filterQuery.$and.push({
+                    "source.0.value.type": "Person",
+                    "source.0.value.id": {
+                      $in: (
+                        await db
+                          .collection<{
+                            _id: ObjectId;
+                          }>("people")
+                          .find(query, {
+                            projection: {
+                              _id: true,
+                            },
+                          })
+                          .toArray()
+                      ).map(({ _id }) => _id),
+                    },
+                  });
+                })()
+              );
+              break;
           }
         }
         break;
-      case "source":
-        if (value) {
-          yield* parseWhereParentDept(
-            iterateOwnKeyValues(value as Where[typeof key])
-          );
-        }
-        break;
-      case "date":
-        if (value) {
-          const field = "date.0.value";
-          const condition = await parseOps(
-            false,
-            iterateOwnKeyValues(value as Where[typeof key]),
-            dateOpsParser
-          );
-
-          yield {
-            field,
-            condition,
-          };
-        }
-        break;
-      case "fiscalYear":
-        if (value) {
-          yield* parseWhereFiscalYear(
-            iterateOwnKeyValues(value as Where[typeof key]),
-            opts
-          );
-        }
+      case "reconciled":
+        filterQuery["reconciled.0.value"] = entriesWhere[whereKey];
         break;
       case "lastUpdate":
-        if (value) {
-          const condition = await parseOps(
-            false,
-            iterateOwnKeyValues(value as Where[typeof key]),
-            dateOpsParser
-          );
-          yield {
-            field: "lastUpdate",
-            condition,
-          };
+        filterQuery["lastUpdate"] = whereDate(entriesWhere[whereKey]);
+        break;
+      case "deleted":
+        filterQuery["deleted.0.value"] = entriesWhere[whereKey];
+        break;
+      case "and":
+        {
+          let hasPromise = false;
+          const $and: (
+            | FilterQuery<unknown>
+            | Promise<FilterQuery<unknown>>
+          )[] = entriesWhere[whereKey].map((where) => {
+            const result = whereEntries(where, db);
+            if (result instanceof Promise) {
+              hasPromise = true;
+            }
+            return result;
+          });
+
+          if (hasPromise) {
+            promises.push(
+              Promise.all($and).then(($and) => {
+                if (!("$and" in filterQuery)) {
+                  filterQuery.$and = [];
+                }
+                filterQuery.$and.push(...$and);
+              })
+            );
+          } else {
+            if (!("$and" in filterQuery)) {
+              filterQuery.$and = [];
+            }
+            filterQuery.$and.push(...($and as FilterQuery<unknown>[]));
+          }
         }
         break;
-      case "lastUpdateRefund":
-        if (value) {
-          const condition = await parseOps(
-            false,
-            iterateOwnKeyValues(value as Where[typeof key]),
-            dateOpsParser
-          );
-          yield {
-            field: "refunds.lastUpdate",
-            condition,
-          };
+      case "or":
+        {
+          let hasPromise = false;
+          const $or: (
+            | FilterQuery<unknown>
+            | Promise<FilterQuery<unknown>>
+          )[] = entriesWhere[whereKey].map((where) => {
+            const result = whereEntries(where, db);
+            if (result instanceof Promise) {
+              hasPromise = true;
+            }
+            return result;
+          });
+
+          if (hasPromise) {
+            promises.push(
+              Promise.all($or).then(($or) => {
+                if (!("$or" in filterQuery)) {
+                  filterQuery.$or = [];
+                }
+                filterQuery.$or.push(...$or);
+              })
+            );
+          } else {
+            if (!("$or" in filterQuery)) {
+              filterQuery.$or = [];
+            }
+            filterQuery.$or.push(...($or as FilterQuery<unknown>[]));
+          }
         }
         break;
-      case "lastUpdateItem":
-        if (value) {
-          const condition = await parseOps(
-            false,
-            iterateOwnKeyValues(value as Where[typeof key]),
-            dateOpsParser
-          );
-          yield {
-            field: "items.lastUpdate",
-            condition,
-          };
-        }
-        break;
-      case "reconciled":
-        if ((value ?? NULLISH) !== NULLISH) {
-          yield {
-            field: "reconciled.0.value",
-            condition: { $eq: value as Where[typeof key] },
-          };
+      case "nor":
+        {
+          let hasPromise = false;
+          const $nor: (
+            | FilterQuery<unknown>
+            | Promise<FilterQuery<unknown>>
+          )[] = entriesWhere[whereKey].map((where) => {
+            const result = whereEntries(where, db);
+            if (result instanceof Promise) {
+              hasPromise = true;
+            }
+            return result;
+          });
+
+          if (hasPromise) {
+            promises.push(
+              Promise.all($nor).then(($nor) => {
+                if (!("$nor" in filterQuery)) {
+                  filterQuery.$nor = [];
+                }
+                filterQuery.$nor.push(...$nor);
+              })
+            );
+          } else {
+            if (!("$nor" in filterQuery)) {
+              filterQuery.$nor = [];
+            }
+            filterQuery.$nor.push(...($nor as FilterQuery<unknown>[]));
+          }
         }
         break;
     }
   }
 
-  const condition = await asyncReturn;
-
-  // Check that operators have been set on condition.
-  if (Object.keys(condition).length > 0) {
-    yield {
-      field: "_id",
-      condition,
-    };
+  if (promises.length) {
+    return Promise.all(promises).then(() => filterQuery);
   }
+
+  return filterQuery;
 };
 
-const entries: QueryResolvers["entries"] = async (
-  parent,
-  args,
-  context,
-  info
-) => {
-  const pipeline: object[] = [];
+export const entries: QueryResolvers["entries"] = (_, { where }, { db }) => {
+  const query = where ? whereEntries(where, db) : {};
 
-  await Promise.all([
-    (async () => {
-      if (!args.where || Object.keys(args).length === 0) {
-        return;
-      }
+  if (query instanceof Promise) {
+    return query.then((query) =>
+      db.collection("entries").find(query, { projection }).toArray()
+    );
+  }
 
-      const $match = await filterQueryCreator<Where, Context>(
-        args.where,
-        fieldAndConditionGen,
-        context
-      );
-      pipeline.push({ $match });
-    })(),
-  ]);
-
-  pipeline.push(stages.entryAddFields, stages.entryTransmutations);
-
-  const results = await context.db
-    .collection<Entry>("journalEntries")
-    .aggregate(pipeline)
-    .toArray();
-
-  return results;
+  return db.collection("entries").find(query, { projection }).toArray();
 };
-
-export default entries;

@@ -9,7 +9,7 @@ import {
   EntryUpdateRefundFields,
   PaymentMethod,
 } from "../../graphTypes";
-import entry from "./entry";
+import { entry } from "./entry";
 import { stages, getRefundTotals } from "./utils";
 import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";

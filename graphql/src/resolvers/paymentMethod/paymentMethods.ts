@@ -2,6 +2,7 @@ import { Db, FilterQuery, ObjectId } from "mongodb";
 import { QueryResolvers, PaymentMethodWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";
 import { whereRegex, whereId, whereTreeId } from "../utils/queryUtils";
+import { projection } from "./paymentMethod";
 
 export const wherePaymentMethods = (
   payMethodWhere: PaymentMethodWhere,
@@ -230,9 +231,9 @@ export const paymentMethods: QueryResolvers["paymentMethods"] = (
 
   if (query instanceof Promise) {
     return query.then((query) =>
-      db.collection("paymentMethods").find(query).toArray()
+      db.collection("paymentMethods").find(query, { projection }).toArray()
     );
   }
 
-  return db.collection("paymentMethods").find(query).toArray();
+  return db.collection("paymentMethods").find(query, { projection }).toArray();
 };

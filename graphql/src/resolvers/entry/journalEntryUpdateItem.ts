@@ -9,7 +9,7 @@ import {
   EntryItemUpsertResult,
   Entry,
 } from "../../graphTypes";
-import entry from "./entry";
+import { entry } from "./entry";
 import { stages, getItemTotals } from "./utils";
 import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 

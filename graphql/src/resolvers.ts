@@ -11,8 +11,14 @@ import {
   DepartmentAncestor,
 } from "./resolvers/department";
 import { entryAdded, entryUpdated, entryDelete } from "./resolvers/entry";
-import entries from "./resolvers/entry/entries";
-import entry from "./resolvers/entry/entry";
+import {
+  entry,
+  entries,
+  Entry,
+  EntryItem,
+  EntryRefund,
+  EntrySource,
+} from "./resolvers/entry/index";
 import entryAdd from "./resolvers/entry/entryAdd";
 import entryUpdate from "./resolvers/entry/entryUpdate";
 import entryRefund from "./resolvers/entry/entryRefund";
@@ -23,9 +29,6 @@ import entryAddItem from "./resolvers/entry/entryAddItem";
 import entryUpdateItem from "./resolvers/entry/entryUpdateItem";
 import entryDeleteItem from "./resolvers/entry/entryDeleteItem";
 import entryItem from "./resolvers/entry/entryItem";
-import Entry from "./resolvers/entry/EntryResolver";
-import EntryRefund from "./resolvers/entry/EntryRefundResolver";
-import EntryItem from "./resolvers/entry/EntryItemResolver";
 import entryUpserted from "./resolvers/entry/entryUpserted";
 import { sources } from "./resolvers/entrySource";
 import { Category, category, categories } from "./resolvers/category/index";
@@ -54,6 +57,7 @@ const resolvers: Resolvers = {
   Entry,
   EntryRefund,
   EntryItem,
+  EntrySource,
   FiscalYear,
   PaymentMethod,
   Person,

@@ -8,6 +8,11 @@
       "Department",
       "Business"
     ],
+    "EntrySource": [
+      "Person",
+      "Business",
+      "Department"
+    ],
     "Source": [
       "Person",
       "Business",

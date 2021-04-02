@@ -6,7 +6,7 @@ import {
 import { ObjectId } from "mongodb";
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
-import entry from "./entry";
+import { entry } from "./entry";
 import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 
 const entryDeleteItem: MutationResolvers["entryDeleteItem"] = async (

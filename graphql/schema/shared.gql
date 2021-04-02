@@ -121,6 +121,15 @@ input WhereDateTime {
   ignoreTime: Boolean
 }
 
+input WhereInt {
+  eq: Int
+  ne: Int
+  gt: Int
+  gte: Int
+  lt: Int
+  lte: Int
+}
+
 input WhereDateBeta {
   eq: Date
   ne: Date

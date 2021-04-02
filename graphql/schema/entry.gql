@@ -1,3 +1,5 @@
+union EntrySource = Person | Business | Department
+
 enum EntryType {
   CREDIT
   DEBIT
@@ -33,25 +35,60 @@ input EntryDateOfRecordUpdate {
 
 type Entry {
   id: ID!
-  refunds: [EntryRefund!]!
-  items: [EntryItem!]!
-  type: EntryType!
+  category: Category!
   """
   ISO 8601
   """
   date: Date!
   dateOfRecord: EntryDateOfRecord
-  department: Department!
-  budget: Budget!
-  fiscalYear: FiscalYear!
-  category: Category!
-  paymentMethod: PaymentMethod!
-  description: String
-  total: Rational!
-  source: Source!
-  reconciled: Boolean!
-  lastUpdate: Date!
   deleted: Boolean!
+  department: Department!
+  description: String
+  fiscalYear: FiscalYear!
+  items: [EntryItem!]!
+  lastUpdate: Date!
+  paymentMethod: PaymentMethod!
+  reconciled: Boolean!
+  refunds: [EntryRefund!]!
+  source: EntrySource!
+  total: Rational!
+  type: EntryType!
+}
+
+input EntriesWhereSourceBeta {
+  businesses: BusinessWhere
+  departments: DepartmentWhere
+  people: PeopleWhere
+}
+
+input EntriesWhereDateOfRecord {
+  date: WhereDateBeta
+  overrideFiscalYear: Boolean
+}
+
+input EntriesWhereBeta {
+  # Fields
+  id: WhereId
+  refunds: EntryRefundsWhere
+  items: EntryItemsWhere
+  type: EntryType
+  date: WhereDateBeta
+  dateOfRecord: EntriesWhereDateOfRecord
+  department: DepartmentWhere
+  fiscalYear: FiscalYearWhere
+  category: CategoryWhere
+  paymentMethod: PaymentMethodWhere
+  description: WhereRegex
+  total: WhereRational
+  source: EntriesWhereSourceBeta
+  reconciled: Boolean
+  lastUpdate: WhereDateBeta
+  deleted: Boolean
+
+  # Logic
+  and: [EntriesWhereBeta!]
+  or: [EntriesWhereBeta!]
+  nor: [EntriesWhereBeta!]
 }
 
 enum SourceType {
@@ -104,12 +141,28 @@ type EntryRefund {
   ISO 8601
   """
   date: Date!
-  description: String
-  paymentMethod: PaymentMethod!
-  total: Rational!
-  reconciled: Boolean!
-  lastUpdate: Date!
   deleted: Boolean!
+  description: String
+  lastUpdate: Date!
+  paymentMethod: PaymentMethod!
+  reconciled: Boolean!
+  total: Rational!
+}
+
+input EntryRefundsWhere {
+  # Fields
+  id: WhereId
+  date: WhereDateBeta
+  paymentMethod: PaymentMethodWhere
+  total: WhereRational
+  reconciled: Boolean
+  lastUpdate: WhereDateBeta
+  deleted: Boolean
+
+  # Logic
+  and: [EntryRefundsWhere!]
+  or: [EntryRefundsWhere!]
+  nor: [EntryRefundsWhere!]
 }
 
 input EntryAddRefundFields {
@@ -137,13 +190,29 @@ input EntryUpdateRefundFields {
 # Items
 type EntryItem {
   id: ID!
-  department: Department
   category: Category
-  description: String
-  units: Int!
-  total: Rational!
-  lastUpdate: Date!
   deleted: Boolean!
+  department: Department
+  description: String
+  lastUpdate: Date!
+  total: Rational!
+  units: Int!
+}
+
+input EntryItemsWhere {
+  # Fields
+  id: WhereId
+  department: DepartmentWhere
+  category: CategoryWhere
+  units: WhereInt
+  total: WhereRational
+  lastUpdate: WhereDateBeta
+  deleted: Boolean
+
+  # Logic
+  and: [EntryItemsWhere!]
+  or: [EntryItemsWhere!]
+  nor: [EntryItemsWhere!]
 }
 
 input EntryAddItemFields {
@@ -231,7 +300,7 @@ input EntriesWhere {
 }
 
 type Query {
-  entries(where: EntriesWhere): [Entry!]!
+  entries(where: EntriesWhereBeta): [Entry!]!
   entry(id: ID!): Entry
   entryRefund(id: ID!): EntryRefund
   entryItem(id: ID!): EntryItem

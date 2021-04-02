@@ -9,6 +9,7 @@ import {
   WhereId,
   WhereTreeId,
   WhereNode,
+  WhereInt,
 } from "../../graphTypes";
 import { iterateOwnKeys, iterateOwnKeyValues } from "../../utils/iterableFns";
 import {
@@ -16,6 +17,11 @@ import {
   Rational,
   RationalValue,
 } from "../../utils/mongoRational";
+
+export interface NodeDbRecord<T extends string = string> {
+  type: T;
+  id: ObjectId;
+}
 
 export const whereId = (whereId: WhereId): QuerySelector<unknown> => {
   const querySelector: QuerySelector<unknown> = {};
@@ -322,4 +328,33 @@ export const whereRational = (
   }
 
   return $and;
+};
+
+export const whereInt = (intWhere: WhereInt): QuerySelector<unknown> => {
+  const querySelector: QuerySelector<unknown> = {};
+
+  for (const [whereKey, value] of iterateOwnKeyValues(intWhere)) {
+    switch (whereKey) {
+      case "eq":
+        querySelector.$eq = value;
+        break;
+      case "ne":
+        querySelector.$ne = value;
+        break;
+      case "gt":
+        querySelector.$gt = value;
+        break;
+      case "gte":
+        querySelector.$gte = value;
+        break;
+      case "lt":
+        querySelector.$lt = value;
+        break;
+      case "lte":
+        querySelector.$lte = value;
+        break;
+    }
+  }
+
+  return querySelector;
 };

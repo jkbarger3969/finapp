@@ -1,22 +1,38 @@
 import { ObjectId } from "mongodb";
+import { QueryResolvers } from "../../graphTypes";
 
-import { stages } from "./utils";
-import { QueryResolvers, Entry } from "../../graphTypes";
+export const projection = {
+  category: { $slice: 1 },
+  date: { $slice: 1 },
+  dateOfRecord: {
+    date: { $slice: 1 },
+    overrideFiscalYear: { $slice: 1 },
+  },
+  deleted: { $slice: 1 },
+  department: { $slice: 1 },
+  description: { $slice: 1 },
+  paymentMethod: { $slice: 1 },
+  reconciled: { $slice: 1 },
+  source: { $slice: 1 },
+  total: { $slice: 1 },
+  type: { $slice: 1 },
+  items: {
+    category: { $slice: 1 },
+    deleted: { $slice: 1 },
+    department: { $slice: 1 },
+    description: { $slice: 1 },
+    total: { $slice: 1 },
+    units: { $slice: 1 },
+  },
+  refunds: {
+    date: { $slice: 1 },
+    deleted: { $slice: 1 },
+    description: { $slice: 1 },
+    paymentMethod: { $slice: 1 },
+    reconciled: { $slice: 1 },
+    total: { $slice: 1 },
+  },
+} as const;
 
-const entry: QueryResolvers["entry"] = async (parent, args, context, info) => {
-  const { id } = args;
-  const { db } = context;
-
-  const [entry] = await db
-    .collection<Entry>("journalEntries")
-    .aggregate([
-      { $match: { _id: new ObjectId(id) } },
-      stages.entryAddFields,
-      stages.entryTransmutations,
-    ])
-    .toArray();
-
-  return entry;
-};
-
-export default entry;
+export const entry: QueryResolvers["entry"] = (_, { id }, { db }) =>
+  db.collection("entries").findOne({ _id: new ObjectId(id) }, { projection });
