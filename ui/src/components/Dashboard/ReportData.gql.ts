@@ -68,7 +68,7 @@ export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
 `;
 
 export const GET_REPORT_DATA = gql`
-  query GetReportData($deptId:ID!, $where:EntriesWhereBeta!) {
+  query GetReportData($deptId:ID!, $where:EntriesWhere!) {
     department(id:$deptId) {
       ...GetReportDataDept_1Fragment
       descendants {

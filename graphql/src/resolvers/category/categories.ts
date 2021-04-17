@@ -195,7 +195,12 @@ export const whereCategories = (
         }
         break;
       case "root":
-        filterQuery["parent"] = categoryWhere[whereKey] ? null : { $ne: null };
+        if (!("$and" in filterQuery)) {
+          filterQuery.$and = [];
+        }
+        filterQuery.$and.push({
+          parent: categoryWhere[whereKey] ? null : { $ne: null },
+        });
         break;
     }
   }

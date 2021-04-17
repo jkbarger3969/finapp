@@ -1,45 +1,52 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { ApolloError } from "@apollo/client";
+import React, { useCallback, useMemo } from "react";
 import { TableCell } from "@material-ui/core";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
+import TreeSelect, { TreeSelectProps } from "mui-tree-select";
 
 import { treeSelectProps } from "./shared";
-
-import PaymentMethodInput, {
-  PayMethodInputPropsWithGetOptions,
+import {
   PayMethodInputOpt,
-} from "../../../Inputs/PaymentMethodInput";
+  getOptionLabel,
+  getOptionSelected,
+} from "../../../Inputs/paymentMethodInputUtils";
+import { Filter, LogicFilter } from "../plugins/FilterColumnsState";
+import { GridPaymentMethodFragment } from "../../../../apollo/graphTypes";
+import { FilterCellComponentProps } from "../plugins";
 
-import { Filter, LogicFilter } from "./FilterColumnsState";
-import { FilterCellProps } from "./FilterColumnsStateProvider";
-import { GridEntryFragment as GridEntry } from "../../../../apollo/graphTypes";
-
-export const columnExtension: IntegratedFiltering.ColumnExtension = {
-  columnName: "paymentMethod",
-  predicate: (_, filter, row): boolean => {
+export const columnExtension = (
+  columnName: string,
+  toString: (value: GridPaymentMethodFragment) => string
+): IntegratedFiltering.ColumnExtension => ({
+  columnName,
+  predicate: (value, filter, row): boolean => {
     switch (filter.operation) {
       case "equal":
         return (
           ((filter as unknown) as Filter<PayMethodInputOpt>).value.id ===
-          (row as GridEntry).paymentMethod.id
+          (value as GridPaymentMethodFragment).id
         );
       case "notEqual":
         return (
           ((filter as unknown) as Filter<PayMethodInputOpt>).value.id !==
-          (row as GridEntry).paymentMethod.id
+          (value as GridPaymentMethodFragment).id
         );
       default:
-        return false;
+        return IntegratedFiltering.defaultPredicate(
+          toString(value as GridPaymentMethodFragment),
+          filter,
+          row
+        );
     }
   },
-};
+});
 
-type PayMethodInputProps = PayMethodInputPropsWithGetOptions<
-  true,
-  false,
-  false
->;
-export const PayMethodFilter = (props: FilterCellProps): JSX.Element => {
+const onBranchChange = () => void undefined;
+
+export const PayMethodFilter = (
+  props: FilterCellComponentProps<{
+    payMethodFilterOpts: PayMethodInputOpt[];
+  }>
+): JSX.Element => {
   const {
     payMethodFilterOpts,
     changeColumnFilter,
@@ -48,24 +55,19 @@ export const PayMethodFilter = (props: FilterCellProps): JSX.Element => {
     rowSpan,
   } = props;
 
-  const [{ error, value }, setState] = useState<{
-    error?: ApolloError;
-    value: PayMethodInputOpt[];
-  }>({ value: [] });
-
   const columnName = column.name;
 
-  const getOptions = useCallback<
-    NonNullable<PayMethodInputProps["getOptions"]>
-  >(() => payMethodFilterOpts || [], [payMethodFilterOpts]);
+  const options = useMemo<PayMethodInputOpt[]>(
+    () => payMethodFilterOpts || [],
+    [payMethodFilterOpts]
+  );
 
-  const onChange = useCallback<PayMethodInputProps["onChange"]>(
-    (value) => {
-      setState((state) => ({
-        ...state,
-        value,
-      }));
-
+  const onChange = useCallback<
+    NonNullable<
+      TreeSelectProps<PayMethodInputOpt, true, false, false>["onChange"]
+    >
+  >(
+    (_, value) => {
       if (value.length === 0) {
         changeColumnFilter({
           columnName,
@@ -77,10 +79,10 @@ export const PayMethodFilter = (props: FilterCellProps): JSX.Element => {
           filters: [],
         };
 
-        for (const categoryOpt of value) {
+        for (const paymentMethodOpt of value) {
           logicFilter.filters.push({
             operation: "equal",
-            value: categoryOpt,
+            value: paymentMethodOpt,
           });
         }
 
@@ -92,51 +94,25 @@ export const PayMethodFilter = (props: FilterCellProps): JSX.Element => {
         });
       }
     },
-    [changeColumnFilter, columnName, setState]
+    [changeColumnFilter, columnName]
   );
-
-  const onGQLError = useCallback<PayMethodInputProps["onGQLError"]>(
-    (error) => {
-      setState((state) => ({
-        ...state,
-        error,
-      }));
-    },
-    [setState]
-  );
-
-  const textFieldProps = useMemo<
-    NonNullable<PayMethodInputProps["textFieldProps"]>
-  >(() => {
-    if (error) {
-      return {
-        error: true,
-        helperText: `Payment Method Options Fetch Error: ${error.message}`,
-      };
-    } else {
-      return {};
-    }
-  }, [error]);
 
   return (
     <TableCell
       colSpan={colSpan}
+      padding="checkbox"
       rowSpan={rowSpan}
       size="small"
       variant="head"
-      padding="checkbox"
     >
-      <PaymentMethodInput<true, false, false>
+      <TreeSelect<PayMethodInputOpt, true, false, false>
         {...treeSelectProps}
-        onChange={onChange}
-        onGQLError={onGQLError}
-        disabled={
-          !!error || !payMethodFilterOpts || payMethodFilterOpts.length === 0
-        }
-        textFieldProps={textFieldProps}
-        value={value}
-        getOptions={getOptions}
+        getOptionLabel={getOptionLabel}
+        getOptionSelected={getOptionSelected}
+        onBranchChange={onBranchChange}
         multiple
+        onChange={onChange}
+        options={options}
       />
     </TableCell>
   );

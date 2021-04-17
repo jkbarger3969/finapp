@@ -212,6 +212,14 @@ export const wherePaymentMethods = (
           }
         }
         break;
+      case "root":
+        if (!("$and" in filterQuery)) {
+          filterQuery.$and = [];
+        }
+        filterQuery.$and.push({
+          parent: payMethodWhere[whereKey] ? null : { $ne: null },
+        });
+        break;
     }
   }
 

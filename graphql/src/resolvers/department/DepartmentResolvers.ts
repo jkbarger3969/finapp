@@ -6,6 +6,7 @@ import {
   Department as TDepartment,
 } from "../../graphTypes";
 import { Context } from "../../types";
+import { getAliases } from "../alias/utils";
 import { BusinessDbRecord } from "../business/businessResolvers";
 import { addTypename } from "../utils/queryUtils";
 
@@ -168,6 +169,10 @@ const DepartmentResolver: DepartmentResolvers<Context, DepartmentDbRecord> = {
   ancestors,
   descendants,
   virtualRoot: ({ virtualRoot }) => !!virtualRoot,
+  aliases: ({ _id }, _, { db }) =>
+    (getAliases("Department", _id, db) as unknown) as ReturnType<
+      DepartmentResolvers["aliases"]
+    >,
 };
 
 export const Department = (DepartmentResolver as unknown) as DepartmentResolvers;

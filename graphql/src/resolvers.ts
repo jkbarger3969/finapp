@@ -1,5 +1,6 @@
 import { Resolvers } from "./graphTypes";
 // import { Budget, budgets } from "./resolvers/budget";
+import { alias, aliases, Alias, AliasTarget } from "./resolvers/alias";
 import { budget, budgets, Budget, BudgetOwner } from "./resolvers/budget";
 import { addBusiness } from "./resolvers/business";
 import { business, businesses, Business } from "./resolvers/business/index";
@@ -47,6 +48,8 @@ import { User } from "./resolvers/user";
 import { dateScalar, rationalScalar } from "./resolvers/scalars";
 
 const resolvers: Resolvers = {
+  Alias,
+  AliasTarget,
   Date: dateScalar,
   Rational: rationalScalar,
   Budget,
@@ -64,6 +67,8 @@ const resolvers: Resolvers = {
   Category,
   User,
   Query: {
+    alias,
+    aliases,
     budget,
     businesses,
     business,

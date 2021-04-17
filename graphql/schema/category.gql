@@ -4,6 +4,7 @@ type Category {
   type: EntryType!
   parent: Category
   children: [Category!]!
+  aliases: [Alias!]!
 }
 
 input CategoriesWhere {

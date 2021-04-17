@@ -70,7 +70,7 @@ export type Filters<T = unknown, U = DefaultFilterOperations> = (
   | ColumnFilter<T, U>
 )[];
 
-export type FilterColumnStateProps = Omit<
+export type FilterColumnsStateProps = Omit<
   FilteringStatePropsDevEx,
   "filters" | "defaultFilters" | "onFiltersChange"
 > & {
@@ -134,6 +134,12 @@ const filterExpressionComputed = ({
   }
 
   if (filterExpression) {
+    if (filterExpression.operator === "and") {
+      return {
+        operator: "and",
+        filters: [...filterExpression.filters, expression],
+      };
+    }
     return {
       operator: "and",
       filters: [filterExpression, expression],
@@ -144,20 +150,20 @@ const filterExpressionComputed = ({
 };
 
 export const FilterColumnsState = (
-  props: FilterColumnStateProps
+  props: FilterColumnsStateProps
 ): JSX.Element => {
   const {
-    filters: controlledFilters,
-    defaultFilters: uncontrolledFilters,
+    filters: filtersProp,
+    defaultFilters: defaultFiltersProp,
     onFiltersChange,
     ...rest
   } = props;
 
   const [defaultFilters, setDefaultFilters] = useState(
-    uncontrolledFilters || []
+    defaultFiltersProp || []
   );
 
-  const rawFilters = controlledFilters || defaultFilters;
+  const rawFilters = filtersProp || defaultFilters;
 
   const [filters, columnFilters] = useMemo<[Filter[], ColumnFilter[]]>(
     () =>

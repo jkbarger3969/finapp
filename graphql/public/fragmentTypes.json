@@ -1,5 +1,10 @@
 {
   "possibleTypes": {
+    "AliasTarget": [
+      "Category",
+      "Department",
+      "PaymentMethod"
+    ],
     "BudgetOwner": [
       "Department",
       "Business"

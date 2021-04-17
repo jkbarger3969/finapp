@@ -14,6 +14,7 @@ type PaymentMethod {
   children: [PaymentMethod!]!
   allowChildren: Boolean!
   # authorization: [PaymentMethodAuthorization!]!
+  aliases: [Alias!]!
 }
 
 input PaymentMethodWhereParentInput {
@@ -59,6 +60,9 @@ input PaymentMethodsWhere {
   and: [PaymentMethodsWhere!]
   or: [PaymentMethodsWhere!]
   nor: [PaymentMethodsWhere!]
+
+  "Root PaymentMethods i.e. NO parent."
+  root: Boolean
 }
 
 input PaymentMethodAddFields {

@@ -11,6 +11,7 @@ type Department {
   ancestors: [DepartmentAncestor!]!
   descendants: [Department!]!
   virtualRoot: Boolean
+  aliases: [Alias!]!
 }
 
 enum DepartmentAncestorType {

@@ -1,39 +1,52 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { ApolloError } from "@apollo/client";
+import React, { useCallback, useMemo } from "react";
 import { TableCell } from "@material-ui/core";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
+import TreeSelect, { TreeSelectProps } from "mui-tree-select";
 
 import { treeSelectProps } from "./shared";
-import CategoryInput, {
-  CategoryInputPropsWithGetOptions,
+import {
   CategoryInputOpt,
-} from "../../../Inputs/CategoryInput";
-import { Filter, LogicFilter } from "./FilterColumnsState";
-import { FilterCellProps } from "./FilterColumnsStateProvider";
+  getOptionLabel,
+  getOptionSelected,
+} from "../../../Inputs/categoryInputUtils";
+import { Filter, LogicFilter } from "../plugins/FilterColumnsState";
 import { GridEntryFragment as GridEntry } from "../../../../apollo/graphTypes";
+import { FilterCellComponentProps } from "../plugins";
 
-export const columnExtension: IntegratedFiltering.ColumnExtension = {
-  columnName: "category",
-  predicate: (_, filter, row): boolean => {
+export const columnExtension = (
+  columnName: string,
+  toString: (value: GridEntry["category"]) => string
+): IntegratedFiltering.ColumnExtension => ({
+  columnName,
+  predicate: (value, filter, row): boolean => {
     switch (filter.operation) {
       case "equal":
         return (
           ((filter as unknown) as Filter<CategoryInputOpt>).value.id ===
-          (row as GridEntry).category.id
+          (value as GridEntry["category"]).id
         );
       case "notEqual":
         return (
           ((filter as unknown) as Filter<CategoryInputOpt>).value.id !==
-          (row as GridEntry).category.id
+          (value as GridEntry["category"]).id
         );
       default:
-        return false;
+        return IntegratedFiltering.defaultPredicate(
+          toString(value as GridEntry["category"]),
+          filter,
+          row
+        );
     }
   },
-};
+});
 
-type CatInputProps = CategoryInputPropsWithGetOptions<true, false, false>;
-export const CategoryFilter = (props: FilterCellProps): JSX.Element => {
+const onBranchChange = () => void undefined;
+
+export const CategoryFilter = (
+  props: FilterCellComponentProps<{
+    categoryFilterOpts: CategoryInputOpt[];
+  }>
+): JSX.Element => {
   const {
     categoryFilterOpts,
     changeColumnFilter,
@@ -42,25 +55,18 @@ export const CategoryFilter = (props: FilterCellProps): JSX.Element => {
     rowSpan,
   } = props;
 
-  const [{ error, value }, setState] = useState<{
-    error?: ApolloError;
-    value: CategoryInputOpt[];
-  }>({ value: [] });
-
   const columnName = column.name;
 
-  const getOptions = useCallback<NonNullable<CatInputProps["getOptions"]>>(
-    () => categoryFilterOpts || [],
-    [categoryFilterOpts]
-  );
+  const options = useMemo<CategoryInputOpt[]>(() => categoryFilterOpts || [], [
+    categoryFilterOpts,
+  ]);
 
-  const onChange = useCallback<CatInputProps["onChange"]>(
-    (value) => {
-      setState((state) => ({
-        ...state,
-        value,
-      }));
-
+  const onChange = useCallback<
+    NonNullable<
+      TreeSelectProps<CategoryInputOpt, true, false, false>["onChange"]
+    >
+  >(
+    (_, value) => {
       if (value.length === 0) {
         changeColumnFilter({
           columnName,
@@ -87,51 +93,25 @@ export const CategoryFilter = (props: FilterCellProps): JSX.Element => {
         });
       }
     },
-    [changeColumnFilter, columnName, setState]
+    [changeColumnFilter, columnName]
   );
-
-  const onGQLError = useCallback<CatInputProps["onGQLError"]>(
-    (error) => {
-      setState((state) => ({
-        ...state,
-        error,
-      }));
-    },
-    [setState]
-  );
-
-  const textFieldProps = useMemo<
-    NonNullable<CatInputProps["textFieldProps"]>
-  >(() => {
-    if (error) {
-      return {
-        error: true,
-        helperText: `Category Options Fetch Error: ${error.message}`,
-      };
-    } else {
-      return {};
-    }
-  }, [error]);
 
   return (
     <TableCell
       colSpan={colSpan}
+      padding="checkbox"
       rowSpan={rowSpan}
       size="small"
       variant="head"
-      padding="checkbox"
     >
-      <CategoryInput<true, false, false>
+      <TreeSelect<CategoryInputOpt, true, false, false>
         {...treeSelectProps}
-        onChange={onChange}
-        onGQLError={onGQLError}
-        disabled={
-          !!error || !categoryFilterOpts || categoryFilterOpts.length === 0
-        }
-        textFieldProps={textFieldProps}
-        value={value}
-        getOptions={getOptions}
+        getOptionLabel={getOptionLabel}
+        getOptionSelected={getOptionSelected}
+        onBranchChange={onBranchChange}
         multiple
+        onChange={onChange}
+        options={options}
       />
     </TableCell>
   );

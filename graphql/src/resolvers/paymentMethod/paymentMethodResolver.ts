@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { PaymentMethodResolvers } from "../../graphTypes";
 import { HistoryObject, HistoricalRoot } from "../utils/DocHistory";
 import { Context } from "../../types";
+import { getAliases } from "../alias/utils";
 
 export interface PaymentMethodDbRecord extends HistoricalRoot {
   _id: ObjectId;
@@ -32,6 +33,10 @@ const PaymentMethodResolver: PaymentMethodResolvers<
   active: ({ active }) => active[0].value,
   parent,
   children,
+  aliases: ({ _id }, _, { db }) =>
+    (getAliases("PaymentMethod", _id, db) as unknown) as ReturnType<
+      PaymentMethodResolvers["aliases"]
+    >,
 };
 
 export const PaymentMethod = (PaymentMethodResolver as unknown) as PaymentMethodResolvers;

@@ -150,7 +150,7 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
 `;
 
 export const JOURNAL_ENTRIES = gql`
-  query Entries_1($where: EntriesWhereBeta!) {
+  query Entries_1($where: EntriesWhere!) {
     entries(where: $where) @connection(key: "Entries_1", filter: ["where"]) {
       ...Entry_1Fragment
     }

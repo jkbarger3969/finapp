@@ -34,6 +34,12 @@ export const PAYMENT_METHOD = gql`
       __typename
       id
     }
+    aliases {
+      __typename
+      id
+      name
+      type
+    }
   }
 `;
 
@@ -96,7 +102,7 @@ export const ENTRY = gql`
 `;
 
 export const GRID_ENTRIES = gql`
-  query GridEntries($where: EntriesWhereBeta) {
+  query GridEntries($where: EntriesWhere) {
     entries(where: $where) {
       ...GridEntry
     }

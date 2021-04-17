@@ -2,7 +2,7 @@ import { Db, FilterQuery, ObjectId } from "mongodb";
 
 import {
   QueryResolvers,
-  EntriesWhereBeta,
+  EntriesWhere,
   EntryRefundsWhere,
   EntryItemsWhere,
 } from "../../graphTypes";
@@ -365,7 +365,7 @@ export const whereEntryItems = (
   return filterQuery;
 };
 
-export const whereEntries = (entriesWhere: EntriesWhereBeta, db: Db) => {
+export const whereEntries = (entriesWhere: EntriesWhere, db: Db) => {
   const filterQuery: FilterQuery<unknown> = {};
 
   const promises: Promise<void | unknown>[] = [];

@@ -1,3 +1,5 @@
+union AliasTarget = Category | Department | PaymentMethod
+
 enum AliasType {
   ALIAS
   PREFIX_DESCENDANTS
@@ -6,7 +8,7 @@ enum AliasType {
 
 type Alias {
   id: ID!
-  target: Node!
+  target: AliasTarget!
   name: String!
   type: AliasType!
 }
@@ -17,18 +19,21 @@ input AliasWhereTarget {
   in: [NodeInput!]
   nin: [NodeInput!]
 }
-input AliasWhereNode {
-  eq: String
-  ne: String
-  in: [String!]
-  nin: [String!]
-}
 
 input AliasesWhere {
-  target: AliasWhereTarget
-  node: AliasWhereNode
+  # Fields
+  id: WhereId
+  target: WhereNode
+  name: WhereRegex
+  type: AliasType
+
+  # Logic
+  and: [AliasesWhere!]
+  or: [AliasesWhere!]
+  nor: [AliasesWhere!]
 }
 
 extend type Query {
-  aliases: [Alias!]!
+  alias(id: ID!): Alias
+  aliases(where: AliasesWhere): [Alias!]!
 }

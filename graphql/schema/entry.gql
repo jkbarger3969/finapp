@@ -55,7 +55,7 @@ type Entry {
   type: EntryType!
 }
 
-input EntriesWhereSourceBeta {
+input EntriesWhereSource {
   businesses: BusinessesWhere
   departments: DepartmentsWhere
   people: PeopleWhere
@@ -66,7 +66,7 @@ input EntriesWhereDateOfRecord {
   overrideFiscalYear: Boolean
 }
 
-input EntriesWhereBeta {
+input EntriesWhere {
   # Fields
   id: WhereId
   refunds: EntryRefundsWhere
@@ -80,15 +80,15 @@ input EntriesWhereBeta {
   paymentMethod: PaymentMethodsWhere
   description: WhereRegex
   total: WhereRational
-  source: EntriesWhereSourceBeta
+  source: EntriesWhereSource
   reconciled: Boolean
   lastUpdate: WhereDateBeta
   deleted: Boolean
 
   # Logic
-  and: [EntriesWhereBeta!]
-  or: [EntriesWhereBeta!]
-  nor: [EntriesWhereBeta!]
+  and: [EntriesWhere!]
+  or: [EntriesWhere!]
+  nor: [EntriesWhere!]
 }
 
 enum SourceType {
@@ -236,71 +236,8 @@ type EntryItemUpsertResult {
   entry: Entry!
 }
 
-# Where
-input EntriesWhereDepartment {
-  eq: WhereTreeNodeInput
-  ne: WhereTreeNodeInput
-  in: [WhereTreeNodeInput!]
-  nin: [WhereTreeNodeInput!]
-}
-
-input EntriesWhereCategory {
-  eq: WhereTreeNodeInput
-  ne: WhereTreeNodeInput
-  in: [WhereTreeNodeInput!]
-  nin: [WhereTreeNodeInput!]
-}
-
-input EntriesSourceInput {
-  id: ID!
-  type: SourceType!
-}
-
-input EntriesWhereSource {
-  eq: EntriesSourceInput
-  ne: EntriesSourceInput
-  in: [EntriesSourceInput!]
-  nin: [EntriesSourceInput!]
-}
-
-input EntriesWherePaymentMethod {
-  eq: WhereTreeNodeInput
-  ne: WhereTreeNodeInput
-  in: [WhereTreeNodeInput!]
-  nin: [WhereTreeNodeInput!]
-}
-
-input EntriesWhereFiscalYear {
-  eq: ID
-  ne: ID
-  in: [ID!]
-  nin: [ID!]
-}
-
-input EntriesWhere {
-  eq: ID
-  ne: ID
-  in: [ID!]
-  nin: [ID!]
-  date: WhereDate
-  dateOfRecord: WhereDate
-  fiscalYear: EntriesWhereFiscalYear
-  department: EntriesWhereDepartment
-  category: EntriesWhereCategory
-  source: EntriesWhereSource
-  paymentMethod: EntriesWherePaymentMethod
-  total: WhereRational
-  reconciled: Boolean
-  deleted: Boolean
-  lastUpdate: WhereDate
-  lastUpdateRefund: WhereDate
-  lastUpdateItem: WhereDate
-  or: [EntriesWhere!]
-  and: [EntriesWhere!]
-}
-
 type Query {
-  entries(where: EntriesWhereBeta): [Entry!]!
+  entries(where: EntriesWhere): [Entry!]!
   entry(id: ID!): Entry
   entryRefund(id: ID!): EntryRefund
   entryItem(id: ID!): EntryItem

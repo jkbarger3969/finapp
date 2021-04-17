@@ -1,39 +1,51 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { ApolloError } from "@apollo/client";
+import React, { useCallback, useMemo } from "react";
 import { TableCell } from "@material-ui/core";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
+import TreeSelect, { TreeSelectProps } from "mui-tree-select";
 
 import { treeSelectProps } from "./shared";
-import DepartmentInput, {
-  DepartmentInputPropsWithGetOptions,
+import {
   DeptInputOpt,
-} from "../../../Inputs/DepartmentInput";
-import { Filter, LogicFilter } from "./FilterColumnsState";
-import { FilterCellProps } from "./FilterColumnsStateProvider";
-import { GridEntryFragment as GridEntry } from "../../../../apollo/graphTypes";
+  getOptionLabel,
+  getOptionSelected,
+} from "../../../Inputs/departmentInputUtils";
+import { Filter, LogicFilter } from "../plugins/FilterColumnsState";
+import { FilterCellComponentProps } from "../plugins/FilterCell";
 
-export const columnExtension: IntegratedFiltering.ColumnExtension = {
-  columnName: "department",
-  predicate: (_, filter, row): boolean => {
+export const columnExtension = (
+  columnName: string,
+  toString: (value: DeptInputOpt) => string
+): IntegratedFiltering.ColumnExtension => ({
+  columnName,
+  predicate: (value, filter, row): boolean => {
     switch (filter.operation) {
       case "equal":
         return (
           ((filter as unknown) as Filter<DeptInputOpt>).value.id ===
-          (row as GridEntry).department.id
+          (value as DeptInputOpt).id
         );
       case "notEqual":
         return (
           ((filter as unknown) as Filter<DeptInputOpt>).value.id !==
-          (row as GridEntry).department.id
+          (value as DeptInputOpt).id
         );
       default:
-        return false;
+        return IntegratedFiltering.defaultPredicate(
+          toString(value as DeptInputOpt),
+          filter,
+          row
+        );
     }
   },
-};
+});
 
-type DeptInputProps = DepartmentInputPropsWithGetOptions<true, false, false>;
-export const DeptFilter = (props: FilterCellProps): JSX.Element => {
+const onBranchChange = () => void undefined;
+
+export const DeptFilter = (
+  props: FilterCellComponentProps<{
+    deptFilterOpts: DeptInputOpt[];
+  }>
+): JSX.Element => {
   const {
     deptFilterOpts,
     changeColumnFilter,
@@ -42,25 +54,16 @@ export const DeptFilter = (props: FilterCellProps): JSX.Element => {
     rowSpan,
   } = props;
 
-  const [{ error, value }, setState] = useState<{
-    error?: ApolloError;
-    value: DeptInputOpt[];
-  }>({ value: [] });
-
   const columnName = column.name;
 
-  const getOptions = useCallback<NonNullable<DeptInputProps["getOptions"]>>(
-    () => deptFilterOpts || [],
-    [deptFilterOpts]
-  );
+  const options = useMemo<DeptInputOpt[]>(() => deptFilterOpts || [], [
+    deptFilterOpts,
+  ]);
 
-  const onChange = useCallback<DeptInputProps["onChange"]>(
-    (value) => {
-      setState((state) => ({
-        ...state,
-        value,
-      }));
-
+  const onChange = useCallback<
+    NonNullable<TreeSelectProps<DeptInputOpt, true, false, false>["onChange"]>
+  >(
+    (_, value) => {
       if (value.length === 0) {
         changeColumnFilter({
           columnName,
@@ -72,10 +75,10 @@ export const DeptFilter = (props: FilterCellProps): JSX.Element => {
           filters: [],
         };
 
-        for (const deptOpt of value) {
+        for (const departmentOpt of value) {
           logicFilter.filters.push({
             operation: "equal",
-            value: deptOpt,
+            value: departmentOpt,
           });
         }
 
@@ -87,49 +90,25 @@ export const DeptFilter = (props: FilterCellProps): JSX.Element => {
         });
       }
     },
-    [changeColumnFilter, columnName, setState]
+    [changeColumnFilter, columnName]
   );
-
-  const onGQLError = useCallback<DeptInputProps["onGQLError"]>(
-    (error) => {
-      setState((state) => ({
-        ...state,
-        error,
-      }));
-    },
-    [setState]
-  );
-
-  const textFieldProps = useMemo<
-    NonNullable<DeptInputProps["textFieldProps"]>
-  >(() => {
-    if (error) {
-      return {
-        error: true,
-        helperText: `Department Options Fetch Error: ${error.message}`,
-      };
-    } else {
-      return {};
-    }
-  }, [error]);
 
   return (
     <TableCell
       colSpan={colSpan}
+      padding="checkbox"
       rowSpan={rowSpan}
       size="small"
       variant="head"
-      padding="checkbox"
     >
-      <DepartmentInput<true, false, false>
+      <TreeSelect<DeptInputOpt, true, false, false>
         {...treeSelectProps}
-        onChange={onChange}
-        onGQLError={onGQLError}
-        disabled={!!error || !deptFilterOpts || deptFilterOpts.length === 0}
-        textFieldProps={textFieldProps}
-        value={value}
-        getOptions={getOptions}
+        getOptionLabel={getOptionLabel}
+        getOptionSelected={getOptionSelected}
         multiple
+        onBranchChange={onBranchChange}
+        onChange={onChange}
+        options={options}
       />
     </TableCell>
   );

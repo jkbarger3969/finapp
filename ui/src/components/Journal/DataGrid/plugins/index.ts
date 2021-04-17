@@ -1,15 +1,17 @@
-export { FuzzySearch } from "./FuzzySearch";
-export type { FuzzySearchProps } from "./FuzzySearch";
-export { FilterRow } from "./FilterRow";
-export { FilterCell } from "./FilterCell";
-export { FilterColumnsState } from "../filters/FilterColumnsState";
+export { FilterCell, FilterCellProvider } from "./FilterCell";
+export type {
+  FilterCellProviderProps,
+  FilterCellComponentProps,
+  FilterCellComponent,
+} from "./FilterCell";
+export { FilterColumnsState } from "./FilterColumnsState";
+export type { FilterColumnsStateProps } from "./FilterColumnsState";
 export type {
   Filter,
-  // ColumnFilteringStateProps,
   LogicFilter,
   ChangeColumnFilter,
   ColumnFilterOperation,
   ColumnFilter,
   IsColumnFilteringEnabled,
   Filters,
-} from "../filters/FilterColumnsState";
+} from "./FilterColumnsState";

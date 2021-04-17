@@ -1,20 +1,21 @@
 import React, { useCallback } from "react";
 import { TableCell } from "@material-ui/core";
-import { TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
-import TreeSelect, { TreeSelectProps, Option, NodeType } from "mui-tree-select";
+import TreeSelect, { TreeSelectProps } from "mui-tree-select";
 
 import { EntryType } from "../../../../apollo/graphTypes";
 import { treeSelectProps } from "./shared";
+import { FilterCellComponentProps } from "../plugins";
 
 type Props = TreeSelectProps<EntryType, false, false, false>;
 
-const options: Option<EntryType>[] = [
-  { option: EntryType.Debit, type: NodeType.Leaf },
-  { option: EntryType.Credit, type: NodeType.Leaf },
-];
-const getOptions: Props["getOptions"] = () => options;
+const options: ReadonlyArray<EntryType> = [
+  EntryType.Debit,
+  EntryType.Credit,
+] as const;
 
-export const TypeFilter = (props: TableFilterRow.CellProps): JSX.Element => {
+const onBranchChange = () => void undefined;
+
+export const TypeFilter = (props: FilterCellComponentProps): JSX.Element => {
   const {
     colSpan,
     rowSpan,
@@ -23,8 +24,8 @@ export const TypeFilter = (props: TableFilterRow.CellProps): JSX.Element => {
     filteringEnabled,
   } = props;
 
-  const onChange = useCallback<Props["onChange"]>(
-    (value) => {
+  const onChange = useCallback<NonNullable<Props["onChange"]>>(
+    (_, value) => {
       if (value) {
         onFilter({
           columnName,
@@ -48,7 +49,8 @@ export const TypeFilter = (props: TableFilterRow.CellProps): JSX.Element => {
       <TreeSelect<EntryType, false, false, false>
         {...treeSelectProps}
         disabled={!filteringEnabled}
-        getOptions={getOptions}
+        options={options as EntryType[]}
+        onBranchChange={onBranchChange}
         onChange={onChange}
       />
     </TableCell>

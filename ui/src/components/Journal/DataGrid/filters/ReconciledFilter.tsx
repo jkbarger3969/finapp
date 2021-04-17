@@ -1,26 +1,24 @@
 import React, { useCallback } from "react";
 import { TableCell } from "@material-ui/core";
-import { TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
-import TreeSelect, { TreeSelectProps, Option, NodeType } from "mui-tree-select";
+import TreeSelect, { TreeSelectProps } from "mui-tree-select";
 
 import { Entry } from "../../../../apollo/graphTypes";
 import { treeSelectProps } from "./shared";
+import { FilterCellComponentProps } from "../plugins";
 
 type ReconciledType = Entry["reconciled"];
 
 type Props = TreeSelectProps<ReconciledType, false, false, false>;
 
-const options: Option<ReconciledType>[] = [
-  { option: true, type: NodeType.Leaf },
-  { option: false, type: NodeType.Leaf },
-];
-const getOptions: Props["getOptions"] = () => options;
-
 const getOptionLabel: Props["getOptionLabel"] = (opt) =>
   opt ? "Reconciled" : "Unreconciled";
 
+const onBranchChange = () => void undefined;
+
+const options: ReadonlyArray<boolean> = [true, false] as const;
+
 export const ReconciledFilter = (
-  props: TableFilterRow.CellProps
+  props: FilterCellComponentProps
 ): JSX.Element => {
   const {
     colSpan,
@@ -30,8 +28,8 @@ export const ReconciledFilter = (
     filteringEnabled,
   } = props;
 
-  const onChange = useCallback<Props["onChange"]>(
-    (value) => {
+  const onChange = useCallback<NonNullable<Props["onChange"]>>(
+    (_, value) => {
       if (value === true) {
         onFilter({
           columnName,
@@ -59,8 +57,9 @@ export const ReconciledFilter = (
     >
       <TreeSelect<ReconciledType, false, false, false>
         {...treeSelectProps}
+        options={options as ReconciledType[]}
+        onBranchChange={onBranchChange}
         disabled={!filteringEnabled}
-        getOptions={getOptions}
         onChange={onChange}
         getOptionLabel={getOptionLabel}
       />
