@@ -225,6 +225,8 @@ export const FilterColumnsState = (
           computed={(filterExpressionComputed as unknown) as ComputedFn}
         />
         <Action name="changeColumnFilter" action={changeColumnFilter} />
+        {/* Can test for changeColumnFilterState identify FilterColumnsState override */}
+        <Action name="changeColumnFilterState" action={changeColumnFilter} />
       </Plugin>
     </Plugin>
   );

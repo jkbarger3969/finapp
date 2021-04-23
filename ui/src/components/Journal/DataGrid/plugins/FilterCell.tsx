@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   Plugin,
   Template,
   TemplatePlaceholder,
   TemplateConnector,
+  TemplateProps,
 } from "@devexpress/dx-react-core";
 import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
 import { ChangeColumnFilter } from "./FilterColumnsState";
@@ -37,65 +38,62 @@ export type FilterCellComponent<
 > = React.ComponentType<FilterCellComponentProps<T>>;
 
 export interface FilterCellProviderProps<T extends string = string> {
-  filterCell?: Partial<Record<T, FilterCellComponent>>;
-  filterCellProps?: Partial<Record<T, Record<string, unknown>>>;
+  cells?: Partial<Record<T, FilterCellComponent>>;
+  cellsProps?: Partial<Record<T, Record<string, unknown>>>;
   defaultCellProps?: Record<string, unknown>;
 }
 
 export const FilterCellProvider = (
   props: FilterCellProviderProps
 ): JSX.Element => {
-  const {
-    filterCell = {},
-    filterCellProps = {},
-    defaultCellProps = {},
-  } = props;
+  const { cells = {}, cellsProps = {}, defaultCellProps = {} } = props;
 
   return (
     <Plugin name="FilterCellProvider">
       <Template
         name="tableCell"
-        predicate={(params) =>
-          isFilterTableCell(params as TableFilterRow.CellProps)
-        }
+        predicate={isFilterTableCell as TemplateProps["predicate"]}
       >
-        {(params) => (
-          <TemplateConnector>
-            {(_, actions) => {
-              const columnName = (params as Table.CellProps).tableColumn.column
-                ?.name;
+        {useCallback(
+          (params) => (
+            <TemplateConnector>
+              {(_, actions) => {
+                const columnName = (params as Table.CellProps).tableColumn
+                  .column?.name;
 
-              const props =
-                columnName && columnName in filterCellProps
-                  ? filterCellProps[columnName]
-                  : {};
+                const props =
+                  columnName && columnName in cellsProps
+                    ? cellsProps[columnName]
+                    : {};
 
-              if (columnName && columnName in filterCell) {
-                return (
-                  <TemplatePlaceholder
-                    params={{
-                      ...params,
-                      ...defaultCellProps,
-                      ...props,
-                      filterCellComponent: filterCell[columnName],
-                      changeColumnFilter: actions.changeColumnFilter,
-                    }}
-                  />
-                );
-              } else {
-                return (
-                  <TemplatePlaceholder
-                    params={{
-                      ...params,
-                      ...defaultCellProps,
-                      ...props,
-                      filterCellComponent: TableFilterRow.Cell,
-                    }}
-                  />
-                );
-              }
-            }}
-          </TemplateConnector>
+                if (columnName && columnName in cells) {
+                  return (
+                    <TemplatePlaceholder
+                      params={{
+                        ...params,
+                        ...defaultCellProps,
+                        ...props,
+                        filterCellComponent: cells[columnName],
+                        changeColumnFilter: actions.changeColumnFilter,
+                      }}
+                    />
+                  );
+                } else {
+                  return (
+                    <TemplatePlaceholder
+                      params={{
+                        ...params,
+                        ...defaultCellProps,
+                        ...props,
+                        filterCellComponent: TableFilterRow.Cell,
+                      }}
+                    />
+                  );
+                }
+              }}
+            </TemplateConnector>
+          ),
+          [cells, cellsProps, defaultCellProps]
         )}
       </Template>
     </Plugin>
