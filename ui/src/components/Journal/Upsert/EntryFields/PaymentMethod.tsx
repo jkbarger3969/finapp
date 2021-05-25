@@ -4,11 +4,9 @@ import gql from "graphql-tag";
 import { useQuery, QueryHookOptions } from "@apollo/client";
 import { useField, FieldInputProps } from "formik";
 
-import { PAY_METHOD_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";
 import {
   PayMethodEntryOptsQuery as PayMethodEntryOpts,
   PayMethodEntryOptsQueryVariables as PayMethodEntryOptsQueryVars,
-  PayMethodEntryOptFragment,
 } from "../../../../apollo/graphTypes";
 import Autocomplete, {
   AutocompleteProps as AutocompletePropsRaw,
@@ -24,18 +22,18 @@ import {
   FormikStatusType,
 } from "../../../../utils/formik";
 
-type Value = PayMethodEntryOptFragment | string;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Value = any | string;
 
 type AutocompleteProps = AutocompletePropsRaw<Value, true, false, boolean> &
   UseAutocompleteProps<Value, true, false, boolean>;
 
 const PAY_METHOD_ENTRY_OPTS = gql`
-  query PayMethodEntryOpts($where: PaymentMethodsWhere!) {
-    paymentMethods(where: $where) {
-      ...PayMethodEntryOptFragment
+  query PayMethodEntryOpts($where: AccountsWhere!) {
+    accounts(where: $where) {
+      __typename
     }
   }
-  ${PAY_METHOD_ENTRY_OPT_FRAGMENT}
 `;
 
 export type PaymentMethodValue = TransmutationValue<string, Value[]>;
@@ -44,7 +42,8 @@ const validate = (payMethodValue: PaymentMethodValue | undefined) => {
   const value = payMethodValue?.value ?? [];
   const numValues = value.length;
   const curValue = value[numValues - 1];
-  const parent = value[numValues - 2] as PayMethodEntryOptFragment | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parent = value[numValues - 2] as any | undefined;
 
   if (curValue === undefined) {
     return "Method Required";
@@ -72,8 +71,8 @@ const renderTags: AutocompleteProps["renderTags"] = (
   return values.map((value: Value, index: number) => {
     const isLastIndex = lastIndex === index;
     const { key, ...props } = getTagProps({ index }) as Record<string, unknown>;
-
-    const parent = values[index - 1] as PayMethodEntryOptFragment | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parent = values[index - 1] as any;
 
     const isString = typeof value === "string";
 
@@ -82,7 +81,8 @@ const renderTags: AutocompleteProps["renderTags"] = (
       case CHECK_ID:
         label =
           "CK-" +
-          (isString ? value : (value as PayMethodEntryOptFragment).name);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (isString ? value : (value as any).name);
         break;
       default:
         label = getOptionLabel(value);
@@ -93,7 +93,8 @@ const renderTags: AutocompleteProps["renderTags"] = (
       endAdornment = <ChevronRight fontSize="small" />;
     } else if (!isString) {
       // Add Prefixes
-      switch ((value as PayMethodEntryOptFragment).id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      switch ((value as any).id) {
         case CHECK_ID:
           endAdornment = <span>CK-</span>;
           break;
@@ -154,24 +155,6 @@ const PaymentMethod = (
 
   const curValue = value[value.length - 1] ?? null;
 
-  const variables = useMemo<PayMethodEntryOptsQueryVars>(
-    () =>
-      curValue === null
-        ? {
-            where: {
-              hasParent: false,
-            },
-          }
-        : {
-            where: {
-              parent: {
-                eq: (curValue as PayMethodEntryOptFragment).id,
-              },
-            },
-          },
-    [curValue]
-  );
-
   const [formikStatus, setFormikStatus] = useFormikStatus();
 
   const onError = useCallback<
@@ -195,24 +178,16 @@ const PaymentMethod = (
     PayMethodEntryOptsQueryVars
   >(PAY_METHOD_ENTRY_OPTS, {
     skip: typeof curValue === "string",
-    variables,
     onError,
   });
-
-  const options = useMemo<PayMethodEntryOptFragment[]>(
-    () =>
-      !data?.paymentMethods ||
-      typeof curValue === "string" ||
-      curValue?.id === CHECK_ID
-        ? []
-        : data.paymentMethods,
-    [data, curValue]
-  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const options = useMemo<any[]>(() => [], [data, curValue]);
 
   const hasOptions = options.length > 0;
 
   const freeSolo = useMemo<boolean>(
-    () => (curValue as PayMethodEntryOptFragment | null)?.id === CHECK_ID,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    () => (curValue as any | null)?.id === CHECK_ID,
     [curValue]
   );
 
@@ -224,7 +199,8 @@ const PaymentMethod = (
   const label = useMemo(() => {
     if (
       typeof curValue === "string" ||
-      (curValue as PayMethodEntryOptFragment | null)?.id === CHECK_ID
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (curValue as any | null)?.id === CHECK_ID
     ) {
       return "Check #";
     }
@@ -233,7 +209,8 @@ const PaymentMethod = (
   }, [curValue]);
 
   const InputProps = useMemo(() => {
-    if ((curValue as PayMethodEntryOptFragment | null)?.id === CHECK_ID) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((curValue as any | null)?.id === CHECK_ID) {
       return {
         type: "number",
       };
@@ -243,7 +220,8 @@ const PaymentMethod = (
   }, [curValue]);
 
   const inputProps = useMemo(() => {
-    if ((curValue as PayMethodEntryOptFragment | null)?.id === CHECK_ID) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((curValue as any | null)?.id === CHECK_ID) {
       return {
         min: "0",
         step: "1",

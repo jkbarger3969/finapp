@@ -1,7 +1,18 @@
 import React, { useCallback } from "react";
-import { TextField, TextFieldProps } from "@material-ui/core";
+import {
+  InputProps as MUIInputProps,
+  TextField,
+  TextFieldProps,
+} from "@material-ui/core";
 import { TableFilterRow } from "@devexpress/dx-react-grid";
-import { inputProps } from "./shared";
+
+const style: React.CSSProperties = {
+  paddingRight: "8px",
+};
+
+const InputProps: MUIInputProps = {
+  margin: "dense",
+};
 
 export const DefaultEditor = (
   props: TableFilterRow.EditorProps
@@ -25,8 +36,9 @@ export const DefaultEditor = (
     <TextField
       size="small"
       fullWidth
-      InputProps={inputProps}
+      InputProps={InputProps}
       onChange={onChange}
+      style={style}
       value={value ?? ""}
       {...rest}
     />

@@ -1,5 +1,5 @@
 export { department } from "./department";
-export { departments } from "./departments";
+export { departments, whereDepartments } from "./departments";
 export {
   Department,
   DepartmentAncestor,

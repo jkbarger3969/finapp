@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Box, Paper } from "@material-ui/core";
 import {
-  Column,
   SummaryState,
   SummaryItem,
   IntegratedSummary,
@@ -14,6 +13,7 @@ import {
   TableFilterRow as TableFilterRowNS,
   IntegratedFiltering,
   EditingState,
+  EditingStateProps,
 } from "@devexpress/dx-react-grid";
 import {
   Grid,
@@ -33,7 +33,9 @@ import {
   VirtualTable,
   SearchPanel,
   TableFilterRow,
-  TableInlineCellEditing,
+  TableEditColumn,
+  TableEditRow,
+  // TableInlineCellEditing
 } from "@devexpress/dx-react-grid-material-ui";
 import { green, red } from "@material-ui/core/colors";
 import { makeStyles } from "@material-ui/core/styles";
@@ -49,6 +51,8 @@ import {
   GridEntriesQuery,
   GridEntriesQueryVariables,
   EntryType,
+  DepartmentsWhere,
+  AccountsWhere,
 } from "../../../apollo/graphTypes";
 import { deserializeDate, deserializeRational } from "../../../apollo/scalars";
 import { GRID_ENTRIES } from "./Grid.gql";
@@ -57,49 +61,83 @@ import useLocalStorage from "../../utils/useLocalStorage";
 import {
   FilterColumnsState,
   Filters,
-  TableCell,
-  TableCellProvider,
-  TableCellProviderProps,
+  DataCell,
+  EditCell,
+  FilterCell,
+  DataCellProvider,
+  EditCellProvider,
+  FilterCellProvider,
+  CellProviderProps,
+  AddCellProvider,
 } from "./plugins";
 import {
   BoolCell,
   BoolFilter,
   BoolFilterProps,
+  BoolEditor,
   CategoryCell,
   CategoryFilter,
+  categoryFilterColumnExtension,
   CategoryFilterProps,
+  CategoryEditor,
   DateCell,
   DateFilter,
+  dateFilterColumnExtension,
+  DateEditor,
   DeptCell,
   DeptFilter,
+  deptFilterColumnExtension,
   DeptFilterProps,
+  DeptEditor,
+  DeptEditorProps,
   PayMethodCell,
-  PayMethodFilter,
-  PayMethodFilterProps,
+  PayMethodEditor,
+  PayMethodEditorProps,
   RationalCell,
   RationalFilter,
+  rationalFilterColumnExtension,
   RationalFilterProps,
   SourceCell,
   SourceFilter,
+  sourceFilterColumnExtension,
   SourceFilterProps,
+  SourceEditor,
+  sourceToStr,
   TypeFilter,
+  TypeEditor,
+  RationalEditor,
+  RationalEditorProps,
+  SourceEditorProps,
 } from "./cells";
-import {
-  DefaultEditor,
-  DateFilterColumnExtension,
-  CategoryFilterColumnExtension,
-  DeptFilterColumnExtension,
-  PayMethodFilterColumnExtension,
-  RationalFilterColumnExtension,
-  SrcFilterColumnExtension,
-} from "./filters";
+import { DefaultEditor } from "./filters";
 import { DeptInputOpt } from "../../Inputs/departmentInputUtils";
-import { CategoryInputOpt } from "../../Inputs/categoryInputUtils";
-import { PayMethodInputOpt } from "../../Inputs/paymentMethodInputUtils";
-import { SrcTypedInputOpt } from "../../Inputs/sourceInputUtils";
-import { DateProviderProps, RationalProviderProps } from "./dataTypeProviders";
-import { payMethodToStr } from "./dataTypeProviders/PayMethodProvider";
-import { sourceToStr } from "./dataTypeProviders/SourceProvider";
+import {
+  CategoryInputOpt,
+  getOptionLabel as getCategoryOptionLabel,
+} from "../../Inputs/categoryInputUtils";
+import { EntityInputOpt } from "../../Inputs/entityInputUtils";
+import { RowChangesProp } from "./cells/shared";
+import { mergeTableCellProps } from "./plugins/TableCell";
+
+export type GridRefund = Omit<GridRefundFragment, "date" | "total"> & {
+  date: Date;
+  total: Fraction;
+};
+
+export type GridEntry = Omit<
+  GridEntryFragment,
+  "date" | "dateOfRecord" | "total" | "__typename"
+> & {
+  __typename:
+    | GridEntryFragment["__typename"]
+    | GridRefundFragment["__typename"];
+  date: Date;
+  dateOfRecord?: Omit<GridEntryFragment["dateOfRecord"], "date"> & {
+    date: Date;
+  };
+  total: Fraction;
+  refunds: GridRefund[];
+};
 
 type ColumnsNames =
   | "date"
@@ -132,68 +170,98 @@ const useStyles = makeStyles({
   },
 });
 
-const useDataProps = (props: Table.DataCellProps): Table.DataCellProps => {
-  const classes = useStyles();
-
-  return useMemo(() => {
-    const className =
-      (props.row as GridEntryFragment).type === EntryType.Credit
-        ? classes.creditCell
-        : classes.debitCell;
-
-    return {
-      ...props,
-      className:
-        className in props
-          ? ((props as unknown) as Record<string, unknown>).className +
-            ` ${className}`
-          : className,
-    } as Table.DataCellProps;
-  }, [props]);
-};
-
-const dateDefaultFormat = ({
+const dateDefaultFormat = {
   locales: "en-US",
   options: { month: "short", day: "2-digit", year: "numeric" },
-} as unknown) as Readonly<DateProviderProps["defaultFormat"]>;
-
-const usePropsDateFormatter = {
-  useProps: useDataProps,
 };
 
-const dateDataCellDef = {
-  cell: DateCell,
-  props: {
-    formatter: new Intl.DateTimeFormat(
-      dateDefaultFormat?.locales,
-      dateDefaultFormat?.options
-    ),
+const dateDefaultFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "2-digit",
+  year: "numeric",
+});
+
+const currencyFormat = {
+  locales: "en-US",
+  options: { style: "currency", currency: "USD" },
+};
+
+const defaultCurrencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
+
+const disableNonRefundFields = (
+  props: TableEditRow.CellProps
+): TableEditRow.CellProps & { disabled?: boolean } => {
+  if ((props.row as GridEntry).__typename === "EntryRefund") {
+    return {
+      ...props,
+      editingEnabled: false,
+    };
+  }
+
+  return props;
+};
+
+const defaultEditCellProviderProps = {
+  reconciled: {
+    cell: BoolEditor,
   },
-  ...usePropsDateFormatter,
-};
-
-const currencyFormat: RationalProviderProps["format"] = {
   total: {
-    locales: "en-US",
-    options: { style: "currency", currency: "USD" },
+    cell: RationalEditor,
+    props: {
+      rationalInputProps: {
+        InputProps: {
+          startAdornment: "$",
+        },
+      },
+    } as RationalEditorProps,
   },
-} as const;
+  date: {
+    cell: DateEditor,
+  },
+  department: {
+    cell: DeptEditor,
+    props: disableNonRefundFields,
+  },
+  dateOfRecord: {
+    cell: DateEditor,
+    props: disableNonRefundFields,
+  },
+  category: {
+    cell: CategoryEditor,
+    props: disableNonRefundFields,
+  },
+  paymentMethod: {
+    cell: PayMethodEditor,
+  },
+  source: {
+    cell: SourceEditor,
+    props: (props) =>
+      disableNonRefundFields({
+        ...props,
+        ...({
+          options: {
+            allowNewBusiness: true,
+            allowNewPerson: true,
+          },
+        } as Partial<SourceEditorProps>),
+      }),
+  },
+} as CellProviderProps<ColumnsNames>;
 
-const columns: ReadonlyArray<Column> = [
+const columns = [
   {
     name: "date",
     title: "Date",
-    getCellValue: ({ date }: GridEntryFragment) => deserializeDate(date),
+    getCellValue: (row?: GridEntry) => row?.date || null,
   },
   {
     name: "dateOfRecord",
     title: "Date of Record",
-    getCellValue: (row: GridEntryFragment) =>
-      deserializeDate(row.dateOfRecord?.date || row.date),
-  },
-  {
-    name: "type",
-    title: "Type",
+    getCellValue: (row?: GridEntry) =>
+      row?.dateOfRecord?.date || row?.date || null,
   },
   {
     name: "department",
@@ -214,7 +282,7 @@ const columns: ReadonlyArray<Column> = [
   {
     name: "total",
     title: "Total",
-    getCellValue: ({ total }: GridEntryFragment) => deserializeRational(total),
+    getCellValue: (row?: GridEntryFragment) => row?.total || null,
   },
   {
     name: "source",
@@ -233,13 +301,17 @@ const summaryCalculator: NonNullable<IntegratedSummaryProps["calculator"]> = (
 ) => {
   if (type === "totalAggregate") {
     return rows
-      .reduce(
-        (sum: Fraction, row: GridEntryFragment) =>
-          row.type === EntryType.Credit
+      .reduce((sum: Fraction, row: GridEntry) => {
+        if (row.__typename === "EntryRefund") {
+          return row.category.type === EntryType.Credit
+            ? sum.sub(getValue(row))
+            : sum.add(getValue(row));
+        } else {
+          return row.category.type === EntryType.Credit
             ? sum.add(getValue(row))
-            : sum.sub(getValue(row)),
-        new Fraction(0)
-      )
+            : sum.sub(getValue(row));
+        }
+      }, new Fraction(0))
       .valueOf();
   } else {
     return IntegratedSummary.defaultCalculator(type, rows, getValue);
@@ -348,25 +420,27 @@ const integratedSortingColumnExtensions: IntegratedSorting.ColumnExtension[] = [
 
 const dateToString = new Intl.DateTimeFormat(
   dateDefaultFormat?.locales,
-  dateDefaultFormat?.options
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dateDefaultFormat?.options as any
 );
 const currencyToString = new Intl.NumberFormat(
-  currencyFormat.total.locales,
-  currencyFormat.total.options
+  currencyFormat.locales,
+  currencyFormat.options
 );
 const integratedFilteringColumnExtensions: IntegratedFiltering.ColumnExtension[] = [
-  DateFilterColumnExtension("date", (date) => dateToString.format(date)),
-  DateFilterColumnExtension("dateOfRecord", (date) =>
+  dateFilterColumnExtension("date", (date) => dateToString.format(date)),
+  dateFilterColumnExtension("dateOfRecord", (date) =>
     dateToString.format(date)
   ),
-  CategoryFilterColumnExtension("category", (value) => value.name),
-  DeptFilterColumnExtension("department", (value) => value.name),
-  PayMethodFilterColumnExtension("paymentMethod", payMethodToStr),
-  RationalFilterColumnExtension(
+  categoryFilterColumnExtension("category", (value) =>
+    getCategoryOptionLabel(value)
+  ),
+  deptFilterColumnExtension("department", (value) => value.name),
+  rationalFilterColumnExtension(
     "total",
     (value) => `${value.toString()} ${currencyToString.format(value.valueOf())}`
   ),
-  SrcFilterColumnExtension("source", sourceToStr),
+  sourceFilterColumnExtension("source", sourceToStr),
 ];
 
 // Dev Helper
@@ -398,9 +472,68 @@ const DevExplorer = (props: {
 
 export type Props = {
   where?: EntriesWhere;
+  selectableDepts: DepartmentsWhere;
+  selectableAccounts: AccountsWhere;
   layoutCacheKey?: string;
 };
 const JournalGrid: React.FC<Props> = (props: Props) => {
+  const classes = useStyles();
+
+  type ChangeSet = {
+    added?: Record<string, unknown>[];
+    changed?: Record<string, unknown>[];
+    deleted?: string[];
+  };
+
+  const [state, setState] = useState<
+    Required<Pick<EditingStateProps, "editingRowIds">> & {
+      changes: ChangeSet;
+    }
+  >({
+    editingRowIds: [],
+    changes: {},
+  });
+
+  const onCommitChanges = useCallback<(changes: ChangeSet) => void>(
+    (changes) =>
+      setState((state) => ({
+        ...state,
+        changes,
+      })),
+    []
+  );
+
+  const TableRow = useCallback((props: Table.DataRowProps) => {
+    const { id } = props.row as GridEntryFragment;
+
+    return (
+      <Table.Row
+        {...props}
+        onDoubleClick={useCallback(
+          () =>
+            setState((state) => ({
+              ...state,
+              editingRowIds: state.editingRowIds.includes(id)
+                ? state.editingRowIds.filter((curId) => curId === id)
+                : [...state.editingRowIds, id],
+            })),
+          []
+        )}
+      />
+    );
+  }, []);
+
+  const onEditingRowIdsChange = useCallback<
+    NonNullable<EditingStateProps["onEditingRowIdsChange"]>
+  >(
+    (editingRowIds) =>
+      setState((state) => ({
+        ...state,
+        editingRowIds,
+      })),
+    []
+  );
+
   const variables = useMemo<GridEntriesQueryVariables>(
     () => ({
       where: props.where,
@@ -420,22 +553,36 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     variables,
   });
 
-  const rows = useMemo<GridEntriesQuery["entries"]>(() => {
+  const rows = useMemo<GridEntry[]>(() => {
     if (!data?.entries) {
       return [];
     }
 
-    const rows = data.entries.reduce((entries, entry: GridEntryFragment) => {
-      if (entry.deleted) {
+    const rows = data.entries.reduce((entries, entryRaw: GridEntryFragment) => {
+      if (entryRaw.deleted) {
         return entries;
       }
 
-      entries.push(entry);
+      const entry = {
+        ...entryRaw,
+        date: deserializeDate(entryRaw.date),
+        dateOfRecord: entryRaw.dateOfRecord
+          ? {
+              ...entryRaw.dateOfRecord,
+              date: deserializeDate(entryRaw.dateOfRecord.date),
+            }
+          : undefined,
+        total: deserializeRational(entryRaw.total),
+        refunds: entryRaw.refunds.map((refund) => ({
+          ...refund,
+          date: deserializeDate(refund.date),
+          total: deserializeRational(refund.total),
+        })),
+      };
+
+      entries.push(entry as GridEntry);
 
       if (entry.refunds.length > 0) {
-        const type =
-          entry.type === EntryType.Credit ? EntryType.Debit : EntryType.Credit;
-
         for (const refund of entry.refunds) {
           if (refund.deleted) {
             continue;
@@ -443,30 +590,28 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
 
           const refundEntry = {
             ...entry,
-            ...(refund as Omit<GridRefundFragment, "__typename">),
-            type,
+            ...refund,
           };
 
-          entries.push(refundEntry);
+          entries.push((refundEntry as unknown) as GridEntry);
         }
       }
 
       return entries;
-    }, [] as GridEntryFragment[]);
+    }, [] as GridEntry[]);
 
     return rows;
   }, [data?.entries]);
 
-  const tableCellProviderProps = useMemo<
-    TableCellProviderProps<ColumnsNames>
+  const filterCellProviderProps = useMemo<
+    CellProviderProps<ColumnsNames>
   >(() => {
     const deptFilterOpts = new Map<string, DeptInputOpt>();
     const categoryFilterOpts = new Map<string, CategoryInputOpt>();
-    const payMethodFilterOpts = new Map<string, PayMethodInputOpt>();
-    const srcFilterOpts = new Map<string, SrcTypedInputOpt>();
+    const srcFilterOpts = new Map<string, EntityInputOpt>();
 
     for (const row of rows) {
-      const { department, category, paymentMethod, source } = row;
+      const { department, category, source } = row;
 
       if (!deptFilterOpts.has(department.id)) {
         deptFilterOpts.set(department.id, department as DeptInputOpt);
@@ -476,112 +621,89 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
         categoryFilterOpts.set(category.id, category as CategoryInputOpt);
       }
 
-      if (!payMethodFilterOpts.has(paymentMethod.id)) {
-        payMethodFilterOpts.set(
-          paymentMethod.id,
-          paymentMethod as PayMethodInputOpt
-        );
-      }
-
       const srcKey = `${source.__typename}_${source.id}`;
       if (!srcFilterOpts.has(srcKey)) {
-        srcFilterOpts.set(srcKey, source as SrcTypedInputOpt);
+        srcFilterOpts.set(srcKey, source as EntityInputOpt);
       }
     }
 
     return {
-      dataCells: {
-        date: dateDataCellDef,
-        dateOfRecord: dateDataCellDef,
-        type: usePropsDateFormatter,
-        department: {
-          cell: DeptCell,
-          ...usePropsDateFormatter,
-        },
-        category: {
-          cell: CategoryCell,
-          ...usePropsDateFormatter,
-        },
-        paymentMethod: {
-          cell: PayMethodCell,
-          ...usePropsDateFormatter,
-        },
-        description: usePropsDateFormatter,
-        total: {
-          cell: RationalCell,
-          props: {
-            formatter: new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: "USD",
-            }),
-          },
-          ...usePropsDateFormatter,
-        },
-        source: {
-          cell: SourceCell,
-          ...usePropsDateFormatter,
-        },
-        reconciled: {
-          cell: BoolCell,
-          ...usePropsDateFormatter,
-        },
+      category: {
+        cell: CategoryFilter,
+        props: {
+          categoryFilterOpts: [...categoryFilterOpts.values()],
+        } as CategoryFilterProps,
       },
-      filterCells: {
-        category: {
-          cell: CategoryFilter,
-          props: {
-            categoryFilterOpts: [...categoryFilterOpts.values()],
-          } as CategoryFilterProps,
-        },
-        date: {
-          cell: DateFilter,
-        },
-        dateOfRecord: {
-          cell: DateFilter,
-        },
-        department: {
-          cell: DeptFilter,
-          props: {
-            deptFilterOpts: [...deptFilterOpts.values()],
-          } as DeptFilterProps,
-        },
-        paymentMethod: {
-          cell: PayMethodFilter,
-          props: {
-            payMethodFilterOpts: [...payMethodFilterOpts.values()],
-          } as PayMethodFilterProps,
-        },
-        reconciled: {
-          cell: BoolFilter,
-          props: {
-            boolLabels: {
-              trueLabel: "Reconciled",
-              falseLabel: "Unreconciled",
+      date: {
+        cell: DateFilter,
+      },
+      dateOfRecord: {
+        cell: DateFilter,
+      },
+      department: {
+        cell: DeptFilter,
+        props: {
+          deptFilterOpts: [...deptFilterOpts.values()],
+        } as DeptFilterProps,
+      },
+
+      reconciled: {
+        cell: BoolFilter,
+        props: {
+          boolLabels: {
+            trueLabel: "Reconciled",
+            falseLabel: "Unreconciled",
+          },
+        } as BoolFilterProps,
+      },
+      source: {
+        cell: SourceFilter,
+        props: {
+          srcFilterOpts: [...srcFilterOpts.values()],
+        } as SourceFilterProps,
+      },
+      total: {
+        cell: RationalFilter,
+        props: {
+          rationalInputProps: {
+            InputProps: {
+              startAdornment: "$",
             },
-          } as BoolFilterProps,
-        },
-        source: {
-          cell: SourceFilter,
-          props: {
-            srcFilterOpts: [...srcFilterOpts.values()],
-          } as SourceFilterProps,
-        },
-        total: {
-          cell: RationalFilter,
-          props: {
-            rationalInputProps: {
-              InputProps: {
-                startAdornment: "$",
-              },
-            },
-          } as RationalFilterProps,
-        },
-        type: {
-          cell: TypeFilter,
-        },
+          },
+        } as RationalFilterProps,
+      },
+      type: {
+        cell: TypeFilter,
       },
     };
   }, [rows]);
+
+  const editCellProviderProps = useMemo<CellProviderProps<ColumnsNames>>(() => {
+    return {
+      ...defaultEditCellProviderProps,
+      department: {
+        ...(defaultEditCellProviderProps.department || {}),
+        props: mergeTableCellProps(
+          defaultEditCellProviderProps.department?.props || {},
+          {
+            root: props.selectableDepts,
+          },
+          disableNonRefundFields
+        ),
+      },
+      paymentMethod: {
+        ...(defaultEditCellProviderProps.paymentMethod || {}),
+        props: mergeTableCellProps(
+          defaultEditCellProviderProps.paymentMethod?.props || {},
+          {
+            options: {
+              accountsWhere: props.selectableAccounts,
+            },
+          } as PayMethodEditorProps
+        ),
+      },
+    } as CellProviderProps<ColumnsNames>;
+  }, [props.selectableDepts, props.selectableAccounts]);
 
   const [columnOrder, setColumnOrder] = useLocalStorage(
     defaultColumnOrder,
@@ -605,6 +727,90 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
 
   const [filters, setFilters] = useState<Filters>([]);
 
+  const devExplorerGetters = useMemo(
+    () => ["editingRowIds", "editingCells", "rowChanges"],
+    []
+  );
+
+  const dataCellColor = useCallback(
+    ({
+      className = "",
+      row,
+      ...rest
+    }: Table.DataCellProps & { className?: string }) => {
+      const colorClass = (() => {
+        if ((row as GridEntry).__typename === "EntryRefund") {
+          return (row as GridEntry).category.type === EntryType.Credit
+            ? classes.debitCell
+            : classes.creditCell;
+        } else {
+          return (row as GridEntry).category.type === EntryType.Credit
+            ? classes.creditCell
+            : classes.debitCell;
+        }
+      })();
+
+      return {
+        className: `${className} ${colorClass}`.trim(),
+        row,
+        ...rest,
+      };
+    },
+    [classes.creditCell, classes.debitCell]
+  );
+
+  const dataCellProviderProps = useMemo<CellProviderProps<ColumnsNames>>(() => {
+    return {
+      date: {
+        cell: DateCell,
+        props: (props) =>
+          dataCellColor({
+            ...props,
+            formatter: dateDefaultFormatter,
+          }),
+      },
+      dateOfRecord: {
+        cell: DateCell,
+        props: (props) =>
+          dataCellColor({
+            ...props,
+            formatter: dateDefaultFormatter,
+          }),
+      },
+      department: {
+        cell: DeptCell,
+        props: dataCellColor,
+      },
+      category: {
+        cell: CategoryCell,
+        props: dataCellColor,
+      },
+      paymentMethod: {
+        cell: PayMethodCell,
+        props: dataCellColor,
+      },
+      description: {
+        props: dataCellColor,
+      },
+      total: {
+        cell: RationalCell,
+        props: (props) =>
+          dataCellColor({
+            ...props,
+            formatter: defaultCurrencyFormatter,
+          }),
+      },
+      source: {
+        cell: SourceCell,
+        props: dataCellColor,
+      },
+      reconciled: {
+        cell: BoolCell,
+        props: dataCellColor,
+      },
+    };
+  }, [dataCellColor]);
+
   if (error) {
     return <div>{error.message}</div>;
   }
@@ -618,16 +824,18 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
 
           {/* State Plugins */}
           <EditingState
-            onCommitChanges={useCallback((...args) => {
-              console.log(...args);
-            }, [])}
+            editingRowIds={state.editingRowIds}
+            onEditingRowIdsChange={onEditingRowIdsChange}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            onCommitChanges={onCommitChanges as any}
           />
           <SearchState />
-          <DevExplorer getters={useMemo(() => ["filterExpression"], [])} />
+          {/* <DevExplorer getters={devExplorerGetters} /> */}
           <FilterColumnsState filters={filters} onFiltersChange={setFilters} />
-          {/* <DevExplorer getters={useMemo(() => ["filterExpression"], [])} /> */}
+
           <SortingState sorting={sorting} onSortingChange={setSorting} />
           <SummaryState totalItems={(totalItems as unknown) as SummaryItem[]} />
+
           {/* Data Processing Plugins */}
           <IntegratedFiltering
             columnExtensions={integratedFilteringColumnExtensions}
@@ -637,7 +845,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
             columnExtensions={integratedSortingColumnExtensions}
           />
 
-          <VirtualTable cellComponent={TableCell} />
+          <VirtualTable cellComponent={DataCell} rowComponent={TableRow} />
           <TableColumnResizing
             columnWidths={columnWidths}
             onColumnWidthsChange={setColumnWidths}
@@ -650,7 +858,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
 
           <TableFilterRow
             showFilterSelector
-            cellComponent={TableCell}
+            cellComponent={FilterCell}
             editorComponent={DefaultEditor}
           />
           <TableColumnVisibility
@@ -663,8 +871,12 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
           <TableSummaryRow
             messages={(messages as unknown) as TableSummaryRowProps["messages"]}
           />
-          <TableInlineCellEditing startEditAction="doubleClick" />
-          <TableCellProvider {...tableCellProviderProps} />
+          <TableEditRow cellComponent={EditCell} rowHeight={53} />
+          <DataCellProvider {...dataCellProviderProps} />
+          <FilterCellProvider {...filterCellProviderProps} />
+          <EditCellProvider {...editCellProviderProps} />
+          <AddCellProvider {...editCellProviderProps} />
+          <TableEditColumn showAddCommand showDeleteCommand />
         </Grid>
       </Box>
       {loading && <OverlayLoading zIndex="modal" />}

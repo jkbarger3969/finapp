@@ -1,3 +1,7 @@
-export { paymentMethod } from "./paymentMethod";
-export { paymentMethods, wherePaymentMethods } from "./paymentMethods";
-export { PaymentMethod, PaymentMethodDbRecord } from "./paymentMethodResolver";
+export {
+  PaymentCardInterface,
+  PaymentCheckInterface,
+  PaymentMethodInterface,
+  PaymentMethodCard,
+} from "./paymentMethodResolvers";
+export type { PaymentCardTypeDbRecord } from "./paymentMethodResolvers";

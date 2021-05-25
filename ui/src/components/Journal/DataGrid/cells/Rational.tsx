@@ -1,7 +1,12 @@
-import React, { useCallback, useState } from "react";
-import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
+import React, { useCallback, useMemo, useState } from "react";
+import {
+  Table,
+  TableFilterRow,
+  TableEditRow,
+} from "@devexpress/dx-react-grid-material-ui";
 import Fraction from "fraction.js";
 import { Box } from "@material-ui/core";
+
 import {
   availableFilterOperations,
   AvailableFilterOperations,
@@ -14,7 +19,13 @@ import {
   RationalInputProps,
 } from "../../../Inputs/RationalInput";
 import { LogicFilter } from "../plugins/FilterColumnsState";
-import { OnFilter } from "../plugins/TableCell";
+import { DefaultFilterOperations, Filter, OnFilter } from "../plugins";
+import {
+  inlineInputProps,
+  inlinePaddingWithSelector,
+  RowChangesProp,
+} from "./shared";
+import { IntegratedFiltering } from "@devexpress/dx-react-grid";
 
 // Data Cell
 export interface RationalCellProps {
@@ -132,7 +143,7 @@ export type RationalFilterProps = Omit<TableFilterRow.CellProps, "onFilter"> & {
 };
 
 export const RationalFilter = (props: RationalFilterProps): JSX.Element => {
-  const { rationalInputProps, ...rest } = props;
+  const { rationalInputProps: rationalInputPropsProp, ...rest } = props;
 
   const { filteringEnabled, getMessage, onFilter, column } = props;
 
@@ -357,8 +368,27 @@ export const RationalFilter = (props: RationalFilterProps): JSX.Element => {
   const isRangeOp =
     state.selectorValue !== "equal" && state.selectorValue !== "notEqual";
 
+  const rationalInputProps = useMemo(() => {
+    if (rationalInputPropsProp) {
+      return {
+        ...rationalInputPropsProp,
+        InputProps: {
+          ...inlineInputProps,
+          ...(rationalInputPropsProp.InputProps || {}),
+        },
+      };
+    } else {
+      return {
+        InputProps: inlineInputProps,
+      };
+    }
+  }, [rationalInputPropsProp]);
+
   return (
-    <TableFilterRow.Cell {...(rest as TableFilterRow.CellProps)}>
+    <TableFilterRow.Cell
+      {...(rest as TableFilterRow.CellProps)}
+      style={inlinePaddingWithSelector}
+    >
       <Box width="100%">
         <Box display="flex" alignItems="center">
           <TableFilterRow.FilterSelector
@@ -377,7 +407,7 @@ export const RationalFilter = (props: RationalFilterProps): JSX.Element => {
             fullWidth
             onChange={onChangeRational}
             size="small"
-            {...(rationalInputProps || {})}
+            {...rationalInputProps}
           />
         </Box>
         {isRangeOp && !!state.total && (
@@ -404,5 +434,75 @@ export const RationalFilter = (props: RationalFilterProps): JSX.Element => {
         )}
       </Box>
     </TableFilterRow.Cell>
+  );
+};
+
+export const rationalFilterColumnExtension = (
+  columnName: string,
+  toString: (value: Fraction) => string
+): IntegratedFiltering.ColumnExtension => ({
+  columnName,
+  predicate: (value, filter, row): boolean => {
+    const filterTotal = ((filter as unknown) as Filter<Fraction>).value;
+
+    switch (filter.operation as DefaultFilterOperations) {
+      case "equal":
+        return (value as Fraction).equals(filterTotal);
+      case "notEqual":
+        return !(value as Fraction).equals(filterTotal);
+      case "greaterThan":
+        return (value as Fraction).compare(filterTotal) > 0;
+      case "greaterThanOrEqual":
+        return (value as Fraction).compare(filterTotal) >= 0;
+      case "lessThan":
+        return (value as Fraction).compare(filterTotal) < 0;
+      case "lessThanOrEqual":
+        return (value as Fraction).compare(filterTotal) <= 0;
+      default:
+        return IntegratedFiltering.defaultPredicate(
+          toString(value as Fraction),
+          filter,
+          row
+        );
+    }
+  },
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type RationalEditorProps = TableEditRow.CellProps & {
+  rationalInputProps?: Pick<RationalInputProps, "disabled" | "InputProps">;
+} & RowChangesProp;
+
+export const RationalEditor = (props: RationalEditorProps): JSX.Element => {
+  const {
+    rationalInputProps: rationalInputPropsProp,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    rowChanges,
+    ...rest
+  } = props;
+  const { editingEnabled, value, onValueChange } = props;
+
+  const onChange = useCallback<NonNullable<RationalInputProps["onChange"]>>(
+    (event, rational) => {
+      onValueChange(rational);
+    },
+    [onValueChange]
+  );
+
+  const rationalInputProps = useMemo<RationalInputProps>(() => {
+    return {
+      fullWidth: true,
+      size: "small",
+      ...(rationalInputPropsProp || {}),
+      disabled: !editingEnabled || !!rationalInputPropsProp?.disabled,
+      onChange,
+      value,
+    };
+  }, [editingEnabled, onChange, rationalInputPropsProp, value]);
+
+  return (
+    <TableEditRow.Cell {...rest}>
+      <RationalInput {...rationalInputProps} />
+    </TableEditRow.Cell>
   );
 };

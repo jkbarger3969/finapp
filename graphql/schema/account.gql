@@ -1,0 +1,102 @@
+interface AccountInterface {
+  id: ID!
+  active: Boolean!
+  currency: Currency!
+  name: String!
+  owner: Entity!
+}
+
+type AccountCard implements PaymentCardInterface {
+  id: ID!
+  account: AccountWithCardsInterface!
+  active: Boolean!
+  authorizedUsers: [Entity!]!
+  trailingDigits: String!
+  type: PaymentCardType!
+}
+
+interface AccountWithCardsInterface implements AccountInterface {
+  id: ID!
+  active: Boolean!
+  cards: [AccountCard!]!
+  currency: Currency!
+  name: String!
+  owner: Entity!
+}
+
+type AccountCheck implements PaymentCheckInterface {
+  account: AccountChecking!
+  checkNumber: String!
+}
+
+input AccountCheckInput {
+  """
+  id of AccountChecking
+  """
+  account: ID!
+  checkNumber: String!
+}
+
+type AccountChecking implements AccountInterface & AccountWithCardsInterface {
+  id: ID!
+  accountNumber: String!
+  active: Boolean!
+  cards: [AccountCard!]!
+  # checks: [AccountCheck!]!
+  currency: Currency!
+  name: String!
+  owner: Entity!
+}
+
+type AccountCreditCard implements AccountInterface & AccountWithCardsInterface {
+  id: ID!
+  active: Boolean!
+  cards: [AccountCard!]!
+  currency: Currency!
+  name: String!
+  owner: Entity!
+}
+
+input AccountCardsWhere {
+  # Fields
+  id: WhereId
+  account: AccountsWhere
+  active: Boolean
+  authorizedUsers: EntitiesWhere
+  trailingDigits: WhereRegex
+  type: PaymentCardType
+
+  # Logic
+  and: [AccountCardsWhere!]
+  or: [AccountCardsWhere!]
+  nor: [AccountCardsWhere!]
+}
+
+enum AccountType {
+  CREDIT_CARD
+  CHECKING
+}
+
+input AccountsWhere {
+  # Fields
+  id: WhereId
+  accountNumber: WhereRegex
+  accountType: AccountType
+  active: Boolean
+  cards: AccountCardsWhere
+  # currency: Currency!
+  name: WhereRegex
+  owner: EntitiesWhere
+
+  # Logic
+  and: [AccountsWhere!]
+  or: [AccountsWhere!]
+  nor: [AccountsWhere!]
+}
+
+extend type Query {
+  accounts(where: AccountsWhere): [AccountInterface!]!
+  account(id: ID!): AccountInterface!
+  accountCards(where: AccountCardsWhere): [AccountCard!]!
+  accountCard(id: ID!): AccountCard!
+}

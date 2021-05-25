@@ -1,11 +1,10 @@
 import { Db, ObjectId } from "mongodb";
 import { CategoryDbRecord } from "../category";
-import { PaymentMethodDbRecord } from "../paymentMethod";
 import { DepartmentDbRecord } from "../department";
 
 import { AliasDbRecord } from "./aliasResolvers";
 
-export type AliasTargetTypes = "Category" | "Department" | "PaymentMethod";
+export type AliasTargetTypes = "Category" | "Department";
 
 /**
  * @returns All aliases that apply to the target.  Both direct aliases and
@@ -113,50 +112,6 @@ export const getAliases = async (
                 .collection<Pick<DepartmentDbRecord, "parent">>("departments")
                 .findOne(
                   { _id: parent.id },
-                  {
-                    projection: {
-                      parent: true,
-                    },
-                  }
-                ));
-            }
-          }
-          break;
-        case "PaymentMethod":
-          {
-            let { parent } = await db
-              .collection<Pick<PaymentMethodDbRecord, "parent">>(
-                "paymentMethods"
-              )
-              .findOne(
-                { _id: targetId },
-                {
-                  projection: {
-                    parent: true,
-                  },
-                }
-              );
-            while (parent) {
-              promises.push(
-                db
-                  .collection<AliasDbRecord>("aliases")
-                  .find({
-                    "target.type": targetType,
-                    "target.id": parent,
-                    type: { $ne: "Alias" },
-                  })
-                  .toArray()
-                  .then((results) => {
-                    aliases.push(...results);
-                  })
-              );
-
-              ({ parent } = await db
-                .collection<Pick<PaymentMethodDbRecord, "parent">>(
-                  "paymentMethods"
-                )
-                .findOne(
-                  { _id: parent },
                   {
                     projection: {
                       parent: true,

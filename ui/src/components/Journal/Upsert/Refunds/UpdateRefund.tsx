@@ -25,7 +25,6 @@ import {
 import { deserializeRational } from "../../../../apollo/scalars";
 import submitUpdate, { UpdateValues, IniUpdateValues } from "./submitUpdate";
 import { JOURNAL_FRAGMENT } from "./refunds.gql";
-import { PAY_METHOD_ENTRY_OPT_FRAGMENT } from "../upsertEntry.gql";
 import {
   FormikStatus,
   FormikStatusType,
@@ -58,14 +57,13 @@ const UPDATE_REFUND_INI_STATE = gql`
       date
       description
       paymentMethod {
-        ...PayMethodEntryOptFragment
+        __typename
       }
       total
       reconciled
     }
   }
   ${JOURNAL_FRAGMENT}
-  ${PAY_METHOD_ENTRY_OPT_FRAGMENT}
 `;
 
 const UpdateRefundDialog = (

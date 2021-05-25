@@ -66,7 +66,6 @@ import {
 } from "../../../apollo/graphTypes";
 import { deserializeRational } from "../../../apollo/scalars";
 import { JOURNAL_ENTRIES, JOURNAL_ENTRY_FRAGMENT } from "./Entries.gql";
-import { CHECK_ID } from "../constants";
 import tableIcons from "../../utils/materialTableIcons";
 import AddRefund from "../Upsert/Refunds/AddRefund";
 import UpdateRefund from "../Upsert/Refunds/UpdateRefund";
@@ -99,13 +98,10 @@ const entriesGen = function* (
 ): IterableIterator<Entry> {
   for (const entry of entries) {
     yield entry;
-    const refundType =
-      entry.type === EntryType.Credit ? EntryType.Debit : EntryType.Credit;
     for (const refund of entry.refunds) {
       yield {
         ...entry,
         ...refund,
-        type: refundType,
         description: refund.description || entry.description,
         refunds: entry.id,
       };
@@ -371,7 +367,7 @@ const Journal = (props: {
       filterOptions.category.set(entry.category.id, entry.category);
       filterOptions.department.set(entry.department.id, entry.department);
       filterOptions.paymentMethod.set(
-        entry.paymentMethod.id,
+        entry.paymentMethod.__typename,
         entry.paymentMethod
       );
       filterOptions.source.set(
@@ -388,9 +384,7 @@ const Journal = (props: {
         category: [...filterOptions.category.values()],
         department: [...filterOptions.department.values()],
         // Do not include individual check numbers
-        paymentMethod: [...filterOptions.paymentMethod.values()].filter(
-          (p) => p.parent?.id !== "5dc46d0af74afb2c2805bd54"
-        ),
+        paymentMethod: [...filterOptions.paymentMethod.values()],
         source: [...filterOptions.source.values()],
       },
     ] as const;
@@ -517,10 +511,7 @@ const Journal = (props: {
       {
         field: "paymentMethod",
         title: "Payment Method",
-        render: ({ paymentMethod }) =>
-          paymentMethod.parent?.id === CHECK_ID
-            ? `CK-${paymentMethod.name}`
-            : paymentMethod.name,
+        render: ({ paymentMethod }) => paymentMethod.__typename,
         searchable: false,
         // eslint-disable-next-line react/display-name, react/prop-types
         filterComponent: ({ columnDef, onFilterChanged }) => (
@@ -599,7 +590,8 @@ const Journal = (props: {
       rowStyle: (data: Entry) => {
         const style = {} as React.CSSProperties;
 
-        style.color = data.type === EntryType.Credit ? green[900] : red[900];
+        style.color =
+          data.category.type === EntryType.Credit ? green[900] : red[900];
 
         return style;
       },
@@ -770,7 +762,7 @@ const Journal = (props: {
           return null as any;
         }
 
-        const isCredit = rowData.type === EntryType.Credit;
+        const isCredit = rowData.category.type === EntryType.Credit;
 
         return {
           icon: ((props: Record<string, unknown>) =>
@@ -990,7 +982,7 @@ const Journal = (props: {
                   values.push(entry.category.name);
                   break;
                 case "paymentMethod":
-                  values.push(entry.paymentMethod.name);
+                  values.push(entry.paymentMethod.__typename);
                   break;
                 case "source":
                   switch (entry.source.__typename) {
@@ -1230,7 +1222,7 @@ const Journal = (props: {
             }
           }
 
-          if (entry.type === EntryType.Credit) {
+          if (entry.category.type === EntryType.Credit) {
             newAggregate = newAggregate.add(entryTotal);
           } else {
             newAggregate = newAggregate.sub(entryTotal);

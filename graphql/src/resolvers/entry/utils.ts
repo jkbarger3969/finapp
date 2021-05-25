@@ -84,7 +84,6 @@ export const entryAddFieldsStage = {
             | "fiscalYear"
           >]-?: null;
         } = {
-          type: null,
           department: null,
           category: null,
           paymentMethod: null,

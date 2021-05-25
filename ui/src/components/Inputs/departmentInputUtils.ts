@@ -1,17 +1,21 @@
 import { useCallback, useMemo, useState } from "react";
 import { TreeSelectProps, FreeSoloValue, BranchOption } from "mui-tree-select";
-import { useQuery, gql, QueryHookOptions, QueryResult } from "@apollo/client";
+import { useQuery, gql, QueryResult, QueryHookOptions } from "@apollo/client";
+import { MarkOptional } from "ts-essentials";
 
 import {
   DeptInputOptsQuery as DeptOpts,
   DeptInputOptsQueryVariables as DeptOptsVars,
+  DeptInputIniValueQuery as DeptIniValue,
+  DeptInputIniValueQueryVariables as DeptIniValueVars,
   DeptInputOptFragment,
   DepartmentsWhere,
   NodeInput,
+  Scalars,
+  Department,
 } from "../../apollo/graphTypes";
 
-export type DeptInputOpt = Omit<DeptInputOptFragment, "children"> &
-  Partial<Pick<DeptInputOptFragment, "children">>;
+export type DeptInputOpt = MarkOptional<DeptInputOptFragment, "children">;
 
 export const DEPT_INPUT_OPT_FRAGMENT = gql`
   fragment DeptInputOpt on Department {
@@ -25,15 +29,53 @@ export const DEPT_INPUT_OPT_FRAGMENT = gql`
   }
 `;
 
+export const DEPT_INPUT_INI_VALUE = gql`
+  query DeptInputIniValue($id: ID!) {
+    iniValue: department(id: $id) {
+      ...DeptInputOpt
+      parent {
+        __typename
+        ... on Department {
+          id
+          children {
+            ...DeptInputOpt
+          }
+        }
+        ... on Business {
+          id
+          departments(root: true) {
+            ...DeptInputOpt
+          }
+        }
+      }
+    }
+    ancestors: departments(where: { id: { gt: $id } }) {
+      ...DeptInputOpt
+      parent {
+        __typename
+        ... on Department {
+          id
+        }
+        ... on Business {
+          id
+        }
+      }
+    }
+  }
+  ${DEPT_INPUT_OPT_FRAGMENT}
+`;
+
 export const DEPT_INPUT_OPTS = gql`
   query DeptInputOpts($where: DepartmentsWhere!) {
     departments(where: $where) {
       ...DeptInputOpt
     }
   }
+  ${DEPT_INPUT_OPT_FRAGMENT}
 `;
 
-type DeptTreeSelectProps = TreeSelectProps<
+export type DeptTreeSelectProps = TreeSelectProps<
+  DeptInputOpt,
   DeptInputOpt,
   undefined,
   undefined,
@@ -56,22 +98,109 @@ const getWhere = (root: DeptTreeRoot): DepartmentsWhere => {
 
 export type DeptTreeQueryResult = QueryResult<DeptOpts, DeptOptsVars>;
 
+export interface UseDepartmentTreeOptions {
+  root: DeptTreeRoot;
+  queryHookOptions?: Omit<QueryHookOptions<DeptOpts>, "variables">;
+  iniValue?: Scalars["ID"];
+}
+
+export type TreeSelectParams = Required<
+  Pick<DeptTreeSelectProps, "branchPath" | "onBranchChange" | "options">
+>;
+
 export const useDepartmentTree = (
-  root: DeptTreeRoot,
-  queryHookOptions: Omit<QueryHookOptions, "variables"> = {}
+  options: UseDepartmentTreeOptions
 ): {
-  options: DeptTreeSelectProps["options"];
-  onBranchChange: DeptTreeSelectProps["onBranchChange"];
-  queryResult: DeptTreeQueryResult;
+  iniValue?: DeptInputOpt;
+  treeSelectParams: TreeSelectParams;
+  queryResult: QueryResult<DeptOpts, DeptOptsVars>;
 } => {
-  const [{ variables }, setState] = useState({
-    variables: { where: getWhere(root) },
+  interface State {
+    iniValue?: {
+      iniValue: NonNullable<UseDepartmentTreeOptions["iniValue"]>;
+      value?: DeptIniValue["iniValue"];
+    };
+    variables?: DeptOptsVars;
+    branchPath: NonNullable<DeptTreeSelectProps["branchPath"]>;
+  }
+
+  const [state, setState] = useState<State>(() => {
+    const state: State = {
+      branchPath: [],
+    };
+
+    if (options.iniValue) {
+      state.iniValue = {
+        iniValue: options.iniValue,
+      };
+    } else {
+      state.variables = { where: getWhere(options.root) };
+    }
+
+    return state;
+  });
+
+  const iniValueResult = useQuery<DeptIniValue, DeptIniValueVars>(
+    DEPT_INPUT_INI_VALUE,
+    {
+      onCompleted: useCallback<
+        NonNullable<QueryHookOptions<DeptIniValue>["onCompleted"]>
+      >(
+        (data) => {
+          if (!state.iniValue || state.iniValue.value) {
+            return;
+          }
+
+          // Order is not guaranteed but it is likely from iniValue leaf back
+          // up the tree.  Reversing, likely makes unsorted already in order.
+          const unsorted = [...data.ancestors].reverse();
+          const sorted: DeptInputOptFragment[] = [];
+          let parentKey: keyof Pick<
+            NonNullable<Department["parent"]>,
+            "__typename" | "id"
+          > = "__typename";
+          let parent: DeptInputOptFragment["id"] | "Business" = "Business";
+          while (unsorted.length) {
+            for (let i = 0, len = unsorted.length; i < len; i++) {
+              if (unsorted[i].parent[parentKey] === parent) {
+                parentKey = "id";
+                parent = unsorted[i].id;
+                sorted.push(...unsorted.splice(i, 1));
+                break;
+              }
+            }
+          }
+
+          const value = data.iniValue;
+          setState((state) => ({
+            ...state,
+            branchPath: sorted.map((opt) => new BranchOption(opt)),
+            iniValue: {
+              ...(state.iniValue || {}),
+              value,
+            } as State["iniValue"],
+          }));
+        },
+        [setState, state.iniValue]
+      ),
+      variables: {
+        id: state.iniValue?.iniValue || "",
+      },
+      skip: !state.iniValue || !!state.iniValue?.value,
+    }
+  );
+
+  const queryResult = useQuery<DeptOpts, DeptOptsVars>(DEPT_INPUT_OPTS, {
+    variables: state.variables,
+    ...(options.queryHookOptions || {}),
+    skip: options.queryHookOptions?.skip || !state.variables,
   });
 
   const onBranchChange = useCallback<DeptTreeSelectProps["onBranchChange"]>(
-    (...[, branchOption]) => {
+    (...[, branchOption, branchPath]) => {
       setState((state) => ({
         ...state,
+        branchPath,
         variables: {
           ...state.variables,
           where: getWhere(
@@ -80,21 +209,26 @@ export const useDepartmentTree = (
                   type: "Department",
                   id: branchOption.option.id,
                 }
-              : root
+              : options.root
           ),
         },
       }));
     },
-    [root, setState]
+    [options.root, setState]
   );
 
-  const queryResult = useQuery<DeptOpts, DeptOptsVars>(DEPT_INPUT_OPTS, {
-    variables,
-    ...queryHookOptions,
-  });
-
-  const options = useMemo<DeptTreeSelectProps["options"]>(() => {
-    return (queryResult.data?.departments || []).reduce((options, option) => {
+  const treeSelectOptions = useMemo<DeptTreeSelectProps["options"]>(() => {
+    return (() => {
+      if (queryResult.data?.departments) {
+        return queryResult.data.departments;
+      } else if (!state.iniValue?.value?.parent) {
+        return [];
+      } else if (state.iniValue.value.parent.__typename === "Business") {
+        return state.iniValue.value.parent.departments;
+      } else {
+        return state.iniValue.value.parent.children;
+      }
+    })().reduce((options, option) => {
       if (option.children.length) {
         options.push(new BranchOption(option));
       }
@@ -103,12 +237,20 @@ export const useDepartmentTree = (
 
       return options;
     }, [] as DeptTreeSelectProps["options"]);
-  }, [queryResult.data?.departments]);
+  }, [queryResult.data?.departments, state.iniValue?.value?.parent]);
 
   return {
-    onBranchChange,
-    options,
-    queryResult,
+    iniValue: state.iniValue?.value,
+    treeSelectParams: {
+      options: treeSelectOptions,
+      onBranchChange,
+      branchPath: state.branchPath,
+    },
+    queryResult: {
+      ...queryResult,
+      error: queryResult.error || iniValueResult.error,
+      loading: queryResult.loading || iniValueResult.loading,
+    },
   };
 };
 

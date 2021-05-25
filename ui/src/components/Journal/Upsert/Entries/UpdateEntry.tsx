@@ -35,7 +35,6 @@ import {
 } from "../../../../utils/formik";
 import submitUpdate, { UpdateValues, IniUpdateValues } from "./submitUpdate";
 import {
-  PAY_METHOD_ENTRY_OPT_FRAGMENT,
   DEPT_ENTRY_OPT_FRAGMENT,
   CAT_ENTRY_OPT_FRAGMENT,
   SRC_ENTRY_PERSON_OPT_FRAGMENT,
@@ -71,7 +70,6 @@ const UPDATE_ENTRY_INI_STATE = gql`
     entry(id: $id) {
       id
       __typename
-      type
       date
       dateOfRecord {
         date
@@ -95,7 +93,7 @@ const UPDATE_ENTRY_INI_STATE = gql`
         }
       }
       paymentMethod {
-        ...PayMethodEntryOptFragment
+        __typename
       }
       description
       total
@@ -114,7 +112,6 @@ const UPDATE_ENTRY_INI_STATE = gql`
   ${SRC_ENTRY_PERSON_OPT_FRAGMENT}
   ${SRC_ENTRY_BIZ_OPT_FRAGMENT}
   ${SRC_ENTRY_DEPT_OPT_FRAGMENT}
-  ${PAY_METHOD_ENTRY_OPT_FRAGMENT}
 `;
 
 const MAX_DATE = new Date(8640000000000000);
@@ -478,7 +475,7 @@ const UpdateEntry = (props: UpdateEntryProps): JSX.Element => {
 
     const description = entry.description ?? null;
 
-    const type = entry.type;
+    const type = entry.category.type;
 
     const source = (() => {
       const value: IniUpdateValues["source"]["value"] = [];

@@ -4,15 +4,9 @@ import { isValid } from "date-fns";
 
 import DocHistory from "../utils/DocHistory";
 import { userNodeType } from "../utils/standIns";
-import {
-  MutationResolvers,
-  EntryUpdateRefundFields,
-  PaymentMethod,
-} from "../../graphTypes";
+import { MutationResolvers, EntryUpdateRefundFields } from "../../graphTypes";
 import { entry } from "./entry";
 import { stages, getRefundTotals } from "./utils";
-import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
-import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
 import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 
 const NULLISH = Symbol();
@@ -29,7 +23,7 @@ const entryUpdateRefund: MutationResolvers["entryUpdateRefund"] = async (
   context,
   info
 ) => {
-  const { id, fields, paymentMethodAdd, paymentMethodUpdate } = args;
+  const { id, fields, paymentMethodUpdate } = args;
 
   const { db, user, nodeMap, pubSub } = context;
 
@@ -147,90 +141,6 @@ const entryUpdateRefund: MutationResolvers["entryUpdateRefund"] = async (
     }
 
     updateBuilder.updateField("total", total);
-  }
-
-  // Payment method
-  if (paymentMethodAdd) {
-    // Ensure other checks finish before creating payment method
-    asyncOps.push(
-      Promise.all(asyncOps.splice(0)).then(async () => {
-        const { id: node } = nodeMap.typename.get("PaymentMethod");
-
-        const id = new ObjectId(
-          await (paymentMethodAddMutation(
-            obj,
-            { fields: paymentMethodAdd },
-            {
-              ...context,
-              ephemeral: {
-                ...(context.ephemeral || {}),
-                docHistoryDate: docHistory.date,
-              },
-            },
-            info
-          ) as Promise<PaymentMethod>).then(({ id }) => id)
-        );
-
-        updateBuilder.updateField("paymentMethod", {
-          node: new ObjectId(node),
-          id,
-        });
-      })
-    );
-  } else if (paymentMethodUpdate) {
-    // Ensure other checks finish before creating updating method
-    asyncOps.push(
-      Promise.all(asyncOps.splice(0)).then(async () => {
-        const id = new ObjectId(paymentMethodUpdate.id);
-
-        // Update payment method
-        await paymentMethodUpdateMutation(
-          obj,
-          {
-            id: paymentMethodUpdate.id,
-            fields: paymentMethodUpdate.fields,
-          },
-          {
-            ...context,
-            ephemeral: {
-              ...(context.ephemeral || {}),
-              docHistoryDate: docHistory.date,
-            },
-          },
-          info
-        );
-
-        const { id: node } = nodeMap.typename.get("PaymentMethod");
-
-        updateBuilder.updateField("paymentMethod", {
-          node: new ObjectId(node),
-          id,
-        });
-      })
-    );
-  } else if (fields.paymentMethod) {
-    asyncOps.push(
-      (async () => {
-        const id = new ObjectId(fields.paymentMethod);
-
-        const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
-
-        if (
-          !(await db
-            .collection(collection)
-            .findOne({ _id: id }, { projection: { _id: true } }))
-        ) {
-          throw new Error(
-            `Payment method with id ${id.toHexString()} does not exist.`
-          );
-        }
-
-        updateBuilder.updateField("paymentMethod", {
-          node: new ObjectId(node),
-          id,
-        });
-      })()
-    );
   }
 
   await Promise.all(asyncOps);

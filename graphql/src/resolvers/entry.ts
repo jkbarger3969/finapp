@@ -687,8 +687,6 @@ export const entryDelete: MutationResolvers["entryDelete"] = async (
 };
 
 export const Entry: EntryResolvers = {
-  type: (parent) =>
-    (parent.type as any) === "credit" ? EntryType.Credit : EntryType.Debit,
   department: nodeFieldResolver,
   category: nodeFieldResolver,
   paymentMethod: nodeFieldResolver,

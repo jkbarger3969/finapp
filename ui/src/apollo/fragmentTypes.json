@@ -1,9 +1,16 @@
 {
   "possibleTypes": {
+    "AccountInterface": [
+      "AccountChecking",
+      "AccountCreditCard"
+    ],
+    "AccountWithCardsInterface": [
+      "AccountChecking",
+      "AccountCreditCard"
+    ],
     "AliasTarget": [
       "Category",
-      "Department",
-      "PaymentMethod"
+      "Department"
     ],
     "BudgetOwner": [
       "Department",
@@ -13,11 +20,28 @@
       "Department",
       "Business"
     ],
-    "EntrySource": [
+    "Entity": [
       "Person",
       "Business",
       "Department"
     ],
+    "PaymentCardInterface": [
+      "AccountCard",
+      "PaymentCard"
+    ],
+    "PaymentCheckInterface": [
+      "AccountCheck",
+      "PaymentCheck"
+    ],
+    "PaymentMethodInterface": [
+      "PaymentMethodCard",
+      "PaymentMethodCheck",
+      "PaymentMethodCash",
+      "PaymentMethodOnline",
+      "PaymentMethodCombination",
+      "PaymentMethodUnknown"
+    ],
+    "TypeNode": [],
     "Source": [
       "Person",
       "Business",

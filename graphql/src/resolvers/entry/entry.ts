@@ -15,7 +15,6 @@ export const projection = {
   reconciled: { $slice: 1 },
   source: { $slice: 1 },
   total: { $slice: 1 },
-  type: { $slice: 1 },
   items: {
     category: { $slice: 1 },
     deleted: { $slice: 1 },

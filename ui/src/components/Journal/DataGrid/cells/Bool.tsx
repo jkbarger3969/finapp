@@ -1,8 +1,26 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Done as DoneIcon } from "@material-ui/icons";
-import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
-import { TextField, TextFieldProps } from "@material-ui/core";
+import {
+  Table,
+  TableEditRow,
+  TableFilterRow,
+  TableInlineCellEditing,
+} from "@devexpress/dx-react-grid-material-ui";
+import {
+  Box,
+  Checkbox,
+  CheckboxProps,
+  TextField,
+  TextFieldProps,
+} from "@material-ui/core";
 import Autocomplete, { AutocompleteProps } from "@material-ui/lab/Autocomplete";
+
+import {
+  inlinePadding,
+  inlineInputProps,
+  inlineAutoCompleteProps,
+  RowChangesProp,
+} from "./shared";
 
 // Data Cell
 
@@ -31,8 +49,8 @@ const renderInput: AutocompleteProps<
   const props = {
     ...params,
     InputProps: {
+      ...inlineInputProps,
       ...params.InputProps,
-      margin: "dense",
     },
   } as TextFieldProps;
 
@@ -86,15 +104,81 @@ export const BoolFilter = (props: BoolFilterProps): JSX.Element => {
   );
 
   return (
-    <TableFilterRow.Cell {...rest}>
+    <TableFilterRow.Cell {...rest} style={inlinePadding}>
       <Autocomplete
-        fullWidth
         getOptionLabel={getOptionLabel}
         renderInput={renderInput}
-        size="small"
         onChange={onChange}
         options={filterOptions}
+        {...inlineAutoCompleteProps}
       />
     </TableFilterRow.Cell>
   );
+};
+
+const style: React.CSSProperties = {
+  padding: 0,
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type BoolEditorProps = (
+  | TableEditRow.CellProps
+  | TableInlineCellEditing.CellProps
+) & {
+  checkBoxProps?: Pick<CheckboxProps, "disabled">;
+} & RowChangesProp;
+
+export const BoolEditor = (props: BoolEditorProps): JSX.Element => {
+  const {
+    checkBoxProps: checkBoxPropsProp,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    rowChanges,
+    ...rest
+  } = props;
+
+  const { editingEnabled, value, onValueChange } = props;
+
+  const onChange = useCallback<NonNullable<CheckboxProps["onChange"]>>(
+    (event, checked) => {
+      onValueChange(checked);
+    },
+    [onValueChange]
+  );
+
+  const checkBoxProps = useMemo<CheckboxProps>(() => {
+    return {
+      size: "medium",
+      style,
+      ...(checkBoxPropsProp || {}),
+      disabled: !editingEnabled || !!checkBoxPropsProp?.disabled,
+      onChange,
+      checked: value as boolean,
+    };
+  }, [checkBoxPropsProp, editingEnabled, onChange, value]);
+
+  // Inline editor
+  if ("onFocus" in rest && "onBlur" in rest) {
+    return (
+      <TableInlineCellEditing.Cell {...rest}>
+        <Box width="100%" display="flex" justifyContent="center">
+          <Checkbox
+            {...checkBoxProps}
+            autoFocus={rest.autoFocus}
+            onBlur={rest.onBlur}
+            onFocus={rest.onFocus}
+            onKeyDown={rest.onKeyDown}
+            disableFocusRipple
+          />
+        </Box>
+      </TableInlineCellEditing.Cell>
+    );
+  } else {
+    return (
+      <TableEditRow.Cell {...rest}>
+        <Box width="100%" display="flex" justifyContent="center">
+          <Checkbox {...checkBoxProps} />
+        </Box>
+      </TableEditRow.Cell>
+    );
+  }
 };

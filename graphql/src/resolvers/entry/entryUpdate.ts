@@ -1,5 +1,4 @@
 import { ObjectId } from "mongodb";
-import Fraction from "fraction.js";
 import { isValid } from "date-fns";
 
 import {
@@ -9,10 +8,7 @@ import {
   EntryDateOfRecordUpdate,
   EntryType,
 } from "../../graphTypes";
-import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
-import paymentMethodUpdateMutation from "../paymentMethod/paymentMethodUpdate";
 import DocHistory from "../utils/DocHistory";
-import { userNodeType } from "../utils/standIns";
 import { getSrcCollectionAndNode, stages } from "./utils";
 import { JOURNAL_ENTRY_UPDATED, JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 import { addBusiness } from "../business";
@@ -83,19 +79,9 @@ const entryUpdate: MutationResolvers["entryUpdate"] = (
             total,
             reconciled,
           },
-          paymentMethodAdd,
-          paymentMethodUpdate,
           personAdd,
           businessAdd,
         } = args;
-
-        // "paymentMethodAdd" and "paymentMethodUpdate" are mutually exclusive, gql
-        // has no concept of this.
-        if (paymentMethodAdd && paymentMethodUpdate) {
-          throw new Error(
-            `"paymentMethodAdd" and "paymentMethodUpdate" are mutually exclusive arguments.`
-          );
-        }
 
         // "businessAdd" and "personAdd" are mutually exclusive, gql has
         // no concept of this.
@@ -546,82 +532,7 @@ const entryUpdate: MutationResolvers["entryUpdate"] = (
             }
           })(),
           // Payment Method
-          (async () => {
-            if (paymentMethodAdd) {
-              // Ensure other checks finish before creating payment method
-              // Add payment method
-              const { id } = await paymentMethodAddMutation(
-                obj,
-                { fields: paymentMethodAdd },
-                {
-                  ...context,
-                  ephemeral: {
-                    ...(context.ephemeral || {}),
-                    docHistoryDate: docHistory.date,
-                    session,
-                  },
-                },
-                info
-              );
-
-              const { id: node } = nodeMap.typename.get("PaymentMethod");
-
-              updateBuilder.updateField("paymentMethod", {
-                node: new ObjectId(node),
-                id: new ObjectId(id),
-              });
-            } else if (paymentMethodUpdate) {
-              // Ensure other checks finish before updating payment method
-              const id = new ObjectId(paymentMethodUpdate.id);
-
-              // Update payment method
-              await paymentMethodUpdateMutation(
-                obj,
-                {
-                  id: paymentMethodUpdate.id,
-                  fields: paymentMethodUpdate.fields,
-                },
-                {
-                  ...context,
-                  ephemeral: {
-                    ...(context.ephemeral || {}),
-                    docHistoryDate: docHistory.date,
-                    session,
-                  },
-                },
-                info
-              );
-
-              const { id: node } = nodeMap.typename.get("PaymentMethod");
-
-              updateBuilder.updateField("paymentMethod", {
-                node: new ObjectId(node),
-                id,
-              });
-            } else if (paymentMethodId) {
-              const id = new ObjectId(paymentMethodId);
-
-              const { collection, id: node } = nodeMap.typename.get(
-                "PaymentMethod"
-              );
-
-              if (
-                0 ===
-                (await db
-                  .collection(collection)
-                  .countDocuments({ _id: id }, { session }))
-              ) {
-                throw new Error(
-                  `Payment method with id "${paymentMethodId}" does not exist.`
-                );
-              }
-
-              updateBuilder.updateField("paymentMethod", {
-                node: new ObjectId(node),
-                id,
-              });
-            }
-          })(),
+          (async () => {})(),
         ]).then((results) => {
           const errorMsgs = results.reduce((errorMsgs, result) => {
             if (result.status === "rejected") {

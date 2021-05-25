@@ -287,7 +287,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
         }
       }
 
-      if (entry.type === EntryType.Credit) {
+      if (entry.category.type === EntryType.Credit) {
         uSpent = uSpent.sub(entryTotal);
         deptReport.spent = deptReport.spent.sub(entryTotal);
       } else {

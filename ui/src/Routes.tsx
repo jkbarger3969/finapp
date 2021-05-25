@@ -14,7 +14,9 @@ import Dashboard from "./components/Dashboard/Dashboard";
 import TopNav from "./components/TopNav";
 import { useQuery } from "@apollo/client";
 import {
+  AccountsWhere,
   DepartmentName_1Query as DepartmentName,
+  DepartmentsWhere,
   EntriesWhere,
 } from "./apollo/graphTypes";
 import gql from "graphql-tag";
@@ -34,24 +36,6 @@ const DEPARTMENT_NAME = gql`
     }
   }
 `;
-
-/* const JournalViewRender = () => {
-  const { id, year } = useParams<{ id: string; year: string }>();
-  const { data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
-    variables: { id },
-  });
-  const journalTitle = data?.department?.name
-    ? data.department.name
-    : undefined;
-  return (
-    <Journal
-      mode={JournalMode.View}
-      deptId={id}
-      fiscalYearId={year}
-      journalTitle={journalTitle}
-    />
-  );
-}; */
 
 const JournalReconcileRender = () => {
   const { id, year } = useParams<{ id: string; year: string }>();
@@ -90,7 +74,25 @@ const GridChild: React.FC<
     }),
     [props.match.params.id, props.match.params.fiscalYear]
   );
-  return <Grid where={where} />;
+
+  const selectableDepts = useMemo<DepartmentsWhere>(
+    () => ({
+      id: {
+        eq: props.match.params.id,
+      },
+    }),
+    [props.match.params.id]
+  );
+
+  const selectableAccounts = useMemo<AccountsWhere>(() => ({}), []);
+
+  return (
+    <Grid
+      where={where}
+      selectableDepts={selectableDepts}
+      selectableAccounts={selectableAccounts}
+    />
+  );
 };
 
 const Routes = (): JSX.Element => {

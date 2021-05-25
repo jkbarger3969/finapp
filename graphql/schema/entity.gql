@@ -1,0 +1,11 @@
+union Entity = Person | Business | Department
+
+input EntitiesWhere {
+  businesses: BusinessesWhere
+  departments: DepartmentsWhere
+  people: PeopleWhere
+}
+
+type Query {
+  entities(where: EntitiesWhere!): [Entity!]!
+}

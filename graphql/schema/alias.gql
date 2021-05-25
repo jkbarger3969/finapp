@@ -1,4 +1,4 @@
-union AliasTarget = Category | Department | PaymentMethod
+union AliasTarget = Category | Department
 
 enum AliasType {
   ALIAS

@@ -1,10 +1,7 @@
 import React, { useMemo, useCallback, useState } from "react";
 import {
   Select,
-  MenuItem,
-  ListItemText,
   Input,
-  Checkbox,
   InputAdornment,
   Box,
   Tooltip,
@@ -25,17 +22,6 @@ const PaymentMethod = (props: {
   const [items, idNameMap] = useMemo(() => {
     const items: JSX.Element[] = [];
     const idNameMap = new Map<string, string>();
-
-    for (const paymentMethod of options) {
-      idNameMap.set(paymentMethod.id, paymentMethod.name);
-
-      items.push(
-        <MenuItem key={paymentMethod.id} value={paymentMethod.id}>
-          <Checkbox checked={value.includes(paymentMethod.id)} />
-          <ListItemText primary={paymentMethod.name} />
-        </MenuItem>
-      );
-    }
 
     return [items, idNameMap] as const;
   }, [options, value]);

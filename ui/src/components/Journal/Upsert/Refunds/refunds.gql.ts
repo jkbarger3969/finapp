@@ -5,13 +5,17 @@ export const JOURNAL_FRAGMENT = gql`
     __typename
     id
     date
-    type
     total
     refunds {
       id
       __typename
       deleted
       total
+    }
+    category {
+      id
+      __typename
+      type
     }
   }
 `;

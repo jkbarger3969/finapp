@@ -58,7 +58,9 @@ const PORT = process.env.PORT || 4000;
     const gqlServer = new ApolloServer({
       typeDefs,
       resolvers,
-      context,
+      context: () => ({
+        ...context,
+      }),
     });
 
     const gqlApp = new Koa();

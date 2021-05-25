@@ -10,6 +10,7 @@
         "typescript-resolvers"
       ],
       "config": {
+        "useImplementingTypes": true,
         "contextType": "./types#Context",
         "dedupeOperationSuffix": true,
         "exportFragmentSpreadSubTypes": true,

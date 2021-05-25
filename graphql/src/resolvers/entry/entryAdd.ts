@@ -2,10 +2,8 @@ import { ObjectId } from "mongodb";
 import * as moment from "moment";
 
 import { MutationResolvers, EntryType, SourceType } from "../../graphTypes";
-import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import DocHistory from "../utils/DocHistory";
-import { userNodeType } from "../utils/standIns";
-import { addFields, getSrcCollectionAndNode, stages } from "./utils";
+import { getSrcCollectionAndNode, stages } from "./utils";
 import { JOURNAL_ENTRY_ADDED, JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 import { addBusiness } from "../business";
 import { addPerson } from "../person";
@@ -49,7 +47,6 @@ const entryAdd: MutationResolvers["entryAdd"] = (obj, args, context, info) =>
             source,
             total,
           },
-          paymentMethodAdd,
           businessAdd,
           personAdd,
         } = args;
@@ -237,54 +234,7 @@ const entryAdd: MutationResolvers["entryAdd"] = (obj, args, context, info) =>
             }
           })(),
           // Payment Method
-          (async () => {
-            if (paymentMethodAdd) {
-              // Ensure other checks finish before creating payment method
-              // Add payment method
-              const { id } = await paymentMethodAddMutation(
-                obj,
-                { fields: paymentMethodAdd },
-                {
-                  ...context,
-                  ephemeral: {
-                    ...(context.ephemeral || {}),
-                    docHistoryDate: docHistory.date,
-                    session,
-                  },
-                },
-                info
-              );
-
-              const { id: node } = nodeMap.typename.get("PaymentMethod");
-
-              docBuilder.addField("paymentMethod", {
-                node: new ObjectId(node),
-                id,
-              });
-            } else {
-              const id = new ObjectId(args.fields.paymentMethod);
-
-              const { collection, id: node } = nodeMap.typename.get(
-                "PaymentMethod"
-              );
-
-              if (
-                0 ===
-                (await db
-                  .collection(collection)
-                  .countDocuments({ _id: id }, { session }))
-              ) {
-                throw new Error(
-                  `Payment method with id "${args.fields.paymentMethod}" does not exist.`
-                );
-              }
-
-              docBuilder.addField("paymentMethod", {
-                node: new ObjectId(node),
-                id,
-              });
-            }
-          })(),
+          (async () => {})(),
         ]).then((results) => {
           const errorMsgs = results.reduce((errorMsgs, result) => {
             if (result.status === "rejected") {

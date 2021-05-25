@@ -25,8 +25,8 @@ export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
       __typename
       id
       name
+      type
     }
-    type
     total
     fiscalYear {
       __typename

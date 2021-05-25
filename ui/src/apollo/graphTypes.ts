@@ -22,41 +22,102 @@ export type Scalars = {
 };
 
 
-export type AliasTarget = Category | Department | PaymentMethod;
+export type AccountInterface = {
+  id: Scalars['ID'];
+  active: Scalars['Boolean'];
+  currency: Currency;
+  name: Scalars['String'];
+  owner: Entity;
+};
 
-export enum AliasType {
-  Alias = 'ALIAS',
-  PrefixDescendants = 'PREFIX_DESCENDANTS',
-  PostfixDescendants = 'POSTFIX_DESCENDANTS'
+export type AccountCard = PaymentCardInterface & {
+  __typename?: 'AccountCard';
+  id: Scalars['ID'];
+  account: AccountChecking | AccountCreditCard;
+  active: Scalars['Boolean'];
+  authorizedUsers: Array<Entity>;
+  trailingDigits: Scalars['String'];
+  type: PaymentCardType;
+};
+
+export type AccountWithCardsInterface = {
+  id: Scalars['ID'];
+  active: Scalars['Boolean'];
+  cards: Array<AccountCard>;
+  currency: Currency;
+  name: Scalars['String'];
+  owner: Entity;
+};
+
+export type AccountCheck = PaymentCheckInterface & {
+  __typename?: 'AccountCheck';
+  account: AccountChecking;
+  checkNumber: Scalars['String'];
+};
+
+export type AccountCheckInput = {
+  /** id of AccountChecking */
+  account: Scalars['ID'];
+  checkNumber: Scalars['String'];
+};
+
+export type AccountChecking = AccountInterface & AccountWithCardsInterface & {
+  __typename?: 'AccountChecking';
+  id: Scalars['ID'];
+  accountNumber: Scalars['String'];
+  active: Scalars['Boolean'];
+  cards: Array<AccountCard>;
+  currency: Currency;
+  name: Scalars['String'];
+  owner: Entity;
+};
+
+export type AccountCreditCard = AccountInterface & AccountWithCardsInterface & {
+  __typename?: 'AccountCreditCard';
+  id: Scalars['ID'];
+  active: Scalars['Boolean'];
+  cards: Array<AccountCard>;
+  currency: Currency;
+  name: Scalars['String'];
+  owner: Entity;
+};
+
+export type AccountCardsWhere = {
+  id?: Maybe<WhereId>;
+  account?: Maybe<AccountsWhere>;
+  active?: Maybe<Scalars['Boolean']>;
+  authorizedUsers?: Maybe<EntitiesWhere>;
+  trailingDigits?: Maybe<WhereRegex>;
+  type?: Maybe<PaymentCardType>;
+  and?: Maybe<Array<AccountCardsWhere>>;
+  or?: Maybe<Array<AccountCardsWhere>>;
+  nor?: Maybe<Array<AccountCardsWhere>>;
+};
+
+export enum AccountType {
+  CreditCard = 'CREDIT_CARD',
+  Checking = 'CHECKING'
 }
 
-export type Alias = {
-  __typename?: 'Alias';
-  id: Scalars['ID'];
-  target: AliasTarget;
-  name: Scalars['String'];
-  type: AliasType;
-};
-
-export type AliasWhereTarget = {
-  eq?: Maybe<NodeInput>;
-  ne?: Maybe<NodeInput>;
-  in?: Maybe<Array<NodeInput>>;
-  nin?: Maybe<Array<NodeInput>>;
-};
-
-export type AliasesWhere = {
+export type AccountsWhere = {
   id?: Maybe<WhereId>;
-  target?: Maybe<WhereNode>;
+  accountNumber?: Maybe<WhereRegex>;
+  accountType?: Maybe<AccountType>;
+  active?: Maybe<Scalars['Boolean']>;
+  cards?: Maybe<AccountCardsWhere>;
   name?: Maybe<WhereRegex>;
-  type?: Maybe<AliasType>;
-  and?: Maybe<Array<AliasesWhere>>;
-  or?: Maybe<Array<AliasesWhere>>;
-  nor?: Maybe<Array<AliasesWhere>>;
+  owner?: Maybe<EntitiesWhere>;
+  and?: Maybe<Array<AccountsWhere>>;
+  or?: Maybe<Array<AccountsWhere>>;
+  nor?: Maybe<Array<AccountsWhere>>;
 };
 
 export type Query = {
   __typename?: 'Query';
+  accounts: Array<AccountChecking | AccountCreditCard>;
+  account: AccountChecking | AccountCreditCard;
+  accountCards: Array<AccountCard>;
+  accountCard: AccountCard;
   alias?: Maybe<Alias>;
   aliases: Array<Alias>;
   budgets: Array<Budget>;
@@ -67,17 +128,36 @@ export type Query = {
   category: Category;
   departments: Array<Department>;
   department: Department;
+  entities: Array<Entity>;
   entries: Array<Entry>;
   entry?: Maybe<Entry>;
   entryRefund?: Maybe<EntryRefund>;
   entryItem?: Maybe<EntryItem>;
   fiscalYears: Array<FiscalYear>;
   fiscalYear: FiscalYear;
-  paymentMethods: Array<PaymentMethod>;
-  paymentMethod?: Maybe<PaymentMethod>;
   people: Array<Person>;
   person: Person;
   sources: Array<Source>;
+};
+
+
+export type QueryAccountsArgs = {
+  where?: Maybe<AccountsWhere>;
+};
+
+
+export type QueryAccountArgs = {
+  id: Scalars['ID'];
+};
+
+
+export type QueryAccountCardsArgs = {
+  where?: Maybe<AccountCardsWhere>;
+};
+
+
+export type QueryAccountCardArgs = {
+  id: Scalars['ID'];
 };
 
 
@@ -131,6 +211,11 @@ export type QueryDepartmentArgs = {
 };
 
 
+export type QueryEntitiesArgs = {
+  where: EntitiesWhere;
+};
+
+
 export type QueryEntriesArgs = {
   where?: Maybe<EntriesWhere>;
 };
@@ -161,16 +246,6 @@ export type QueryFiscalYearArgs = {
 };
 
 
-export type QueryPaymentMethodsArgs = {
-  where?: Maybe<PaymentMethodsWhere>;
-};
-
-
-export type QueryPaymentMethodArgs = {
-  id: Scalars['ID'];
-};
-
-
 export type QueryPeopleArgs = {
   where?: Maybe<PeopleWhere>;
 };
@@ -183,6 +258,39 @@ export type QueryPersonArgs = {
 
 export type QuerySourcesArgs = {
   searchByName: Scalars['String'];
+};
+
+export type AliasTarget = Category | Department;
+
+export enum AliasType {
+  Alias = 'ALIAS',
+  PrefixDescendants = 'PREFIX_DESCENDANTS',
+  PostfixDescendants = 'POSTFIX_DESCENDANTS'
+}
+
+export type Alias = {
+  __typename?: 'Alias';
+  id: Scalars['ID'];
+  target: AliasTarget;
+  name: Scalars['String'];
+  type: AliasType;
+};
+
+export type AliasWhereTarget = {
+  eq?: Maybe<NodeInput>;
+  ne?: Maybe<NodeInput>;
+  in?: Maybe<Array<NodeInput>>;
+  nin?: Maybe<Array<NodeInput>>;
+};
+
+export type AliasesWhere = {
+  id?: Maybe<WhereId>;
+  target?: Maybe<WhereNode>;
+  name?: Maybe<WhereRegex>;
+  type?: Maybe<AliasType>;
+  and?: Maybe<Array<AliasesWhere>>;
+  or?: Maybe<Array<AliasesWhere>>;
+  nor?: Maybe<Array<AliasesWhere>>;
 };
 
 export type BudgetOwner = Department | Business;
@@ -216,8 +324,17 @@ export type Business = {
   id: Scalars['ID'];
   name: Scalars['String'];
   budgets: Array<Budget>;
+  /**
+   * When root is `true`, only departments who's direct parent is the the Business
+   * are returned.
+   */
   departments: Array<Department>;
   vendor?: Maybe<Vendor>;
+};
+
+
+export type BusinessDepartmentsArgs = {
+  root?: Maybe<Scalars['Boolean']>;
 };
 
 export type BusinessAddFields = {
@@ -255,8 +372,6 @@ export type Mutation = {
   entryAddItem: EntryItemUpsertResult;
   entryUpdateItem: EntryItemUpsertResult;
   entryDeleteItem: EntryItemUpsertResult;
-  paymentMethodUpdate: PaymentMethod;
-  paymentMethodAdd: PaymentMethod;
   addPerson: Person;
 };
 
@@ -269,7 +384,6 @@ export type MutationAddBusinessArgs = {
 export type MutationEntryUpdateArgs = {
   id: Scalars['ID'];
   fields: EntryUpdateFields;
-  paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
   paymentMethodUpdate?: Maybe<EntryUpdatePaymentMethod>;
   personAdd?: Maybe<PersonAddFields>;
   businessAdd?: Maybe<BusinessAddFields>;
@@ -278,7 +392,6 @@ export type MutationEntryUpdateArgs = {
 
 export type MutationEntryAddArgs = {
   fields: EntryAddFields;
-  paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
   personAdd?: Maybe<PersonAddFields>;
   businessAdd?: Maybe<BusinessAddFields>;
 };
@@ -292,14 +405,12 @@ export type MutationEntryDeleteArgs = {
 export type MutationEntryAddRefundArgs = {
   id: Scalars['ID'];
   fields: EntryAddRefundFields;
-  paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
 };
 
 
 export type MutationEntryUpdateRefundArgs = {
   id: Scalars['ID'];
   fields: EntryUpdateRefundFields;
-  paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
   paymentMethodUpdate?: Maybe<EntryUpdatePaymentMethod>;
 };
 
@@ -323,17 +434,6 @@ export type MutationEntryUpdateItemArgs = {
 
 export type MutationEntryDeleteItemArgs = {
   id: Scalars['ID'];
-};
-
-
-export type MutationPaymentMethodUpdateArgs = {
-  id: Scalars['ID'];
-  fields: PaymentMethodUpdateFields;
-};
-
-
-export type MutationPaymentMethodAddArgs = {
-  fields: PaymentMethodAddFields;
 };
 
 
@@ -362,6 +462,10 @@ export type CategoriesWhere = {
   /** Root Categories i.e. NO parent. */
   root?: Maybe<Scalars['Boolean']>;
 };
+
+export enum Currency {
+  Usd = 'USD'
+}
 
 export type DepartmentAncestor = Department | Business;
 
@@ -425,7 +529,13 @@ export type DepartmentsWhere = {
   nor?: Maybe<Array<DepartmentsWhere>>;
 };
 
-export type EntrySource = Person | Business | Department;
+export type Entity = Person | Business | Department;
+
+export type EntitiesWhere = {
+  businesses?: Maybe<BusinessesWhere>;
+  departments?: Maybe<DepartmentsWhere>;
+  people?: Maybe<PeopleWhere>;
+};
 
 export enum EntryType {
   Credit = 'CREDIT',
@@ -469,12 +579,11 @@ export type Entry = {
   fiscalYear: FiscalYear;
   items: Array<EntryItem>;
   lastUpdate: Scalars['Date'];
-  paymentMethod: PaymentMethod;
+  paymentMethod: PaymentMethodCard | PaymentMethodCheck | PaymentMethodCash | PaymentMethodOnline | PaymentMethodCombination | PaymentMethodUnknown;
   reconciled: Scalars['Boolean'];
   refunds: Array<EntryRefund>;
-  source: EntrySource;
+  source: Entity;
   total: Scalars['Rational'];
-  type: EntryType;
 };
 
 export type EntriesWhereSource = {
@@ -492,13 +601,11 @@ export type EntriesWhere = {
   id?: Maybe<WhereId>;
   refunds?: Maybe<EntryRefundsWhere>;
   items?: Maybe<EntryItemsWhere>;
-  type?: Maybe<EntryType>;
   date?: Maybe<WhereDateBeta>;
   dateOfRecord?: Maybe<EntriesWhereDateOfRecord>;
   department?: Maybe<DepartmentsWhere>;
   fiscalYear?: Maybe<FiscalYearsWhere>;
   category?: Maybe<CategoriesWhere>;
-  paymentMethod?: Maybe<PaymentMethodsWhere>;
   description?: Maybe<WhereRegex>;
   total?: Maybe<WhereRational>;
   source?: Maybe<EntriesWhereSource>;
@@ -557,7 +664,7 @@ export type EntryRefund = {
   deleted: Scalars['Boolean'];
   description?: Maybe<Scalars['String']>;
   lastUpdate: Scalars['Date'];
-  paymentMethod: PaymentMethod;
+  paymentMethod: PaymentMethodCard | PaymentMethodCheck | PaymentMethodCash | PaymentMethodOnline | PaymentMethodCombination | PaymentMethodUnknown;
   reconciled: Scalars['Boolean'];
   total: Scalars['Rational'];
 };
@@ -565,7 +672,6 @@ export type EntryRefund = {
 export type EntryRefundsWhere = {
   id?: Maybe<WhereId>;
   date?: Maybe<WhereDateBeta>;
-  paymentMethod?: Maybe<PaymentMethodsWhere>;
   total?: Maybe<WhereRational>;
   reconciled?: Maybe<Scalars['Boolean']>;
   lastUpdate?: Maybe<WhereDateBeta>;
@@ -642,7 +748,6 @@ export type EntryItemUpsertResult = {
 
 export type EntryUpdatePaymentMethod = {
   id: Scalars['ID'];
-  fields: PaymentMethodUpdateFields;
 };
 
 export type Subscription = {
@@ -698,73 +803,133 @@ export type FiscalYearsWhere = {
   nor?: Maybe<Array<FiscalYearsWhere>>;
 };
 
-export type PaymentMethod = {
-  __typename?: 'PaymentMethod';
-  id: Scalars['ID'];
-  active: Scalars['Boolean'];
-  refId?: Maybe<Scalars['String']>;
-  name: Scalars['String'];
-  parent?: Maybe<PaymentMethod>;
-  children: Array<PaymentMethod>;
-  allowChildren: Scalars['Boolean'];
-  aliases: Array<Alias>;
+export enum PaymentCardType {
+  Visa = 'VISA',
+  MasterCard = 'MASTER_CARD',
+  AmericanExpress = 'AMERICAN_EXPRESS',
+  Discover = 'DISCOVER'
+}
+
+export type PaymentCardInterface = {
+  trailingDigits: Scalars['String'];
+  type: PaymentCardType;
 };
 
-export type PaymentMethodWhereParentInput = {
-  eq?: Maybe<Scalars['ID']>;
-  ne?: Maybe<Scalars['ID']>;
-  in?: Maybe<Array<Maybe<Scalars['ID']>>>;
-  nin?: Maybe<Array<Maybe<Scalars['ID']>>>;
+export type PaymentCard = PaymentCardInterface & {
+  __typename?: 'PaymentCard';
+  trailingDigits: Scalars['String'];
+  type: PaymentCardType;
 };
 
-export type PaymentMethodWhereRefIdInput = {
-  eq?: Maybe<Scalars['String']>;
-  ne?: Maybe<Scalars['String']>;
-  in?: Maybe<Array<Maybe<Scalars['String']>>>;
-  nin?: Maybe<Array<Maybe<Scalars['String']>>>;
+export type PaymentCardInput = {
+  trailingDigits: Scalars['String'];
+  type: PaymentCardType;
 };
 
-export type PaymentMethodWhereNameInput = {
-  eq?: Maybe<Scalars['String']>;
-  ne?: Maybe<Scalars['String']>;
-  in?: Maybe<Array<Maybe<Scalars['String']>>>;
-  nin?: Maybe<Array<Maybe<Scalars['String']>>>;
+export type PaymentCheckInterface = {
+  checkNumber: Scalars['String'];
 };
 
-export type PaymentMethodWhereInput = {
-  active?: Maybe<Scalars['Boolean']>;
-  refId?: Maybe<PaymentMethodWhereRefIdInput>;
-  name?: Maybe<PaymentMethodWhereNameInput>;
-  hasParent?: Maybe<Scalars['Boolean']>;
-  parent?: Maybe<PaymentMethodWhereParentInput>;
-  or?: Maybe<Array<Maybe<PaymentMethodWhereInput>>>;
-  and?: Maybe<Array<Maybe<PaymentMethodWhereInput>>>;
+export type PaymentCheck = PaymentCheckInterface & {
+  __typename?: 'PaymentCheck';
+  checkNumber: Scalars['String'];
 };
 
-export type PaymentMethodsWhere = {
-  id?: Maybe<WhereTreeId>;
-  active?: Maybe<Scalars['Boolean']>;
-  name?: Maybe<WhereRegex>;
-  parent?: Maybe<WhereId>;
-  allowChildren?: Maybe<Scalars['Boolean']>;
-  and?: Maybe<Array<PaymentMethodsWhere>>;
-  or?: Maybe<Array<PaymentMethodsWhere>>;
-  nor?: Maybe<Array<PaymentMethodsWhere>>;
-  /** Root PaymentMethods i.e. NO parent. */
-  root?: Maybe<Scalars['Boolean']>;
+export type PaymentCheckInput = {
+  checkNumber: Scalars['String'];
 };
 
-export type PaymentMethodAddFields = {
-  active: Scalars['Boolean'];
-  refId?: Maybe<Scalars['String']>;
-  name: Scalars['String'];
-  parent: Scalars['ID'];
+export type PaymentMethodInterface = {
+  currency: Currency;
 };
 
-export type PaymentMethodUpdateFields = {
-  active?: Maybe<Scalars['Boolean']>;
-  refId?: Maybe<Scalars['String']>;
-  name?: Maybe<Scalars['String']>;
+export type PaymentMethodCard = PaymentMethodInterface & {
+  __typename?: 'PaymentMethodCard';
+  card: AccountCard | PaymentCard;
+  currency: Currency;
+};
+
+export type PaymentMethodCardInput = {
+  card: PaymentCardInput;
+  currency: Currency;
+};
+
+export type PaymentMethodAccountCardInput = {
+  /** id from AccountCard */
+  card: Scalars['ID'];
+  currency: Currency;
+};
+
+export type PaymentMethodCheck = PaymentMethodInterface & {
+  __typename?: 'PaymentMethodCheck';
+  currency: Currency;
+  check: AccountCheck | PaymentCheck;
+};
+
+export type PaymentMethodCheckInput = {
+  currency: Currency;
+  check: PaymentCheckInput;
+};
+
+export type PaymentMethodAccountCheckInput = {
+  currency: Currency;
+  check: AccountCheckInput;
+};
+
+export type PaymentMethodCash = PaymentMethodInterface & {
+  __typename?: 'PaymentMethodCash';
+  currency: Currency;
+};
+
+export type PaymentMethodCashInput = {
+  currency: Currency;
+};
+
+export type PaymentMethodOnline = PaymentMethodInterface & {
+  __typename?: 'PaymentMethodOnline';
+  currency: Currency;
+};
+
+export type PaymentMethodOnlineInput = {
+  currency: Currency;
+};
+
+export type PaymentMethodCombination = PaymentMethodInterface & {
+  __typename?: 'PaymentMethodCombination';
+  currency: Currency;
+};
+
+export type PaymentMethodCombinationInput = {
+  currency: Currency;
+};
+
+export type PaymentMethodUnknown = PaymentMethodInterface & {
+  __typename?: 'PaymentMethodUnknown';
+  currency: Currency;
+};
+
+export type PaymentMethodUnknownInput = {
+  currency: Currency;
+};
+
+export enum PaymentMethodType {
+  Card = 'CARD',
+  Check = 'CHECK',
+  Cash = 'CASH',
+  Online = 'ONLINE',
+  Combination = 'COMBINATION',
+  Unknown = 'UNKNOWN'
+}
+
+export type PaymentMethodInput = {
+  card?: Maybe<PaymentMethodCardInput>;
+  accountCard?: Maybe<PaymentMethodAccountCardInput>;
+  check?: Maybe<PaymentMethodCheckInput>;
+  accountCheck?: Maybe<PaymentMethodAccountCheckInput>;
+  cash?: Maybe<PaymentMethodCashInput>;
+  online?: Maybe<PaymentMethodOnlineInput>;
+  combination?: Maybe<PaymentMethodCombinationInput>;
+  unknown?: Maybe<PaymentMethodUnknownInput>;
 };
 
 export type PersonName = {
@@ -826,6 +991,20 @@ export type WhereRational = {
 
 
 
+export type TypeNode = {
+  id: Scalars['ID'];
+  name: Scalars['String'];
+  parent?: Maybe<TypeNode>;
+  children: Array<TypeNode>;
+};
+
+export enum NodeChildrenType {
+  All = 'ALL',
+  Branch = 'BRANCH',
+  Leaf = 'LEAF',
+  None = 'NONE'
+}
+
 export enum SortDirection {
   Asc = 'ASC',
   Desc = 'DESC'
@@ -885,12 +1064,6 @@ export type WhereTreeId = {
   gte?: Maybe<Scalars['ID']>;
   lt?: Maybe<Scalars['ID']>;
   lte?: Maybe<Scalars['ID']>;
-};
-
-export type Node = {
-  __typename?: 'Node';
-  type: Scalars['String'];
-  id: Scalars['ID'];
 };
 
 export type NodeInput = {
@@ -1010,7 +1183,7 @@ export type OnEntryUpsert_2Subscription = { __typename?: 'Subscription', entryUp
 
 export type GetReportDataDept_1Fragment = { __typename: 'Department', id: string, name: string, budgets: Array<{ __typename: 'Budget', id: string, amount: string, fiscalYear: { __typename: 'FiscalYear', id: string } }> };
 
-export type GetReportDataEntry_1Fragment = { __typename: 'Entry', id: string, type: EntryType, total: string, lastUpdate: string, deleted: boolean, category: { __typename: 'Category', id: string, name: string }, fiscalYear: { __typename: 'FiscalYear', id: string }, department: { __typename: 'Department', id: string, ancestors: Array<{ __typename: 'Department', id: string } | { __typename: 'Business', id: string }> }, refunds: Array<{ __typename: 'EntryRefund', id: string, total: string, deleted: boolean, lastUpdate: string }>, items: Array<{ __typename: 'EntryItem', id: string, total: string, deleted: boolean, department?: Maybe<{ __typename: 'Department', id: string }> }> };
+export type GetReportDataEntry_1Fragment = { __typename: 'Entry', id: string, total: string, lastUpdate: string, deleted: boolean, category: { __typename: 'Category', id: string, name: string, type: EntryType }, fiscalYear: { __typename: 'FiscalYear', id: string }, department: { __typename: 'Department', id: string, ancestors: Array<{ __typename: 'Department', id: string } | { __typename: 'Business', id: string }> }, refunds: Array<{ __typename: 'EntryRefund', id: string, total: string, deleted: boolean, lastUpdate: string }>, items: Array<{ __typename: 'EntryItem', id: string, total: string, deleted: boolean, department?: Maybe<{ __typename: 'Department', id: string }> }> };
 
 export type GetReportDataQueryVariables = Exact<{
   deptId: Scalars['ID'];
@@ -1045,7 +1218,17 @@ export type EntryUpdated_2Subscription = { __typename?: 'Subscription', entryUpd
     & GetReportDataEntry_1Fragment
   ) };
 
-export type CategoryInputOptFragment = { __typename: 'Category', id: string, name: string, children: Array<{ __typename: 'Category', id: string }> };
+export type CategoryInputOptFragment = { __typename: 'Category', id: string, name: string, type: EntryType, children: Array<{ __typename: 'Category', id: string }>, parent?: Maybe<{ __typename: 'Category', id: string }> };
+
+export type CategoryInputIniValueQueryVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type CategoryInputIniValueQuery = { __typename?: 'Query', categories: Array<(
+    { __typename?: 'Category' }
+    & CategoryInputOptFragment
+  )> };
 
 export type CategoryInputOptsQueryVariables = Exact<{
   where: CategoriesWhere;
@@ -1059,6 +1242,25 @@ export type CategoryInputOptsQuery = { __typename?: 'Query', categories: Array<(
 
 export type DeptInputOptFragment = { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> };
 
+export type DeptInputIniValueQueryVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type DeptInputIniValueQuery = { __typename?: 'Query', iniValue: (
+    { __typename?: 'Department', parent: { __typename: 'Department', id: string, children: Array<(
+        { __typename?: 'Department' }
+        & DeptInputOptFragment
+      )> } | { __typename: 'Business', id: string, departments: Array<(
+        { __typename?: 'Department' }
+        & DeptInputOptFragment
+      )> } }
+    & DeptInputOptFragment
+  ), ancestors: Array<(
+    { __typename?: 'Department', parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } }
+    & DeptInputOptFragment
+  )> };
+
 export type DeptInputOptsQueryVariables = Exact<{
   where: DepartmentsWhere;
 }>;
@@ -1069,40 +1271,97 @@ export type DeptInputOptsQuery = { __typename?: 'Query', departments: Array<(
     & DeptInputOptFragment
   )> };
 
-export type PayMethodInputOptFragment = { __typename: 'PaymentMethod', id: string, name: string, children: Array<{ __typename: 'PaymentMethod', id: string }>, aliases: Array<{ __typename: 'Alias', id: string, name: string, type: AliasType }> };
+export type EntityBusinessInputOptFragment = { __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> };
 
-export type PayMethodInputOptsQueryVariables = Exact<{
-  where: PaymentMethodsWhere;
+export type EntityPersonInputOptFragment = { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } };
+
+export type EntityInputOptsQueryVariables = Exact<{
+  where: EntitiesWhere;
 }>;
 
 
-export type PayMethodInputOptsQuery = { __typename?: 'Query', paymentMethods: Array<(
-    { __typename?: 'PaymentMethod' }
-    & PayMethodInputOptFragment
-  )> };
-
-export type SrcBusinessInputOptFragment = { __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> };
-
-export type SrcPersonInputOptFragment = { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } };
-
-export type SrcBusinessInputOptsQueryVariables = Exact<{
-  where: BusinessesWhere;
-}>;
-
-
-export type SrcBusinessInputOptsQuery = { __typename?: 'Query', businesses: Array<(
-    { __typename?: 'Business' }
-    & SrcBusinessInputOptFragment
-  )> };
-
-export type SrcPersonInputOptsQueryVariables = Exact<{
-  where: PeopleWhere;
-}>;
-
-
-export type SrcPersonInputOptsQuery = { __typename?: 'Query', people: Array<(
+export type EntityInputOptsQuery = { __typename?: 'Query', entities: Array<(
     { __typename?: 'Person' }
-    & SrcPersonInputOptFragment
+    & EntityPersonInputOptFragment
+  ) | (
+    { __typename?: 'Business' }
+    & EntityBusinessInputOptFragment
+  ) | (
+    { __typename?: 'Department' }
+    & DeptInputOptFragment
+  )> };
+
+export type EntityInputIniValueQueryVariables = Exact<{
+  where: EntitiesWhere;
+}>;
+
+
+export type EntityInputIniValueQuery = { __typename?: 'Query', entities: Array<(
+    { __typename?: 'Person' }
+    & EntityPersonInputOptFragment
+  ) | (
+    { __typename?: 'Business' }
+    & EntityBusinessInputOptFragment
+  ) | (
+    { __typename?: 'Department', ancestors: Array<(
+      { __typename?: 'Department' }
+      & DeptInputOptFragment
+    ) | (
+      { __typename?: 'Business' }
+      & EntityBusinessInputOptFragment
+    )> }
+    & DeptInputOptFragment
+  )> };
+
+export type AccountCardPayMethodInputOptFragment = { __typename: 'AccountCard', id: string, active: boolean, type: PaymentCardType, trailingDigits: string };
+
+export type AccountOwnerPayMethodInputOpt_Person_Fragment = { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } };
+
+export type AccountOwnerPayMethodInputOpt_Business_Fragment = { __typename: 'Business', id: string, name: string };
+
+export type AccountOwnerPayMethodInputOpt_Department_Fragment = { __typename: 'Department', id: string, name: string };
+
+export type AccountOwnerPayMethodInputOptFragment = AccountOwnerPayMethodInputOpt_Person_Fragment | AccountOwnerPayMethodInputOpt_Business_Fragment | AccountOwnerPayMethodInputOpt_Department_Fragment;
+
+export type AccountCheckingPayMethodInputOptFragment = { __typename: 'AccountChecking', id: string, accountNumber: string, active: boolean, name: string, cards: Array<(
+    { __typename?: 'AccountCard' }
+    & AccountCardPayMethodInputOptFragment
+  )>, owner: (
+    { __typename?: 'Person' }
+    & AccountOwnerPayMethodInputOpt_Person_Fragment
+  ) | (
+    { __typename?: 'Business' }
+    & AccountOwnerPayMethodInputOpt_Business_Fragment
+  ) | (
+    { __typename?: 'Department' }
+    & AccountOwnerPayMethodInputOpt_Department_Fragment
+  ) };
+
+export type AccountCreditCardPayMethodInputOptFragment = { __typename: 'AccountCreditCard', id: string, active: boolean, name: string, cards: Array<(
+    { __typename?: 'AccountCard' }
+    & AccountCardPayMethodInputOptFragment
+  )>, owner: (
+    { __typename?: 'Person' }
+    & AccountOwnerPayMethodInputOpt_Person_Fragment
+  ) | (
+    { __typename?: 'Business' }
+    & AccountOwnerPayMethodInputOpt_Business_Fragment
+  ) | (
+    { __typename?: 'Department' }
+    & AccountOwnerPayMethodInputOpt_Department_Fragment
+  ) };
+
+export type AccountPayMethodInputOptsQueryVariables = Exact<{
+  where: AccountsWhere;
+}>;
+
+
+export type AccountPayMethodInputOptsQuery = { __typename?: 'Query', accounts: Array<(
+    { __typename?: 'AccountChecking' }
+    & AccountCheckingPayMethodInputOptFragment
+  ) | (
+    { __typename?: 'AccountCreditCard' }
+    & AccountCreditCardPayMethodInputOptFragment
   )> };
 
 export type GridEntrySrcPersonFragment = { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } };
@@ -1111,16 +1370,68 @@ export type GridEntrySrcBusinessFragment = { __typename: 'Business', id: string,
 
 export type GridEntrySrcDeptFragment = { __typename: 'Department', id: string, name: string };
 
-export type GridPaymentMethodFragment = { __typename: 'PaymentMethod', id: string, name: string, parent?: Maybe<{ __typename: 'PaymentMethod', id: string }>, aliases: Array<{ __typename: 'Alias', id: string, name: string, type: AliasType }> };
+export type GridPaymentMethodCardFragment = { __typename: 'PaymentMethodCard', card: { __typename: 'AccountCard', id: string, active: boolean, trailingDigits: string, type: PaymentCardType, account: { __typename: 'AccountChecking', id: string, name: string } | { __typename: 'AccountCreditCard', id: string, name: string } } | { __typename: 'PaymentCard', trailingDigits: string, type: PaymentCardType } };
+
+export type GridPaymentMethodCheckFragment = { __typename: 'PaymentMethodCheck', check: { __typename: 'AccountCheck', checkNumber: string, account: { __typename: 'AccountChecking', id: string, name: string } } | { __typename: 'PaymentCheck', checkNumber: string } };
+
+export type GridPaymentMethod_PaymentMethodCard_Fragment = (
+  { __typename: 'PaymentMethodCard', currency: Currency }
+  & GridPaymentMethodCardFragment
+);
+
+export type GridPaymentMethod_PaymentMethodCheck_Fragment = (
+  { __typename: 'PaymentMethodCheck', currency: Currency }
+  & GridPaymentMethodCheckFragment
+);
+
+export type GridPaymentMethod_PaymentMethodCash_Fragment = { __typename: 'PaymentMethodCash', currency: Currency };
+
+export type GridPaymentMethod_PaymentMethodOnline_Fragment = { __typename: 'PaymentMethodOnline', currency: Currency };
+
+export type GridPaymentMethod_PaymentMethodCombination_Fragment = { __typename: 'PaymentMethodCombination', currency: Currency };
+
+export type GridPaymentMethod_PaymentMethodUnknown_Fragment = { __typename: 'PaymentMethodUnknown', currency: Currency };
+
+export type GridPaymentMethodFragment = GridPaymentMethod_PaymentMethodCard_Fragment | GridPaymentMethod_PaymentMethodCheck_Fragment | GridPaymentMethod_PaymentMethodCash_Fragment | GridPaymentMethod_PaymentMethodOnline_Fragment | GridPaymentMethod_PaymentMethodCombination_Fragment | GridPaymentMethod_PaymentMethodUnknown_Fragment;
 
 export type GridRefundFragment = { __typename: 'EntryRefund', id: string, date: string, description?: Maybe<string>, total: string, reconciled: boolean, deleted: boolean, paymentMethod: (
-    { __typename?: 'PaymentMethod' }
-    & GridPaymentMethodFragment
+    { __typename?: 'PaymentMethodCard' }
+    & GridPaymentMethod_PaymentMethodCard_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodCheck' }
+    & GridPaymentMethod_PaymentMethodCheck_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodCash' }
+    & GridPaymentMethod_PaymentMethodCash_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodOnline' }
+    & GridPaymentMethod_PaymentMethodOnline_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodCombination' }
+    & GridPaymentMethod_PaymentMethodCombination_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodUnknown' }
+    & GridPaymentMethod_PaymentMethodUnknown_Fragment
   ) };
 
-export type GridEntryFragment = { __typename: 'Entry', id: string, date: string, type: EntryType, description?: Maybe<string>, total: string, reconciled: boolean, deleted: boolean, dateOfRecord?: Maybe<{ __typename?: 'EntryDateOfRecord', date: string }>, department: { __typename: 'Department', id: string, name: string }, category: { __typename: 'Category', id: string, name: string }, paymentMethod: (
-    { __typename?: 'PaymentMethod' }
-    & GridPaymentMethodFragment
+export type GridEntryFragment = { __typename: 'Entry', id: string, date: string, description?: Maybe<string>, total: string, reconciled: boolean, deleted: boolean, dateOfRecord?: Maybe<{ __typename?: 'EntryDateOfRecord', date: string }>, department: { __typename: 'Department', id: string, name: string }, category: { __typename: 'Category', id: string, name: string, type: EntryType }, paymentMethod: (
+    { __typename?: 'PaymentMethodCard' }
+    & GridPaymentMethod_PaymentMethodCard_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodCheck' }
+    & GridPaymentMethod_PaymentMethodCheck_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodCash' }
+    & GridPaymentMethod_PaymentMethodCash_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodOnline' }
+    & GridPaymentMethod_PaymentMethodOnline_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodCombination' }
+    & GridPaymentMethod_PaymentMethodCombination_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodUnknown' }
+    & GridPaymentMethod_PaymentMethodUnknown_Fragment
   ), source: (
     { __typename?: 'Person' }
     & GridEntrySrcPersonFragment
@@ -1145,16 +1456,25 @@ export type GridEntriesQuery = { __typename?: 'Query', entries: Array<(
     & GridEntryFragment
   )> };
 
-export type EntryPayMethod_1Fragment = { __typename: 'PaymentMethod', id: string, name: string, parent?: Maybe<{ __typename: 'PaymentMethod', id: string }> };
+export type EntryPayMethod_1Fragment_PaymentMethodCard_ = { __typename: 'PaymentMethodCard' };
+
+export type EntryPayMethod_1Fragment_PaymentMethodCheck_ = { __typename: 'PaymentMethodCheck' };
+
+export type EntryPayMethod_1Fragment_PaymentMethodCash_ = { __typename: 'PaymentMethodCash' };
+
+export type EntryPayMethod_1Fragment_PaymentMethodOnline_ = { __typename: 'PaymentMethodOnline' };
+
+export type EntryPayMethod_1Fragment_PaymentMethodCombination_ = { __typename: 'PaymentMethodCombination' };
+
+export type EntryPayMethod_1Fragment_PaymentMethodUnknown_ = { __typename: 'PaymentMethodUnknown' };
+
+export type EntryPayMethod_1Fragment = EntryPayMethod_1Fragment_PaymentMethodCard_ | EntryPayMethod_1Fragment_PaymentMethodCheck_ | EntryPayMethod_1Fragment_PaymentMethodCash_ | EntryPayMethod_1Fragment_PaymentMethodOnline_ | EntryPayMethod_1Fragment_PaymentMethodCombination_ | EntryPayMethod_1Fragment_PaymentMethodUnknown_;
 
 export type Category_1Fragment = { __typename: 'Category', id: string, type: EntryType, name: string };
 
 export type EntryDept_1Fragment = { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Department', id: string, deptName: string } | { __typename: 'Business', id: string, bizName: string }> };
 
-export type EntryRefund_1Fragment = { __typename: 'EntryRefund', id: string, date: string, description?: Maybe<string>, total: string, reconciled: boolean, lastUpdate: string, deleted: boolean, paymentMethod: (
-    { __typename?: 'PaymentMethod' }
-    & EntryPayMethod_1Fragment
-  ) };
+export type EntryRefund_1Fragment = { __typename: 'EntryRefund', id: string, date: string, description?: Maybe<string>, total: string, reconciled: boolean, lastUpdate: string, deleted: boolean, paymentMethod: { __typename: 'PaymentMethodCard' } | { __typename: 'PaymentMethodCheck' } | { __typename: 'PaymentMethodCash' } | { __typename: 'PaymentMethodOnline' } | { __typename: 'PaymentMethodCombination' } | { __typename: 'PaymentMethodUnknown' } };
 
 export type EntryItem_1Fragment = { __typename: 'EntryItem', id: string, total: string, units: number, description?: Maybe<string>, lastUpdate: string, deleted: boolean, category?: Maybe<(
     { __typename?: 'Category' }
@@ -1164,15 +1484,30 @@ export type EntryItem_1Fragment = { __typename: 'EntryItem', id: string, total: 
     & EntryDept_1Fragment
   )> };
 
-export type Entry_1Fragment = { __typename: 'Entry', id: string, date: string, type: EntryType, description?: Maybe<string>, total: string, deleted: boolean, lastUpdate: string, reconciled: boolean, dateOfRecord?: Maybe<{ __typename?: 'EntryDateOfRecord', date: string, overrideFiscalYear: boolean }>, department: (
+export type Entry_1Fragment = { __typename: 'Entry', id: string, date: string, description?: Maybe<string>, total: string, deleted: boolean, lastUpdate: string, reconciled: boolean, dateOfRecord?: Maybe<{ __typename?: 'EntryDateOfRecord', date: string, overrideFiscalYear: boolean }>, department: (
     { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Department', id: string, deptName: string } | { __typename: 'Business', id: string, bizName: string }> }
     & EntryDept_1Fragment
   ), category: (
     { __typename?: 'Category' }
     & Category_1Fragment
   ), paymentMethod: (
-    { __typename?: 'PaymentMethod' }
-    & EntryPayMethod_1Fragment
+    { __typename?: 'PaymentMethodCard' }
+    & EntryPayMethod_1Fragment_PaymentMethodCard_
+  ) | (
+    { __typename?: 'PaymentMethodCheck' }
+    & EntryPayMethod_1Fragment_PaymentMethodCheck_
+  ) | (
+    { __typename?: 'PaymentMethodCash' }
+    & EntryPayMethod_1Fragment_PaymentMethodCash_
+  ) | (
+    { __typename?: 'PaymentMethodOnline' }
+    & EntryPayMethod_1Fragment_PaymentMethodOnline_
+  ) | (
+    { __typename?: 'PaymentMethodCombination' }
+    & EntryPayMethod_1Fragment_PaymentMethodCombination_
+  ) | (
+    { __typename?: 'PaymentMethodUnknown' }
+    & EntryPayMethod_1Fragment_PaymentMethodUnknown_
   ), source: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } | { __typename: 'Business', id: string, bizName: string } | { __typename: 'Department', id: string, deptName: string }, refunds: Array<(
     { __typename?: 'EntryRefund' }
     & EntryRefund_1Fragment
@@ -1260,7 +1595,7 @@ export type UpdateEntryIniStateQueryVariables = Exact<{
 }>;
 
 
-export type UpdateEntryIniStateQuery = { __typename?: 'Query', entry?: Maybe<{ __typename: 'Entry', id: string, type: EntryType, date: string, description?: Maybe<string>, total: string, reconciled: boolean, dateOfRecord?: Maybe<{ __typename?: 'EntryDateOfRecord', date: string, overrideFiscalYear: boolean }>, department: (
+export type UpdateEntryIniStateQuery = { __typename?: 'Query', entry?: Maybe<{ __typename: 'Entry', id: string, date: string, description?: Maybe<string>, total: string, reconciled: boolean, dateOfRecord?: Maybe<{ __typename?: 'EntryDateOfRecord', date: string, overrideFiscalYear: boolean }>, department: (
       { __typename?: 'Department' }
       & DeptEntryOptFragment
     ), category: (
@@ -1281,14 +1616,10 @@ export type UpdateEntryIniStateQuery = { __typename?: 'Query', entry?: Maybe<{ _
         & SrcEntryBizOptFragment
       )> }
       & SrcEntryDeptOptFragment
-    ), paymentMethod: (
-      { __typename?: 'PaymentMethod' }
-      & PayMethodEntryOptFragment
-    ), refunds: Array<{ __typename: 'EntryRefund', id: string, deleted: boolean, date: string, total: string }> }> };
+    ), paymentMethod: { __typename: 'PaymentMethodCard' } | { __typename: 'PaymentMethodCheck' } | { __typename: 'PaymentMethodCash' } | { __typename: 'PaymentMethodOnline' } | { __typename: 'PaymentMethodCombination' } | { __typename: 'PaymentMethodUnknown' }, refunds: Array<{ __typename: 'EntryRefund', id: string, deleted: boolean, date: string, total: string }> }> };
 
 export type AddEntryMutationVariables = Exact<{
   fields: EntryAddFields;
-  paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
   personAdd?: Maybe<PersonAddFields>;
   businessAdd?: Maybe<BusinessAddFields>;
 }>;
@@ -1302,7 +1633,6 @@ export type AddEntryMutation = { __typename?: 'Mutation', entryAdd: (
 export type UpdateEntryMutationVariables = Exact<{
   id: Scalars['ID'];
   fields: EntryUpdateFields;
-  paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
   paymentMethodUpdate?: Maybe<EntryUpdatePaymentMethod>;
   personAdd?: Maybe<PersonAddFields>;
   businessAdd?: Maybe<BusinessAddFields>;
@@ -1335,14 +1665,11 @@ export type DeptEntryOptsQuery = { __typename?: 'Query', deptOpts: { __typename:
     )> } };
 
 export type PayMethodEntryOptsQueryVariables = Exact<{
-  where: PaymentMethodsWhere;
+  where: AccountsWhere;
 }>;
 
 
-export type PayMethodEntryOptsQuery = { __typename?: 'Query', paymentMethods: Array<(
-    { __typename?: 'PaymentMethod' }
-    & PayMethodEntryOptFragment
-  )> };
+export type PayMethodEntryOptsQuery = { __typename?: 'Query', accounts: Array<{ __typename: 'AccountChecking' } | { __typename: 'AccountCreditCard' }> };
 
 export type SrcEntryOptsQueryVariables = Exact<{
   name: Scalars['String'];
@@ -1392,7 +1719,7 @@ export type UpdateItemIniStateQuery = { __typename?: 'Query', entry?: Maybe<(
       & CatEntryOptFragment
     )> }> };
 
-export type Entry_3Fragment = { __typename: 'Entry', id: string, type: EntryType, total: string, date: string, items: Array<{ __typename: 'EntryItem', id: string, deleted: boolean, total: string }> };
+export type Entry_3Fragment = { __typename: 'Entry', id: string, total: string, date: string, items: Array<{ __typename: 'EntryItem', id: string, deleted: boolean, total: string }>, category: { __typename: 'Category', id: string, type: EntryType } };
 
 export type AddEntryItemMutationVariables = Exact<{
   id: Scalars['ID'];
@@ -1445,17 +1772,13 @@ export type UpdateRefundIniStateQueryVariables = Exact<{
 export type UpdateRefundIniStateQuery = { __typename?: 'Query', entry?: Maybe<(
     { __typename?: 'Entry' }
     & Entry_2Fragment
-  )>, entryRefund?: Maybe<{ __typename: 'EntryRefund', id: string, date: string, description?: Maybe<string>, total: string, reconciled: boolean, paymentMethod: (
-      { __typename?: 'PaymentMethod' }
-      & PayMethodEntryOptFragment
-    ) }> };
+  )>, entryRefund?: Maybe<{ __typename: 'EntryRefund', id: string, date: string, description?: Maybe<string>, total: string, reconciled: boolean, paymentMethod: { __typename: 'PaymentMethodCard' } | { __typename: 'PaymentMethodCheck' } | { __typename: 'PaymentMethodCash' } | { __typename: 'PaymentMethodOnline' } | { __typename: 'PaymentMethodCombination' } | { __typename: 'PaymentMethodUnknown' } }> };
 
-export type Entry_2Fragment = { __typename: 'Entry', id: string, date: string, type: EntryType, total: string, refunds: Array<{ __typename: 'EntryRefund', id: string, deleted: boolean, total: string }> };
+export type Entry_2Fragment = { __typename: 'Entry', id: string, date: string, total: string, refunds: Array<{ __typename: 'EntryRefund', id: string, deleted: boolean, total: string }>, category: { __typename: 'Category', id: string, type: EntryType } };
 
 export type AddEntryRefundMutationVariables = Exact<{
   id: Scalars['ID'];
   fields: EntryAddRefundFields;
-  paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
 }>;
 
 
@@ -1467,7 +1790,6 @@ export type AddEntryRefundMutation = { __typename?: 'Mutation', entryAddRefund: 
 export type UpdateRefundMutationVariables = Exact<{
   id: Scalars['ID'];
   fields: EntryUpdateRefundFields;
-  paymentMethodAdd?: Maybe<PaymentMethodAddFields>;
   paymentMethodUpdate?: Maybe<EntryUpdatePaymentMethod>;
 }>;
 
@@ -1496,8 +1818,6 @@ export type SrcEntryBizOptFragment = { __typename: 'Business', id: string, name:
     { __typename?: 'Department' }
     & SrcEntryDeptOptFragment
   )> };
-
-export type PayMethodEntryOptFragment = { __typename: 'PaymentMethod', id: string, refId?: Maybe<string>, name: string, active: boolean, parent?: Maybe<{ __typename: 'PaymentMethod', id: string }> };
 
 export type DeptsForNav_1QueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1569,19 +1889,29 @@ export type DirectiveResolverFn<TResult = {}, TParent = {}, TContext = {}, TArgs
 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
-  AliasTarget: ResolversTypes['Category'] | ResolversTypes['Department'] | ResolversTypes['PaymentMethod'];
+  AccountInterface: ResolversTypes['AccountChecking'] | ResolversTypes['AccountCreditCard'];
+  ID: ResolverTypeWrapper<Scalars['ID']>;
+  Boolean: ResolverTypeWrapper<Scalars['Boolean']>;
+  String: ResolverTypeWrapper<Scalars['String']>;
+  AccountCard: ResolverTypeWrapper<Omit<AccountCard, 'authorizedUsers'> & { authorizedUsers: Array<ResolversTypes['Entity']> }>;
+  AccountWithCardsInterface: ResolversTypes['AccountChecking'] | ResolversTypes['AccountCreditCard'];
+  AccountCheck: ResolverTypeWrapper<AccountCheck>;
+  AccountCheckInput: AccountCheckInput;
+  AccountChecking: ResolverTypeWrapper<Omit<AccountChecking, 'owner'> & { owner: ResolversTypes['Entity'] }>;
+  AccountCreditCard: ResolverTypeWrapper<Omit<AccountCreditCard, 'owner'> & { owner: ResolversTypes['Entity'] }>;
+  AccountCardsWhere: AccountCardsWhere;
+  AccountType: AccountType;
+  AccountsWhere: AccountsWhere;
+  Query: ResolverTypeWrapper<{}>;
+  AliasTarget: ResolversTypes['Category'] | ResolversTypes['Department'];
   AliasType: AliasType;
   Alias: ResolverTypeWrapper<Omit<Alias, 'target'> & { target: ResolversTypes['AliasTarget'] }>;
-  ID: ResolverTypeWrapper<Scalars['ID']>;
-  String: ResolverTypeWrapper<Scalars['String']>;
   AliasWhereTarget: AliasWhereTarget;
   AliasesWhere: AliasesWhere;
-  Query: ResolverTypeWrapper<{}>;
   BudgetOwner: ResolversTypes['Department'] | ResolversTypes['Business'];
   Budget: ResolverTypeWrapper<Omit<Budget, 'owner'> & { owner: ResolversTypes['BudgetOwner'] }>;
   BudgetsWhere: BudgetsWhere;
   Vendor: ResolverTypeWrapper<Vendor>;
-  Boolean: ResolverTypeWrapper<Scalars['Boolean']>;
   Business: ResolverTypeWrapper<Business>;
   BusinessAddFields: BusinessAddFields;
   BusinessesWhereInput: BusinessesWhereInput;
@@ -1589,6 +1919,7 @@ export type ResolversTypes = {
   Mutation: ResolverTypeWrapper<{}>;
   Category: ResolverTypeWrapper<Category>;
   CategoriesWhere: CategoriesWhere;
+  Currency: Currency;
   DepartmentAncestor: ResolversTypes['Department'] | ResolversTypes['Business'];
   Department: ResolverTypeWrapper<Omit<Department, 'parent' | 'ancestors'> & { parent: ResolversTypes['DepartmentAncestor'], ancestors: Array<ResolversTypes['DepartmentAncestor']> }>;
   DepartmentAncestorType: DepartmentAncestorType;
@@ -1597,12 +1928,13 @@ export type ResolversTypes = {
   DepartmentsWhereInput: DepartmentsWhereInput;
   DepartmentAddFields: DepartmentAddFields;
   DepartmentsWhere: DepartmentsWhere;
-  EntrySource: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'];
+  Entity: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'];
+  EntitiesWhere: EntitiesWhere;
   EntryType: EntryType;
   EntryDateOfRecord: ResolverTypeWrapper<EntryDateOfRecord>;
   EntryDateOfRecordAdd: EntryDateOfRecordAdd;
   EntryDateOfRecordUpdate: EntryDateOfRecordUpdate;
-  Entry: ResolverTypeWrapper<Omit<Entry, 'source'> & { source: ResolversTypes['EntrySource'] }>;
+  Entry: ResolverTypeWrapper<Omit<Entry, 'source'> & { source: ResolversTypes['Entity'] }>;
   EntriesWhereSource: EntriesWhereSource;
   EntriesWhereDateOfRecord: EntriesWhereDateOfRecord;
   EntriesWhere: EntriesWhere;
@@ -1626,14 +1958,30 @@ export type ResolversTypes = {
   FiscalYearWhereHasDate: FiscalYearWhereHasDate;
   FiscalYearWhereInput: FiscalYearWhereInput;
   FiscalYearsWhere: FiscalYearsWhere;
-  PaymentMethod: ResolverTypeWrapper<PaymentMethod>;
-  PaymentMethodWhereParentInput: PaymentMethodWhereParentInput;
-  PaymentMethodWhereRefIdInput: PaymentMethodWhereRefIdInput;
-  PaymentMethodWhereNameInput: PaymentMethodWhereNameInput;
-  PaymentMethodWhereInput: PaymentMethodWhereInput;
-  PaymentMethodsWhere: PaymentMethodsWhere;
-  PaymentMethodAddFields: PaymentMethodAddFields;
-  PaymentMethodUpdateFields: PaymentMethodUpdateFields;
+  PaymentCardType: PaymentCardType;
+  PaymentCardInterface: ResolversTypes['AccountCard'] | ResolversTypes['PaymentCard'];
+  PaymentCard: ResolverTypeWrapper<PaymentCard>;
+  PaymentCardInput: PaymentCardInput;
+  PaymentCheckInterface: ResolversTypes['AccountCheck'] | ResolversTypes['PaymentCheck'];
+  PaymentCheck: ResolverTypeWrapper<PaymentCheck>;
+  PaymentCheckInput: PaymentCheckInput;
+  PaymentMethodInterface: ResolversTypes['PaymentMethodCard'] | ResolversTypes['PaymentMethodCheck'] | ResolversTypes['PaymentMethodCash'] | ResolversTypes['PaymentMethodOnline'] | ResolversTypes['PaymentMethodCombination'] | ResolversTypes['PaymentMethodUnknown'];
+  PaymentMethodCard: ResolverTypeWrapper<PaymentMethodCard>;
+  PaymentMethodCardInput: PaymentMethodCardInput;
+  PaymentMethodAccountCardInput: PaymentMethodAccountCardInput;
+  PaymentMethodCheck: ResolverTypeWrapper<PaymentMethodCheck>;
+  PaymentMethodCheckInput: PaymentMethodCheckInput;
+  PaymentMethodAccountCheckInput: PaymentMethodAccountCheckInput;
+  PaymentMethodCash: ResolverTypeWrapper<PaymentMethodCash>;
+  PaymentMethodCashInput: PaymentMethodCashInput;
+  PaymentMethodOnline: ResolverTypeWrapper<PaymentMethodOnline>;
+  PaymentMethodOnlineInput: PaymentMethodOnlineInput;
+  PaymentMethodCombination: ResolverTypeWrapper<PaymentMethodCombination>;
+  PaymentMethodCombinationInput: PaymentMethodCombinationInput;
+  PaymentMethodUnknown: ResolverTypeWrapper<PaymentMethodUnknown>;
+  PaymentMethodUnknownInput: PaymentMethodUnknownInput;
+  PaymentMethodType: PaymentMethodType;
+  PaymentMethodInput: PaymentMethodInput;
   PersonName: ResolverTypeWrapper<PersonName>;
   PersonNameInput: PersonNameInput;
   PersonAddFields: PersonAddFields;
@@ -1644,6 +1992,8 @@ export type ResolversTypes = {
   WhereRational: WhereRational;
   Date: ResolverTypeWrapper<Scalars['Date']>;
   Rational: ResolverTypeWrapper<Scalars['Rational']>;
+  TypeNode: never;
+  NodeChildrenType: NodeChildrenType;
   SortDirection: SortDirection;
   FilterType: FilterType;
   PaginateInput: PaginateInput;
@@ -1652,7 +2002,6 @@ export type ResolversTypes = {
   RegexFlags: RegexFlags;
   WhereId: WhereId;
   WhereTreeId: WhereTreeId;
-  Node: ResolverTypeWrapper<Node>;
   NodeInput: NodeInput;
   WhereNode: WhereNode;
   WhereTreeNode: WhereTreeNode;
@@ -1671,18 +2020,27 @@ export type ResolversTypes = {
 
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
-  AliasTarget: ResolversParentTypes['Category'] | ResolversParentTypes['Department'] | ResolversParentTypes['PaymentMethod'];
-  Alias: Omit<Alias, 'target'> & { target: ResolversParentTypes['AliasTarget'] };
+  AccountInterface: ResolversParentTypes['AccountChecking'] | ResolversParentTypes['AccountCreditCard'];
   ID: Scalars['ID'];
+  Boolean: Scalars['Boolean'];
   String: Scalars['String'];
+  AccountCard: Omit<AccountCard, 'authorizedUsers'> & { authorizedUsers: Array<ResolversParentTypes['Entity']> };
+  AccountWithCardsInterface: ResolversParentTypes['AccountChecking'] | ResolversParentTypes['AccountCreditCard'];
+  AccountCheck: AccountCheck;
+  AccountCheckInput: AccountCheckInput;
+  AccountChecking: Omit<AccountChecking, 'owner'> & { owner: ResolversParentTypes['Entity'] };
+  AccountCreditCard: Omit<AccountCreditCard, 'owner'> & { owner: ResolversParentTypes['Entity'] };
+  AccountCardsWhere: AccountCardsWhere;
+  AccountsWhere: AccountsWhere;
+  Query: {};
+  AliasTarget: ResolversParentTypes['Category'] | ResolversParentTypes['Department'];
+  Alias: Omit<Alias, 'target'> & { target: ResolversParentTypes['AliasTarget'] };
   AliasWhereTarget: AliasWhereTarget;
   AliasesWhere: AliasesWhere;
-  Query: {};
   BudgetOwner: ResolversParentTypes['Department'] | ResolversParentTypes['Business'];
   Budget: Omit<Budget, 'owner'> & { owner: ResolversParentTypes['BudgetOwner'] };
   BudgetsWhere: BudgetsWhere;
   Vendor: Vendor;
-  Boolean: Scalars['Boolean'];
   Business: Business;
   BusinessAddFields: BusinessAddFields;
   BusinessesWhereInput: BusinessesWhereInput;
@@ -1697,11 +2055,12 @@ export type ResolversParentTypes = {
   DepartmentsWhereInput: DepartmentsWhereInput;
   DepartmentAddFields: DepartmentAddFields;
   DepartmentsWhere: DepartmentsWhere;
-  EntrySource: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'];
+  Entity: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'];
+  EntitiesWhere: EntitiesWhere;
   EntryDateOfRecord: EntryDateOfRecord;
   EntryDateOfRecordAdd: EntryDateOfRecordAdd;
   EntryDateOfRecordUpdate: EntryDateOfRecordUpdate;
-  Entry: Omit<Entry, 'source'> & { source: ResolversParentTypes['EntrySource'] };
+  Entry: Omit<Entry, 'source'> & { source: ResolversParentTypes['Entity'] };
   EntriesWhereSource: EntriesWhereSource;
   EntriesWhereDateOfRecord: EntriesWhereDateOfRecord;
   EntriesWhere: EntriesWhere;
@@ -1724,14 +2083,28 @@ export type ResolversParentTypes = {
   FiscalYearWhereHasDate: FiscalYearWhereHasDate;
   FiscalYearWhereInput: FiscalYearWhereInput;
   FiscalYearsWhere: FiscalYearsWhere;
-  PaymentMethod: PaymentMethod;
-  PaymentMethodWhereParentInput: PaymentMethodWhereParentInput;
-  PaymentMethodWhereRefIdInput: PaymentMethodWhereRefIdInput;
-  PaymentMethodWhereNameInput: PaymentMethodWhereNameInput;
-  PaymentMethodWhereInput: PaymentMethodWhereInput;
-  PaymentMethodsWhere: PaymentMethodsWhere;
-  PaymentMethodAddFields: PaymentMethodAddFields;
-  PaymentMethodUpdateFields: PaymentMethodUpdateFields;
+  PaymentCardInterface: ResolversParentTypes['AccountCard'] | ResolversParentTypes['PaymentCard'];
+  PaymentCard: PaymentCard;
+  PaymentCardInput: PaymentCardInput;
+  PaymentCheckInterface: ResolversParentTypes['AccountCheck'] | ResolversParentTypes['PaymentCheck'];
+  PaymentCheck: PaymentCheck;
+  PaymentCheckInput: PaymentCheckInput;
+  PaymentMethodInterface: ResolversParentTypes['PaymentMethodCard'] | ResolversParentTypes['PaymentMethodCheck'] | ResolversParentTypes['PaymentMethodCash'] | ResolversParentTypes['PaymentMethodOnline'] | ResolversParentTypes['PaymentMethodCombination'] | ResolversParentTypes['PaymentMethodUnknown'];
+  PaymentMethodCard: PaymentMethodCard;
+  PaymentMethodCardInput: PaymentMethodCardInput;
+  PaymentMethodAccountCardInput: PaymentMethodAccountCardInput;
+  PaymentMethodCheck: PaymentMethodCheck;
+  PaymentMethodCheckInput: PaymentMethodCheckInput;
+  PaymentMethodAccountCheckInput: PaymentMethodAccountCheckInput;
+  PaymentMethodCash: PaymentMethodCash;
+  PaymentMethodCashInput: PaymentMethodCashInput;
+  PaymentMethodOnline: PaymentMethodOnline;
+  PaymentMethodOnlineInput: PaymentMethodOnlineInput;
+  PaymentMethodCombination: PaymentMethodCombination;
+  PaymentMethodCombinationInput: PaymentMethodCombinationInput;
+  PaymentMethodUnknown: PaymentMethodUnknown;
+  PaymentMethodUnknownInput: PaymentMethodUnknownInput;
+  PaymentMethodInput: PaymentMethodInput;
   PersonName: PersonName;
   PersonNameInput: PersonNameInput;
   PersonAddFields: PersonAddFields;
@@ -1742,11 +2115,11 @@ export type ResolversParentTypes = {
   WhereRational: WhereRational;
   Date: Scalars['Date'];
   Rational: Scalars['Rational'];
+  TypeNode: never;
   PaginateInput: PaginateInput;
   ByIdFilter: ByIdFilter;
   WhereId: WhereId;
   WhereTreeId: WhereTreeId;
-  Node: Node;
   NodeInput: NodeInput;
   WhereNode: WhereNode;
   WhereTreeNode: WhereTreeNode;
@@ -1767,19 +2140,67 @@ export type CacheControlDirectiveArgs = {   maxAge?: Maybe<Scalars['Int']>;
 
 export type CacheControlDirectiveResolver<Result, Parent, ContextType = Context, Args = CacheControlDirectiveArgs> = DirectiveResolverFn<Result, Parent, ContextType, Args>;
 
-export type AliasTargetResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AliasTarget'] = ResolversParentTypes['AliasTarget']> = {
-  __resolveType: TypeResolveFn<'Category' | 'Department' | 'PaymentMethod', ParentType, ContextType>;
+export type AccountInterfaceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AccountInterface'] = ResolversParentTypes['AccountInterface']> = {
+  __resolveType: TypeResolveFn<'AccountChecking' | 'AccountCreditCard', ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  currency?: Resolver<ResolversTypes['Currency'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  owner?: Resolver<ResolversTypes['Entity'], ParentType, ContextType>;
 };
 
-export type AliasResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Alias'] = ResolversParentTypes['Alias']> = {
+export type AccountCardResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AccountCard'] = ResolversParentTypes['AccountCard']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  target?: Resolver<ResolversTypes['AliasTarget'], ParentType, ContextType>;
+  account?: Resolver<ResolversTypes['AccountWithCardsInterface'], ParentType, ContextType>;
+  active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  authorizedUsers?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType>;
+  trailingDigits?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  type?: Resolver<ResolversTypes['PaymentCardType'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type AccountWithCardsInterfaceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AccountWithCardsInterface'] = ResolversParentTypes['AccountWithCardsInterface']> = {
+  __resolveType: TypeResolveFn<'AccountChecking' | 'AccountCreditCard', ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  cards?: Resolver<Array<ResolversTypes['AccountCard']>, ParentType, ContextType>;
+  currency?: Resolver<ResolversTypes['Currency'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  type?: Resolver<ResolversTypes['AliasType'], ParentType, ContextType>;
+  owner?: Resolver<ResolversTypes['Entity'], ParentType, ContextType>;
+};
+
+export type AccountCheckResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AccountCheck'] = ResolversParentTypes['AccountCheck']> = {
+  account?: Resolver<ResolversTypes['AccountChecking'], ParentType, ContextType>;
+  checkNumber?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type AccountCheckingResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AccountChecking'] = ResolversParentTypes['AccountChecking']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  accountNumber?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  cards?: Resolver<Array<ResolversTypes['AccountCard']>, ParentType, ContextType>;
+  currency?: Resolver<ResolversTypes['Currency'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  owner?: Resolver<ResolversTypes['Entity'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type AccountCreditCardResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AccountCreditCard'] = ResolversParentTypes['AccountCreditCard']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  cards?: Resolver<Array<ResolversTypes['AccountCard']>, ParentType, ContextType>;
+  currency?: Resolver<ResolversTypes['Currency'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  owner?: Resolver<ResolversTypes['Entity'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
+  accounts?: Resolver<Array<ResolversTypes['AccountInterface']>, ParentType, ContextType, RequireFields<QueryAccountsArgs, never>>;
+  account?: Resolver<ResolversTypes['AccountInterface'], ParentType, ContextType, RequireFields<QueryAccountArgs, 'id'>>;
+  accountCards?: Resolver<Array<ResolversTypes['AccountCard']>, ParentType, ContextType, RequireFields<QueryAccountCardsArgs, never>>;
+  accountCard?: Resolver<ResolversTypes['AccountCard'], ParentType, ContextType, RequireFields<QueryAccountCardArgs, 'id'>>;
   alias?: Resolver<Maybe<ResolversTypes['Alias']>, ParentType, ContextType, RequireFields<QueryAliasArgs, 'id'>>;
   aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType, RequireFields<QueryAliasesArgs, never>>;
   budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType, RequireFields<QueryBudgetsArgs, never>>;
@@ -1790,17 +2211,28 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   category?: Resolver<ResolversTypes['Category'], ParentType, ContextType, RequireFields<QueryCategoryArgs, 'id'>>;
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentsArgs, never>>;
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
+  entities?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType, RequireFields<QueryEntitiesArgs, 'where'>>;
   entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, never>>;
   entry?: Resolver<Maybe<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntryArgs, 'id'>>;
   entryRefund?: Resolver<Maybe<ResolversTypes['EntryRefund']>, ParentType, ContextType, RequireFields<QueryEntryRefundArgs, 'id'>>;
   entryItem?: Resolver<Maybe<ResolversTypes['EntryItem']>, ParentType, ContextType, RequireFields<QueryEntryItemArgs, 'id'>>;
   fiscalYears?: Resolver<Array<ResolversTypes['FiscalYear']>, ParentType, ContextType, RequireFields<QueryFiscalYearsArgs, never>>;
   fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType, RequireFields<QueryFiscalYearArgs, 'id'>>;
-  paymentMethods?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType, RequireFields<QueryPaymentMethodsArgs, never>>;
-  paymentMethod?: Resolver<Maybe<ResolversTypes['PaymentMethod']>, ParentType, ContextType, RequireFields<QueryPaymentMethodArgs, 'id'>>;
   people?: Resolver<Array<ResolversTypes['Person']>, ParentType, ContextType, RequireFields<QueryPeopleArgs, never>>;
   person?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<QueryPersonArgs, 'id'>>;
   sources?: Resolver<Array<ResolversTypes['Source']>, ParentType, ContextType, RequireFields<QuerySourcesArgs, 'searchByName'>>;
+};
+
+export type AliasTargetResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AliasTarget'] = ResolversParentTypes['AliasTarget']> = {
+  __resolveType: TypeResolveFn<'Category' | 'Department', ParentType, ContextType>;
+};
+
+export type AliasResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Alias'] = ResolversParentTypes['Alias']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  target?: Resolver<ResolversTypes['AliasTarget'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  type?: Resolver<ResolversTypes['AliasType'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
 export type BudgetOwnerResolvers<ContextType = Context, ParentType extends ResolversParentTypes['BudgetOwner'] = ResolversParentTypes['BudgetOwner']> = {
@@ -1825,7 +2257,7 @@ export type BusinessResolvers<ContextType = Context, ParentType extends Resolver
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType>;
-  departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>;
+  departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<BusinessDepartmentsArgs, 'root'>>;
   vendor?: Resolver<Maybe<ResolversTypes['Vendor']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
@@ -1841,8 +2273,6 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   entryAddItem?: Resolver<ResolversTypes['EntryItemUpsertResult'], ParentType, ContextType, RequireFields<MutationEntryAddItemArgs, 'id' | 'fields'>>;
   entryUpdateItem?: Resolver<ResolversTypes['EntryItemUpsertResult'], ParentType, ContextType, RequireFields<MutationEntryUpdateItemArgs, 'id' | 'fields'>>;
   entryDeleteItem?: Resolver<ResolversTypes['EntryItemUpsertResult'], ParentType, ContextType, RequireFields<MutationEntryDeleteItemArgs, 'id'>>;
-  paymentMethodUpdate?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType, RequireFields<MutationPaymentMethodUpdateArgs, 'id' | 'fields'>>;
-  paymentMethodAdd?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType, RequireFields<MutationPaymentMethodAddArgs, 'fields'>>;
   addPerson?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<MutationAddPersonArgs, 'fields'>>;
 };
 
@@ -1875,7 +2305,7 @@ export type DepartmentResolvers<ContextType = Context, ParentType extends Resolv
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type EntrySourceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['EntrySource'] = ResolversParentTypes['EntrySource']> = {
+export type EntityResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Entity'] = ResolversParentTypes['Entity']> = {
   __resolveType: TypeResolveFn<'Person' | 'Business' | 'Department', ParentType, ContextType>;
 };
 
@@ -1896,12 +2326,11 @@ export type EntryResolvers<ContextType = Context, ParentType extends ResolversPa
   fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType>;
   items?: Resolver<Array<ResolversTypes['EntryItem']>, ParentType, ContextType>;
   lastUpdate?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
-  paymentMethod?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType>;
+  paymentMethod?: Resolver<ResolversTypes['PaymentMethodInterface'], ParentType, ContextType>;
   reconciled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   refunds?: Resolver<Array<ResolversTypes['EntryRefund']>, ParentType, ContextType>;
-  source?: Resolver<ResolversTypes['EntrySource'], ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['Entity'], ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>;
-  type?: Resolver<ResolversTypes['EntryType'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -1911,7 +2340,7 @@ export type EntryRefundResolvers<ContextType = Context, ParentType extends Resol
   deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   lastUpdate?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
-  paymentMethod?: Resolver<ResolversTypes['PaymentMethod'], ParentType, ContextType>;
+  paymentMethod?: Resolver<ResolversTypes['PaymentMethodInterface'], ParentType, ContextType>;
   reconciled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -1949,15 +2378,62 @@ export type FiscalYearResolvers<ContextType = Context, ParentType extends Resolv
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type PaymentMethodResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethod'] = ResolversParentTypes['PaymentMethod']> = {
-  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
-  refId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  parent?: Resolver<Maybe<ResolversTypes['PaymentMethod']>, ParentType, ContextType>;
-  children?: Resolver<Array<ResolversTypes['PaymentMethod']>, ParentType, ContextType>;
-  allowChildren?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
-  aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType>;
+export type PaymentCardInterfaceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentCardInterface'] = ResolversParentTypes['PaymentCardInterface']> = {
+  __resolveType: TypeResolveFn<'AccountCard' | 'PaymentCard', ParentType, ContextType>;
+  trailingDigits?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  type?: Resolver<ResolversTypes['PaymentCardType'], ParentType, ContextType>;
+};
+
+export type PaymentCardResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentCard'] = ResolversParentTypes['PaymentCard']> = {
+  trailingDigits?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  type?: Resolver<ResolversTypes['PaymentCardType'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type PaymentCheckInterfaceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentCheckInterface'] = ResolversParentTypes['PaymentCheckInterface']> = {
+  __resolveType: TypeResolveFn<'AccountCheck' | 'PaymentCheck', ParentType, ContextType>;
+  checkNumber?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type PaymentCheckResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentCheck'] = ResolversParentTypes['PaymentCheck']> = {
+  checkNumber?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type PaymentMethodInterfaceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethodInterface'] = ResolversParentTypes['PaymentMethodInterface']> = {
+  __resolveType: TypeResolveFn<'PaymentMethodCard' | 'PaymentMethodCheck' | 'PaymentMethodCash' | 'PaymentMethodOnline' | 'PaymentMethodCombination' | 'PaymentMethodUnknown', ParentType, ContextType>;
+  currency?: Resolver<ResolversTypes['Currency'], ParentType, ContextType>;
+};
+
+export type PaymentMethodCardResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethodCard'] = ResolversParentTypes['PaymentMethodCard']> = {
+  card?: Resolver<ResolversTypes['PaymentCardInterface'], ParentType, ContextType>;
+  currency?: Resolver<ResolversTypes['Currency'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type PaymentMethodCheckResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethodCheck'] = ResolversParentTypes['PaymentMethodCheck']> = {
+  currency?: Resolver<ResolversTypes['Currency'], ParentType, ContextType>;
+  check?: Resolver<ResolversTypes['PaymentCheckInterface'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type PaymentMethodCashResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethodCash'] = ResolversParentTypes['PaymentMethodCash']> = {
+  currency?: Resolver<ResolversTypes['Currency'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type PaymentMethodOnlineResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethodOnline'] = ResolversParentTypes['PaymentMethodOnline']> = {
+  currency?: Resolver<ResolversTypes['Currency'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type PaymentMethodCombinationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethodCombination'] = ResolversParentTypes['PaymentMethodCombination']> = {
+  currency?: Resolver<ResolversTypes['Currency'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type PaymentMethodUnknownResolvers<ContextType = Context, ParentType extends ResolversParentTypes['PaymentMethodUnknown'] = ResolversParentTypes['PaymentMethodUnknown']> = {
+  currency?: Resolver<ResolversTypes['Currency'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -1981,10 +2457,12 @@ export interface RationalScalarConfig extends GraphQLScalarTypeConfig<ResolversT
   name: 'Rational';
 }
 
-export type NodeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Node'] = ResolversParentTypes['Node']> = {
-  type?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+export type TypeNodeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['TypeNode'] = ResolversParentTypes['TypeNode']> = {
+  __resolveType: TypeResolveFn<null, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  parent?: Resolver<Maybe<ResolversTypes['TypeNode']>, ParentType, ContextType>;
+  children?: Resolver<Array<ResolversTypes['TypeNode']>, ParentType, ContextType>;
 };
 
 export type SourceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Source'] = ResolversParentTypes['Source']> = {
@@ -2002,9 +2480,15 @@ export interface UploadScalarConfig extends GraphQLScalarTypeConfig<ResolversTyp
 }
 
 export type Resolvers<ContextType = Context> = {
+  AccountInterface?: AccountInterfaceResolvers<ContextType>;
+  AccountCard?: AccountCardResolvers<ContextType>;
+  AccountWithCardsInterface?: AccountWithCardsInterfaceResolvers<ContextType>;
+  AccountCheck?: AccountCheckResolvers<ContextType>;
+  AccountChecking?: AccountCheckingResolvers<ContextType>;
+  AccountCreditCard?: AccountCreditCardResolvers<ContextType>;
+  Query?: QueryResolvers<ContextType>;
   AliasTarget?: AliasTargetResolvers<ContextType>;
   Alias?: AliasResolvers<ContextType>;
-  Query?: QueryResolvers<ContextType>;
   BudgetOwner?: BudgetOwnerResolvers<ContextType>;
   Budget?: BudgetResolvers<ContextType>;
   Vendor?: VendorResolvers<ContextType>;
@@ -2013,7 +2497,7 @@ export type Resolvers<ContextType = Context> = {
   Category?: CategoryResolvers<ContextType>;
   DepartmentAncestor?: DepartmentAncestorResolvers<ContextType>;
   Department?: DepartmentResolvers<ContextType>;
-  EntrySource?: EntrySourceResolvers<ContextType>;
+  Entity?: EntityResolvers<ContextType>;
   EntryDateOfRecord?: EntryDateOfRecordResolvers<ContextType>;
   Entry?: EntryResolvers<ContextType>;
   EntryRefund?: EntryRefundResolvers<ContextType>;
@@ -2021,12 +2505,22 @@ export type Resolvers<ContextType = Context> = {
   EntryItemUpsertResult?: EntryItemUpsertResultResolvers<ContextType>;
   Subscription?: SubscriptionResolvers<ContextType>;
   FiscalYear?: FiscalYearResolvers<ContextType>;
-  PaymentMethod?: PaymentMethodResolvers<ContextType>;
+  PaymentCardInterface?: PaymentCardInterfaceResolvers<ContextType>;
+  PaymentCard?: PaymentCardResolvers<ContextType>;
+  PaymentCheckInterface?: PaymentCheckInterfaceResolvers<ContextType>;
+  PaymentCheck?: PaymentCheckResolvers<ContextType>;
+  PaymentMethodInterface?: PaymentMethodInterfaceResolvers<ContextType>;
+  PaymentMethodCard?: PaymentMethodCardResolvers<ContextType>;
+  PaymentMethodCheck?: PaymentMethodCheckResolvers<ContextType>;
+  PaymentMethodCash?: PaymentMethodCashResolvers<ContextType>;
+  PaymentMethodOnline?: PaymentMethodOnlineResolvers<ContextType>;
+  PaymentMethodCombination?: PaymentMethodCombinationResolvers<ContextType>;
+  PaymentMethodUnknown?: PaymentMethodUnknownResolvers<ContextType>;
   PersonName?: PersonNameResolvers<ContextType>;
   Person?: PersonResolvers<ContextType>;
   Date?: GraphQLScalarType;
   Rational?: GraphQLScalarType;
-  Node?: NodeResolvers<ContextType>;
+  TypeNode?: TypeNodeResolvers<ContextType>;
   Source?: SourceResolvers<ContextType>;
   User?: UserResolvers<ContextType>;
   Upload?: GraphQLScalarType;

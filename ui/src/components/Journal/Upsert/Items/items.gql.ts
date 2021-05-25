@@ -4,14 +4,18 @@ export const JOURNAL_FRAGMENT = gql`
   fragment Entry_3Fragment on Entry {
     __typename
     id
-    type
-    total 
+    total
     date
     items {
       id
       __typename
       deleted
-      total 
+      total
+    }
+    category {
+      id
+      __typename
+      type
     }
   }
 `;

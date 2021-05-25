@@ -7,5 +7,4 @@ export {
   EntryDbRecord,
   EntryItemDbRecord,
   EntryRefundDbRecord,
-  EntrySource,
 } from "./entryResolvers";

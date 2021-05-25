@@ -1,4 +1,4 @@
-union EntrySource = Person | Business | Department
+# union EntrySource = Person | Business | Department
 
 enum EntryType {
   CREDIT
@@ -47,12 +47,12 @@ type Entry {
   fiscalYear: FiscalYear!
   items: [EntryItem!]!
   lastUpdate: Date!
-  paymentMethod: PaymentMethod!
+  paymentMethod: PaymentMethodInterface!
   reconciled: Boolean!
   refunds: [EntryRefund!]!
-  source: EntrySource!
+  source: Entity!
   total: Rational!
-  type: EntryType!
+  # type: EntryType!
 }
 
 input EntriesWhereSource {
@@ -71,13 +71,13 @@ input EntriesWhere {
   id: WhereId
   refunds: EntryRefundsWhere
   items: EntryItemsWhere
-  type: EntryType
+  # type: EntryType
   date: WhereDateBeta
   dateOfRecord: EntriesWhereDateOfRecord
   department: DepartmentsWhere
   fiscalYear: FiscalYearsWhere
   category: CategoriesWhere
-  paymentMethod: PaymentMethodsWhere
+  # paymentMethod: PaymentMethodsWhere
   description: WhereRegex
   total: WhereRational
   source: EntriesWhereSource
@@ -144,7 +144,7 @@ type EntryRefund {
   deleted: Boolean!
   description: String
   lastUpdate: Date!
-  paymentMethod: PaymentMethod!
+  paymentMethod: PaymentMethodInterface!
   reconciled: Boolean!
   total: Rational!
 }
@@ -153,7 +153,7 @@ input EntryRefundsWhere {
   # Fields
   id: WhereId
   date: WhereDateBeta
-  paymentMethod: PaymentMethodsWhere
+  # paymentMethod: PaymentMethodsWhere
   total: WhereRational
   reconciled: Boolean
   lastUpdate: WhereDateBeta
@@ -245,7 +245,7 @@ type Query {
 
 input EntryUpdatePaymentMethod {
   id: ID!
-  fields: PaymentMethodUpdateFields!
+  # fields: PaymentMethodUpdateFields!
 }
 
 type Mutation {
@@ -255,7 +255,7 @@ type Mutation {
     """
     paymentMethodAdd and paymentMethodUpdate are mutually exclusive.
     """
-    paymentMethodAdd: PaymentMethodAddFields
+    # paymentMethodAdd: PaymentMethodAddFields
     paymentMethodUpdate: EntryUpdatePaymentMethod
     """
     personAdd and businessAdd are mutually exclusive.
@@ -265,20 +265,19 @@ type Mutation {
   ): Entry!
   entryAdd(
     fields: EntryAddFields!
-    paymentMethodAdd: PaymentMethodAddFields
+    # paymentMethodAdd: PaymentMethodAddFields
     personAdd: PersonAddFields
     businessAdd: BusinessAddFields
   ): Entry!
   entryDelete(id: ID!): Entry!
   entryAddRefund(
     id: ID!
-    fields: EntryAddRefundFields!
-    paymentMethodAdd: PaymentMethodAddFields
+    fields: EntryAddRefundFields! # paymentMethodAdd: PaymentMethodAddFields
   ): Entry!
   entryUpdateRefund(
     id: ID!
     fields: EntryUpdateRefundFields!
-    paymentMethodAdd: PaymentMethodAddFields
+    # paymentMethodAdd: PaymentMethodAddFields
     paymentMethodUpdate: EntryUpdatePaymentMethod
   ): Entry!
   entryDeleteRefund(id: ID!): Entry!

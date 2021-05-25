@@ -134,7 +134,7 @@ const UpdateItemDialog = (
     [fiscalYearData]
   );
 
-  const type = entry?.type ?? null;
+  const type = entry?.category?.type ?? null;
 
   const total = entry?.total;
   const items = entry?.items || [];

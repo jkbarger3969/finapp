@@ -91,17 +91,3 @@ export const SRC_ENTRY_BIZ_OPT_FRAGMENT = gql`
   }
   ${SRC_ENTRY_DEPT_OPT_FRAGMENT}
 `;
-
-export const PAY_METHOD_ENTRY_OPT_FRAGMENT = gql`
-  fragment PayMethodEntryOptFragment on PaymentMethod {
-    __typename
-    id
-    refId
-    name
-    active
-    parent {
-      __typename
-      id
-    }
-  }
-`;

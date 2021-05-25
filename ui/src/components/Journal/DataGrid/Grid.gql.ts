@@ -26,20 +26,57 @@ export const SOURCE_DEPT = gql`
 `;
 
 export const PAYMENT_METHOD = gql`
-  fragment GridPaymentMethod on PaymentMethod {
+  fragment GridPaymentMethodCard on PaymentMethodCard {
     __typename
-    id
-    name
-    parent {
+    card {
       __typename
-      id
+      ... on AccountCard {
+        id
+        active
+        account {
+          __typename
+          ... on AccountCreditCard {
+            id
+            name
+          }
+          ... on AccountChecking {
+            id
+            name
+          }
+        }
+        trailingDigits
+        type
+      }
+      ... on PaymentCard {
+        trailingDigits
+        type
+      }
     }
-    aliases {
+  }
+
+  fragment GridPaymentMethodCheck on PaymentMethodCheck {
+    __typename
+    check {
       __typename
-      id
-      name
-      type
+      ... on AccountCheck {
+        checkNumber
+        account {
+          __typename
+          id
+          name
+        }
+      }
+      ... on PaymentCheck {
+        checkNumber
+      }
     }
+  }
+
+  fragment GridPaymentMethod on PaymentMethodInterface {
+    __typename
+    currency
+    ...GridPaymentMethodCard
+    ...GridPaymentMethodCheck
   }
 `;
 
@@ -67,7 +104,6 @@ export const ENTRY = gql`
     dateOfRecord {
       date
     }
-    type
     department {
       __typename
       id
@@ -77,6 +113,7 @@ export const ENTRY = gql`
       __typename
       id
       name
+      type
     }
     paymentMethod {
       ...GridPaymentMethod

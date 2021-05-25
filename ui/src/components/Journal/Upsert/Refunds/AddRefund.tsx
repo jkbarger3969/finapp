@@ -132,13 +132,11 @@ const AddRefundDialog = (
     return [null, null];
   }, [formikStatus]);
 
-  const entryType = data?.entry?.type;
+  const entryType = data?.entry?.category?.type;
   const title = useMemo(() => {
     const title =
       !loading && !error && (entryType ?? NULLISH) !== NULLISH
-        ? `${
-            entryType === EntryType.Credit ? "Give" : "Add"
-          } Refund`
+        ? `${entryType === EntryType.Credit ? "Give" : "Add"} Refund`
         : "Refund";
 
     if (fatalError) {

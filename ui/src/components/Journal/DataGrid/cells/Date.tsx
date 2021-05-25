@@ -1,6 +1,24 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
+import {
+  Table,
+  TableFilterRow,
+  TableEditRow,
+} from "@devexpress/dx-react-grid-material-ui";
 import { Box, makeStyles } from "@material-ui/core";
+import {
+  KeyboardDatePicker,
+  KeyboardDatePickerProps,
+  MuiPickersUtilsProvider,
+} from "@material-ui/pickers";
+import DateFnsUtils from "@date-io/date-fns";
+import {
+  addDays,
+  differenceInDays,
+  isSameDay,
+  startOfDay,
+  subDays,
+} from "date-fns";
+
 import {
   availableFilterOperations,
   AvailableFilterOperations,
@@ -8,15 +26,11 @@ import {
   getAvailableRangeOps,
   RangeFilterIcons,
 } from "../filters/rangeFilterUtils";
-import { addDays, differenceInDays, startOfDay, subDays } from "date-fns";
-import { OnFilter } from "../plugins/TableCell";
+import { OnFilter } from "../plugins";
 import { LogicFilter } from "../plugins";
-import {
-  KeyboardDatePicker,
-  KeyboardDatePickerProps,
-  MuiPickersUtilsProvider,
-} from "@material-ui/pickers";
-import DateFnsUtils from "@date-io/date-fns";
+import { inlinePaddingWithSelector, RowChangesProp } from "./shared";
+import { IntegratedFiltering } from "@devexpress/dx-react-grid";
+import { DefaultFilterOperations, Filter } from "../plugins";
 
 export interface DateCellProps {
   formatter?: Intl.DateTimeFormat;
@@ -33,6 +47,19 @@ export const DateCell = (
       value={formatter?.format(value) || (value as Date).toLocaleString()}
     />
   );
+};
+
+const defaultKeyboardDatePickerProps: Partial<KeyboardDatePickerProps> = {
+  autoOk: true,
+  disableFuture: true,
+  disableToolbar: true,
+  format: "MM/dd/yyyy",
+  fullWidth: true,
+  inputVariant: "standard",
+  margin: "dense",
+  placeholder: "mm/dd/yyyy",
+  size: "small",
+  variant: "inline",
 };
 
 // Filter Cell
@@ -402,7 +429,10 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
     state.selectorValue !== "equal" && state.selectorValue !== "notEqual";
 
   return (
-    <TableFilterRow.Cell {...(props as TableFilterRow.CellProps)}>
+    <TableFilterRow.Cell
+      {...(props as TableFilterRow.CellProps)}
+      style={inlinePaddingWithSelector}
+    >
       <Box width="100%">
         <Box display="flex" alignItems="end" justifyItems="flex-start">
           <MuiPickersUtilsProvider utils={DateFnsUtils}>
@@ -418,21 +448,12 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
               value={state.selectorValue}
             />
             <KeyboardDatePicker
+              {...defaultKeyboardDatePickerProps}
               className={classes.keyboardDatePicker}
-              autoOk
               disabled={!filteringEnabled}
-              disableFuture
-              disableToolbar
-              format="MM/dd/yyyy"
-              fullWidth
               initialFocusedDate={startOfDay(new Date()).toISOString()}
-              inputVariant="standard"
-              margin="dense"
               onChange={onChangeDate}
-              placeholder={"mm/dd/yyyy"}
-              size="small"
               value={state.date}
-              variant="inline"
             />
           </MuiPickersUtilsProvider>
         </Box>
@@ -449,30 +470,100 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
                 value={state.rangeSelectorValue || "addRangeBound"}
               />
               <KeyboardDatePicker
-                autoOk
+                {...defaultKeyboardDatePickerProps}
                 disabled={
                   !filteringEnabled || !isRangeOp || !state.rangeSelectorValue
                 }
-                disableFuture
-                disableToolbar
                 className={classes.keyboardDatePicker}
-                format="MM/dd/yyyy"
-                fullWidth
                 initialFocusedDate={startOfDay(new Date()).toISOString()}
                 inputVariant="standard"
-                margin="dense"
                 maxDate={maxDate}
                 minDate={minDate}
                 onChange={onChangeBoundDate}
-                placeholder={"mm/dd/yyyy"}
-                size="small"
                 value={state.boundDate}
-                variant="inline"
               />
             </MuiPickersUtilsProvider>
           </Box>
         )}
       </Box>
     </TableFilterRow.Cell>
+  );
+};
+
+export const dateFilterColumnExtension = (
+  columnName: string,
+  toString: (value: Date) => string
+): IntegratedFiltering.ColumnExtension => {
+  return {
+    columnName,
+    predicate: (value, filter, row): boolean => {
+      const filterDate = ((filter as unknown) as Filter<Date>).value;
+
+      switch (filter.operation as DefaultFilterOperations) {
+        case "equal":
+          return isSameDay(value as Date, filterDate);
+        case "notEqual":
+          return !isSameDay(value as Date, filterDate);
+        case "greaterThan":
+          return startOfDay(value as Date) > startOfDay(filterDate);
+        case "greaterThanOrEqual":
+          return startOfDay(value as Date) >= startOfDay(filterDate);
+        case "lessThan":
+          return startOfDay(value as Date) < startOfDay(filterDate);
+        case "lessThanOrEqual":
+          return startOfDay(value as Date) <= startOfDay(filterDate);
+        default:
+          return IntegratedFiltering.defaultPredicate(
+            toString(value as Date),
+            filter,
+            row
+          );
+      }
+    },
+  };
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type DateEditorProps = Partial<TableEditRow.CellProps> & {
+  keyboardDatePickerProps?: Partial<Pick<KeyboardDatePickerProps, "disabled">>;
+} & RowChangesProp;
+
+export const DateEditor = (props: DateEditorProps): JSX.Element => {
+  const {
+    keyboardDatePickerProps: keyboardDatePickerPropsProp,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    rowChanges,
+    ...rest
+  } = props as DateEditorProps & TableEditRow.CellProps;
+
+  const { onValueChange, value, editingEnabled } = props as DateEditorProps &
+    TableEditRow.CellProps;
+
+  const onChange = useCallback<
+    NonNullable<KeyboardDatePickerProps["onChange"]>
+  >(
+    (date) => {
+      onValueChange(date);
+    },
+    [onValueChange]
+  );
+
+  const keyboardDatePickerProps = useMemo<KeyboardDatePickerProps>(() => {
+    return {
+      ...defaultKeyboardDatePickerProps,
+      initialFocusedDate: value || new Date(),
+      ...(keyboardDatePickerPropsProp || {}),
+      disabled: !editingEnabled || !!keyboardDatePickerPropsProp?.disabled,
+      onChange,
+      value,
+    };
+  }, [editingEnabled, keyboardDatePickerPropsProp, onChange, value]);
+
+  return (
+    <TableEditRow.Cell {...rest}>
+      <MuiPickersUtilsProvider utils={DateFnsUtils}>
+        <KeyboardDatePicker {...keyboardDatePickerProps} />
+      </MuiPickersUtilsProvider>
+    </TableEditRow.Cell>
   );
 };

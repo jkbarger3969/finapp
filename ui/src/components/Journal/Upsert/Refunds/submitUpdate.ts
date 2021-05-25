@@ -6,7 +6,6 @@ import { isEqual } from "date-fns";
 
 import {
   EntryUpdateRefundFields,
-  PayMethodEntryOptFragment,
   UpdateRefundMutation as UpdateRefund,
   UpdateRefundMutationVariables as UpdateRefundVars,
 } from "../../../../apollo/graphTypes";
@@ -29,7 +28,8 @@ export type UpdateValues = O.NonNullable<
       >;
       paymentMethod: TransmutationValue<
         string,
-        (PayMethodEntryOptFragment | string)[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (any | string)[]
       >;
     }
   >,
@@ -39,7 +39,8 @@ export type UpdateValues = O.NonNullable<
 export type IniUpdateValues = O.Overwrite<
   UpdateValues,
   {
-    paymentMethod: TransmutationValue<string, PayMethodEntryOptFragment[]>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    paymentMethod: TransmutationValue<string, any[]>;
   }
 >;
 
@@ -47,13 +48,11 @@ const UPDATE_REFUND = gql`
   mutation UpdateRefund(
     $id: ID!
     $fields: EntryUpdateRefundFields!
-    $paymentMethodAdd: PaymentMethodAddFields
     $paymentMethodUpdate: EntryUpdatePaymentMethod
   ) {
     entryUpdateRefund(
       id: $id
       fields: $fields
-      paymentMethodAdd: $paymentMethodAdd
       paymentMethodUpdate: $paymentMethodUpdate
     ) {
       id
@@ -108,8 +107,10 @@ const submitUpdate: (
     const [payMethod, parent] = values.paymentMethod.value
       .slice(-2)
       .reverse() as [
-      string | PayMethodEntryOptFragment,
-      PayMethodEntryOptFragment
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      string | any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      any
     ];
 
     // Currently CHECK Numbers only
@@ -173,7 +174,8 @@ const submitUpdate: (
     },
     paymentMethodAdd,
     paymentMethodUpdate,
-  };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any;
 
   await client.mutate<UpdateRefund, UpdateRefundVars>({
     mutation: UPDATE_REFUND,

@@ -1,14 +1,8 @@
 import gql from "graphql-tag";
 
 export const JOURNAL_ENTRY_PAY_METHOD_FRAGMENT = gql`
-  fragment EntryPayMethod_1Fragment on PaymentMethod {
+  fragment EntryPayMethod_1Fragment on PaymentMethodInterface {
     __typename
-    id
-    name
-    parent {
-      __typename
-      id
-    }
   }
 `;
 
@@ -48,7 +42,8 @@ export const JOURNAL_ENTRY_REFUND = gql`
     description
     total
     paymentMethod {
-      ...EntryPayMethod_1Fragment
+      __typename
+      # ...EntryPayMethod_1Fragment
     }
     reconciled
     lastUpdate
@@ -102,7 +97,6 @@ export const JOURNAL_ENTRY_FRAGMENT = gql`
         }
       }
     }
-    type
     category {
       ...Category_1Fragment
     }

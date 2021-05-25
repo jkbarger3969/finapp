@@ -1,3 +1,17 @@
+interface TypeNode {
+  id: ID!
+  name: String!
+  parent: TypeNode
+  children: [TypeNode!]!
+}
+
+enum NodeChildrenType {
+  ALL
+  BRANCH
+  LEAF
+  NONE
+}
+
 enum SortDirection {
   ASC
   DESC
@@ -61,11 +75,6 @@ input WhereTreeId {
   gte: ID
   lt: ID
   lte: ID
-}
-
-type Node {
-  type: String!
-  id: ID!
 }
 
 input NodeInput {

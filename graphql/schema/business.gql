@@ -7,7 +7,11 @@ type Business {
   id: ID!
   name: String!
   budgets: [Budget!]!
-  departments: [Department!]!
+  """
+  When root is `true`, only departments who's direct parent is the the Business
+  are returned.
+  """
+  departments(root: Boolean = false): [Department!]!
   vendor: Vendor
 }
 

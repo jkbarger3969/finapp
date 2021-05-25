@@ -79,6 +79,10 @@ export type FilterColumnsStateProps = Omit<
   onFiltersChange?: (filters: Filters) => void;
 };
 
+export type OnFilter<T = unknown, U = DefaultFilterOperations> = (
+  filter: Filter<T, U> | ColumnFilter<T, U> | null
+) => void;
+
 const parseColumnFilters = (
   columnName: string,
   filters: Array<ColumnFilterOperation | LogicFilter>,

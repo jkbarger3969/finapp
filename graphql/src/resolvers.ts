@@ -1,16 +1,27 @@
 import { Resolvers } from "./graphTypes";
-// import { Budget, budgets } from "./resolvers/budget";
 import { alias, aliases, Alias, AliasTarget } from "./resolvers/alias";
+import {
+  account,
+  accounts,
+  accountCard,
+  accountCards,
+  AccountInterface,
+  AccountWithCardsInterface,
+  AccountCard,
+  AccountCheck,
+  AccountChecking,
+  AccountCreditCard,
+} from "./resolvers/account";
 import { budget, budgets, Budget, BudgetOwner } from "./resolvers/budget";
 import { addBusiness } from "./resolvers/business";
 import { business, businesses, Business } from "./resolvers/business/index";
-// import { Department, departments, department } from "./resolvers/departments";
 import {
   department,
   departments,
   Department,
   DepartmentAncestor,
 } from "./resolvers/department";
+import { Entity, entities } from "./resolvers/entity";
 import { entryAdded, entryUpdated, entryDelete } from "./resolvers/entry";
 import {
   entry,
@@ -18,7 +29,6 @@ import {
   Entry,
   EntryItem,
   EntryRefund,
-  EntrySource,
 } from "./resolvers/entry/index";
 import entryAdd from "./resolvers/entry/entryAdd";
 import entryUpdate from "./resolvers/entry/entryUpdate";
@@ -31,15 +41,14 @@ import entryUpdateItem from "./resolvers/entry/entryUpdateItem";
 import entryDeleteItem from "./resolvers/entry/entryDeleteItem";
 import entryItem from "./resolvers/entry/entryItem";
 import entryUpserted from "./resolvers/entry/entryUpserted";
+import {
+  PaymentCardInterface,
+  PaymentCheckInterface,
+  PaymentMethodInterface,
+  PaymentMethodCard,
+} from "./resolvers/paymentMethod";
 import { sources } from "./resolvers/entrySource";
 import { Category, category, categories } from "./resolvers/category/index";
-import {
-  paymentMethod,
-  paymentMethods,
-  PaymentMethod,
-} from "./resolvers/paymentMethod";
-import paymentMethodAdd from "./resolvers/paymentMethod/paymentMethodAdd";
-import paymentMethodUpdate from "./resolvers/paymentMethod/paymentMethodUpdate";
 import { addPerson } from "./resolvers/person";
 import { people, person, Person } from "./resolvers/person/index";
 import { fiscalYear, fiscalYears, FiscalYear } from "./resolvers/fiscalYear";
@@ -48,6 +57,12 @@ import { User } from "./resolvers/user";
 import { dateScalar, rationalScalar } from "./resolvers/scalars";
 
 const resolvers: Resolvers = {
+  AccountInterface,
+  AccountWithCardsInterface,
+  AccountCard,
+  AccountCheck,
+  AccountChecking,
+  AccountCreditCard,
   Alias,
   AliasTarget,
   Date: dateScalar,
@@ -57,22 +72,30 @@ const resolvers: Resolvers = {
   Business,
   Department,
   DepartmentAncestor,
+  Entity,
   Entry,
   EntryRefund,
   EntryItem,
-  EntrySource,
   FiscalYear,
-  PaymentMethod,
+  PaymentCardInterface,
+  PaymentCheckInterface,
+  PaymentMethodInterface,
+  PaymentMethodCard,
   Person,
   Category,
   User,
   Query: {
+    account,
+    accounts,
+    accountCard,
+    accountCards,
     alias,
     aliases,
     budget,
     businesses,
     business,
     budgets,
+    entities,
     entry,
     entryRefund,
     entryItem,
@@ -82,8 +105,6 @@ const resolvers: Resolvers = {
     category,
     departments,
     department,
-    paymentMethods,
-    paymentMethod,
     person,
     people,
     fiscalYear,
@@ -101,8 +122,6 @@ const resolvers: Resolvers = {
     entryDeleteItem,
     addPerson,
     addBusiness,
-    paymentMethodAdd,
-    paymentMethodUpdate,
   },
   Subscription: {
     entryAdded,

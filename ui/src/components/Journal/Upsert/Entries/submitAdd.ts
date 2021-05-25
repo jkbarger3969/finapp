@@ -6,7 +6,6 @@ import { parseName } from "humanparser";
 
 import {
   EntryAddFields,
-  PayMethodEntryOptFragment,
   DeptEntryOptFragment,
   CatEntryOptFragment,
   SrcEntryBizOptFragment,
@@ -33,26 +32,22 @@ export type AddValues = O.Overwrite<
     total: TransmutationValue<string, EntryAddFields["total"]>;
     paymentMethod: TransmutationValue<
       string,
-      (PayMethodEntryOptFragment | string)[]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (any | string)[]
     >;
     department: DeptEntryOptFragment;
-    source: TransmutationValue<
-      string,
-      (SourceType | SourceValue)[]
-    >;
+    source: TransmutationValue<string, (SourceType | SourceValue)[]>;
   }
 >;
 
 const ADD_ENTRY = gql`
   mutation AddEntry(
     $fields: EntryAddFields!
-    $paymentMethodAdd: PaymentMethodAddFields
     $personAdd: PersonAddFields
     $businessAdd: BusinessAddFields
   ) {
     entryAdd(
       fields: $fields
-      paymentMethodAdd: $paymentMethodAdd
       personAdd: $personAdd
       businessAdd: $businessAdd
     ) {
@@ -77,7 +72,8 @@ const submitAdd: (
     if (typeof payMethod === "string") {
       const parent = (values.paymentMethod.value[
         values.paymentMethod.value.length - 2
-      ] as PayMethodEntryOptFragment).id;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ] as any).id;
 
       return {
         paymentMethod: "",
@@ -168,7 +164,8 @@ const submitAdd: (
     paymentMethodAdd,
     personAdd,
     businessAdd,
-  };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any;
 
   await client.mutate<AddEntry, AddEntryVars>({
     mutation: ADD_ENTRY,

@@ -2,6 +2,8 @@ import React, { useCallback, useMemo, useState } from "react";
 import { TextField, TextFieldProps } from "@material-ui/core";
 import Fraction from "fraction.js";
 
+const NULLISH = Symbol();
+
 export type RationalInputProps = Omit<
   TextFieldProps,
   "value" | "onChange" | "defaultValue" | "type"
@@ -63,7 +65,7 @@ export const RationalInput = (props: RationalInputProps): JSX.Element => {
   const value = useMemo<string>(() => {
     const value = isValueControlled ? valueProp : state.value;
 
-    if (value === undefined) {
+    if ((value ?? NULLISH) === NULLISH) {
       return "";
     } else if (value instanceof Fraction) {
       return value.toString(decimalPlaces);

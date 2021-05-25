@@ -3,12 +3,10 @@ import Fraction from "fraction.js";
 import { isValid } from "date-fns";
 
 import DocHistory from "../utils/DocHistory";
-import { userNodeType } from "../utils/standIns";
-import { MutationResolvers, PaymentMethod } from "../../graphTypes";
+import { MutationResolvers } from "../../graphTypes";
 import { entry } from "./entry";
 import { getUniqueId } from "../utils/mongoUtils";
 import { stages } from "./utils";
-import paymentMethodAddMutation from "../paymentMethod/paymentMethodAdd";
 import { JOURNAL_ENTRY_UPSERTED } from "./pubSubs";
 
 const addDate = {
@@ -26,7 +24,6 @@ const entryAddRefund: MutationResolvers["entryAddRefund"] = async (
   const {
     id,
     fields: { date: dateStr, total },
-    paymentMethodAdd,
   } = args;
 
   const reconciled = args.fields.reconciled ?? false;
@@ -114,59 +111,6 @@ const entryAddRefund: MutationResolvers["entryAddRefund"] = async (
       refundId = await getUniqueId("refunds.id", collection);
     })(),
   ];
-
-  if (paymentMethodAdd) {
-    // Do NOT create new payment method until all other checks pass
-    asyncOps.push(
-      Promise.all(asyncOps.splice(0)).then(async () => {
-        const { id: node } = nodeMap.typename.get("PaymentMethod");
-
-        const id = new ObjectId(
-          await (paymentMethodAddMutation(
-            doc,
-            { fields: paymentMethodAdd },
-            {
-              ...context,
-              ephemeral: {
-                ...(context.ephemeral || {}),
-                docHistoryDate: docHistory.date,
-              },
-            },
-            info
-          ) as Promise<PaymentMethod>).then(({ id }) => id)
-        );
-
-        docBuilder.addField("paymentMethod", {
-          node: new ObjectId(node),
-          id,
-        });
-      })
-    );
-  } else {
-    // Ensure payment method exists.
-    asyncOps.push(
-      (async () => {
-        const { collection, id: node } = nodeMap.typename.get("PaymentMethod");
-
-        const id = new ObjectId(args.fields.paymentMethod);
-
-        if (
-          !(await db
-            .collection(collection)
-            .findOne({ _id: id }, { projection: { _id: true } }))
-        ) {
-          throw new Error(
-            `Payment method with id ${id.toHexString()} does not exist.`
-          );
-        }
-
-        docBuilder.addField("paymentMethod", {
-          node: new ObjectId(node),
-          id,
-        });
-      })()
-    );
-  }
 
   await Promise.all(asyncOps);
 

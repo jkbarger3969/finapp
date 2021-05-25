@@ -5,7 +5,6 @@ import { ApolloClient } from "@apollo/client";
 
 import {
   EntryAddRefundFields,
-  PayMethodEntryOptFragment,
   AddEntryRefundMutation as AddRefund,
   AddEntryRefundMutationVariables as AddRefundVars,
 } from "../../../../apollo/graphTypes";
@@ -13,32 +12,21 @@ import { TransmutationValue } from "../../../../utils/formik";
 import { JOURNAL_ENTRY_REFUND } from "../../Table/Entries.gql";
 
 export type AddValues = O.Overwrite<
-  O.Required<
-    EntryAddRefundFields,
-    keyof EntryAddRefundFields,
-    "deep"
-  >,
+  O.Required<EntryAddRefundFields, keyof EntryAddRefundFields, "deep">,
   {
     date: TransmutationValue<Date | null, EntryAddRefundFields["date"]>;
     total: TransmutationValue<string, EntryAddRefundFields["total"]>;
     paymentMethod: TransmutationValue<
       string,
-      (PayMethodEntryOptFragment | string)[]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (any | string)[]
     >;
   }
 >;
 
 const ADD_REFUND = gql`
-  mutation AddEntryRefund(
-    $id: ID!
-    $fields: EntryAddRefundFields!
-    $paymentMethodAdd: PaymentMethodAddFields
-  ) {
-    entryAddRefund(
-      id: $id
-      fields: $fields
-      paymentMethodAdd: $paymentMethodAdd
-    ) {
+  mutation AddEntryRefund($id: ID!, $fields: EntryAddRefundFields!) {
+    entryAddRefund(id: $id, fields: $fields) {
       id
       __typename
       refunds {
@@ -66,7 +54,8 @@ const submitAdd: (
     if (typeof payMethod === "string") {
       const parent = (values.paymentMethod.value[
         values.paymentMethod.value.length - 2
-      ] as PayMethodEntryOptFragment).id;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ] as any).id;
 
       return {
         paymentMethod: "",
@@ -97,7 +86,8 @@ const submitAdd: (
       reconciled: values.reconciled ?? null,
     },
     paymentMethodAdd,
-  };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any;
 
   await client.mutate<AddRefund, AddRefundVars>({
     mutation: ADD_REFUND,

@@ -7,7 +7,6 @@ import { parseName } from "humanparser";
 
 import {
   EntryUpdateFields,
-  PayMethodEntryOptFragment,
   DeptEntryOptFragment,
   CatEntryOptFragment,
   SourceType,
@@ -25,17 +24,10 @@ const NULLISH = Symbol();
 
 export type UpdateValues = O.NonNullable<
   O.Overwrite<
-    O.Required<
-      EntryUpdateFields,
-      keyof EntryUpdateFields,
-      "deep"
-    >,
+    O.Required<EntryUpdateFields, keyof EntryUpdateFields, "deep">,
     {
       category: TransmutationValue<string, CatEntryOptFragment[]>;
-      date: TransmutationValue<
-        Date,
-        NonNullable<EntryUpdateFields["date"]>
-      >;
+      date: TransmutationValue<Date, NonNullable<EntryUpdateFields["date"]>>;
       dateOfRecord: O.Overwrite<
         EntryDateOfRecordUpdate,
         {
@@ -51,13 +43,11 @@ export type UpdateValues = O.NonNullable<
       >;
       paymentMethod: TransmutationValue<
         string,
-        (PayMethodEntryOptFragment | string)[]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (any | string)[]
       >;
       department: DeptEntryOptFragment;
-      source: TransmutationValue<
-        string,
-        (SourceType | SourceValue)[]
-      >;
+      source: TransmutationValue<string, (SourceType | SourceValue)[]>;
     }
   >,
   keyof Omit<EntryUpdateFields, "description" | "dateOfRecord">
@@ -66,7 +56,8 @@ export type UpdateValues = O.NonNullable<
 export type IniUpdateValues = O.Overwrite<
   UpdateValues,
   {
-    paymentMethod: TransmutationValue<string, PayMethodEntryOptFragment[]>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    paymentMethod: TransmutationValue<string, any[]>;
     source: TransmutationValue<
       string,
       (SourceType | U.Exclude<SourceValue, string>)[]
@@ -78,7 +69,6 @@ const UPDATE_ENTRY = gql`
   mutation UpdateEntry(
     $id: ID!
     $fields: EntryUpdateFields!
-    $paymentMethodAdd: PaymentMethodAddFields
     $paymentMethodUpdate: EntryUpdatePaymentMethod
     $personAdd: PersonAddFields
     $businessAdd: BusinessAddFields
@@ -86,7 +76,6 @@ const UPDATE_ENTRY = gql`
     entryUpdate(
       id: $id
       fields: $fields
-      paymentMethodAdd: $paymentMethodAdd
       paymentMethodUpdate: $paymentMethodUpdate
       personAdd: $personAdd
       businessAdd: $businessAdd
@@ -194,8 +183,10 @@ const submitUpdate: (
     const [payMethod, parent] = values.paymentMethod.value
       .slice(-2)
       .reverse() as [
-      string | PayMethodEntryOptFragment,
-      PayMethodEntryOptFragment
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      string | any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      any
     ];
 
     // Currently CHECK Numbers only
@@ -340,7 +331,8 @@ const submitUpdate: (
     paymentMethodUpdate,
     personAdd,
     businessAdd,
-  };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any;
 
   await client.mutate<UpdateEntry, UpdateEntryVars>({
     mutation: UPDATE_ENTRY,

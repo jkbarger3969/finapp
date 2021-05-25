@@ -36,11 +36,6 @@ const AliasResolver: AliasResolvers<Context, AliasDbRecord> = {
           type,
           db.collection("departments").findOne({ _id: new ObjectId(id) })
         );
-      case "PaymentMethod":
-        return addTypename(
-          type,
-          db.collection("paymentMethods").findOne({ _id: new ObjectId(id) })
-        );
     }
   },
   type: ({ type }) => snakeCase(type).toUpperCase() as AliasType,

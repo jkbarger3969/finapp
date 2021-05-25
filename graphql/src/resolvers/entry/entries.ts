@@ -14,10 +14,8 @@ import {
   whereRational,
   whereRegex,
 } from "../utils/queryUtils";
-import { pascalCase } from "pascal-case";
 import { whereDepartments } from "../department/departments";
 import { whereCategories } from "../category";
-import { wherePaymentMethods } from "../paymentMethod";
 import { whereBusiness } from "../business/index";
 import { wherePeople } from "../person/people";
 import { whereFiscalYear, FiscalYearDbRecord } from "../fiscalYear";
@@ -40,28 +38,7 @@ export const whereEntryRefunds = (
           entryRefundsWhere[whereKey]
         );
         break;
-      case "paymentMethod":
-        promises.push(
-          (async () => {
-            const result = wherePaymentMethods(entryRefundsWhere[whereKey], db);
-            const query = result instanceof Promise ? await result : result;
-            filterQuery["refunds.paymentMethod.0.value"] = {
-              $in: (
-                await db
-                  .collection<{
-                    _id: ObjectId;
-                  }>("paymentMethods")
-                  .find(query, {
-                    projection: {
-                      _id: true,
-                    },
-                  })
-                  .toArray()
-              ).map(({ _id }) => _id),
-            };
-          })()
-        );
-        break;
+
       case "total":
         if (!("$and" in filterQuery)) {
           filterQuery.$and = [];
@@ -399,9 +376,6 @@ export const whereEntries = (entriesWhere: EntriesWhere, db: Db) => {
           }
         }
         break;
-      case "type":
-        filterQuery["type.0.value"] = pascalCase(entriesWhere[whereKey]);
-        break;
       case "date":
         filterQuery["date.0.value"] = whereDate(entriesWhere[whereKey]);
         break;
@@ -554,28 +528,7 @@ export const whereEntries = (entriesWhere: EntriesWhere, db: Db) => {
           })()
         );
         break;
-      case "paymentMethod":
-        promises.push(
-          (async () => {
-            const result = wherePaymentMethods(entriesWhere[whereKey], db);
-            const query = result instanceof Promise ? await result : result;
-            filterQuery["paymentMethod.0.value"] = {
-              $in: (
-                await db
-                  .collection<{
-                    _id: ObjectId;
-                  }>("paymentMethods")
-                  .find(query, {
-                    projection: {
-                      _id: true,
-                    },
-                  })
-                  .toArray()
-              ).map(({ _id }) => _id),
-            };
-          })()
-        );
-        break;
+
       case "description":
         filterQuery["description.0.value"] = whereRegex(entriesWhere[whereKey]);
         break;

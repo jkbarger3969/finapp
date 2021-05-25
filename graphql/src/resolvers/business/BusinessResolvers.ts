@@ -31,38 +31,40 @@ const budgets: BusinessResolvers<Context, BusinessDbRecord>["budgets"] = (
     .toArray();
 };
 
-const departments: BusinessResolvers<
-  Context,
-  BusinessDbRecord
->["departments"] = async ({ _id }, _, { db }) => {
-  const results: DepartmentDbRecord[] = [];
+const departments: BusinessResolvers<Context, BusinessDbRecord>["departments"] =
+  async ({ _id }, { root }, { db }) => {
+    const results: DepartmentDbRecord[] = [];
 
-  const query = await db
-    .collection<DepartmentDbRecord>("departments")
-    .find({
-      "parent.type": "Business",
-      "parent.id": _id,
-    })
-    .toArray();
+    const query = await db
+      .collection<DepartmentDbRecord>("departments")
+      .find({
+        "parent.type": "Business",
+        "parent.id": _id,
+      })
+      .toArray();
 
-  while (query.length) {
-    results.push(...query);
+    if (root) {
+      results.push(...query);
+    } else {
+      while (query.length) {
+        results.push(...query);
 
-    query.push(
-      ...(await db
-        .collection<DepartmentDbRecord>("departments")
-        .find({
-          "parent.type": "Department",
-          "parent.id": {
-            $in: query.splice(0).map(({ _id }) => _id),
-          },
-        })
-        .toArray())
-    );
-  }
+        query.push(
+          ...(await db
+            .collection<DepartmentDbRecord>("departments")
+            .find({
+              "parent.type": "Department",
+              "parent.id": {
+                $in: query.splice(0).map(({ _id }) => _id),
+              },
+            })
+            .toArray())
+        );
+      }
+    }
 
-  return (results as unknown[]) as Department[];
-};
+    return results as unknown[] as Department[];
+  };
 
 const BusinessResolver: BusinessResolvers<Context, BusinessDbRecord> = {
   id: ({ _id }) => _id.toString(),
@@ -70,4 +72,4 @@ const BusinessResolver: BusinessResolvers<Context, BusinessDbRecord> = {
   departments,
 } as const;
 
-export const Business = (BusinessResolver as unknown) as BusinessResolvers;
+export const Business = BusinessResolver as unknown as BusinessResolvers;
