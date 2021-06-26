@@ -42,6 +42,7 @@ import { makeStyles } from "@material-ui/core/styles";
 import { useQuery } from "@apollo/client";
 import { compareAsc } from "date-fns";
 import Fraction from "fraction.js";
+import { ValueNode } from "mui-tree-select";
 import md5 from "md5";
 import { Plugin, Getter } from "@devexpress/dx-react-core";
 import {
@@ -89,7 +90,6 @@ import {
   deptFilterColumnExtension,
   DeptFilterProps,
   DeptEditor,
-  DeptEditorProps,
   PayMethodCell,
   PayMethodEditor,
   PayMethodEditorProps,
@@ -104,20 +104,18 @@ import {
   SourceEditor,
   sourceToStr,
   TypeFilter,
-  TypeEditor,
   RationalEditor,
   RationalEditorProps,
-  SourceEditorProps,
 } from "./cells";
 import { DefaultEditor } from "./filters";
-import { DeptInputOpt } from "../../Inputs/departmentInputUtils";
+import { DepartmentInputOpt } from "../../Inputs/Department";
 import {
   CategoryInputOpt,
   getOptionLabel as getCategoryOptionLabel,
-} from "../../Inputs/categoryInputUtils";
-import { EntityInputOpt } from "../../Inputs/entityInputUtils";
-import { RowChangesProp } from "./cells/shared";
+} from "../../Inputs/Category";
+import { EntityInputOpt } from "../../Inputs/Entity";
 import { mergeTableCellProps } from "./plugins/TableCell";
+import { AddEntry, AddEntryProps } from "./forms/AddEntry";
 
 export type GridRefund = Omit<GridRefundFragment, "date" | "total"> & {
   date: Date;
@@ -197,7 +195,7 @@ const disableNonRefundFields = (
   if ((props.row as GridEntry).__typename === "EntryRefund") {
     return {
       ...props,
-      editingEnabled: false,
+      disabled: true,
     };
   }
 
@@ -238,16 +236,7 @@ const defaultEditCellProviderProps = {
   },
   source: {
     cell: SourceEditor,
-    props: (props) =>
-      disableNonRefundFields({
-        ...props,
-        ...({
-          options: {
-            allowNewBusiness: true,
-            allowNewPerson: true,
-          },
-        } as Partial<SourceEditorProps>),
-      }),
+    props: (props) => disableNonRefundFields(props),
   },
 } as CellProviderProps<ColumnsNames>;
 
@@ -433,7 +422,7 @@ const integratedFilteringColumnExtensions: IntegratedFiltering.ColumnExtension[]
     dateToString.format(date)
   ),
   categoryFilterColumnExtension("category", (value) =>
-    getCategoryOptionLabel(value)
+    getCategoryOptionLabel(new ValueNode(value))
   ),
   deptFilterColumnExtension("department", (value) => value.name),
   rationalFilterColumnExtension(
@@ -488,10 +477,12 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
   const [state, setState] = useState<
     Required<Pick<EditingStateProps, "editingRowIds">> & {
       changes: ChangeSet;
+      openAddEntry: boolean;
     }
   >({
     editingRowIds: [],
     changes: {},
+    openAddEntry: true,
   });
 
   const onCommitChanges = useCallback<(changes: ChangeSet) => void>(
@@ -606,7 +597,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
   const filterCellProviderProps = useMemo<
     CellProviderProps<ColumnsNames>
   >(() => {
-    const deptFilterOpts = new Map<string, DeptInputOpt>();
+    const deptFilterOpts = new Map<string, DepartmentInputOpt>();
     const categoryFilterOpts = new Map<string, CategoryInputOpt>();
     const srcFilterOpts = new Map<string, EntityInputOpt>();
 
@@ -614,7 +605,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
       const { department, category, source } = row;
 
       if (!deptFilterOpts.has(department.id)) {
-        deptFilterOpts.set(department.id, department as DeptInputOpt);
+        deptFilterOpts.set(department.id, department as DepartmentInputOpt);
       }
 
       if (!categoryFilterOpts.has(category.id)) {
@@ -696,14 +687,33 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
         props: mergeTableCellProps(
           defaultEditCellProviderProps.paymentMethod?.props || {},
           {
-            options: {
-              accountsWhere: props.selectableAccounts,
-            },
+            accounts: props.selectableAccounts,
           } as PayMethodEditorProps
         ),
       },
     } as CellProviderProps<ColumnsNames>;
   }, [props.selectableDepts, props.selectableAccounts]);
+
+  const addEntryProps = useMemo<
+    Pick<AddEntryProps, "department" | "paymentMethod">
+  >(
+    () => ({
+      paymentMethod: { accounts: props.selectableAccounts },
+      department: {
+        root: props.selectableDepts,
+      },
+    }),
+    [props.selectableDepts, props.selectableAccounts]
+  );
+
+  const onCloseAddEntry = useCallback(
+    () =>
+      setState((state) => ({
+        ...state,
+        openAddEntry: false,
+      })),
+    []
+  );
 
   const [columnOrder, setColumnOrder] = useLocalStorage(
     defaultColumnOrder,
@@ -880,6 +890,13 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
         </Grid>
       </Box>
       {loading && <OverlayLoading zIndex="modal" />}
+      <AddEntry
+        {...addEntryProps}
+        open={state.openAddEntry}
+        onClose={onCloseAddEntry}
+        maxWidth="xl"
+        fullWidth
+      />
     </Paper>
   );
 };

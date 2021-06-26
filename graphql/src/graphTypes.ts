@@ -225,6 +225,7 @@ export type Category = {
   type: EntryType;
   parent?: Maybe<Category>;
   children: Array<Category>;
+  ancestors: Array<Category>;
   aliases: Array<Alias>;
 };
 
@@ -1549,6 +1550,7 @@ export type CategoryResolvers<ContextType = Context, ParentType = ResolversParen
   type?: Resolver<ResolversTypes['EntryType'], ParentType, ContextType>;
   parent?: Resolver<Maybe<ResolversTypes['Category']>, ParentType, ContextType>;
   children?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
+  ancestors?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
   aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };

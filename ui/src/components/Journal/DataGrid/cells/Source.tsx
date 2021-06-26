@@ -5,27 +5,28 @@ import {
   TableEditRow,
 } from "@devexpress/dx-react-grid-material-ui";
 import TreeSelect, {
-  BranchOption,
+  ValueNode,
+  BranchNode,
   defaultInput,
   TreeSelectProps,
+  FreeSoloNode,
 } from "mui-tree-select";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
 
 import {
+  EntitiesWhere,
   GridEntryFragment,
-  GridEntrySrcPersonFragment,
 } from "../../../../apollo/graphTypes";
 import { OnFilter } from "../plugins";
 import {
+  EntityInput,
   EntityTreeSelectProps,
   EntityDefaultInputOpt,
   EntityInputOpt,
   getOptionLabel as getOptionLabelUtil,
   getOptionSelected as getOptionSelectedUtil,
-  UseSourceTreeOptions,
-  useEntryTree,
-  EntityBranchInputOpt,
-} from "../../../Inputs/entityInputUtils";
+  EntityInputProps,
+} from "../../../Inputs/Entity";
 import { Filter, LogicFilter } from "../plugins";
 import {
   inlineAutoCompleteProps,
@@ -33,6 +34,7 @@ import {
   inlinePadding,
   RowChangesProp,
 } from "./shared";
+import { GridEntry } from "../Grid";
 
 export const sourceToStr = (src: GridEntryFragment["source"]): string => {
   switch (src.__typename) {
@@ -76,18 +78,16 @@ const getOptionLabel: NonNullable<
     false
   >["getOptionLabel"]
 > = (option) => {
-  if (typeof option === "string") {
-    return option;
-  } else if (
-    ((option as unknown) as GridEntrySrcPersonFragment)?.__typename === "Person"
-  ) {
-    const {
-      first,
-      last,
-    } = ((option as unknown) as GridEntrySrcPersonFragment).personName;
+  const opt = option.valueOf();
+
+  if (typeof opt === "string") {
+    return opt;
+  } else if (opt?.__typename === "Person") {
+    const { first, last } = opt.personName;
     return `${first} ${last}`;
   } else {
-    return getOptionLabelUtil(option as EntityInputOpt);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return getOptionLabelUtil(option as any);
   }
 };
 
@@ -100,10 +100,14 @@ const getOptionSelected: NonNullable<
     false
   >["getOptionSelected"]
 > = (option, value) => {
-  if (typeof option === "string" || typeof value === "string") {
-    return option === value;
+  const opt = option.valueOf();
+  const val = value.valueOf();
+
+  if (typeof opt === "string" || typeof val === "string") {
+    return opt === val;
   } else {
-    return getOptionSelectedUtil(option, value);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return getOptionSelectedUtil(option as any, value as any);
   }
 };
 
@@ -113,12 +117,12 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
   const columnName = props.column.name;
 
   const [state, setState] = useState<{
-    branch?: BranchOption<EntityDefaultInputOpt | "Department">;
+    branch?: BranchNode<EntityDefaultInputOpt | "Department">;
   }>({});
 
   const options = useMemo<
     TreeSelectProps<
-      SrcFilterInputOpt,
+      EntityInputOpt,
       SrcFilterInputOpt,
       true,
       false,
@@ -128,7 +132,7 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
     if (!srcFilterOpts) {
       return [];
     } else if (state.branch) {
-      const typename = state.branch.option;
+      const typename = state.branch.valueOf();
       return srcFilterOpts.filter((option) => option.__typename === typename);
     } else {
       const branchOptions = new Set<EntityDefaultInputOpt | "Department">();
@@ -145,7 +149,7 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
       }
 
       return [...branchOptions.values()].map(
-        (branchOption) => new BranchOption(branchOption)
+        (branchOption) => new BranchNode(branchOption)
       );
     }
   }, [srcFilterOpts, state.branch]);
@@ -162,7 +166,7 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
     (_, branchOption) => {
       setState((state) => ({
         ...state,
-        branch: branchOption as BranchOption<
+        branch: branchOption as BranchNode<
           EntityDefaultInputOpt | "Department"
         >,
       }));
@@ -173,7 +177,7 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
   const onChange = useCallback<
     NonNullable<
       TreeSelectProps<
-        SrcFilterInputOpt,
+        EntityInputOpt,
         SrcFilterInputOpt,
         true,
         false,
@@ -183,16 +187,16 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
   >(
     (_, value) => {
       if (value.length) {
-        // Other options will ONLY be BranchOption(s) and never called onChange.
+        // Other options will ONLY be BranchNode(s) and never called onChange.
         const logicFilter: LogicFilter<EntityInputOpt, "equal"> = {
           operator: "or",
           filters: [],
         };
 
-        for (const sourceOpt of value as EntityInputOpt[]) {
+        for (const val of value) {
           logicFilter.filters.push({
             operation: "equal",
-            value: sourceOpt,
+            value: val.valueOf(),
           });
         }
 
@@ -234,7 +238,7 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
       {...(rest as TableFilterRow.CellProps)}
       style={inlinePadding}
     >
-      <TreeSelect<SrcFilterInputOpt, SrcFilterInputOpt, true, false, false>
+      <TreeSelect<EntityInputOpt, SrcFilterInputOpt, true, false, false>
         getOptionLabel={getOptionLabel}
         getOptionSelected={getOptionSelected}
         onBranchChange={onBranchChange}
@@ -287,117 +291,77 @@ export const sourceFilterColumnExtension = (
 
 // Edit Cell
 export type SourceRowChanges = {
-  source: SourceEditorOnValueChangeResult | null;
+  source: Exclude<EntityTreeSelectProps["value"], undefined | EntityInputOpt>;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type SourceEditorProps = TableEditRow.CellProps & {
-  options?: Omit<UseSourceTreeOptions, "iniValue">;
-  treeSelectParams?: Partial<
-    Pick<EntityTreeSelectProps, "renderInput" | "disabled">
-  >;
+  options?: Pick<EntityInputProps, "renderInput" | "disabled">;
 } & RowChangesProp<SourceRowChanges>;
-
-export interface SourceEditorOnValueChangeResult {
-  value: Exclude<EntityTreeSelectProps["value"], undefined>;
-  branchPath: NonNullable<EntityTreeSelectProps["branchPath"]>;
-}
 
 export const SourceEditor = (props: SourceEditorProps): JSX.Element => {
   const {
-    options: entryTreeHookOpts = {},
-    treeSelectParams: treeSelectParamsProp = {},
+    options = {},
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     rowChanges,
     ...rest
   } = props;
 
-  const { onValueChange, editingEnabled } = props;
+  const { onValueChange, value: valueProp } = props;
 
-  const valueProp = (props.value || null) as
-    | GridEntryFragment["source"]
-    | SourceEditorOnValueChangeResult
-    | null;
+  const value = (valueProp instanceof ValueNode ||
+  valueProp instanceof FreeSoloNode
+    ? valueProp
+    : null) as SourceRowChanges["source"];
 
-  const { treeSelectParams, queryResult, iniValue } = useEntryTree({
-    ...entryTreeHookOpts,
-    iniValue:
-      valueProp && "__typename" in valueProp
-        ? {
-            __typename: valueProp["__typename"],
-            id: valueProp["id"],
-          }
-        : undefined,
+  const [iniValue] = useState<EntitiesWhere | undefined>(() => {
+    if (valueProp) {
+      const { __typename, id } = valueProp as GridEntry["source"];
+      switch (__typename) {
+        case "Business":
+          return {
+            businesses: {
+              id: {
+                eq: id,
+              },
+            },
+          };
+        case "Department":
+          return {
+            departments: {
+              id: {
+                eq: id,
+              },
+            },
+          };
+        case "Person":
+          return {
+            people: {
+              id: {
+                eq: id,
+              },
+            },
+          };
+      }
+    }
   });
 
   const onChange = useCallback<NonNullable<EntityTreeSelectProps["onChange"]>>(
     (...args) => {
       const [, value] = args;
 
-      onValueChange({
-        value,
-        branchPath: treeSelectParams.branchPath,
-      } as SourceEditorOnValueChangeResult);
+      onValueChange(value);
     },
-    [onValueChange, treeSelectParams.branchPath]
-  );
-
-  const renderInput = useCallback<
-    NonNullable<EntityTreeSelectProps["renderInput"]>
-  >(
-    (params) => {
-      const curBranch =
-        treeSelectParams.branchPath[treeSelectParams.branchPath.length - 1]
-          ?.option;
-
-      if (queryResult.error) {
-        return (treeSelectParamsProp?.renderInput || defaultInput)({
-          ...params,
-          error: true,
-          helperText: queryResult.error?.message,
-        });
-      } else {
-        return (treeSelectParamsProp?.renderInput || defaultInput)({
-          ...params,
-          placeholder: (() => {
-            if (curBranch === "Business") {
-              return "Business Name...";
-            } else if (curBranch === "Person") {
-              return "First... Last...";
-            }
-          })(),
-        });
-      }
-    },
-    [
-      treeSelectParamsProp?.renderInput,
-      queryResult.error,
-      treeSelectParams.branchPath,
-    ]
+    [onValueChange]
   );
 
   return (
     <TableEditRow.Cell {...rest}>
-      <TreeSelect<
-        EntityInputOpt,
-        EntityBranchInputOpt,
-        undefined,
-        undefined,
-        true | false
-      >
-        {...treeSelectParamsProp}
-        {...treeSelectParams}
-        getOptionLabel={getOptionLabelUtil}
-        getOptionSelected={getOptionSelectedUtil}
-        disabled={!editingEnabled || !!treeSelectParamsProp?.disabled}
+      <EntityInput
+        {...options}
+        iniValue={iniValue}
+        disabled={!props.editingEnabled || !!props.options?.disabled}
         onChange={onChange}
-        loading={queryResult.loading}
-        renderInput={renderInput}
-        value={
-          valueProp && "__typename" in valueProp
-            ? iniValue || null
-            : valueProp?.value || null
-        }
+        value={value}
       />
     </TableEditRow.Cell>
   );

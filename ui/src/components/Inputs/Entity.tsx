@@ -1,7 +1,15 @@
-import { useQuery } from "@apollo/client";
-import TreeSelect, { BranchOption, defaultInput, FreeSoloValue, TreeSelectProps } from "mui-tree-select";
+import { gql, useQuery, QueryHookOptions } from "@apollo/client";
+import TreeSelect, {
+  BranchNode,
+  defaultInput,
+  FreeSoloNode,
+  mergeInputEndAdornment,
+  ValueNode,
+  TreeSelectProps,
+} from "mui-tree-select";
 import React, { useCallback, useMemo, useState } from "react";
-import { Skeleton } from '@material-ui/lab';
+import CircularProgress from "@material-ui/core/CircularProgress";
+import { MarkRequired } from "ts-essentials";
 
 import {
   EntityInputIniValueQuery as EntityInputIniValue,
@@ -10,14 +18,14 @@ import {
   EntityInputOptsQueryVariables as EntityInputOptsVars,
   EntityBusinessInputOptFragment,
   EntityPersonInputOptFragment,
-  DeptInputOptFragment,
+  DepartmentInputOptFragment,
   RegexFlags,
   EntitiesWhere,
 } from "../../apollo/graphTypes";
-import { ENTITY_INPUT_INI_VALUE } from "./entityInputUtils";
 import {
   getOptionLabel as getOptionLabelDept,
-} from "./departmentInputUtils";
+  DEPT_INPUT_OPT_FRAGMENT,
+} from "./Department";
 
 export type EntityDefaultInputOpt =
   | EntityBusinessInputOptFragment["__typename"]
@@ -25,13 +33,13 @@ export type EntityDefaultInputOpt =
 
 export type EntityInputOpt =
   | EntityBusinessInputOptFragment
-  | DeptInputOptFragment
+  | DepartmentInputOptFragment
   | EntityPersonInputOptFragment;
 
 export type EntityBranchInputOpt =
   | EntityDefaultInputOpt
   | EntityBusinessInputOptFragment
-  | DeptInputOptFragment;
+  | DepartmentInputOptFragment;
 
 export type EntityTreeSelectProps = TreeSelectProps<
   EntityInputOpt,
@@ -42,29 +50,90 @@ export type EntityTreeSelectProps = TreeSelectProps<
 >;
 
 export type EntityInputProps = {
-  treeSelectParams?: Pick<EntityTreeSelectProps, "renderInput" | "disabled" | "onBranchChange" | "branchPath" | "onChange" | "value">;
   iniValue?: EntitiesWhere;
   allowNewBusiness?: boolean;
   allowNewPerson?: boolean;
-};
+  error?: string | Error;
+  name?: string;
+} & MarkRequired<
+  Pick<
+    EntityTreeSelectProps,
+    "renderInput" | "disabled" | "onChange" | "value"
+  >,
+  "onChange" | "value"
+>;
+
+export const ENTITY_INPUT_OPT_FRAGMENTS = gql`
+  fragment EntityBusinessInputOpt on Business {
+    __typename
+    id
+    name
+    departments(root: true) {
+      __typename
+      id
+    }
+  }
+
+  fragment EntityPersonInputOpt on Person {
+    __typename
+    id
+    personName: name {
+      first
+      last
+    }
+  }
+`;
+
+export const ENTITY_INPUT_OPTS = gql`
+  query EntityInputOpts($where: EntitiesWhere!) {
+    entities(where: $where) {
+      ...EntityBusinessInputOpt
+      ...DepartmentInputOpt
+      ...EntityPersonInputOpt
+    }
+  }
+  ${DEPT_INPUT_OPT_FRAGMENT}
+  ${ENTITY_INPUT_OPT_FRAGMENTS}
+`;
+
+export const ENTITY_INPUT_INI_VALUE = gql`
+  query EntityInputIniValue($where: EntitiesWhere!) {
+    entities(where: $where) {
+      ...EntityBusinessInputOpt
+      ...DepartmentInputOpt
+      ...EntityPersonInputOpt
+      ... on Department {
+        ancestors {
+          ...EntityBusinessInputOpt
+          ...DepartmentInputOpt
+        }
+      }
+    }
+  }
+  ${DEPT_INPUT_OPT_FRAGMENT}
+  ${ENTITY_INPUT_OPT_FRAGMENTS}
+`;
 
 export const getOptionLabel: NonNullable<
   EntityTreeSelectProps["getOptionLabel"]
 > = (option) => {
-  const opt = option instanceof BranchOption ? option.option : option;
-
-  if (opt instanceof FreeSoloValue) {
-    return opt.toString();
-  } else if (typeof opt === "string") {
-    return opt;
+  if (option instanceof FreeSoloNode) {
+    return option.toString();
   } else {
+    const opt = option.valueOf();
+
+    if (typeof opt === "string") {
+      return opt;
+    }
+
     switch (opt.__typename) {
       case "Business":
         return opt.name;
       case "Person":
         return `${opt.personName.first} ${opt.personName.last}`;
       case "Department":
-        return getOptionLabelDept(opt);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return getOptionLabelDept(option as any);
     }
   }
 };
@@ -72,96 +141,249 @@ export const getOptionLabel: NonNullable<
 export const getOptionSelected: NonNullable<
   EntityTreeSelectProps["getOptionSelected"]
 > = (option, value) => {
-  if (typeof option === "string") {
-    return option === value;
-  } else if (typeof value === "string") {
+  if (option instanceof FreeSoloNode || value instanceof FreeSoloNode) {
+    return false;
+  }
+
+  const opt = option.valueOf();
+  const val = value.valueOf();
+
+  if (typeof opt === "string") {
+    return opt === val;
+  } else if (typeof val === "string") {
     return false;
   } else {
-    return option.id === value.id;
+    return opt.id === val.id;
   }
 };
 
-export const SourceInput = (props: EntityInputProps) => {
+const defaultOptions: NonNullable<EntityTreeSelectProps["options"]> = [
+  new BranchNode("Business"),
+  new BranchNode("Person"),
+];
+
+export const EntityInput = (props: EntityInputProps): JSX.Element => {
   const {
-    treeSelectParams,
+    iniValue: iniValueProp,
+    renderInput: renderInputProp = defaultInput,
     allowNewBusiness = false,
     allowNewPerson = false,
+    disabled: disabledProp = false,
+    onChange: onChangeProp,
+    value: valueProp,
+    name: nameProp = "entity",
+    error: errorProp,
   } = props;
 
   const [state, setState] = useState<{
-    iniValue?: EntitiesWhere;
-    branchPath:NonNullable<EntityTreeSelectProps["branchPath"]>
-    value:Exclude<EntityTreeSelectProps["value"], undefined>;
+    iniValue?: NonNullable<EntityTreeSelectProps["value"]> | null;
+    inputValue: string;
+    useIniValue: boolean;
+    branch: NonNullable<EntityTreeSelectProps["branch"]> | null;
   }>({
-    iniValue: props.iniValue,
-    branchPath: [],
-    value:null
+    inputValue: "",
+    useIniValue: !!iniValueProp,
+    branch: null,
   });
-
-  const branchPathIsControlled = !!treeSelectParams?.branchPath;
-  const branchPath = treeSelectParams?.branchPath || state.branchPath;
-
-  const valueIsControlled = treeSelectParams?.value ===  undefined;
-  const value = valueIsControlled ? state.value : treeSelectParams?.value;
-
-  const onBranchChange = useCallback<NonNullable<EntityTreeSelectProps["onBranchChange"]>>((...args)=>{
-
-    if(!branchPathIsControlled) {
-      setState((state)=>({
-        ...state,
-        branchPath:args[2]
-      }));
-    }
-
-    if(treeSelectParams?.onBranchChange) {
-      treeSelectParams?.onBranchChange(...args);
-    }
-
-  },[treeSelectParams?.onBranchChange, branchPathIsControlled])
-
-  const onChange = useCallback<NonNullable<EntityTreeSelectProps["onChange"]>>((...args)=>{
-
-    if(!valueIsControlled) {
-      setState((state)=>({
-        ...state,
-        value:args[1]
-      }));
-    }
-
-    if(treeSelectParams?.onChange) {
-      treeSelectParams.onChange(...args);
-    }
-
-  },[treeSelectParams?.onChange, valueIsControlled]);
 
   const iniValueResult = useQuery<EntityInputIniValue, EntityInputIniValueVars>(
     ENTITY_INPUT_INI_VALUE,
     {
-      skip: !state.iniValue,
-      variables:{
-        where:state.iniValue as EntitiesWhere
+      skip: !!state.iniValue || !iniValueProp,
+      variables: {
+        where: iniValueProp as EntitiesWhere,
       },
+      onCompleted: useCallback<
+        NonNullable<
+          QueryHookOptions<
+            EntityInputIniValue,
+            EntityInputIniValueVars
+          >["onCompleted"]
+        >
+      >(
+        (data) => {
+          if (state.useIniValue && !state.iniValue && data.entities[0]) {
+            const value = data.entities[0];
+
+            const iniValue = new ValueNode(
+              value,
+              (() => {
+                switch (value.__typename) {
+                  case "Business":
+                    return ["Business" as EntityDefaultInputOpt];
+                  case "Department":
+                    return [
+                      ...value.ancestors,
+                      "Business" as EntityDefaultInputOpt,
+                    ].reverse();
+                  case "Person":
+                    return ["Person" as EntityDefaultInputOpt];
+                }
+              })()
+            );
+
+            setState((state) => ({
+              ...state,
+              branch: iniValue.parent,
+              iniValue,
+              inputValue: getOptionLabel(iniValue),
+            }));
+          }
+        },
+        [state.iniValue, state.useIniValue]
+      ),
     }
+  );
+
+  const queryResult = useQuery<EntityInputOpts, EntityInputOptsVars>(
+    ENTITY_INPUT_OPTS,
+    useMemo(() => {
+      const curBranch = state.branch?.valueOf();
+
+      if (!curBranch || iniValueResult.loading) {
+        return {
+          skip: true,
+          variables: {
+            where: {},
+          },
+        };
+      } else if (curBranch === "Business") {
+        const firstLetter = state.inputValue.trim().slice(0, 1);
+
+        return {
+          skip: !firstLetter,
+          variables: {
+            where: {
+              businesses: {
+                name: {
+                  pattern: `^${firstLetter}|[^A-z0-9]+${firstLetter}`,
+                  flags: [RegexFlags.I],
+                },
+              },
+            },
+          },
+        };
+      } else if (curBranch === "Person") {
+        const firstLetter = state.inputValue.trim().slice(0, 1);
+
+        return {
+          skip: !firstLetter,
+          variables: {
+            where: {
+              people: {
+                or: [
+                  {
+                    name: {
+                      first: {
+                        pattern: `^${firstLetter}|[^A-z0-9]+${firstLetter}`,
+                        flags: [RegexFlags.I],
+                      },
+                    },
+                  },
+                  {
+                    name: {
+                      last: {
+                        pattern: `^${firstLetter}|[^A-z0-9]+${firstLetter}`,
+                        flags: [RegexFlags.I],
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        };
+      } else if (curBranch.__typename === "Business") {
+        return {
+          skip: !curBranch.departments.length,
+          variables: {
+            where: {
+              departments: {
+                parent: {
+                  eq: {
+                    type: curBranch.__typename,
+                    id: curBranch.id,
+                  },
+                },
+              },
+            },
+          },
+        };
+      } else if (curBranch.__typename === "Department") {
+        return {
+          skip: !curBranch.children.length,
+          variables: {
+            where: {
+              departments: {
+                parent: {
+                  eq: {
+                    type: curBranch.__typename,
+                    id: curBranch.id,
+                  },
+                },
+              },
+            },
+          },
+        };
+      }
+    }, [state.branch, iniValueResult.loading, state.inputValue])
+  );
+
+  const onBranchChange = useCallback<
+    NonNullable<EntityTreeSelectProps["onBranchChange"]>
+  >(
+    (_, branch) =>
+      setState((state) => ({
+        ...state,
+        branch,
+      })),
+    []
+  );
+
+  const onInputChange = useCallback<
+    NonNullable<EntityTreeSelectProps["onInputChange"]>
+  >(
+    (...[, inputValue]) =>
+      setState((state) => ({
+        ...state,
+        inputValue,
+      })),
+    []
   );
 
   const renderInput = useCallback<
     NonNullable<EntityTreeSelectProps["renderInput"]>
   >(
     (params) => {
-      const curBranch =
-        branchPath[branchPath.length - 1]
-          ?.option;
+      const errorMsg =
+        typeof errorProp === "string"
+          ? errorProp.trim()
+          : errorProp?.message || "";
 
-      if(iniValueResult.loading) {
-        return <Skeleton variant="rect" animation="wave" /> 
-      } else if (iniValueResult.error) {
-        return (treeSelectParams?.renderInput || defaultInput)({
+      if (iniValueResult.loading) {
+        return renderInputProp({
+          ...params,
+          InputProps: mergeInputEndAdornment(
+            "append",
+            <CircularProgress size={20} color="inherit" />,
+            params.InputProps || {}
+          ),
+          name: nameProp,
+        });
+      } else if (iniValueResult.error || queryResult.error || errorMsg) {
+        return renderInputProp({
           ...params,
           error: true,
-          helperText: iniValueResult.error?.message,
+          helperText:
+            iniValueResult.error?.message ||
+            queryResult.error?.message ||
+            errorMsg,
+          name: nameProp,
         });
       } else {
-        return (treeSelectParams?.renderInput || defaultInput)({
+        const curBranch = state.branch?.valueOf();
+
+        return renderInputProp({
           ...params,
           placeholder: (() => {
             if (curBranch === "Business") {
@@ -170,16 +392,80 @@ export const SourceInput = (props: EntityInputProps) => {
               return "First... Last...";
             }
           })(),
+          name: nameProp,
         });
       }
     },
     [
-      treeSelectParams?.renderInput,
+      renderInputProp,
       iniValueResult.error,
       iniValueResult.loading,
-      branchPath,
+      queryResult.error,
+      queryResult.loading,
+      state.branch,
+      nameProp,
+      errorProp,
     ]
   );
+
+  const options = useMemo<EntityTreeSelectProps["options"]>(() => {
+    const options: EntityTreeSelectProps["options"] = [];
+
+    if (iniValueResult.loading) {
+      return options;
+    } else if (!state.branch) {
+      return defaultOptions;
+    } else {
+      return (queryResult.data?.entities || []).reduce((options, entity) => {
+        switch (entity.__typename) {
+          case "Business":
+            if (entity.departments.length) {
+              options.push(new BranchNode(entity));
+            }
+            options.push(entity);
+            break;
+          case "Department":
+            if (entity.children.length) {
+              options.push(new BranchNode(entity));
+            }
+            options.push(entity);
+            break;
+          case "Person":
+            options.push(entity);
+            break;
+        }
+
+        return options;
+      }, options);
+    }
+  }, [queryResult.data?.entities, iniValueResult.loading, state.branch]);
+
+  const freeSolo = useMemo<
+    NonNullable<EntityTreeSelectProps["freeSolo"]>
+  >(() => {
+    const curBranch = state.branch?.valueOf();
+    return (
+      (curBranch === "Person" && allowNewPerson) ||
+      (curBranch === "Business" && allowNewBusiness)
+    );
+  }, [state.branch, allowNewPerson, allowNewBusiness]);
+
+  const onChange = useCallback<NonNullable<EntityTreeSelectProps["onChange"]>>(
+    (...args) => {
+      onChangeProp(...args);
+      if (state.useIniValue) {
+        setState((state) => ({
+          ...state,
+          useIniValue: false,
+        }));
+      }
+    },
+    [onChangeProp, state.useIniValue]
+  );
+
+  const value = useMemo<EntityTreeSelectProps["value"]>(() => {
+    return (state.useIniValue ? state.iniValue : valueProp) ?? null;
+  }, [state.iniValue, state.useIniValue, valueProp]);
 
   return (
     <TreeSelect<
@@ -189,16 +475,19 @@ export const SourceInput = (props: EntityInputProps) => {
       undefined,
       true | false
     >
-      {...treeSelectParams}
-      onBranchChange={onBranchChange},
-      branchPath={branchPath}
+      onBranchChange={onBranchChange}
+      branch={state.branch}
       getOptionLabel={getOptionLabel}
       getOptionSelected={getOptionSelected}
-      disabled={!!treeSelectParams?.disabled || iniValueResult.loading}
-      onChange={onChange}
-      loading={queryResult.loading}
+      disabled={disabledProp || iniValueResult.loading}
+      loading={queryResult.loading || iniValueResult.loading}
       renderInput={renderInput}
+      inputValue={state.inputValue}
+      onInputChange={onInputChange}
+      options={options}
+      freeSolo={freeSolo}
       value={value}
+      onChange={onChange}
     />
   );
 };

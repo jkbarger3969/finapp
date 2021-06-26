@@ -7,28 +7,35 @@ import {
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
 import { capitalCase } from "capital-case";
 import TreeSelect, {
-  BranchOption,
+  BranchNode,
+  ValueNode,
   TreeSelectProps,
   defaultInput,
+  FreeSoloNode,
 } from "mui-tree-select";
 
-import { EntryType, GridEntryFragment } from "../../../../apollo/graphTypes";
+import {
+  CategoriesWhere,
+  EntryType,
+  GridEntryFragment,
+} from "../../../../apollo/graphTypes";
 import { OnFilter } from "../plugins";
 import { Filter, LogicFilter } from "../plugins";
 import {
+  CategoryInput,
+  CategoryInputProps,
+  CategoryTreeSelectProps,
   CategoryInputOpt,
   getOptionLabel,
   getOptionSelected,
-  useCategoryTree,
-  CategoryTreeRoot,
-} from "../../../Inputs/categoryInputUtils";
+} from "../../../Inputs/Category";
 import {
   inlineAutoCompleteProps,
   inlineInputProps,
   inlinePadding,
   RowChangesProp,
 } from "./shared";
-import { QueryHookOptions } from "../../../Inputs/shared";
+import { GridEntry } from "../Grid";
 
 export const CategoryCell = (props: Table.DataCellProps): JSX.Element => {
   const { value, ...rest } = props;
@@ -47,9 +54,9 @@ export type CategoryFilterProps = Omit<TableFilterRow.CellProps, "onFilter"> & {
   categoryFilterOpts?: Exclude<CategoryInputOpt, EntryType>[];
 };
 
-export const defaultOptions: BranchOption<EntryType>[] = [
-  new BranchOption(EntryType.Credit),
-  new BranchOption(EntryType.Debit),
+export const defaultOptions: BranchNode<EntryType>[] = [
+  new BranchNode(EntryType.Credit),
+  new BranchNode(EntryType.Debit),
 ];
 
 type CategoryFilterInputOpt = CategoryInputOpt | EntryType;
@@ -68,32 +75,30 @@ const isEntryType = (value: CategoryFilterInputOpt) =>
 const getFilterOptionLabel: NonNullable<
   CategoryFilterSelect["getOptionLabel"]
 > = (option): string => {
-  if (option instanceof BranchOption) {
-    if (isEntryType(option.option)) {
-      return capitalCase(option.option as EntryType);
-    } else {
-      return getOptionLabel((option as unknown) as CategoryInputOpt);
-    }
-  } else if (isEntryType(option)) {
-    return `All ${capitalCase(option as EntryType)}s`;
+  const value = option.valueOf();
+
+  if (isEntryType(value)) {
+    return capitalCase(value as EntryType);
   } else {
-    return getOptionLabel((option as unknown) as CategoryInputOpt);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return getOptionLabel(value as any);
   }
 };
 
 const getFilterOptionSelected: NonNullable<
   CategoryFilterSelect["getOptionSelected"]
 > = (option, value): boolean => {
-  const optionIsEntry = isEntryType(option);
-  const valueIsEntry = isEntryType(value);
+  const opt = option.valueOf();
+  const val = value.valueOf();
+
+  const optionIsEntry = isEntryType(opt);
+  const valueIsEntry = isEntryType(val);
 
   if (optionIsEntry || valueIsEntry) {
-    return option === value;
+    return opt === val;
   } else if (!optionIsEntry && !valueIsEntry) {
-    return getOptionSelected(
-      option as CategoryInputOpt,
-      value as CategoryInputOpt
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return getOptionSelected(opt as any, val as any);
   } else {
     return false;
   }
@@ -115,17 +120,19 @@ export const CategoryFilter = (props: CategoryFilterProps): JSX.Element => {
 
   const columnName = props.column.name;
 
-  const [state, setState] = useState({
-    branchPath: [] as BranchOption<CategoryFilterInputOpt>[],
+  const [state, setState] = useState<{
+    branch: BranchNode<CategoryFilterInputOpt> | null;
+  }>({
+    branch: null,
   });
 
   const onBranchChange = useCallback<
     NonNullable<CategoryFilterSelect["onBranchChange"]>
   >(
-    (...[, , branchPath]) => {
+    (_, branch) => {
       setState((state) => ({
         ...state,
-        branchPath,
+        branch,
       }));
     },
     [setState]
@@ -158,30 +165,30 @@ export const CategoryFilter = (props: CategoryFilterProps): JSX.Element => {
   }, [categoryFilterOpts]);
 
   const options = useMemo<CategoryFilterSelect["options"]>(() => {
-    if (state.branchPath.length) {
-      if (state.branchPath[0].option === EntryType.Credit) {
+    if (state.branch) {
+      if (state.branch.valueOf() === EntryType.Credit) {
         return creditOpts;
       } else {
         return debitOpts;
       }
     } else {
       return defaultOptions.reduce((opts, opt) => {
-        if (opt.option === EntryType.Credit) {
+        if (opt.valueOf() === EntryType.Credit) {
           if (creditOpts.length) {
             opts.push(opt);
           }
-          opts.push(opt.option);
+          opts.push(opt.valueOf());
         } else {
           if (debitOpts.length) {
             opts.push(opt);
           }
-          opts.push(opt.option);
+          opts.push(opt.valueOf());
         }
 
         return opts;
       }, [] as CategoryFilterSelect["options"]);
     }
-  }, [creditOpts, debitOpts, state.branchPath]);
+  }, [creditOpts, debitOpts, state.branch]);
 
   const onChange = useCallback<NonNullable<CategoryFilterSelect["onChange"]>>(
     (_, value) => {
@@ -194,7 +201,7 @@ export const CategoryFilter = (props: CategoryFilterProps): JSX.Element => {
         for (const option of value) {
           logicFilter.filters.push({
             operation: "equal",
-            value: option as CategoryInputOpt,
+            value: option.valueOf() as CategoryInputOpt,
           });
         }
 
@@ -221,7 +228,7 @@ export const CategoryFilter = (props: CategoryFilterProps): JSX.Element => {
         false,
         false
       >
-        branchPath={state.branchPath}
+        branch={state.branch}
         disabled={!props.filteringEnabled}
         getOptionLabel={getFilterOptionLabel}
         getOptionSelected={getFilterOptionSelected}
@@ -253,8 +260,8 @@ export const categoryFilterColumnExtension = (
           );
         } else {
           return getOptionSelected(
-            value,
-            ((filter as unknown) as Filter<CategoryInputOpt>).value
+            new ValueNode(value),
+            new ValueNode(filterValue as CategoryInputOpt)
           );
         }
 
@@ -266,8 +273,8 @@ export const categoryFilterColumnExtension = (
           );
         } else {
           return !getOptionSelected(
-            value,
-            ((filter as unknown) as Filter<CategoryInputOpt>).value
+            new ValueNode(value),
+            new ValueNode(filterValue as CategoryInputOpt)
           );
         }
       }
@@ -281,42 +288,39 @@ export const categoryFilterColumnExtension = (
   },
 });
 
-type CategoryEditorSelect = TreeSelectProps<
-  CategoryInputOpt,
-  CategoryInputOpt,
-  false,
-  true,
-  false
->;
+type CategoryEditorSelect = CategoryTreeSelectProps<false, false, false>;
 
 export type CategoryRowChanges = {
-  category: CategoryInputOpt | null;
+  category: ValueNode<CategoryInputOpt, CategoryInputOpt> | null;
 };
 
 export type CategoryEditorProps = TableEditRow.CellProps & {
-  root?: CategoryTreeRoot;
-  treeSelectParams?: Partial<
-    Pick<CategoryEditorSelect, "renderInput" | "disabled">
-  >;
-  queryHookOptions?: QueryHookOptions;
+  options?: Pick<CategoryInputProps, "renderInput" | "disabled">;
 } & RowChangesProp<CategoryRowChanges>;
 
 export const CategoryEditor = (props: CategoryEditorProps): JSX.Element => {
   const {
-    root,
-    treeSelectParams: treeSelectParamsProp,
-    queryHookOptions,
+    options = {},
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     rowChanges,
     ...rest
   } = props;
 
-  const { onValueChange } = props;
+  const { onValueChange, value: valueProp } = props;
 
-  const { treeSelectParams, queryResult } = useCategoryTree({
-    root,
-    queryHookOptions,
-    iniValue: props.value?.id,
+  const value = (valueProp instanceof ValueNode ||
+  valueProp instanceof FreeSoloNode
+    ? valueProp
+    : null) as CategoryRowChanges["category"];
+
+  const [iniValue] = useState<CategoriesWhere | undefined>(() => {
+    if (valueProp) {
+      return {
+        id: {
+          eq: (valueProp as GridEntry["category"]).id,
+        },
+      };
+    }
   });
 
   const onChange = useCallback<NonNullable<CategoryEditorSelect["onChange"]>>(
@@ -326,35 +330,14 @@ export const CategoryEditor = (props: CategoryEditorProps): JSX.Element => {
     [onValueChange]
   );
 
-  const renderInput = useCallback<
-    NonNullable<CategoryEditorSelect["renderInput"]>
-  >(
-    (params) => {
-      if (queryResult.error) {
-        return (treeSelectParamsProp?.renderInput || defaultInput)({
-          ...params,
-          error: true,
-          helperText: queryResult.error.message,
-        });
-      }
-
-      return defaultInput(params);
-    },
-    [treeSelectParamsProp?.renderInput, queryResult.error]
-  );
-
   return (
     <TableEditRow.Cell {...rest}>
-      <TreeSelect<CategoryInputOpt, CategoryInputOpt, false, true, false>
-        {...(treeSelectParamsProp || {})}
-        {...treeSelectParams}
-        disabled={!props.editingEnabled || !!treeSelectParamsProp?.disabled}
-        getOptionLabel={getOptionLabel}
-        getOptionSelected={getOptionSelected}
-        loading={queryResult.loading}
+      <CategoryInput<false, false, false>
+        {...options}
+        iniValue={iniValue}
+        value={value}
+        disabled={!props.editingEnabled || !!options?.disabled}
         onChange={onChange}
-        renderInput={renderInput}
-        value={props.value ?? null}
       />
     </TableEditRow.Cell>
   );

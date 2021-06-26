@@ -162,7 +162,8 @@ const Items = (props: ItemsProps): JSX.Element => {
         actions={actions}
         options={options}
         columns={columns}
-        icons={tableIcons}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        icons={tableIcons as any}
         data={data}
         style={tableStyle}
       />

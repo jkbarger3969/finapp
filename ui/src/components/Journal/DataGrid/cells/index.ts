@@ -19,8 +19,8 @@ export {
   DeptFilter,
   deptFilterColumnExtension,
   DeptEditor,
-} from "./Dept";
-export type { DeptFilterProps, DeptEditorProps } from "./Dept";
+} from "./Department";
+export type { DeptFilterProps, DeptEditorProps } from "./Department";
 export {
   PayMethodCell,
   PayMethodFilter,

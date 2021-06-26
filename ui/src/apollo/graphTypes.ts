@@ -448,6 +448,7 @@ export type Category = {
   type: EntryType;
   parent?: Maybe<Category>;
   children: Array<Category>;
+  ancestors: Array<Category>;
   aliases: Array<Alias>;
 };
 
@@ -1221,12 +1222,15 @@ export type EntryUpdated_2Subscription = { __typename?: 'Subscription', entryUpd
 export type CategoryInputOptFragment = { __typename: 'Category', id: string, name: string, type: EntryType, children: Array<{ __typename: 'Category', id: string }>, parent?: Maybe<{ __typename: 'Category', id: string }> };
 
 export type CategoryInputIniValueQueryVariables = Exact<{
-  id: Scalars['ID'];
+  where: CategoriesWhere;
 }>;
 
 
 export type CategoryInputIniValueQuery = { __typename?: 'Query', categories: Array<(
-    { __typename?: 'Category' }
+    { __typename?: 'Category', ancestors: Array<(
+      { __typename?: 'Category' }
+      & CategoryInputOptFragment
+    )> }
     & CategoryInputOptFragment
   )> };
 
@@ -1240,35 +1244,39 @@ export type CategoryInputOptsQuery = { __typename?: 'Query', categories: Array<(
     & CategoryInputOptFragment
   )> };
 
-export type DeptInputOptFragment = { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> };
+export type DepartmentInputOptFragment = { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> };
 
-export type DeptInputIniValueQueryVariables = Exact<{
-  id: Scalars['ID'];
-}>;
-
-
-export type DeptInputIniValueQuery = { __typename?: 'Query', iniValue: (
-    { __typename?: 'Department', parent: { __typename: 'Department', id: string, children: Array<(
-        { __typename?: 'Department' }
-        & DeptInputOptFragment
-      )> } | { __typename: 'Business', id: string, departments: Array<(
-        { __typename?: 'Department' }
-        & DeptInputOptFragment
-      )> } }
-    & DeptInputOptFragment
-  ), ancestors: Array<(
-    { __typename?: 'Department', parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } }
-    & DeptInputOptFragment
-  )> };
-
-export type DeptInputOptsQueryVariables = Exact<{
+export type DepartmentInputRootOptsQueryVariables = Exact<{
   where: DepartmentsWhere;
 }>;
 
 
-export type DeptInputOptsQuery = { __typename?: 'Query', departments: Array<(
+export type DepartmentInputRootOptsQuery = { __typename?: 'Query', departments: Array<(
     { __typename?: 'Department' }
-    & DeptInputOptFragment
+    & DepartmentInputOptFragment
+  )> };
+
+export type DepartmentInputIniValueQueryVariables = Exact<{
+  where: DepartmentsWhere;
+}>;
+
+
+export type DepartmentInputIniValueQuery = { __typename?: 'Query', departments: Array<(
+    { __typename?: 'Department', ancestors: Array<(
+      { __typename: 'Department' }
+      & DepartmentInputOptFragment
+    ) | { __typename: 'Business' }> }
+    & DepartmentInputOptFragment
+  )> };
+
+export type DepartmentInputOptsQueryVariables = Exact<{
+  where: DepartmentsWhere;
+}>;
+
+
+export type DepartmentInputOptsQuery = { __typename?: 'Query', departments: Array<(
+    { __typename?: 'Department' }
+    & DepartmentInputOptFragment
   )> };
 
 export type EntityBusinessInputOptFragment = { __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> };
@@ -1288,7 +1296,7 @@ export type EntityInputOptsQuery = { __typename?: 'Query', entities: Array<(
     & EntityBusinessInputOptFragment
   ) | (
     { __typename?: 'Department' }
-    & DeptInputOptFragment
+    & DepartmentInputOptFragment
   )> };
 
 export type EntityInputIniValueQueryVariables = Exact<{
@@ -1305,12 +1313,12 @@ export type EntityInputIniValueQuery = { __typename?: 'Query', entities: Array<(
   ) | (
     { __typename?: 'Department', ancestors: Array<(
       { __typename?: 'Department' }
-      & DeptInputOptFragment
+      & DepartmentInputOptFragment
     ) | (
       { __typename?: 'Business' }
       & EntityBusinessInputOptFragment
     )> }
-    & DeptInputOptFragment
+    & DepartmentInputOptFragment
   )> };
 
 export type AccountCardPayMethodInputOptFragment = { __typename: 'AccountCard', id: string, active: boolean, type: PaymentCardType, trailingDigits: string };
@@ -2282,6 +2290,7 @@ export type CategoryResolvers<ContextType = Context, ParentType extends Resolver
   type?: Resolver<ResolversTypes['EntryType'], ParentType, ContextType>;
   parent?: Resolver<Maybe<ResolversTypes['Category']>, ParentType, ContextType>;
   children?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
+  ancestors?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
   aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };

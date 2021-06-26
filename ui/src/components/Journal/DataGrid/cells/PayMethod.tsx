@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Table,
   TableEditRow,
@@ -6,7 +6,7 @@ import {
 } from "@devexpress/dx-react-grid-material-ui";
 import { TextField, TextFieldProps } from "@material-ui/core";
 import Autocomplete, { AutocompleteProps } from "@material-ui/lab/Autocomplete";
-import TreeSelect, { defaultInput, TreeSelectProps } from "mui-tree-select";
+import { FreeSoloNode, ValueNode } from "mui-tree-select";
 import { capitalCase } from "capital-case";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
 
@@ -20,21 +20,17 @@ import {
   AccountCheck,
   PaymentCheck,
   PaymentCardType,
-  GridEntryFragment,
-  PaymentMethodType,
 } from "../../../../apollo/graphTypes";
 import { OnFilter } from "../plugins";
 import { Filter, LogicFilter } from "../plugins";
 import {
+  PaymentMethodInput,
   PayMethodInputOpt,
-  usePaymentMethodTree,
   PaymentMethodInputBranchOpt,
-  getOptionLabel as getOptionLabelEditor,
-  getOptionSelected as getOptionSelectedEditor,
-  UsePaymentMethodTreeOptions,
   PayMethodTreeSelectProps,
-  getCardTypeAbbreviation,
-} from "../../../Inputs/paymentMethodInputUtils";
+  PaymentMethodInputProps,
+  PayMethodIniValue,
+} from "../../../Inputs/PaymentMethod";
 import {
   inlineAutoCompleteProps,
   inlineInputProps,
@@ -251,227 +247,64 @@ export const payMethodFilterColumnExtension = (
   },
 });
 
-type PayMethodEditorSelect = TreeSelectProps<
-  PayMethodInputOpt,
-  PaymentMethodInputBranchOpt,
-  false,
-  true,
-  true | false
->;
-
-export type PayMethodEditorProps = TableEditRow.CellProps & {
-  treeSelectParams?: Partial<
-    Pick<PayMethodEditorSelect, "renderInput" | "disabled">
-  >;
-  options: Omit<UsePaymentMethodTreeOptions, "iniValue" | "type">;
-} & RowChangesProp<PayMethodRowChanges & CategoryRowChanges>;
-
-export interface PayMethodEditorOnValueChangeResult {
-  value: Exclude<PayMethodTreeSelectProps["value"], undefined>;
-  branchPath: NonNullable<PayMethodTreeSelectProps["branchPath"]>;
-}
+// Editor Cell
 
 export type PayMethodRowChanges = {
-  paymentMethod: PayMethodEditorOnValueChangeResult | null;
-};
+  paymentMethod:
+    | ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>
+    | FreeSoloNode<PaymentMethodInputBranchOpt>
+    | null;
+} & CategoryRowChanges;
+
+export type PayMethodEditorProps = TableEditRow.CellProps & {
+  accounts: PaymentMethodInputProps["accounts"];
+  options?: Pick<PaymentMethodInputProps, "renderInput" | "disabled">;
+} & RowChangesProp<PayMethodRowChanges>;
 
 export const PayMethodEditor = (props: PayMethodEditorProps): JSX.Element => {
-  const {
-    treeSelectParams: treeSelectParamsProp,
-    options: payMethodTreeHookOpts,
-    rowChanges = {},
-    ...rest
-  } = props;
+  const { accounts, options = {}, rowChanges = {}, ...rest } = props;
 
-  const { onValueChange, row, editingEnabled } = props;
+  const { onValueChange, row, value: valueProp } = props;
 
-  const valueProp = (props.value || null) as
-    | GridEntryFragment["paymentMethod"]
-    | PayMethodEditorOnValueChangeResult
-    | null;
+  const value = (valueProp instanceof ValueNode ||
+  valueProp instanceof FreeSoloNode
+    ? valueProp
+    : null) as PayMethodRowChanges["paymentMethod"];
 
-  const type =
+  const [iniValue] = useState<PayMethodIniValue | undefined>(() => {
+    if (valueProp) {
+      return valueProp as GridEntry["paymentMethod"];
+    }
+  });
+
+  const entryType =
     rowChanges[row.id as string]?.category !== undefined
-      ? rowChanges[row.id]?.category?.type
+      ? rowChanges[row.id]?.category?.valueOf().type
       : ((row as GridEntry)?.category?.type as EntryType | undefined);
 
   const isRefund = (row as GridEntry)?.__typename === "EntryRefund";
 
-  const [state, setState] = useState<{
-    inputValue: string;
-    type?: EntryType;
-  }>({ inputValue: "", type });
-
-  useEffect(() => {
-    if (state.type !== type) {
-      props.onValueChange({
-        value: null,
-        branchPath: [],
-      } as PayMethodEditorOnValueChangeResult);
-
-      setState((state) => ({
-        ...state,
-        inputValue: "",
-        type,
-      }));
-    }
-  }, [type, state.type, setState, props.onValueChange]);
-
-  const { iniValue, treeSelectParams, queryResult } = usePaymentMethodTree({
-    ...payMethodTreeHookOpts,
-    type,
-    isRefund,
-    iniValue: props.value
-      ? (props.value as GridPaymentMethodFragment)
-      : undefined,
-  });
-
-  useEffect(() => {
-    if (iniValue) {
-      setState((state) => ({
-        ...state,
-        inputValue: getOptionLabelEditor(iniValue),
-      }));
-    }
-  }, [iniValue, setState]);
-
   const onChange = useCallback<
-    NonNullable<PayMethodTreeSelectProps["onChange"]>
+    NonNullable<PayMethodTreeSelectProps<false, false>["onChange"]>
   >(
     (...args) => {
       const [, value] = args;
 
-      onValueChange({
-        value,
-        branchPath: treeSelectParams.branchPath,
-      } as PayMethodEditorOnValueChangeResult);
+      onValueChange(value);
     },
-    [onValueChange, treeSelectParams.branchPath]
-  );
-
-  const renderInput = useCallback<
-    NonNullable<PayMethodTreeSelectProps["renderInput"]>
-  >(
-    (params) => {
-      const curBranchOpt =
-        treeSelectParams.branchPath[treeSelectParams.branchPath.length - 1]
-          ?.option;
-
-      const props: TextFieldProps = {
-        ...params,
-      };
-
-      if (type === undefined) {
-        props.helperText = "Requires a Category";
-      } else if (curBranchOpt) {
-        if (typeof curBranchOpt === "string") {
-          switch (curBranchOpt) {
-            case PaymentMethodType.Check:
-              if (type === EntryType.Credit || isRefund) {
-                props.placeholder = "####";
-                props.InputProps = {
-                  ...(props.InputProps || {}),
-                  startAdornment: "CK-",
-                };
-              }
-              break;
-            case PaymentCardType.Visa:
-            case PaymentCardType.MasterCard:
-            case PaymentCardType.AmericanExpress:
-            case PaymentCardType.Discover:
-              if (type === EntryType.Credit) {
-                if (type === EntryType.Credit) {
-                  props.placeholder = "Last 4 Digits";
-                }
-              }
-              props.InputProps = {
-                ...(props.InputProps || {}),
-                startAdornment: `${getCardTypeAbbreviation(curBranchOpt)}-`,
-              };
-              break;
-          }
-        } else if (curBranchOpt.__typename === "AccountChecking") {
-          props.placeholder = "####";
-          props.InputProps = {
-            ...(props.InputProps || {}),
-            startAdornment: "CK-",
-          };
-        }
-      }
-
-      if (!props.error && queryResult.error) {
-        props.error = true;
-        props.helperText = queryResult.error.message;
-      }
-
-      return (treeSelectParamsProp?.renderInput || defaultInput)(props);
-    },
-    [
-      isRefund,
-      queryResult.error,
-      treeSelectParams.branchPath,
-      treeSelectParamsProp?.renderInput,
-      type,
-    ]
-  );
-
-  const onInputChange = useCallback<
-    NonNullable<PayMethodTreeSelectProps["onInputChange"]>
-  >(
-    (...args) => {
-      const [, inputValue] = args;
-
-      setState((state) => ({
-        ...state,
-        inputValue,
-      }));
-    },
-    [setState]
-  );
-
-  const onBranchChange = useCallback<
-    NonNullable<PayMethodTreeSelectProps["onBranchChange"]>
-  >(
-    (...args) => {
-      setState((state) => ({
-        ...state,
-        inputValue: "",
-      }));
-
-      treeSelectParams.onBranchChange(...args);
-    },
-    [treeSelectParams.onBranchChange, setState]
+    [onValueChange]
   );
 
   return (
     <TableEditRow.Cell {...rest}>
-      <TreeSelect<
-        PayMethodInputOpt,
-        PaymentMethodInputBranchOpt,
-        undefined,
-        undefined,
-        true | false
-      >
-        {...treeSelectParamsProp}
-        {...treeSelectParams}
-        onBranchChange={onBranchChange}
-        disabled={
-          !editingEnabled ||
-          type === undefined ||
-          !!treeSelectParamsProp?.disabled
-        }
-        getOptionLabel={getOptionLabelEditor}
-        getOptionSelected={getOptionSelectedEditor}
-        loading={queryResult.loading}
-        inputValue={state.inputValue}
-        onInputChange={onInputChange}
+      <PaymentMethodInput<false, false>
+        {...options}
+        iniValue={iniValue}
+        accounts={accounts}
         onChange={onChange}
-        renderInput={renderInput}
-        value={
-          valueProp && "__typename" in valueProp
-            ? iniValue || null
-            : valueProp?.value || null
-        }
+        value={value}
+        isRefund={isRefund}
+        entryType={entryType ?? null}
       />
     </TableEditRow.Cell>
   );

@@ -1253,7 +1253,8 @@ const Journal = (props: {
   return (
     <React.Fragment>
       <MaterialTable
-        icons={tableIcons}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        icons={tableIcons as any}
         isLoading={isLoading || reconcilingEntry || reconcilingRefund}
         columns={columns}
         data={mTData}
