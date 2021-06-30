@@ -58,7 +58,13 @@ export type EntityInputProps = {
 } & MarkRequired<
   Pick<
     EntityTreeSelectProps,
-    "renderInput" | "disabled" | "onChange" | "value"
+    | "renderInput"
+    | "disabled"
+    | "onChange"
+    | "value"
+    | "onBlur"
+    | "fullWidth"
+    | "autoSelect"
   >,
   "onChange" | "value"
 >;
@@ -173,6 +179,8 @@ export const EntityInput = (props: EntityInputProps): JSX.Element => {
     value: valueProp,
     name: nameProp = "entity",
     error: errorProp,
+    autoSelect,
+    ...rest
   } = props;
 
   const [state, setState] = useState<{
@@ -385,12 +393,13 @@ export const EntityInput = (props: EntityInputProps): JSX.Element => {
 
         return renderInputProp({
           ...params,
-          placeholder: (() => {
+          ...(() => {
             if (curBranch === "Business") {
-              return "Business Name...";
+              return { placeholder: "Business Name...", label: "Business" };
             } else if (curBranch === "Person") {
-              return "First... Last...";
+              return { placeholder: "First... Last...", label: "Person" };
             }
+            return {};
           })(),
           name: nameProp,
         });
@@ -401,7 +410,6 @@ export const EntityInput = (props: EntityInputProps): JSX.Element => {
       iniValueResult.error,
       iniValueResult.loading,
       queryResult.error,
-      queryResult.loading,
       state.branch,
       nameProp,
       errorProp,
@@ -475,6 +483,7 @@ export const EntityInput = (props: EntityInputProps): JSX.Element => {
       undefined,
       true | false
     >
+      {...rest}
       onBranchChange={onBranchChange}
       branch={state.branch}
       getOptionLabel={getOptionLabel}
@@ -486,6 +495,7 @@ export const EntityInput = (props: EntityInputProps): JSX.Element => {
       onInputChange={onInputChange}
       options={options}
       freeSolo={freeSolo}
+      autoSelect={!!autoSelect || (freeSolo && !value)}
       value={value}
       onChange={onChange}
     />

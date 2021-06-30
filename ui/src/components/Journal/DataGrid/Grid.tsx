@@ -494,25 +494,25 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     []
   );
 
-  const TableRow = useCallback((props: Table.DataRowProps) => {
-    const { id } = props.row as GridEntryFragment;
+  // const TableRow = useCallback((props: Table.DataRowProps) => {
+  //   const { id } = props.row as GridEntryFragment;
 
-    return (
-      <Table.Row
-        {...props}
-        onDoubleClick={useCallback(
-          () =>
-            setState((state) => ({
-              ...state,
-              editingRowIds: state.editingRowIds.includes(id)
-                ? state.editingRowIds.filter((curId) => curId === id)
-                : [...state.editingRowIds, id],
-            })),
-          []
-        )}
-      />
-    );
-  }, []);
+  //   return (
+  //     <Table.Row
+  //       {...props}
+  //       onDoubleClick={useCallback(
+  //         () =>
+  //           setState((state) => ({
+  //             ...state,
+  //             editingRowIds: state.editingRowIds.includes(id)
+  //               ? state.editingRowIds.filter((curId) => curId === id)
+  //               : [...state.editingRowIds, id],
+  //           })),
+  //         [id]
+  //       )}
+  //     />
+  //   );
+  // }, []);
 
   const onEditingRowIdsChange = useCallback<
     NonNullable<EditingStateProps["onEditingRowIdsChange"]>
@@ -855,7 +855,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
             columnExtensions={integratedSortingColumnExtensions}
           />
 
-          <VirtualTable cellComponent={DataCell} rowComponent={TableRow} />
+          <VirtualTable cellComponent={DataCell} />
           <TableColumnResizing
             columnWidths={columnWidths}
             onColumnWidthsChange={setColumnWidths}
@@ -894,7 +894,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
         {...addEntryProps}
         open={state.openAddEntry}
         onClose={onCloseAddEntry}
-        maxWidth="xl"
+        maxWidth="lg"
         fullWidth
       />
     </Paper>

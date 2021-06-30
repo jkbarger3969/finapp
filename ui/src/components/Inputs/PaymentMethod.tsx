@@ -246,22 +246,30 @@ export const getCardTypeAbbreviation = (cardType: PaymentCardType): string => {
   }
 };
 
+const cardBranch = new BranchNode<PaymentMethodInputBranchOpt>(
+  PaymentMethodType.Card
+);
+
+const checkBranch = new BranchNode<PaymentMethodInputBranchOpt>(
+  PaymentMethodType.Check
+);
+
 const defaultOptions: (
   | PayMethodInputOpt
   | BranchNode<PaymentMethodInputBranchOpt>
 )[] = [
-  new BranchNode(PaymentMethodType.Card),
-  new BranchNode(PaymentMethodType.Check),
+  cardBranch,
+  checkBranch,
   PaymentMethodType.Cash,
   PaymentMethodType.Combination,
   PaymentMethodType.Online,
 ];
 
-const paymentCardBranchOpts: BranchNode<PaymentCardType>[] = [
-  new BranchNode(PaymentCardType.Visa),
-  new BranchNode(PaymentCardType.MasterCard),
-  new BranchNode(PaymentCardType.AmericanExpress),
-  new BranchNode(PaymentCardType.Discover),
+const paymentCardBranchOpts: BranchNode<PaymentMethodInputBranchOpt>[] = [
+  new BranchNode(PaymentCardType.Visa, cardBranch),
+  new BranchNode(PaymentCardType.MasterCard, cardBranch),
+  new BranchNode(PaymentCardType.AmericanExpress, cardBranch),
+  new BranchNode(PaymentCardType.Discover, cardBranch),
 ];
 
 export type PaymentMethodInputProps<
@@ -276,7 +284,13 @@ export type PaymentMethodInputProps<
 } & MarkRequired<
   Pick<
     PayMethodTreeSelectProps<Multiple, DisableClearable>,
-    "renderInput" | "disabled" | "onChange" | "value"
+    | "renderInput"
+    | "disabled"
+    | "onChange"
+    | "value"
+    | "onBlur"
+    | "fullWidth"
+    | "autoSelect"
   >,
   "onChange" | "value"
 >;
@@ -295,6 +309,8 @@ export const PaymentMethodInput = <
     entryType,
     isRefund,
     error: errorProp,
+    autoSelect,
+    ...rest
   } = props;
 
   const entryTypeIsUndefined = (entryType ?? NULLISH) === NULLISH;
@@ -401,9 +417,7 @@ export const PaymentMethodInput = <
             }
             if (account.__typename === "AccountChecking") {
               checkingAccountBranchOpts.push(
-                new BranchNode(account, [
-                  PaymentMethodType.Check as PaymentMethodInputBranchOpt,
-                ])
+                new BranchNode(account, checkBranch)
               );
             }
 
@@ -558,11 +572,6 @@ export const PaymentMethodInput = <
     (params) =>
       (renderInputProp || defaultInput)(
         (() => {
-          const errorMsg =
-            typeof errorProp === "string"
-              ? errorProp.trim()
-              : errorProp?.message || "";
-
           if (entryTypeIsUndefined) {
             return {
               ...params,
@@ -579,85 +588,73 @@ export const PaymentMethodInput = <
               ),
               name: "paymentMethod",
             };
-          } else if (queryResult.error || errorMsg) {
-            return {
-              ...params,
-              error: true,
-              helperText: queryResult.error?.message || errorMsg,
-              name: "paymentMethod",
-            };
-          } else {
-            /* const inputValue = (() => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const inputValue = ((params?.inputProps as any)?.value ||
-                "") as string;
+          }
 
-              if (!value || !inputValue) {
-                return inputValue;
-              } else if (value instanceof ValueNode) {
-                const val = value.valueOf();
-                if (inputValue === getOptionLabel(val, value.branch)) {
-                  return optionToString(val, value.branch);
+          const errorMsg =
+            typeof errorProp === "string"
+              ? errorProp.trim()
+              : errorProp?.message || "";
+
+          const errorObj =
+            queryResult.error || errorMsg
+              ? {
+                  error: true,
+                  helperText: queryResult.error?.message || errorMsg,
                 }
-              } else if (value instanceof FreeSoloNode) {
-                if (inputValue === getOptionLabel(value, value.branch)) {
-                  return optionToString(value, value.branch);
-                }
-              }
+              : {};
 
-              return inputValue;
-            })(); */
+          const curBranch = state.branch?.valueOf();
 
-            const curBranch = state.branch?.valueOf();
-
-            if (typeof curBranch === "string") {
-              switch (curBranch) {
-                case PaymentMethodType.Check:
-                  if (entryType === EntryType.Credit) {
-                    return {
-                      ...params,
-                      placeholder: "####",
-                      InputProps: mergeInputStartAdornment(
-                        "append",
-                        "CK-",
-                        params.InputProps || {}
-                      ),
-                      name: "paymentMethod",
-                    };
-                  }
-                  break;
-                case PaymentCardType.AmericanExpress:
-                case PaymentCardType.Discover:
-                case PaymentCardType.MasterCard:
-                case PaymentCardType.Visa:
+          if (typeof curBranch === "string") {
+            switch (curBranch) {
+              case PaymentMethodType.Check:
+                if (entryType === EntryType.Credit) {
                   return {
                     ...params,
-                    placeholder:
-                      entryType === EntryType.Credit && !isRefund
-                        ? "Last 4 Digits"
-                        : undefined,
+                    placeholder: "####",
                     InputProps: mergeInputStartAdornment(
                       "append",
-                      `${getCardTypeAbbreviation(curBranch)}-`,
+                      "CK-",
                       params.InputProps || {}
                     ),
                     name: "paymentMethod",
+                    ...errorObj,
                   };
-              }
-            } else if (curBranch?.__typename === "AccountChecking") {
-              return {
-                ...params,
-                placeholder: "####",
-                InputProps: mergeInputStartAdornment(
-                  "append",
-                  "CK-",
-                  params.InputProps || {}
-                ),
-                name: "paymentMethod",
-              };
+                }
+                break;
+              case PaymentCardType.AmericanExpress:
+              case PaymentCardType.Discover:
+              case PaymentCardType.MasterCard:
+              case PaymentCardType.Visa:
+                return {
+                  ...params,
+                  placeholder:
+                    entryType === EntryType.Credit && !isRefund
+                      ? "Last 4 Digits"
+                      : undefined,
+                  InputProps: mergeInputStartAdornment(
+                    "append",
+                    `${getCardTypeAbbreviation(curBranch)}-`,
+                    params.InputProps || {}
+                  ),
+                  name: "paymentMethod",
+                  ...errorObj,
+                };
             }
+          } else if (curBranch?.__typename === "AccountChecking") {
+            return {
+              ...params,
+              placeholder: "####",
+              InputProps: mergeInputStartAdornment(
+                "append",
+                "CK-",
+                params.InputProps || {}
+              ),
+              name: "paymentMethod",
+              ...errorObj,
+            };
           }
-          return { ...params, name: "paymentMethod" };
+          return { ...params, name: "paymentMethod", ...errorObj };
         })()
       ),
     [
@@ -669,7 +666,6 @@ export const PaymentMethodInput = <
       queryResult.error,
       queryResult.loading,
       state.branch,
-      value,
       errorProp,
     ]
   );
@@ -742,6 +738,7 @@ export const PaymentMethodInput = <
       DisableClearable,
       true | false
     >
+      {...rest}
       onBranchChange={onBranchChange}
       branch={state.branch}
       getOptionLabel={getOptionLabel}
@@ -754,6 +751,7 @@ export const PaymentMethodInput = <
       renderOption={renderOption}
       options={options}
       freeSolo={freeSolo}
+      autoSelect={!!autoSelect || freeSolo}
       onChange={onChange}
       value={value}
     />

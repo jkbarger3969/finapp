@@ -120,7 +120,13 @@ export type DepartmentInputProps<
 } & MarkRequired<
   Pick<
     DepartmentTreeSelectProps<Multiple, DisableClearable, FreeSolo>,
-    "renderInput" | "disabled" | "onChange" | "value"
+    | "renderInput"
+    | "disabled"
+    | "onChange"
+    | "value"
+    | "onBlur"
+    | "fullWidth"
+    | "autoSelect"
   >,
   "onChange" | "value"
 >;
@@ -140,6 +146,7 @@ export const DepartmentInput = <
     value: valueProp,
     disabled: disabledProp,
     error: errorProp,
+    ...rest
   } = props;
 
   const [state, setState] = useState<{
@@ -429,6 +436,7 @@ export const DepartmentInput = <
       DisableClearable,
       FreeSolo
     >
+      {...rest}
       getOptionLabel={getOptionLabel}
       getOptionSelected={getOptionSelected}
       disabled={disabledProp || rootResults.loading || iniValueResult.loading}

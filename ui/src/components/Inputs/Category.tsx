@@ -10,6 +10,8 @@ import TreeSelect, {
 import { gql, QueryHookOptions, useQuery } from "@apollo/client";
 import { MarkRequired } from "ts-essentials";
 import CircularProgress from "@material-ui/core/CircularProgress";
+import { useFormContext, FieldError, RegisterOptions } from "react-hook-form";
+import _get from "lodash.get";
 
 import {
   CategoryInputOptsQuery as CategoryOpts,
@@ -19,6 +21,7 @@ import {
   CategoryInputOptFragment,
   CategoriesWhere,
 } from "../../apollo/graphTypes";
+import { LoadingDefaultBlank } from "./shared";
 
 export type CategoryInputOpt = Omit<CategoryInputOptFragment, "children"> &
   Partial<Pick<CategoryInputOptFragment, "children">>;
@@ -101,13 +104,170 @@ export type CategoryInputProps<
 > = {
   iniValue?: CategoriesWhere;
   error?: string | Error;
+  namePrefix?: string;
 } & MarkRequired<
   Pick<
     CategoryTreeSelectProps<Multiple, DisableClearable, FreeSolo>,
-    "renderInput" | "disabled" | "onChange" | "value"
+    | "renderInput"
+    | "disabled"
+    | "onChange"
+    | "value"
+    | "onBlur"
+    | "fullWidth"
+    | "autoSelect"
   >,
   "onChange" | "value"
 >;
+
+const Category = <
+  Multiple extends boolean | undefined = undefined,
+  DisableClearable extends boolean | undefined = undefined,
+  FreeSolo extends boolean | undefined = undefined
+>(
+  props: CategoryTreeSelectProps<Multiple, DisableClearable, FreeSolo> & {
+    name: string;
+    registerOptions?: RegisterOptions;
+  }
+): JSX.Element => {
+  const {
+    name,
+    renderInput: renderInputProp,
+    defaultValue,
+    branch: branchProp = null,
+    registerOptions = {},
+    ...rest
+  } = props;
+
+  const { register, watch, setValue, formState } = useFormContext();
+
+  // Register Category
+  const { onBlur } = register(name, {
+    value: defaultValue ?? null,
+    ...registerOptions,
+  });
+
+  const error = (_get(formState.errors, name) as FieldError)?.message;
+
+  const [state, setState] = useState<{
+    branch: NonNullable<CategoryTreeSelectProps["branch"]> | null;
+  }>(() => ({
+    branch: branchProp,
+  }));
+
+  const queryResult = useQuery<CategoryOpts, CategoryOptsVars>(
+    CATEGORY_INPUT_OPTS,
+    useMemo(() => {
+      if (state.branch) {
+        return {
+          skip: false,
+          variables: {
+            where: {
+              parent: {
+                eq: state.branch.valueOf().id,
+              },
+            },
+          },
+        };
+      } else {
+        return {
+          skip: false,
+          variables: {
+            where: {
+              root: true,
+            },
+          },
+        };
+      }
+    }, [state.branch])
+  );
+
+  const onBranchChange = useCallback<
+    NonNullable<CategoryTreeSelectProps["onBranchChange"]>
+  >(
+    (_, branch) =>
+      setState((state) => ({
+        ...state,
+        branch,
+      })),
+    []
+  );
+
+  const renderInput = useCallback<
+    NonNullable<
+      CategoryTreeSelectProps<
+        Multiple,
+        DisableClearable,
+        FreeSolo
+      >["renderInput"]
+    >
+  >(
+    (params) =>
+      (renderInputProp || defaultInput)({
+        ...params,
+        name,
+        error: !!(queryResult.error || error),
+        helperText: queryResult.error?.message || error || undefined,
+      }),
+    [queryResult.error, error, renderInputProp, name]
+  );
+
+  const options = useMemo<CategoryTreeSelectProps["options"]>(
+    () =>
+      (queryResult.data?.categories || [])
+        .reduce((options, category) => {
+          if (category.children.length) {
+            options.push(new BranchNode(category, state.branch));
+          }
+          options.push(category);
+
+          return options;
+        }, [] as CategoryTreeSelectProps["options"])
+        .sort((a, b) => {
+          // Put branches at top of options to encourage, more detailed
+          // labeling for users.
+
+          const aIsBranch = a instanceof BranchNode;
+          const bIsBranch = b instanceof BranchNode;
+
+          if (aIsBranch) {
+            return bIsBranch ? 0 : -1;
+          } else if (bIsBranch) {
+            return aIsBranch ? 0 : 1;
+          } else {
+            return 0;
+          }
+        }),
+    [queryResult.data?.categories, state.branch]
+  );
+
+  const onChange = useCallback<
+    NonNullable<
+      CategoryTreeSelectProps<Multiple, DisableClearable, FreeSolo>["onChange"]
+    >
+  >((_, value) => setValue(name, value), [setValue, name]);
+
+  return (
+    <TreeSelect<
+      CategoryInputOpt,
+      CategoryInputOpt,
+      Multiple,
+      DisableClearable,
+      FreeSolo
+    >
+      {...rest}
+      onBlur={onBlur}
+      loading={queryResult.loading}
+      getOptionLabel={getOptionLabel}
+      getOptionSelected={getOptionSelected}
+      onBranchChange={onBranchChange}
+      branch={state.branch}
+      renderInput={renderInput}
+      options={options}
+      onChange={onChange}
+      value={watch(name) ?? null}
+    />
+  );
+};
 
 export const CategoryInput = <
   Multiple extends boolean | undefined = undefined,
@@ -117,13 +277,17 @@ export const CategoryInput = <
   props: CategoryInputProps<Multiple, DisableClearable, FreeSolo>
 ): JSX.Element => {
   const {
+    namePrefix,
     iniValue: iniValueProp,
     renderInput: renderInputProp,
     onChange: onChangeProp,
     value: valueProp,
     disabled: disabledProp,
     error: errorProp,
+    ...rest
   } = props;
+
+  const name = namePrefix ? `${namePrefix}.category` : "category";
 
   const [state, setState] = useState<{
     iniValue?: NonNullable<CategoryTreeSelectProps["value"]>;
@@ -259,7 +423,6 @@ export const CategoryInput = <
       iniValueResult.error,
       iniValueResult.loading,
       queryResult.error,
-      queryResult.loading,
       errorProp,
     ]
   );
@@ -326,6 +489,11 @@ export const CategoryInput = <
     return (state.useIniValue ? state.iniValue : valueProp) ?? (null as any);
   }, [state.iniValue, state.useIniValue, valueProp]);
 
+  if (iniValueResult.loading) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return <LoadingDefaultBlank name={name} {...(props as any)} />;
+  }
+
   return (
     <TreeSelect<
       CategoryInputOpt,
@@ -334,6 +502,7 @@ export const CategoryInput = <
       DisableClearable,
       FreeSolo
     >
+      {...rest}
       disabled={disabledProp || iniValueResult.loading}
       loading={queryResult.loading || iniValueResult.loading}
       getOptionLabel={getOptionLabel}
