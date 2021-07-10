@@ -39,21 +39,21 @@ const options: EntryType[] = [EntryType.Debit, EntryType.Credit];
 
 export const TypeFilter = (props: TypeFilterProps): JSX.Element => {
   const columnName = props.column.name;
-
+  const { onFilter } = props;
   const onChange = useCallback<
     NonNullable<TypeFilterAutoCompleteProps["onChange"]>
   >(
     (_, value) => {
       if (value) {
-        props.onFilter({
+        onFilter({
           columnName,
           value,
         });
       } else {
-        props.onFilter(null);
+        onFilter(null);
       }
     },
-    [columnName, props.onFilter]
+    [columnName, onFilter]
   );
 
   return (

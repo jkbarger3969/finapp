@@ -1,19 +1,17 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { forwardRef, Ref, useCallback, useMemo, useState } from "react";
 import TreeSelect, {
   ValueNode,
   BranchNode,
   FreeSoloNode,
   TreeSelectProps,
   defaultInput,
-  mergeInputEndAdornment,
+  TreeSelectValue,
 } from "mui-tree-select";
 import { gql, QueryHookOptions, useQuery } from "@apollo/client";
 import { MarkOptional, MarkRequired } from "ts-essentials";
-import CircularProgress from "@material-ui/core/CircularProgress";
+import { Control, UseControllerProps } from "react-hook-form";
 
 import {
-  DepartmentInputRootOptsQuery as DepartmentInputRootOpts,
-  DepartmentInputRootOptsQueryVariables as DepartmentInputRootOptsVars,
   DepartmentInputOptsQuery as DepartmentInputOpts,
   DepartmentInputOptsQueryVariables as DepartmentInputOptsVars,
   DepartmentInputIniValueQuery as DepartmentInputIniValue,
@@ -21,6 +19,8 @@ import {
   DepartmentInputOptFragment,
   DepartmentsWhere,
 } from "../../apollo/graphTypes";
+import { LoadingDefaultBlank, sortBranchesToTop } from "./shared";
+import { useController } from "../../utils/reactHookForm";
 
 export type DepartmentInputOpt = MarkOptional<
   DepartmentInputOptFragment,
@@ -37,15 +37,6 @@ export const DEPT_INPUT_OPT_FRAGMENT = gql`
       id
     }
   }
-`;
-
-export const DEPT_INPUT_ROOT_OPTS = gql`
-  query DepartmentInputRootOpts($where: DepartmentsWhere!) {
-    departments(where: $where) {
-      ...DepartmentInputOpt
-    }
-  }
-  ${DEPT_INPUT_OPT_FRAGMENT}
 `;
 
 export const DEPT_INPUT_INI_VALUE = gql`
@@ -109,181 +100,115 @@ export const getOptionSelected: NonNullable<
   !(value instanceof FreeSoloNode) &&
   option.valueOf().id === value.valueOf().id;
 
-export type DepartmentInputProps<
+export type DepartmentInputBaseProps<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
-> = {
-  root: DepartmentsWhere;
-  iniValue?: DepartmentsWhere;
-  error?: string | Error;
-} & MarkRequired<
-  Pick<
-    DepartmentTreeSelectProps<Multiple, DisableClearable, FreeSolo>,
-    | "renderInput"
-    | "disabled"
-    | "onChange"
-    | "value"
-    | "onBlur"
-    | "fullWidth"
-    | "autoSelect"
+> = MarkOptional<
+  MarkRequired<
+    Omit<
+      DepartmentTreeSelectProps<Multiple, DisableClearable, FreeSolo>,
+      "branch" | "options" | "defaultValue"
+    >,
+    "onChange" | "value"
   >,
-  "onChange" | "value"
->;
+  "onBranchChange"
+> & {
+  root: DepartmentsWhere;
+};
 
-export const DepartmentInput = <
+export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 >(
-  props: DepartmentInputProps<Multiple, DisableClearable, FreeSolo>
-): JSX.Element => {
+  props: DepartmentInputBaseProps<Multiple, DisableClearable, FreeSolo>,
+  ref: Ref<unknown>
+): JSX.Element {
   const {
-    root: rootProp,
-    iniValue: iniValueProp,
-    renderInput: renderInputProp,
-    onChange: onChangeProp,
-    value: valueProp,
-    disabled: disabledProp,
-    error: errorProp,
+    root,
+    renderInput: renderInputProp = defaultInput,
+    onBranchChange: onBranchChangeProp,
+    loading,
     ...rest
   } = props;
 
   const [state, setState] = useState<{
-    rootWhere: DepartmentsWhere;
-    iniValueWhere?: DepartmentsWhere;
-    iniValue?: NonNullable<DepartmentTreeSelectProps["value"]>;
-    useIniValue: boolean;
-    branch: NonNullable<DepartmentTreeSelectProps["branch"]> | null;
-  }>(() => ({
-    rootWhere: rootProp,
-    iniValueWhere: iniValueProp,
-    useIniValue: !!iniValueProp,
-    branch: null,
-  }));
-
-  const rootResults = useQuery<
-    DepartmentInputRootOpts,
-    DepartmentInputRootOptsVars
-  >(DEPT_INPUT_ROOT_OPTS, {
-    variables: {
-      where: state.rootWhere,
-    },
-    onCompleted: useCallback<
-      NonNullable<
-        QueryHookOptions<
-          DepartmentInputRootOpts,
-          DepartmentInputRootOptsVars
-        >["onCompleted"]
-      >
-    >((data) => {
-      if (
-        data.departments.length === 1 &&
-        data.departments[0].children.length
-      ) {
-        setState((state) => ({
-          ...state,
-          // When there is only one root dept and it is a branch node,
-          // step into the branch node.
-          branch: new BranchNode(data.departments[0]),
-        }));
-        return;
-      }
-    }, []),
+    branch: Exclude<DepartmentTreeSelectProps["branch"], undefined>;
+  }>({
+    branch: props.value instanceof ValueNode ? props.value.parent : null,
   });
 
-  const iniValueResult = useQuery<
-    DepartmentInputIniValue,
-    DepartmentInputIniValueVars
-  >(DEPT_INPUT_INI_VALUE, {
-    skip:
-      !rootResults.data?.departments ||
-      !!state.iniValue ||
-      !state.iniValueWhere,
-    variables: {
-      where: iniValueProp as DepartmentsWhere,
-    },
-    onCompleted: useCallback<
-      NonNullable<
-        QueryHookOptions<
-          DepartmentInputIniValue,
-          DepartmentInputIniValueVars
-        >["onCompleted"]
-      >
-    >(
-      (data) => {
-        if (state.useIniValue && !state.iniValue) {
-          const value = data.departments[0];
+  const rootResult = useQuery<DepartmentInputOpts, DepartmentInputOptsVars>(
+    DEPT_INPUT_OPTS,
+    useMemo<QueryHookOptions<DepartmentInputOpts, DepartmentInputOptsVars>>(
+      () => ({
+        variables: {
+          where: root,
+        },
+        // Filter out any branch path that exceeds the root bounds.
+        onCompleted: (data) =>
+          setState((state) => {
+            if (state.branch) {
+              const filteredPath: DepartmentInputOpt[] = [];
 
-          const rootDepts = rootResults.data?.departments || [];
+              for (const branch of state.branch.up()) {
+                const branchVal = branch.valueOf();
+                const branchId = branchVal.id;
 
-          const iniValue = new ValueNode(
-            value,
-            (function* () {
-              // If root opt IS iniValue DO NOT create branch path.
-              if (rootDepts.every(({ id }) => id !== value.id)) {
-                // If a root opt is in the ini value ancestor path,
-                // do not include more ancestors.
-                // for (const value of iniValue.ancestors) {
-                for (let i = value.ancestors.length - 1; i > -1; i--) {
-                  const dept = value.ancestors[i];
+                filteredPath.push(branchVal);
 
-                  if (dept.__typename === "Department") {
-                    yield dept;
+                if (data.departments.some(({ id }) => id === branchId)) {
+                  const [self, ...path] = filteredPath;
 
-                    if (rootDepts.some(({ id }) => id === dept.id)) {
-                      return;
-                    }
-                  }
+                  return {
+                    ...state,
+                    branch: self ? new BranchNode(self, path.reverse()) : null,
+                  };
                 }
               }
-            })()
-          );
-
-          setState((state) => ({
-            ...state,
-            branch: iniValue.parent,
-            iniValue,
-          }));
-        }
-      },
-      [state.iniValue, state.useIniValue, rootResults.data?.departments]
-    ),
-  });
+            }
+            return { ...state };
+          }),
+      }),
+      [root]
+    )
+  );
 
   const queryResult = useQuery<DepartmentInputOpts, DepartmentInputOptsVars>(
     DEPT_INPUT_OPTS,
-    useMemo(() => {
-      const curBranch = state.branch?.valueOf();
-      if (rootResults.loading || iniValueResult.loading || !curBranch) {
-        return { skip: true, variables: { where: {} } };
-      } else {
-        return {
-          skip: false,
-          variables: {
-            where: {
-              parent: {
-                eq: {
-                  type: "Department",
-                  id: curBranch.id,
-                },
+    useMemo<QueryHookOptions<DepartmentInputOpts, DepartmentInputOptsVars>>(
+      () => ({
+        skip: !state.branch,
+        variables: {
+          where: {
+            parent: {
+              eq: {
+                type: "Department",
+                id: state.branch?.valueOf()?.id as string,
               },
             },
           },
-        };
-      }
-    }, [state.branch, rootResults.loading, iniValueResult.loading])
+        },
+      }),
+      [state.branch]
+    )
   );
 
   const onBranchChange = useCallback<
     NonNullable<DepartmentTreeSelectProps["onBranchChange"]>
   >(
-    (_, branch) =>
+    (...args) => {
       setState((state) => ({
         ...state,
-        branch,
-      })),
-    []
+        branch: args[1],
+      }));
+
+      if (onBranchChangeProp) {
+        onBranchChangeProp(...args);
+      }
+    },
+    [onBranchChangeProp]
   );
 
   const renderInput = useCallback<
@@ -295,138 +220,52 @@ export const DepartmentInput = <
       >["renderInput"]
     >
   >(
-    (params) => {
-      const errorMsg =
-        typeof errorProp === "string"
-          ? errorProp.trim()
-          : errorProp?.message || "";
-
-      if (rootResults.loading || iniValueResult.loading) {
-        return (renderInputProp || defaultInput)({
-          ...params,
-          InputProps: mergeInputEndAdornment(
-            "append",
-            <CircularProgress size={20} color="inherit" />,
-            params.InputProps || {}
-          ),
-          name: "department",
-        });
-      } else if (
-        rootResults.error ||
-        iniValueResult.error ||
-        queryResult.error ||
-        errorMsg
-      ) {
-        return (renderInputProp || defaultInput)({
-          ...params,
-          error: true,
-          helperText:
-            (rootResults.error || iniValueResult.error || queryResult.error)
-              ?.message || errorMsg,
-          name: "department",
-        });
-      } else {
-        return (renderInputProp || defaultInput)({
-          ...params,
-          name: "department",
-        });
-      }
-    },
-    [
-      renderInputProp,
-      rootResults.error,
-      rootResults.loading,
-      iniValueResult.error,
-      iniValueResult.loading,
-      queryResult.error,
-      queryResult.loading,
-      errorProp,
-    ]
-  );
-
-  const options = useMemo<DepartmentTreeSelectProps["options"]>(
-    () =>
-      (() => {
-        const options: DepartmentTreeSelectProps["options"] = [];
-
-        if (rootResults.loading || iniValueResult.loading) {
-          return options;
-        } else if (state.branch) {
-          return (queryResult.data?.departments || []).reduce(
-            (options, category) => {
-              if (category.children.length) {
-                options.push(new BranchNode(category));
-              }
-              options.push(category);
-
-              return options;
-            },
-            options
-          );
-        } else {
-          return (rootResults.data?.departments || []).reduce(
-            (options, category) => {
-              if (category.children.length) {
-                options.push(new BranchNode(category));
-              }
-              options.push(category);
-
-              return options;
-            },
-            options
-          );
-        }
-      })().sort((a, b) => {
-        // Put branches at top of options to encourage, more detailed
-        // labeling for users.
-
-        const aIsBranch = a instanceof BranchNode;
-        const bIsBranch = b instanceof BranchNode;
-
-        if (aIsBranch) {
-          return bIsBranch ? 0 : -1;
-        } else if (bIsBranch) {
-          return aIsBranch ? 0 : 1;
-        } else {
-          return 0;
-        }
+    (params) =>
+      renderInputProp({
+        name: "department",
+        ...params,
+        ...(rootResult.error || queryResult.error
+          ? {
+              error: true,
+              helperText:
+                rootResult.error?.message || queryResult.error?.message,
+            }
+          : {}),
       }),
-    [
-      queryResult.data?.departments,
-      rootResults.data?.departments,
-      rootResults.loading,
-      iniValueResult.loading,
-      state.branch,
-    ]
+    [queryResult.error, renderInputProp, rootResult.error]
   );
 
-  const onChange = useCallback<
-    NonNullable<
-      DepartmentTreeSelectProps<
-        Multiple,
-        DisableClearable,
-        FreeSolo
-      >["onChange"]
-    >
-  >(
-    (...args) => {
-      onChangeProp(...args);
-      if (state.useIniValue) {
-        setState((state) => ({
-          ...state,
-          useIniValue: false,
-        }));
-      }
-    },
-    [onChangeProp, state.useIniValue]
-  );
+  const options = useMemo<DepartmentTreeSelectProps["options"]>(() => {
+    const options: DepartmentTreeSelectProps["options"] = [];
 
-  const value = useMemo<
-    DepartmentTreeSelectProps<Multiple, DisableClearable, FreeSolo>["value"]
-  >(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (state.useIniValue ? state.iniValue : valueProp) ?? (null as any);
-  }, [state.iniValue, state.useIniValue, valueProp]);
+    if (rootResult.loading) {
+      return options;
+    }
+
+    return (
+      (state.branch
+        ? queryResult.data?.departments
+        : rootResult.data?.departments) || []
+    )
+      .reduce((options, category) => {
+        if (category.children.length) {
+          options.push(new BranchNode(category, state.branch));
+        }
+        options.push(category);
+
+        return options;
+      }, options)
+      .sort(sortBranchesToTop);
+  }, [
+    rootResult.loading,
+    rootResult.data?.departments,
+    state.branch,
+    queryResult.data?.departments,
+  ]);
+
+  if (rootResult.loading) {
+    return <LoadingDefaultBlank {...props} />;
+  }
 
   return (
     <TreeSelect<
@@ -436,19 +275,226 @@ export const DepartmentInput = <
       DisableClearable,
       FreeSolo
     >
-      {...rest}
       getOptionLabel={getOptionLabel}
       getOptionSelected={getOptionSelected}
-      disabled={disabledProp || rootResults.loading || iniValueResult.loading}
-      loading={
-        queryResult.loading || rootResults.loading || iniValueResult.loading
-      }
+      {...rest}
+      ref={ref}
+      loading={queryResult.loading || !!loading}
       onBranchChange={onBranchChange}
       branch={state.branch}
       renderInput={renderInput}
       options={options}
-      onChange={onChange}
-      value={value}
     />
   );
-};
+});
+
+export type DepartmentInputProps<
+  Multiple extends boolean | undefined = undefined,
+  DisableClearable extends boolean | undefined = undefined,
+  FreeSolo extends boolean | undefined = undefined
+> = {
+  root: DepartmentsWhere;
+  defaultValue?: DepartmentsWhere;
+  control?: Control;
+  namePrefix?: string;
+  rules?: UseControllerProps["rules"];
+} & Omit<
+  DepartmentInputBaseProps<Multiple, DisableClearable, FreeSolo>,
+  "onChange" | "value" | "name"
+>;
+
+export const DEPARTMENT_NAME = "department";
+export const departmentName = (namePrefix?: string): string =>
+  namePrefix ? `${namePrefix}.${DEPARTMENT_NAME}` : DEPARTMENT_NAME;
+
+const DepartmentInputControlled = forwardRef(function DepartmentInputControlled<
+  Multiple extends boolean | undefined = undefined,
+  DisableClearable extends boolean | undefined = undefined,
+  FreeSolo extends boolean | undefined = undefined
+>(
+  props: Omit<
+    DepartmentInputProps<Multiple, DisableClearable, FreeSolo>,
+    "defaultValue"
+  > & {
+    defaultValue: TreeSelectValue<
+      DepartmentInputOpt,
+      DepartmentInputOpt,
+      Multiple,
+      false,
+      false
+    >;
+  },
+  ref: Ref<unknown>
+): JSX.Element {
+  const {
+    control,
+    namePrefix: namePrefixProp,
+    defaultValue,
+    renderInput: renderInputProp = defaultInput,
+    disabled,
+    onBlur: onBlurProp,
+    rules,
+    ...rest
+  } = props;
+
+  const {
+    field: {
+      onBlur: onBlurControlled,
+      name,
+      onChange: onChangeControlled,
+      ref: inputRef,
+      ...field
+    },
+    fieldState: { isTouched, error },
+    formState: { isSubmitting },
+  } = useController({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    name: departmentName(namePrefixProp) as any,
+    control,
+    defaultValue,
+    rules,
+    shouldUnregister: true,
+  });
+
+  const handleBlur = useCallback<
+    NonNullable<DepartmentInputBaseProps["onBlur"]>
+  >(
+    (...args) => {
+      onBlurControlled();
+      if (onBlurProp) {
+        onBlurProp(...args);
+      }
+    },
+    [onBlurControlled, onBlurProp]
+  );
+
+  const renderInput = useCallback<
+    NonNullable<DepartmentInputBaseProps["renderInput"]>
+  >(
+    (params) =>
+      renderInputProp({
+        ...params,
+        inputRef,
+        name,
+        ...(isTouched && error
+          ? {
+              error: true,
+              helperText: error?.message || "Invalid",
+            }
+          : {}),
+      }),
+    [renderInputProp, inputRef, name, isTouched, error]
+  );
+
+  const handleChange = useCallback<
+    NonNullable<
+      DepartmentInputBaseProps<Multiple, DisableClearable, FreeSolo>["onChange"]
+    >
+  >(
+    (_, value) => {
+      onChangeControlled(value);
+    },
+    [onChangeControlled]
+  );
+
+  return (
+    <DepartmentInputBase
+      {...rest}
+      {...field}
+      disabled={isSubmitting || disabled}
+      ref={ref}
+      onChange={handleChange}
+      renderInput={renderInput}
+      onBlur={handleBlur}
+    />
+  );
+});
+
+export const DepartmentInput = forwardRef(function DepartmentInput<
+  Multiple extends boolean | undefined = undefined,
+  DisableClearable extends boolean | undefined = undefined,
+  FreeSolo extends boolean | undefined = undefined
+>(
+  props: DepartmentInputProps<Multiple, DisableClearable, FreeSolo>,
+  ref: Ref<unknown>
+): JSX.Element {
+  const {
+    defaultValue: defaultValueProp,
+    renderInput: renderInputProp = defaultInput,
+    ...rest
+  } = props;
+
+  const { loading, error, data } = useQuery<
+    DepartmentInputIniValue,
+    DepartmentInputIniValueVars
+  >(DEPT_INPUT_INI_VALUE, {
+    skip: !defaultValueProp,
+    variables: useMemo(
+      () => ({
+        where: defaultValueProp as DepartmentsWhere,
+      }),
+      [defaultValueProp]
+    ),
+  });
+
+  const renderInput = useCallback<
+    NonNullable<
+      DepartmentInputProps<Multiple, DisableClearable, FreeSolo>["renderInput"]
+    >
+  >(
+    (params) =>
+      renderInputProp({
+        ...params,
+        ...(error
+          ? {
+              error: true,
+              helperText: error.message,
+            }
+          : {}),
+      }),
+    [error, renderInputProp]
+  );
+
+  const defaultValues = useMemo(
+    () =>
+      (data?.departments || []).map(
+        (value) =>
+          new ValueNode(
+            value,
+            value.ancestors
+              .reduceRight((path, parent) => {
+                if (parent.__typename !== "Business") {
+                  path.push(parent);
+                }
+
+                return path;
+              }, [] as DepartmentInputOpt[])
+              .reverse()
+          )
+      ),
+    [data?.departments]
+  );
+
+  if (loading) {
+    return <LoadingDefaultBlank {...rest} />;
+  }
+
+  return (
+    <DepartmentInputControlled<Multiple, DisableClearable, FreeSolo>
+      {...rest}
+      ref={ref}
+      renderInput={renderInput}
+      defaultValue={
+        ((props.multiple
+          ? defaultValues
+          : defaultValues[0] ?? null) as unknown) as TreeSelectValue<
+          DepartmentInputOpt,
+          DepartmentInputOpt,
+          Multiple,
+          false,
+          false
+        >
+      }
+    />
+  );
+});

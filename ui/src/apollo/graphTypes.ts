@@ -1246,16 +1246,6 @@ export type CategoryInputOptsQuery = { __typename?: 'Query', categories: Array<(
 
 export type DepartmentInputOptFragment = { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> };
 
-export type DepartmentInputRootOptsQueryVariables = Exact<{
-  where: DepartmentsWhere;
-}>;
-
-
-export type DepartmentInputRootOptsQuery = { __typename?: 'Query', departments: Array<(
-    { __typename?: 'Department' }
-    & DepartmentInputOptFragment
-  )> };
-
 export type DepartmentInputIniValueQueryVariables = Exact<{
   where: DepartmentsWhere;
 }>;

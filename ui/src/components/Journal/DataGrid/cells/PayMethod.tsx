@@ -132,6 +132,8 @@ export const PayMethodFilter = (props: PayMethodFilterProps): JSX.Element => {
 
   type Props = AutocompleteProps<GridPaymentMethodFragment, true, false, false>;
 
+  const { onFilter } = props;
+
   const onChange = useCallback<NonNullable<Props["onChange"]>>(
     (_, value) => {
       if (value.length) {
@@ -147,15 +149,15 @@ export const PayMethodFilter = (props: PayMethodFilterProps): JSX.Element => {
           });
         }
 
-        props.onFilter({
+        onFilter({
           columnName,
           filters: [logicFilter],
         });
       } else {
-        props.onFilter(null);
+        onFilter(null);
       }
     },
-    [columnName, props.onFilter]
+    [columnName, onFilter]
   );
 
   return (
@@ -255,57 +257,3 @@ export type PayMethodRowChanges = {
     | FreeSoloNode<PaymentMethodInputBranchOpt>
     | null;
 } & CategoryRowChanges;
-
-export type PayMethodEditorProps = TableEditRow.CellProps & {
-  accounts: PaymentMethodInputProps["accounts"];
-  options?: Pick<PaymentMethodInputProps, "renderInput" | "disabled">;
-} & RowChangesProp<PayMethodRowChanges>;
-
-export const PayMethodEditor = (props: PayMethodEditorProps): JSX.Element => {
-  const { accounts, options = {}, rowChanges = {}, ...rest } = props;
-
-  const { onValueChange, row, value: valueProp } = props;
-
-  const value = (valueProp instanceof ValueNode ||
-  valueProp instanceof FreeSoloNode
-    ? valueProp
-    : null) as PayMethodRowChanges["paymentMethod"];
-
-  const [iniValue] = useState<PayMethodIniValue | undefined>(() => {
-    if (valueProp) {
-      return valueProp as GridEntry["paymentMethod"];
-    }
-  });
-
-  const entryType =
-    rowChanges[row.id as string]?.category !== undefined
-      ? rowChanges[row.id]?.category?.valueOf().type
-      : ((row as GridEntry)?.category?.type as EntryType | undefined);
-
-  const isRefund = (row as GridEntry)?.__typename === "EntryRefund";
-
-  const onChange = useCallback<
-    NonNullable<PayMethodTreeSelectProps<false, false>["onChange"]>
-  >(
-    (...args) => {
-      const [, value] = args;
-
-      onValueChange(value);
-    },
-    [onValueChange]
-  );
-
-  return (
-    <TableEditRow.Cell {...rest}>
-      <PaymentMethodInput<false, false>
-        {...options}
-        iniValue={iniValue}
-        accounts={accounts}
-        onChange={onChange}
-        value={value}
-        isRefund={isRefund}
-        entryType={entryType ?? null}
-      />
-    </TableEditRow.Cell>
-  );
-};

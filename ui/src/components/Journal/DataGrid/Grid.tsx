@@ -66,33 +66,25 @@ import {
   EditCell,
   FilterCell,
   DataCellProvider,
-  EditCellProvider,
   FilterCellProvider,
   CellProviderProps,
-  AddCellProvider,
 } from "./plugins";
 import {
   BoolCell,
   BoolFilter,
   BoolFilterProps,
-  BoolEditor,
   CategoryCell,
   CategoryFilter,
   categoryFilterColumnExtension,
   CategoryFilterProps,
-  CategoryEditor,
   DateCell,
   DateFilter,
   dateFilterColumnExtension,
-  DateEditor,
   DeptCell,
   DeptFilter,
   deptFilterColumnExtension,
   DeptFilterProps,
-  DeptEditor,
   PayMethodCell,
-  PayMethodEditor,
-  PayMethodEditorProps,
   RationalCell,
   RationalFilter,
   rationalFilterColumnExtension,
@@ -101,11 +93,8 @@ import {
   SourceFilter,
   sourceFilterColumnExtension,
   SourceFilterProps,
-  SourceEditor,
   sourceToStr,
   TypeFilter,
-  RationalEditor,
-  RationalEditorProps,
 } from "./cells";
 import { DefaultEditor } from "./filters";
 import { DepartmentInputOpt } from "../../Inputs/Department";
@@ -114,7 +103,6 @@ import {
   getOptionLabel as getCategoryOptionLabel,
 } from "../../Inputs/Category";
 import { EntityInputOpt } from "../../Inputs/Entity";
-import { mergeTableCellProps } from "./plugins/TableCell";
 import { AddEntry, AddEntryProps } from "./forms/AddEntry";
 
 export type GridRefund = Omit<GridRefundFragment, "date" | "total"> & {
@@ -188,57 +176,6 @@ const defaultCurrencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
 });
-
-const disableNonRefundFields = (
-  props: TableEditRow.CellProps
-): TableEditRow.CellProps & { disabled?: boolean } => {
-  if ((props.row as GridEntry).__typename === "EntryRefund") {
-    return {
-      ...props,
-      disabled: true,
-    };
-  }
-
-  return props;
-};
-
-const defaultEditCellProviderProps = {
-  reconciled: {
-    cell: BoolEditor,
-  },
-  total: {
-    cell: RationalEditor,
-    props: {
-      rationalInputProps: {
-        InputProps: {
-          startAdornment: "$",
-        },
-      },
-    } as RationalEditorProps,
-  },
-  date: {
-    cell: DateEditor,
-  },
-  department: {
-    cell: DeptEditor,
-    props: disableNonRefundFields,
-  },
-  dateOfRecord: {
-    cell: DateEditor,
-    props: disableNonRefundFields,
-  },
-  category: {
-    cell: CategoryEditor,
-    props: disableNonRefundFields,
-  },
-  paymentMethod: {
-    cell: PayMethodEditor,
-  },
-  source: {
-    cell: SourceEditor,
-    props: (props) => disableNonRefundFields(props),
-  },
-} as CellProviderProps<ColumnsNames>;
 
 const columns = [
   {
@@ -669,34 +606,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     };
   }, [rows]);
 
-  const editCellProviderProps = useMemo<CellProviderProps<ColumnsNames>>(() => {
-    return {
-      ...defaultEditCellProviderProps,
-      department: {
-        ...(defaultEditCellProviderProps.department || {}),
-        props: mergeTableCellProps(
-          defaultEditCellProviderProps.department?.props || {},
-          {
-            root: props.selectableDepts,
-          },
-          disableNonRefundFields
-        ),
-      },
-      paymentMethod: {
-        ...(defaultEditCellProviderProps.paymentMethod || {}),
-        props: mergeTableCellProps(
-          defaultEditCellProviderProps.paymentMethod?.props || {},
-          {
-            accounts: props.selectableAccounts,
-          } as PayMethodEditorProps
-        ),
-      },
-    } as CellProviderProps<ColumnsNames>;
-  }, [props.selectableDepts, props.selectableAccounts]);
-
-  const addEntryProps = useMemo<
-    Pick<AddEntryProps, "department" | "paymentMethod">
-  >(
+  const addEntryProps = useMemo<AddEntryProps["entryProps"]>(
     () => ({
       paymentMethod: { accounts: props.selectableAccounts },
       department: {
@@ -884,14 +794,12 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
           <TableEditRow cellComponent={EditCell} rowHeight={53} />
           <DataCellProvider {...dataCellProviderProps} />
           <FilterCellProvider {...filterCellProviderProps} />
-          <EditCellProvider {...editCellProviderProps} />
-          <AddCellProvider {...editCellProviderProps} />
           <TableEditColumn showAddCommand showDeleteCommand />
         </Grid>
       </Box>
       {loading && <OverlayLoading zIndex="modal" />}
       <AddEntry
-        {...addEntryProps}
+        entryProps={addEntryProps}
         open={state.openAddEntry}
         onClose={onCloseAddEntry}
         maxWidth="lg"

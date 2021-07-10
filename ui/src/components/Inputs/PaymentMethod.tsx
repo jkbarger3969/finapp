@@ -1,18 +1,18 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, forwardRef, Ref } from "react";
 import TreeSelect, {
   ValueNode,
   BranchNode,
   FreeSoloNode,
   TreeSelectProps,
   defaultInput,
-  mergeInputEndAdornment,
   mergeInputStartAdornment,
   DefaultOption,
+  TreeSelectValue,
 } from "mui-tree-select";
-import { gql, QueryHookOptions, useQuery } from "@apollo/client";
-import { DeepPartial, MarkRequired } from "ts-essentials";
+import { ApolloError, gql, QueryHookOptions, useQuery } from "@apollo/client";
+import { DeepPartial, MarkOptional, MarkRequired } from "ts-essentials";
 import { capitalCase } from "change-case";
-import CircularProgress from "@material-ui/core/CircularProgress";
+import { Control, UseControllerProps } from "react-hook-form";
 
 import {
   AccountCard,
@@ -34,6 +34,9 @@ import {
   AccountPayMethodInputOptsQueryVariables as AccountInputOptsVars,
   EntryType,
 } from "../../apollo/graphTypes";
+import { LoadingDefaultBlank } from "./shared";
+import { useControlled } from "@material-ui/core";
+import { useController } from "../../utils/reactHookForm";
 
 const NULLISH = Symbol("NULLISH");
 
@@ -272,488 +275,620 @@ const paymentCardBranchOpts: BranchNode<PaymentMethodInputBranchOpt>[] = [
   new BranchNode(PaymentCardType.Discover, cardBranch),
 ];
 
+export type PaymentMethodInputBaseProps<
+  Multiple extends boolean | undefined = undefined,
+  DisableClearable extends boolean | undefined = undefined
+> = MarkOptional<
+  MarkRequired<
+    Omit<
+      PayMethodTreeSelectProps<Multiple, DisableClearable>,
+      "branch" | "options" | "defaultValue"
+    >,
+    "onChange" | "value"
+  >,
+  "onBranchChange"
+> & {
+  accounts: AccountsWhere;
+  entryType: EntryType | null;
+  isRefund: boolean;
+};
+
+export const PaymentMethodInputBase = forwardRef(
+  function PaymentMethodInputBase<
+    Multiple extends boolean | undefined = undefined,
+    DisableClearable extends boolean | undefined = undefined
+  >(
+    props: PaymentMethodInputBaseProps<Multiple, DisableClearable>,
+    ref: Ref<unknown>
+  ): JSX.Element {
+    const {
+      accounts: accountsWhere,
+      autoSelect,
+      entryType,
+      isRefund,
+      renderInput: renderInputProp = defaultInput,
+      inputValue: inputValueProp,
+      onBranchChange: onBranchChangeProp,
+      onInputChange: onInputChangeProp,
+      disabled,
+      ...rest
+    } = props;
+
+    const entryTypeIsUndefined = (entryType ?? NULLISH) === NULLISH;
+
+    const [inputValue, setInputValue] = useControlled({
+      controlled: inputValueProp,
+      default: "",
+      name: "PaymentMethodInputBase",
+      state: "inputValue",
+    });
+
+    const [state, setState] = useState<{
+      branch: BranchNode<PaymentMethodInputBranchOpt> | null;
+      checkingAccountBranchOpts: BranchNode<PaymentMethodInputBranchOpt>[];
+      cardOpts: Map<PaymentCardType, AccountCardPayMethodInputOpt[]>;
+    }>({
+      branch: props.value instanceof ValueNode ? props.value.parent : null,
+      checkingAccountBranchOpts: [],
+      cardOpts: new Map<PaymentCardType, AccountCardPayMethodInputOpt[]>(),
+    });
+
+    const queryResult = useQuery<AccountInputOpts, AccountInputOptsVars>(
+      PAY_METHOD_INPUT_OPTS,
+      useMemo<QueryHookOptions<AccountInputOpts, AccountInputOptsVars>>(
+        () => ({
+          variables: {
+            where: accountsWhere,
+          },
+          onCompleted: (data) => {
+            const checkingAccountBranchOpts: BranchNode<PaymentMethodInputBranchOpt>[] = [];
+            const cardOpts = new Map<
+              PaymentCardType,
+              AccountCardPayMethodInputOpt[]
+            >();
+
+            // Create checking account branch opts and account card opts.
+            for (const account of data.accounts) {
+              if (!account.active) {
+                continue;
+              }
+              if (account.__typename === "AccountChecking") {
+                checkingAccountBranchOpts.push(
+                  new BranchNode(account, checkBranch)
+                );
+              }
+
+              for (const card of account.cards) {
+                if (card.active) {
+                  const cards = cardOpts.get(card.type) || [];
+                  cards.push(card);
+                  cardOpts.set(card.type, cards);
+                }
+              }
+            }
+
+            setState((state) => ({
+              ...state,
+              checkingAccountBranchOpts,
+              cardOpts,
+            }));
+          },
+        }),
+        [accountsWhere]
+      )
+    );
+
+    const onBranchChange = useCallback<
+      NonNullable<PayMethodTreeSelectProps["onBranchChange"]>
+    >(
+      (...args) => {
+        setInputValue("");
+
+        if (onInputChangeProp) {
+          onInputChangeProp(args[0], "", "reset");
+        }
+
+        setState((state) => ({
+          ...state,
+          branch: args[1],
+        }));
+
+        if (onBranchChangeProp) {
+          onBranchChangeProp(...args);
+        }
+      },
+      [setInputValue, onInputChangeProp, onBranchChangeProp]
+    );
+
+    const onInputChange = useCallback<
+      NonNullable<PayMethodTreeSelectProps["onInputChange"]>
+    >(
+      (...args) => {
+        setInputValue(args[1]);
+
+        if (onInputChangeProp) {
+          onInputChangeProp(...args);
+        }
+      },
+      [setInputValue, onInputChangeProp]
+    );
+
+    const renderOption = useCallback<
+      NonNullable<PayMethodTreeSelectProps["renderOption"]>
+    >(
+      (option) => {
+        if (option instanceof BranchNode) {
+          return (
+            <DefaultOption
+              option={option}
+              curBranch={state.branch}
+              getOptionLabel={getOptionLabel}
+            />
+          );
+        } else {
+          return (
+            <DefaultOption
+              option={option}
+              curBranch={state.branch}
+              getOptionLabel={getOptionLabelWithPrefixes}
+            />
+          );
+        }
+      },
+      [state.branch]
+    );
+
+    const renderInput = useCallback<
+      NonNullable<PayMethodTreeSelectProps["renderInput"]>
+    >(
+      (params) =>
+        renderInputProp(
+          (() => {
+            const inputProps = {
+              name: "paymentMethod",
+              ...(entryTypeIsUndefined
+                ? {
+                    helperText: "Category Required",
+                  }
+                : {}),
+              ...params,
+            } as typeof params;
+
+            const error = queryResult.error
+              ? {
+                  error: true,
+                  helperText: (queryResult.error as ApolloError).message,
+                }
+              : {};
+
+            const curBranch = state.branch?.valueOf();
+
+            if (typeof curBranch === "string") {
+              switch (curBranch) {
+                case PaymentMethodType.Check:
+                  if (entryType === EntryType.Credit) {
+                    return {
+                      ...inputProps,
+                      placeholder: "####",
+                      InputProps: mergeInputStartAdornment(
+                        "append",
+                        "CK-",
+                        inputProps.InputProps || {}
+                      ),
+                      ...error,
+                    };
+                  }
+                  break;
+                case PaymentCardType.AmericanExpress:
+                case PaymentCardType.Discover:
+                case PaymentCardType.MasterCard:
+                case PaymentCardType.Visa:
+                  return {
+                    ...inputProps,
+                    placeholder:
+                      entryType === EntryType.Credit && !isRefund
+                        ? "Last 4 Digits"
+                        : undefined,
+                    InputProps: mergeInputStartAdornment(
+                      "append",
+                      `${getCardTypeAbbreviation(curBranch)}-`,
+                      inputProps.InputProps || {}
+                    ),
+                    ...error,
+                  };
+              }
+            } else if (curBranch?.__typename === "AccountChecking") {
+              return {
+                ...inputProps,
+                placeholder: "####",
+                InputProps: mergeInputStartAdornment(
+                  "append",
+                  "CK-",
+                  inputProps.InputProps || {}
+                ),
+                ...error,
+              };
+            }
+
+            return inputProps;
+          })()
+        ),
+      [
+        isRefund,
+        entryType,
+        entryTypeIsUndefined,
+        renderInputProp,
+        queryResult.error,
+        state.branch,
+      ]
+    );
+
+    const [options, freeSolo] = useMemo<
+      [options: PayMethodTreeSelectProps["options"], freeSolo: boolean]
+    >(() => {
+      const curBranch = state.branch?.valueOf();
+
+      if (queryResult.loading || entryTypeIsUndefined) {
+        return [[], false];
+      } else if (!curBranch) {
+        return [defaultOptions, false];
+      } else if (typeof curBranch === "string") {
+        switch (curBranch) {
+          case PaymentMethodType.Card:
+            return [paymentCardBranchOpts, false];
+          case PaymentMethodType.Check:
+            if (entryType === EntryType.Credit) {
+              return [[], true];
+            } else {
+              return [state.checkingAccountBranchOpts, false];
+            }
+          case PaymentCardType.AmericanExpress:
+          case PaymentCardType.Discover:
+          case PaymentCardType.MasterCard:
+          case PaymentCardType.Visa:
+            if (entryType === EntryType.Credit && !isRefund) {
+              return [[], true];
+            } else {
+              return [state.cardOpts.get(curBranch) || [], false];
+            }
+        }
+      } /* if(curBranch.__typename === "AccountChecking") */ else {
+        return [[], true];
+      }
+    }, [
+      isRefund,
+      entryTypeIsUndefined,
+      entryType,
+      queryResult.loading,
+      state.checkingAccountBranchOpts,
+      state.cardOpts,
+      state.branch,
+    ]);
+
+    if (queryResult.loading) {
+      return <LoadingDefaultBlank {...rest} />;
+    }
+
+    return (
+      <TreeSelect<
+        PayMethodInputOpt,
+        PaymentMethodInputBranchOpt,
+        Multiple,
+        DisableClearable,
+        true | false
+      >
+        getOptionLabel={getOptionLabel}
+        getOptionSelected={getOptionSelected}
+        {...rest}
+        disabled={disabled || entryTypeIsUndefined}
+        autoSelect={!!autoSelect || freeSolo}
+        ref={ref}
+        options={options}
+        onBranchChange={onBranchChange}
+        branch={state.branch}
+        renderOption={renderOption}
+        renderInput={renderInput}
+        freeSolo={freeSolo}
+        onInputChange={onInputChange}
+        inputValue={inputValue}
+      />
+    );
+  }
+);
+
 export type PaymentMethodInputProps<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined
 > = {
-  accounts: AccountsWhere;
-  iniValue?: PayMethodIniValue;
-  entryType: EntryType | null;
-  isRefund: boolean;
-  error?: string | Error;
-} & MarkRequired<
-  Pick<
-    PayMethodTreeSelectProps<Multiple, DisableClearable>,
-    | "renderInput"
-    | "disabled"
-    | "onChange"
-    | "value"
-    | "onBlur"
-    | "fullWidth"
-    | "autoSelect"
-  >,
-  "onChange" | "value"
+  defaultValue?: PayMethodIniValue;
+  control?: Control;
+  namePrefix?: string;
+  rules?: UseControllerProps["rules"];
+} & Omit<
+  PaymentMethodInputBaseProps<Multiple, DisableClearable>,
+  "onChange" | "value" | "name"
 >;
 
-export const PaymentMethodInput = <
+export const PAYMENT_METHOD_NAME = "paymentMethod";
+export const paymentMethodName = (namePrefix?: string): string =>
+  namePrefix ? `${namePrefix}.${PAYMENT_METHOD_NAME}` : PAYMENT_METHOD_NAME;
+
+const PaymentMethodInputControlled = forwardRef(
+  function PaymentMethodInputControlled<
+    Multiple extends boolean | undefined = undefined,
+    DisableClearable extends boolean | undefined = undefined
+  >(
+    props: Omit<
+      PaymentMethodInputProps<Multiple, DisableClearable>,
+      "defaultValue"
+    > & {
+      defaultValue: TreeSelectValue<
+        PayMethodInputOpt,
+        PaymentMethodInputBranchOpt,
+        Multiple,
+        false,
+        false | true
+      >;
+    },
+    ref: Ref<unknown>
+  ): JSX.Element {
+    const {
+      control,
+      namePrefix: namePrefixProp,
+      defaultValue,
+      renderInput: renderInputProp = defaultInput,
+      disabled,
+      onBlur: onBlurProp,
+      rules,
+      ...rest
+    } = props;
+
+    const {
+      field: {
+        onBlur: onBlurControlled,
+        name,
+        onChange: onChangeControlled,
+        ref: inputRef,
+        ...field
+      },
+      fieldState: { isTouched, error },
+      formState: { isSubmitting, isValidating },
+    } = useController({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      name: paymentMethodName(namePrefixProp) as any,
+      control,
+      defaultValue,
+      rules,
+      shouldUnregister: true,
+    });
+
+    const handleBlur = useCallback<
+      NonNullable<PaymentMethodInputBaseProps["onBlur"]>
+    >(
+      (...args) => {
+        onBlurControlled();
+        if (onBlurProp) {
+          onBlurProp(...args);
+        }
+      },
+      [onBlurControlled, onBlurProp]
+    );
+
+    const renderInput = useCallback<
+      NonNullable<PaymentMethodInputBaseProps["renderInput"]>
+    >(
+      (params) =>
+        renderInputProp({
+          ...params,
+          inputRef,
+          name,
+          ...(isTouched && error
+            ? {
+                error: true,
+                helperText: error?.message || "Invalid",
+              }
+            : {}),
+        }),
+      [renderInputProp, inputRef, name, isTouched, error]
+    );
+
+    const handleChange = useCallback<
+      NonNullable<
+        PaymentMethodInputBaseProps<Multiple, DisableClearable>["onChange"]
+      >
+    >(
+      (_, value) => {
+        onChangeControlled(value);
+      },
+      [onChangeControlled]
+    );
+
+    return (
+      <PaymentMethodInputBase
+        {...rest}
+        {...field}
+        disabled={isValidating || isSubmitting || disabled}
+        ref={ref}
+        onChange={handleChange}
+        renderInput={renderInput}
+        onBlur={handleBlur}
+      />
+    );
+  }
+);
+
+export const PaymentMethodInput = forwardRef(function PaymentMethodInput<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined
 >(
-  props: PaymentMethodInputProps<Multiple, DisableClearable>
-): JSX.Element => {
+  props: PaymentMethodInputProps<Multiple, DisableClearable>,
+  ref: Ref<unknown>
+): JSX.Element {
   const {
-    renderInput: renderInputProp,
-    disabled: disabledProp,
-    onChange: onChangeProp,
-    value: valueProp,
-    entryType,
-    isRefund,
-    error: errorProp,
-    autoSelect,
+    renderInput: renderInputProp = defaultInput,
+    defaultValue: defaultValueProp,
     ...rest
   } = props;
 
-  const entryTypeIsUndefined = (entryType ?? NULLISH) === NULLISH;
-
-  interface State {
-    iniValue?:
-      | ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>
-      | FreeSoloNode<PaymentMethodInputBranchOpt>;
-    inputValue: string;
-    useIniValue: boolean;
-    iniValueProp?: PayMethodIniValue;
-    accountsWhere: AccountsWhere;
-    branch: NonNullable<PayMethodTreeSelectProps["branch"]> | null;
-    checkingAccountBranchOpts: BranchNode<PaymentMethodInputBranchOpt>[];
-    cardOpts: Map<PaymentCardType, AccountCardPayMethodInputOpt[]>;
-  }
-
-  const [state, setState] = useState<State>(() => {
-    const state = {
-      branch: null,
-      accountsWhere: props.accounts,
-      inputValue: "",
-      useIniValue: !!props.iniValue,
-      iniValueProp: props.iniValue,
-      checkingAccountBranchOpts: [],
-      cardOpts: new Map<PaymentCardType, AccountCardPayMethodInputOpt[]>(),
-    } as State;
-
-    if (props.iniValue) {
-      switch (props.iniValue.__typename) {
-        case "PaymentMethodCard":
-          if (props.iniValue.card.__typename === "AccountCard") {
-            state.accountsWhere = {
-              or: [
-                props.accounts,
-                {
-                  cards: {
-                    id: {
-                      eq: props.iniValue.card.id,
-                    },
-                  },
-                },
-              ],
-            };
-          }
-          break;
-        case "PaymentMethodCheck":
-          if (props.iniValue.check.__typename === "AccountCheck") {
-            state.accountsWhere = {
-              or: [
-                props.accounts,
-                {
-                  id: {
-                    eq: props.iniValue.check.account.id,
-                  },
-                },
-              ],
-            };
-          }
-          break;
-        case "PaymentMethodCash":
-        case "PaymentMethodCombination":
-        case "PaymentMethodOnline":
-        case "PaymentMethodUnknown":
-          break;
-      }
-    }
-
-    return state;
-  });
-
-  const value = useMemo<
-    PayMethodTreeSelectProps<Multiple, DisableClearable>["value"]
-  >(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (state.useIniValue ? state.iniValue : valueProp) ?? (null as any);
-  }, [state.iniValue, state.useIniValue, valueProp]);
-
-  const queryResult = useQuery<AccountInputOpts, AccountInputOptsVars>(
-    PAY_METHOD_INPUT_OPTS,
-    {
-      variables: {
-        where: state.accountsWhere,
-      },
-      onCompleted: useCallback<
-        NonNullable<
-          QueryHookOptions<
-            AccountInputOpts,
-            AccountInputOptsVars
-          >["onCompleted"]
-        >
-      >(
-        (data) => {
-          const checkingAccountBranchOpts: BranchNode<PaymentMethodInputBranchOpt>[] = [];
-          const cardOpts = new Map<
-            PaymentCardType,
-            AccountCardPayMethodInputOpt[]
-          >();
-
-          // Create checking account branch opts and account card opts.
-          for (const account of data.accounts) {
-            if (!account.active) {
-              continue;
-            }
-            if (account.__typename === "AccountChecking") {
-              checkingAccountBranchOpts.push(
-                new BranchNode(account, checkBranch)
-              );
-            }
-
-            for (const card of account.cards) {
-              if (card.active) {
-                const cards = cardOpts.get(card.type) || [];
-                cards.push(card);
-                cardOpts.set(card.type, cards);
-              }
-            }
-          }
-
-          if (state.useIniValue && state.iniValueProp && !state.iniValue) {
-            let iniValue: State["iniValue"];
-
-            switch (state.iniValueProp.__typename) {
-              case "PaymentMethodCash":
-                iniValue = new ValueNode(PaymentMethodType.Cash);
-                break;
-              case "PaymentMethodCombination":
-                iniValue = new ValueNode(PaymentMethodType.Combination);
-                break;
-              case "PaymentMethodOnline":
-                iniValue = new ValueNode(PaymentMethodType.Online);
-                break;
-              case "PaymentMethodUnknown":
-                iniValue = new ValueNode(PaymentMethodType.Unknown);
-                break;
-              case "PaymentMethodCard":
-                {
-                  const iniCard = state.iniValueProp.card;
-
-                  if (iniCard.__typename === "AccountCard") {
-                    (() => {
-                      for (const account of data.accounts) {
-                        for (const card of account.cards) {
-                          if (card.id === iniCard.id) {
-                            iniValue = new ValueNode(card, [
-                              PaymentMethodType.Card,
-                              card.type,
-                            ]);
-                            return;
-                          }
-                        }
-                      }
-                    })();
-                  } else {
-                    iniValue = new FreeSoloNode(iniCard.trailingDigits, [
-                      PaymentMethodType.Card,
-                      iniCard.type,
-                    ]);
-                  }
-                }
-                break;
-              case "PaymentMethodCheck":
-                {
-                  const branch: PaymentMethodInputBranchOpt[] = [
-                    PaymentMethodType.Check,
-                  ];
-
-                  const iniCheck = state.iniValueProp.check;
-
-                  if (iniCheck.__typename === "AccountCheck") {
-                    for (const account of data.accounts) {
-                      if (
-                        account.__typename === "AccountChecking" &&
-                        account.id === iniCheck.account.id
-                      ) {
-                        branch.push(account);
-                        break;
-                      }
-                    }
-                    iniValue = new FreeSoloNode(iniCheck.checkNumber, branch);
-                  }
-                }
-                break;
-            }
-
-            if (iniValue) {
-              setState((state) => ({
-                ...state,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                branch: (iniValue as any).parent,
-                iniValue,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                inputValue: getOptionLabel(iniValue as any),
-                checkingAccountBranchOpts,
-                cardOpts,
-              }));
-              return;
-            }
-          }
-
-          setState((state) => ({
-            ...state,
-            checkingAccountBranchOpts,
-            cardOpts,
-          }));
-        },
-        [state.iniValue, state.useIniValue, state.iniValueProp]
-      ),
-    }
-  );
-
-  const onBranchChange = useCallback<
-    NonNullable<PayMethodTreeSelectProps["onBranchChange"]>
-  >((_, branch) => {
-    setState((state) => ({
-      ...state,
-      inputValue: "",
-      branch,
-    }));
-  }, []);
-
-  const onInputChange = useCallback<
-    NonNullable<PayMethodTreeSelectProps["onInputChange"]>
-  >((...[, inputValue]) => {
-    setState((state) => ({
-      ...state,
-      inputValue,
-    }));
-  }, []);
-
-  const renderOption = useCallback<
-    NonNullable<PayMethodTreeSelectProps["renderOption"]>
+  const { loading, error, data } = useQuery<
+    AccountInputOpts,
+    AccountInputOptsVars
   >(
-    (option) => {
-      if (option instanceof BranchNode) {
-        return (
-          <DefaultOption
-            option={option}
-            curBranch={state.branch}
-            getOptionLabel={getOptionLabel}
-          />
-        );
-      } else {
-        return (
-          <DefaultOption
-            option={option}
-            curBranch={state.branch}
-            getOptionLabel={getOptionLabelWithPrefixes}
-          />
-        );
+    PAY_METHOD_INPUT_OPTS,
+    useMemo<QueryHookOptions<AccountInputOpts, AccountInputOptsVars>>(() => {
+      if (
+        defaultValueProp?.__typename === "PaymentMethodCard" &&
+        defaultValueProp.card.__typename === "AccountCard"
+      ) {
+        return {
+          variables: {
+            where: {
+              cards: {
+                id: {
+                  eq: defaultValueProp.card.id,
+                },
+              },
+            },
+          },
+        };
+      } else if (
+        defaultValueProp?.__typename === "PaymentMethodCheck" &&
+        defaultValueProp.check.__typename === "AccountCheck"
+      ) {
+        return {
+          variables: {
+            where: {
+              id: {
+                eq: defaultValueProp.check.account.id,
+              },
+            },
+          },
+        };
       }
-    },
-    [state.branch]
+
+      return {
+        skip: true,
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+      defaultValueProp?.__typename,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps,
+      (defaultValueProp as any)?.card?.__typename,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps,
+      (defaultValueProp as any)?.card?.id,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps,
+      (defaultValueProp as any)?.check?.__typename,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps,
+      (defaultValueProp as any)?.check?.account?.id,
+    ])
   );
 
   const renderInput = useCallback<
     NonNullable<PayMethodTreeSelectProps["renderInput"]>
   >(
     (params) =>
-      (renderInputProp || defaultInput)(
-        (() => {
-          if (entryTypeIsUndefined) {
-            return {
-              ...params,
-              helperText: "Category Required",
-              name: "paymentMethod",
-            };
-          } else if (queryResult.loading && state.useIniValue) {
-            return {
-              ...params,
-              InputProps: mergeInputEndAdornment(
-                "append",
-                <CircularProgress size={20} color="inherit" />,
-                params.InputProps || {}
-              ),
-              name: "paymentMethod",
-            };
-          }
-
-          const errorMsg =
-            typeof errorProp === "string"
-              ? errorProp.trim()
-              : errorProp?.message || "";
-
-          const errorObj =
-            queryResult.error || errorMsg
-              ? {
-                  error: true,
-                  helperText: queryResult.error?.message || errorMsg,
-                }
-              : {};
-
-          const curBranch = state.branch?.valueOf();
-
-          if (typeof curBranch === "string") {
-            switch (curBranch) {
-              case PaymentMethodType.Check:
-                if (entryType === EntryType.Credit) {
-                  return {
-                    ...params,
-                    placeholder: "####",
-                    InputProps: mergeInputStartAdornment(
-                      "append",
-                      "CK-",
-                      params.InputProps || {}
-                    ),
-                    name: "paymentMethod",
-                    ...errorObj,
-                  };
-                }
-                break;
-              case PaymentCardType.AmericanExpress:
-              case PaymentCardType.Discover:
-              case PaymentCardType.MasterCard:
-              case PaymentCardType.Visa:
-                return {
-                  ...params,
-                  placeholder:
-                    entryType === EntryType.Credit && !isRefund
-                      ? "Last 4 Digits"
-                      : undefined,
-                  InputProps: mergeInputStartAdornment(
-                    "append",
-                    `${getCardTypeAbbreviation(curBranch)}-`,
-                    params.InputProps || {}
-                  ),
-                  name: "paymentMethod",
-                  ...errorObj,
-                };
+      renderInputProp({
+        ...params,
+        ...(error
+          ? {
+              error: true,
+              helperText: error.message,
             }
-          } else if (curBranch?.__typename === "AccountChecking") {
-            return {
-              ...params,
-              placeholder: "####",
-              InputProps: mergeInputStartAdornment(
-                "append",
-                "CK-",
-                params.InputProps || {}
-              ),
-              name: "paymentMethod",
-              ...errorObj,
-            };
-          }
-          return { ...params, name: "paymentMethod", ...errorObj };
-        })()
-      ),
-    [
-      isRefund,
-      entryType,
-      entryTypeIsUndefined,
-      renderInputProp,
-      state.useIniValue,
-      queryResult.error,
-      queryResult.loading,
-      state.branch,
-      errorProp,
-    ]
+          : {}),
+      }),
+    [renderInputProp, error]
   );
 
-  const [options, freeSolo] = useMemo<
-    [options: PayMethodTreeSelectProps["options"], freeSolo: boolean]
-  >(() => {
-    const curBranch = state.branch?.valueOf();
+  const defaultValue = useMemo(() => {
+    switch (defaultValueProp?.__typename) {
+      case "PaymentMethodCash":
+        return new ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>(
+          PaymentMethodType.Cash
+        );
+      case "PaymentMethodCombination":
+        return new ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>(
+          PaymentMethodType.Combination
+        );
+      case "PaymentMethodOnline":
+        return new ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>(
+          PaymentMethodType.Online
+        );
+      case "PaymentMethodUnknown":
+        return new ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>(
+          PaymentMethodType.Unknown
+        );
+      case "PaymentMethodCard":
+        {
+          const iniCard = defaultValueProp.card;
 
-    if ((queryResult.loading && state.useIniValue) || entryTypeIsUndefined) {
-      return [[], false];
-    } else if (!curBranch) {
-      return [defaultOptions, false];
-    } else if (typeof curBranch === "string") {
-      switch (curBranch) {
-        case PaymentMethodType.Card:
-          return [paymentCardBranchOpts, false];
-        case PaymentMethodType.Check:
-          if (entryType === EntryType.Credit) {
-            return [[], true];
+          if (iniCard.__typename === "AccountCard") {
+            for (const account of data?.accounts || []) {
+              for (const card of account.cards) {
+                if (card.id === iniCard.id) {
+                  return new ValueNode<
+                    PayMethodInputOpt,
+                    PaymentMethodInputBranchOpt
+                  >(card, new BranchNode(card.type, cardBranch));
+                }
+              }
+            }
           } else {
-            return [state.checkingAccountBranchOpts, false];
+            return new FreeSoloNode<PaymentMethodInputBranchOpt>(
+              iniCard.trailingDigits,
+              new BranchNode(iniCard.type, cardBranch)
+            );
           }
-        case PaymentCardType.AmericanExpress:
-        case PaymentCardType.Discover:
-        case PaymentCardType.MasterCard:
-        case PaymentCardType.Visa:
-          if (entryType === EntryType.Credit && !isRefund) {
-            return [[], true];
-          } else {
-            return [state.cardOpts.get(curBranch) || [], false];
+        }
+        break;
+      case "PaymentMethodCheck":
+        {
+          const iniCheck = defaultValueProp.check;
+
+          if (iniCheck.__typename === "AccountCheck") {
+            for (const account of data?.accounts || []) {
+              if (
+                account.__typename === "AccountChecking" &&
+                account.id === iniCheck.account.id
+              ) {
+                return new FreeSoloNode<PaymentMethodInputBranchOpt>(
+                  iniCheck.checkNumber,
+                  new BranchNode(account, checkBranch)
+                );
+              }
+            }
           }
-      }
-    } /* if(curBranch.__typename === "AccountChecking") */ else {
-      return [[], true];
+        }
+        break;
     }
-  }, [
-    isRefund,
-    entryTypeIsUndefined,
-    entryType,
-    queryResult.loading,
-    state.useIniValue,
-    state.checkingAccountBranchOpts,
-    state.cardOpts,
-    state.branch,
-  ]);
 
-  const onChange = useCallback<
-    NonNullable<
-      PayMethodTreeSelectProps<Multiple, DisableClearable>["onChange"]
-    >
-  >(
-    (...args) => {
-      onChangeProp(...args);
-      if (state.useIniValue) {
-        setState((state) => ({
-          ...state,
-          useIniValue: false,
-        }));
-      }
-    },
-    [onChangeProp, state.useIniValue]
-  );
+    return props.multiple ? [] : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    data?.accounts,
+    defaultValueProp?.__typename,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps
+    (defaultValueProp as any)?.card,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps
+    (defaultValueProp as any)?.check,
+    props.multiple,
+  ]) as TreeSelectValue<
+    PayMethodInputOpt,
+    PaymentMethodInputBranchOpt,
+    Multiple,
+    false,
+    true | false
+  >;
+
+  if (loading) {
+    return <LoadingDefaultBlank {...rest} />;
+  }
 
   return (
-    <TreeSelect<
-      PayMethodInputOpt,
-      PaymentMethodInputBranchOpt,
-      Multiple,
-      DisableClearable,
-      true | false
-    >
+    <PaymentMethodInputControlled<Multiple, DisableClearable>
       {...rest}
-      onBranchChange={onBranchChange}
-      branch={state.branch}
-      getOptionLabel={getOptionLabel}
-      getOptionSelected={getOptionSelected}
-      disabled={disabledProp || queryResult.loading || entryTypeIsUndefined}
-      loading={queryResult.loading}
-      onInputChange={onInputChange}
-      inputValue={state.inputValue}
+      ref={ref}
       renderInput={renderInput}
-      renderOption={renderOption}
-      options={options}
-      freeSolo={freeSolo}
-      autoSelect={!!autoSelect || freeSolo}
-      onChange={onChange}
-      value={value}
+      defaultValue={defaultValue}
     />
   );
-};
+});

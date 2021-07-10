@@ -1,9 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  Table,
-  TableFilterRow,
-  TableEditRow,
-} from "@devexpress/dx-react-grid-material-ui";
+import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
 import { capitalCase } from "capital-case";
 import TreeSelect, {
@@ -11,20 +7,12 @@ import TreeSelect, {
   ValueNode,
   TreeSelectProps,
   defaultInput,
-  FreeSoloNode,
 } from "mui-tree-select";
 
-import {
-  CategoriesWhere,
-  EntryType,
-  GridEntryFragment,
-} from "../../../../apollo/graphTypes";
+import { EntryType, GridEntryFragment } from "../../../../apollo/graphTypes";
 import { OnFilter } from "../plugins";
 import { Filter, LogicFilter } from "../plugins";
 import {
-  CategoryInput,
-  CategoryInputProps,
-  CategoryTreeSelectProps,
   CategoryInputOpt,
   getOptionLabel,
   getOptionSelected,
@@ -33,9 +21,7 @@ import {
   inlineAutoCompleteProps,
   inlineInputProps,
   inlinePadding,
-  RowChangesProp,
 } from "./shared";
-import { GridEntry } from "../Grid";
 
 export const CategoryCell = (props: Table.DataCellProps): JSX.Element => {
   const { value, ...rest } = props;
@@ -190,6 +176,8 @@ export const CategoryFilter = (props: CategoryFilterProps): JSX.Element => {
     }
   }, [creditOpts, debitOpts, state.branch]);
 
+  const { onFilter } = props;
+
   const onChange = useCallback<NonNullable<CategoryFilterSelect["onChange"]>>(
     (_, value) => {
       if (value.length) {
@@ -205,15 +193,15 @@ export const CategoryFilter = (props: CategoryFilterProps): JSX.Element => {
           });
         }
 
-        props.onFilter({
+        onFilter({
           columnName,
           filters: [logicFilter],
         });
       } else {
-        props.onFilter(null);
+        onFilter(null);
       }
     },
-    [columnName, props.onFilter]
+    [columnName, onFilter]
   );
 
   return (
@@ -288,57 +276,6 @@ export const categoryFilterColumnExtension = (
   },
 });
 
-type CategoryEditorSelect = CategoryTreeSelectProps<false, false, false>;
-
 export type CategoryRowChanges = {
   category: ValueNode<CategoryInputOpt, CategoryInputOpt> | null;
-};
-
-export type CategoryEditorProps = TableEditRow.CellProps & {
-  options?: Pick<CategoryInputProps, "renderInput" | "disabled">;
-} & RowChangesProp<CategoryRowChanges>;
-
-export const CategoryEditor = (props: CategoryEditorProps): JSX.Element => {
-  const {
-    options = {},
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    rowChanges,
-    ...rest
-  } = props;
-
-  const { onValueChange, value: valueProp } = props;
-
-  const value = (valueProp instanceof ValueNode ||
-  valueProp instanceof FreeSoloNode
-    ? valueProp
-    : null) as CategoryRowChanges["category"];
-
-  const [iniValue] = useState<CategoriesWhere | undefined>(() => {
-    if (valueProp) {
-      return {
-        id: {
-          eq: (valueProp as GridEntry["category"]).id,
-        },
-      };
-    }
-  });
-
-  const onChange = useCallback<NonNullable<CategoryEditorSelect["onChange"]>>(
-    (...[, value]) => {
-      onValueChange(value);
-    },
-    [onValueChange]
-  );
-
-  return (
-    <TableEditRow.Cell {...rest}>
-      <CategoryInput<false, false, false>
-        {...options}
-        iniValue={iniValue}
-        value={value}
-        disabled={!props.editingEnabled || !!options?.disabled}
-        onChange={onChange}
-      />
-    </TableEditRow.Cell>
-  );
 };

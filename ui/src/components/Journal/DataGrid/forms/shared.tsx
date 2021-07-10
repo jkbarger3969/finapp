@@ -1,5 +1,11 @@
-import { GridProps } from "@material-ui/core";
-import React, { useCallback } from "react";
+import { GridProps, TextField, TextFieldProps } from "@material-ui/core";
+import React, { useCallback, forwardRef, Ref, PropsWithChildren } from "react";
+import {
+  useController,
+  UseControllerProps,
+  FieldValues,
+  FieldPath,
+} from "react-hook-form";
 import { OmitProperties } from "ts-essentials";
 
 export const preventDefault = (
@@ -64,3 +70,92 @@ export const inputGridContainerProps: GridProps = {
   sm: 6,
   xs: 12,
 } as const;
+
+export type TextFieldControlledProps<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+> = UseControllerProps<TFieldValues, TName> &
+  Omit<TextFieldProps, keyof UseControllerProps | "value" | "inputRef"> & {
+    setValueAs?: (
+      ...args: Parameters<NonNullable<TextFieldProps["onChange"]>>
+    ) => // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any;
+  };
+
+export const TextFieldControlled = forwardRef(function TextFieldControlled(
+  props: PropsWithChildren<TextFieldControlledProps>,
+  ref: Ref<HTMLDivElement>
+) {
+  const {
+    name,
+    control,
+    defaultValue,
+    rules,
+    shouldUnregister,
+    onBlur: onBlurProp,
+    onChange: onChangeProp,
+    disabled,
+    children,
+    setValueAs,
+    ...rest
+  } = props;
+
+  const {
+    field: {
+      onBlur: onBlurControlled,
+      onChange: onChangeControlled,
+      ref: inputRef,
+      ...field
+    },
+    fieldState: { isTouched, error },
+    formState: { isSubmitting },
+  } = useController({
+    name,
+    control,
+    defaultValue,
+    rules,
+    shouldUnregister,
+  });
+
+  return (
+    <TextField
+      {...rest}
+      {...field}
+      ref={ref}
+      disabled={disabled || isSubmitting}
+      innerRef={inputRef}
+      {...(isTouched && error
+        ? {
+            error: true,
+            helperText: error.message,
+          }
+        : {})}
+      onBlur={useCallback<NonNullable<TextFieldProps["onBlur"]>>(
+        (...args) => {
+          onBlurControlled();
+
+          if (onBlurProp) {
+            onBlurProp(...args);
+          }
+        },
+        [onBlurControlled, onBlurProp]
+      )}
+      onChange={useCallback<NonNullable<TextFieldProps["onChange"]>>(
+        (...args) => {
+          if (setValueAs) {
+            onChangeControlled(setValueAs(...args));
+          } else {
+            onChangeControlled(...args);
+          }
+
+          if (onChangeProp) {
+            onChangeProp(...args);
+          }
+        },
+        [onChangeControlled, onChangeProp, setValueAs]
+      )}
+    >
+      {children}
+    </TextField>
+  );
+});

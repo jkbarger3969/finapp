@@ -15,8 +15,8 @@ import {
   RangeFilterIcons,
 } from "../filters/rangeFilterUtils";
 import {
-  RationalInput,
-  RationalInputProps,
+  RationalInputBase,
+  RationalInputBaseProps,
 } from "../../../Inputs/RationalInput";
 import { LogicFilter } from "../plugins/FilterColumnsState";
 import { DefaultFilterOperations, Filter, OnFilter } from "../plugins";
@@ -139,7 +139,7 @@ const getOnFilterArgs = (
 
 export type RationalFilterProps = Omit<TableFilterRow.CellProps, "onFilter"> & {
   onFilter: OnFilter;
-  rationalInputProps?: RationalInputProps;
+  rationalInputProps?: RationalInputBaseProps;
 };
 
 export const RationalFilter = (props: RationalFilterProps): JSX.Element => {
@@ -162,7 +162,7 @@ export const RationalFilter = (props: RationalFilterProps): JSX.Element => {
   });
 
   const onChangeRational = useCallback<
-    NonNullable<RationalInputProps["onChange"]>
+    NonNullable<RationalInputBaseProps["onChange"]>
   >(
     (_, total) => {
       if (
@@ -213,7 +213,7 @@ export const RationalFilter = (props: RationalFilterProps): JSX.Element => {
   );
 
   const onChangeBoundRational = useCallback<
-    NonNullable<RationalInputProps["onChange"]>
+    NonNullable<RationalInputBaseProps["onChange"]>
   >(
     (_, boundTotal) => {
       setState((state) => ({
@@ -402,7 +402,7 @@ export const RationalFilter = (props: RationalFilterProps): JSX.Element => {
             toggleButtonComponent={TableFilterRow.ToggleButton}
             value={state.selectorValue}
           />
-          <RationalInput
+          <RationalInputBase
             disabled={!filteringEnabled}
             fullWidth
             onChange={onChangeRational}
@@ -421,7 +421,7 @@ export const RationalFilter = (props: RationalFilterProps): JSX.Element => {
               toggleButtonComponent={TableFilterRow.ToggleButton}
               value={state.rangeSelectorValue || "addRangeBound"}
             />
-            <RationalInput
+            <RationalInputBase
               disabled={
                 !filteringEnabled || !isRangeOp || !state.rangeSelectorValue
               }
@@ -470,7 +470,7 @@ export const rationalFilterColumnExtension = (
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type RationalEditorProps = TableEditRow.CellProps & {
-  rationalInputProps?: Pick<RationalInputProps, "disabled" | "InputProps">;
+  rationalInputProps?: Pick<RationalInputBaseProps, "disabled" | "InputProps">;
 } & RowChangesProp;
 
 export const RationalEditor = (props: RationalEditorProps): JSX.Element => {
@@ -482,14 +482,14 @@ export const RationalEditor = (props: RationalEditorProps): JSX.Element => {
   } = props;
   const { editingEnabled, value, onValueChange } = props;
 
-  const onChange = useCallback<NonNullable<RationalInputProps["onChange"]>>(
+  const onChange = useCallback<NonNullable<RationalInputBaseProps["onChange"]>>(
     (event, rational) => {
       onValueChange(rational);
     },
     [onValueChange]
   );
 
-  const rationalInputProps = useMemo<RationalInputProps>(() => {
+  const rationalInputProps = useMemo<RationalInputBaseProps>(() => {
     return {
       fullWidth: true,
       size: "small",
@@ -502,7 +502,7 @@ export const RationalEditor = (props: RationalEditorProps): JSX.Element => {
 
   return (
     <TableEditRow.Cell {...rest}>
-      <RationalInput {...rationalInputProps} />
+      <RationalInputBase {...rationalInputProps} />
     </TableEditRow.Cell>
   );
 };

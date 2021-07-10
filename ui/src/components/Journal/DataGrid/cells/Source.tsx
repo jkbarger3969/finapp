@@ -114,6 +114,8 @@ const getOptionSelected: NonNullable<
 export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
   const { srcFilterOpts, ...rest } = props;
 
+  const { onFilter } = props;
+
   const columnName = props.column.name;
 
   const [state, setState] = useState<{
@@ -200,15 +202,15 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
           });
         }
 
-        props.onFilter({
+        onFilter({
           columnName,
           filters: [logicFilter],
         });
       } else {
-        props.onFilter(null);
+        onFilter(null);
       }
     },
-    [props.onFilter, columnName]
+    [onFilter, columnName]
   );
 
   const renderInput = useCallback<
@@ -288,81 +290,3 @@ export const sourceFilterColumnExtension = (
     }
   },
 });
-
-// Edit Cell
-export type SourceRowChanges = {
-  source: Exclude<EntityTreeSelectProps["value"], undefined | EntityInputOpt>;
-};
-
-export type SourceEditorProps = TableEditRow.CellProps & {
-  options?: Pick<EntityInputProps, "renderInput" | "disabled">;
-} & RowChangesProp<SourceRowChanges>;
-
-export const SourceEditor = (props: SourceEditorProps): JSX.Element => {
-  const {
-    options = {},
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    rowChanges,
-    ...rest
-  } = props;
-
-  const { onValueChange, value: valueProp } = props;
-
-  const value = (valueProp instanceof ValueNode ||
-  valueProp instanceof FreeSoloNode
-    ? valueProp
-    : null) as SourceRowChanges["source"];
-
-  const [iniValue] = useState<EntitiesWhere | undefined>(() => {
-    if (valueProp) {
-      const { __typename, id } = valueProp as GridEntry["source"];
-      switch (__typename) {
-        case "Business":
-          return {
-            businesses: {
-              id: {
-                eq: id,
-              },
-            },
-          };
-        case "Department":
-          return {
-            departments: {
-              id: {
-                eq: id,
-              },
-            },
-          };
-        case "Person":
-          return {
-            people: {
-              id: {
-                eq: id,
-              },
-            },
-          };
-      }
-    }
-  });
-
-  const onChange = useCallback<NonNullable<EntityTreeSelectProps["onChange"]>>(
-    (...args) => {
-      const [, value] = args;
-
-      onValueChange(value);
-    },
-    [onValueChange]
-  );
-
-  return (
-    <TableEditRow.Cell {...rest}>
-      <EntityInput
-        {...options}
-        iniValue={iniValue}
-        disabled={!props.editingEnabled || !!props.options?.disabled}
-        onChange={onChange}
-        value={value}
-      />
-    </TableEditRow.Cell>
-  );
-};

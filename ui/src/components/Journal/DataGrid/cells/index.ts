@@ -4,9 +4,8 @@ export {
   CategoryCell,
   CategoryFilter,
   categoryFilterColumnExtension,
-  CategoryEditor,
 } from "./Category";
-export type { CategoryFilterProps, CategoryEditorProps } from "./Category";
+export type { CategoryFilterProps } from "./Category";
 export {
   DateCell,
   DateFilter,
@@ -14,21 +13,15 @@ export {
   DateEditor,
 } from "./Date";
 export type { DateCellProps, DateFilterProps, DateEditorProps } from "./Date";
-export {
-  DeptCell,
-  DeptFilter,
-  deptFilterColumnExtension,
-  DeptEditor,
-} from "./Department";
-export type { DeptFilterProps, DeptEditorProps } from "./Department";
+export { DeptCell, DeptFilter, deptFilterColumnExtension } from "./Department";
+export type { DeptFilterProps } from "./Department";
 export {
   PayMethodCell,
   PayMethodFilter,
   payMethodToStr,
   payMethodFilterColumnExtension,
-  PayMethodEditor,
 } from "./PayMethod";
-export type { PayMethodFilterProps, PayMethodEditorProps } from "./PayMethod";
+export type { PayMethodFilterProps } from "./PayMethod";
 export {
   RationalCell,
   RationalFilter,
@@ -39,10 +32,9 @@ export type { RationalFilterProps, RationalEditorProps } from "./Rational";
 export {
   SourceCell,
   SourceFilter,
-  SourceEditor,
   sourceToStr,
   sourceFilterColumnExtension,
 } from "./Source";
-export type { SourceFilterProps, SourceEditorProps } from "./Source";
+export type { SourceFilterProps } from "./Source";
 export { TypeFilter, TypeEditor } from "./Type";
 export type { TypeEditorProps } from "./Type";

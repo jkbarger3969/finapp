@@ -1,17 +1,15 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { forwardRef, useCallback, useMemo, useState, Ref } from "react";
 import TreeSelect, {
   ValueNode,
   BranchNode,
   FreeSoloNode,
   TreeSelectProps,
   defaultInput,
-  mergeInputEndAdornment,
+  TreeSelectValue,
 } from "mui-tree-select";
-import { gql, QueryHookOptions, useQuery } from "@apollo/client";
-import { MarkRequired } from "ts-essentials";
-import CircularProgress from "@material-ui/core/CircularProgress";
-import { useFormContext, FieldError, RegisterOptions } from "react-hook-form";
-import _get from "lodash.get";
+import { gql, useQuery } from "@apollo/client";
+import { MarkOptional, MarkRequired } from "ts-essentials";
+import { Control, UseControllerProps } from "react-hook-form";
 
 import {
   CategoryInputOptsQuery as CategoryOpts,
@@ -21,7 +19,8 @@ import {
   CategoryInputOptFragment,
   CategoriesWhere,
 } from "../../apollo/graphTypes";
-import { LoadingDefaultBlank } from "./shared";
+import { LoadingDefaultBlank, sortBranchesToTop } from "./shared";
+import { useController } from "../../utils/reactHookForm";
 
 export type CategoryInputOpt = Omit<CategoryInputOptFragment, "children"> &
   Partial<Pick<CategoryInputOptFragment, "children">>;
@@ -43,7 +42,7 @@ export const CATEGORY_INPUT_OPTS_FRAGMENTS = gql`
   }
 `;
 
-export const CATEGORY_INPUT_INI_VALUE = gql`
+export const CATEGORY_DEFAULT_VALUE = gql`
   query CategoryInputIniValue($where: CategoriesWhere!) {
     categories(where: $where) {
       ...CategoryInputOpt
@@ -97,62 +96,41 @@ export const getOptionSelected: NonNullable<
   !(value instanceof FreeSoloNode) &&
   option.valueOf().id === value.valueOf().id;
 
-export type CategoryInputProps<
+export type CategoryInputBaseProps<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
-> = {
-  iniValue?: CategoriesWhere;
-  error?: string | Error;
-  namePrefix?: string;
-} & MarkRequired<
-  Pick<
-    CategoryTreeSelectProps<Multiple, DisableClearable, FreeSolo>,
-    | "renderInput"
-    | "disabled"
-    | "onChange"
-    | "value"
-    | "onBlur"
-    | "fullWidth"
-    | "autoSelect"
+> = MarkOptional<
+  MarkRequired<
+    Omit<
+      CategoryTreeSelectProps<Multiple, DisableClearable, FreeSolo>,
+      "branch" | "options" | "defaultValue"
+    >,
+    "onChange" | "value"
   >,
-  "onChange" | "value"
+  "onBranchChange"
 >;
 
-const Category = <
+export const CategoryInputBase = forwardRef(function CategoryInputBase<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 >(
-  props: CategoryTreeSelectProps<Multiple, DisableClearable, FreeSolo> & {
-    name: string;
-    registerOptions?: RegisterOptions;
-  }
-): JSX.Element => {
+  props: CategoryInputBaseProps<Multiple, DisableClearable, FreeSolo>,
+  ref: Ref<unknown>
+): JSX.Element {
   const {
-    name,
-    renderInput: renderInputProp,
-    defaultValue,
-    branch: branchProp = null,
-    registerOptions = {},
+    renderInput: renderInputProp = defaultInput,
+    onBranchChange: onBranchChangeProp,
+    loading,
     ...rest
   } = props;
 
-  const { register, watch, setValue, formState } = useFormContext();
-
-  // Register Category
-  const { onBlur } = register(name, {
-    value: defaultValue ?? null,
-    ...registerOptions,
-  });
-
-  const error = (_get(formState.errors, name) as FieldError)?.message;
-
   const [state, setState] = useState<{
-    branch: NonNullable<CategoryTreeSelectProps["branch"]> | null;
-  }>(() => ({
-    branch: branchProp,
-  }));
+    branch: Exclude<CategoryTreeSelectProps["branch"], undefined>;
+  }>({
+    branch: props.value instanceof ValueNode ? props.value.parent : null,
+  });
 
   const queryResult = useQuery<CategoryOpts, CategoryOptsVars>(
     CATEGORY_INPUT_OPTS,
@@ -184,12 +162,17 @@ const Category = <
   const onBranchChange = useCallback<
     NonNullable<CategoryTreeSelectProps["onBranchChange"]>
   >(
-    (_, branch) =>
+    (...args) => {
       setState((state) => ({
         ...state,
-        branch,
-      })),
-    []
+        branch: args[1],
+      }));
+
+      if (onBranchChangeProp) {
+        onBranchChangeProp(...args);
+      }
+    },
+    [onBranchChangeProp]
   );
 
   const renderInput = useCallback<
@@ -202,13 +185,17 @@ const Category = <
     >
   >(
     (params) =>
-      (renderInputProp || defaultInput)({
+      renderInputProp({
+        name: "category",
         ...params,
-        name,
-        error: !!(queryResult.error || error),
-        helperText: queryResult.error?.message || error || undefined,
+        ...(queryResult.error
+          ? {
+              error: true,
+              helperText: queryResult.error.message,
+            }
+          : {}),
       }),
-    [queryResult.error, error, renderInputProp, name]
+    [queryResult.error, renderInputProp]
   );
 
   const options = useMemo<CategoryTreeSelectProps["options"]>(
@@ -222,29 +209,9 @@ const Category = <
 
           return options;
         }, [] as CategoryTreeSelectProps["options"])
-        .sort((a, b) => {
-          // Put branches at top of options to encourage, more detailed
-          // labeling for users.
-
-          const aIsBranch = a instanceof BranchNode;
-          const bIsBranch = b instanceof BranchNode;
-
-          if (aIsBranch) {
-            return bIsBranch ? 0 : -1;
-          } else if (bIsBranch) {
-            return aIsBranch ? 0 : 1;
-          } else {
-            return 0;
-          }
-        }),
+        .sort(sortBranchesToTop),
     [queryResult.data?.categories, state.branch]
   );
-
-  const onChange = useCallback<
-    NonNullable<
-      CategoryTreeSelectProps<Multiple, DisableClearable, FreeSolo>["onChange"]
-    >
-  >((_, value) => setValue(name, value), [setValue, name]);
 
   return (
     <TreeSelect<
@@ -254,265 +221,211 @@ const Category = <
       DisableClearable,
       FreeSolo
     >
-      {...rest}
-      onBlur={onBlur}
-      loading={queryResult.loading}
       getOptionLabel={getOptionLabel}
       getOptionSelected={getOptionSelected}
+      {...rest}
+      ref={ref}
+      loading={queryResult.loading || !!loading}
       onBranchChange={onBranchChange}
       branch={state.branch}
       renderInput={renderInput}
       options={options}
-      onChange={onChange}
-      value={watch(name) ?? null}
     />
   );
-};
+});
 
-export const CategoryInput = <
+export type CategoryInputProps<
+  Multiple extends boolean | undefined = undefined,
+  DisableClearable extends boolean | undefined = undefined,
+  FreeSolo extends boolean | undefined = undefined
+> = {
+  defaultValue?: CategoriesWhere;
+  control?: Control;
+  namePrefix?: string;
+  rules?: UseControllerProps["rules"];
+} & Omit<
+  CategoryInputBaseProps<Multiple, DisableClearable, FreeSolo>,
+  "onChange" | "value" | "name"
+>;
+
+export const CATEGORY_NAME = "category";
+export const categoryName = (namePrefix?: string): string =>
+  namePrefix ? `${namePrefix}.${CATEGORY_NAME}` : CATEGORY_NAME;
+
+const CategoryInputControlled = forwardRef(function CategoryInputControlled<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 >(
-  props: CategoryInputProps<Multiple, DisableClearable, FreeSolo>
-): JSX.Element => {
-  const {
-    namePrefix,
-    iniValue: iniValueProp,
-    renderInput: renderInputProp,
-    onChange: onChangeProp,
-    value: valueProp,
-    disabled: disabledProp,
-    error: errorProp,
-    ...rest
-  } = props;
-
-  const name = namePrefix ? `${namePrefix}.category` : "category";
-
-  const [state, setState] = useState<{
-    iniValue?: NonNullable<CategoryTreeSelectProps["value"]>;
-    iniValueWhere?: CategoriesWhere;
-    useIniValue: boolean;
-    branch: NonNullable<CategoryTreeSelectProps["branch"]> | null;
-  }>(() => ({
-    useIniValue: !!iniValueProp,
-    iniValueWhere: iniValueProp,
-    branch: null,
-  }));
-
-  const iniValueResult = useQuery<CategoryIniValue, CategoryIniValueVars>(
-    CATEGORY_INPUT_INI_VALUE,
-    {
-      skip: !!state.iniValue || !state.iniValueWhere,
-      variables: {
-        where: state.iniValueWhere as CategoriesWhere,
-      },
-      onCompleted: useCallback<
-        NonNullable<
-          QueryHookOptions<
-            CategoryIniValue,
-            CategoryIniValueVars
-          >["onCompleted"]
-        >
-      >(
-        (data) => {
-          if (state.useIniValue && !state.iniValue) {
-            const value = data.categories[0];
-
-            const iniValue = new ValueNode(
-              value,
-              [...value.ancestors].reverse()
-            );
-
-            setState((state) => ({
-              ...state,
-              branch: iniValue.parent,
-              iniValue,
-            }));
-          }
-        },
-        [state.iniValue, state.useIniValue]
-      ),
-    }
-  );
-
-  const queryResult = useQuery<CategoryOpts, CategoryOptsVars>(
-    CATEGORY_INPUT_OPTS,
-    useMemo(() => {
-      if (iniValueResult.loading) {
-        return { skip: true, variables: { where: {} } };
-      } else if (state.branch) {
-        return {
-          skip: false,
-          variables: {
-            where: {
-              parent: {
-                eq: state.branch.valueOf().id,
-              },
-            },
-          },
-        };
-      } else {
-        return {
-          skip: false,
-          variables: {
-            where: {
-              root: true,
-            },
-          },
-        };
-      }
-    }, [state.branch, iniValueResult.loading])
-  );
-
-  const onBranchChange = useCallback<
-    NonNullable<CategoryTreeSelectProps["onBranchChange"]>
-  >(
-    (_, branch) =>
-      setState((state) => ({
-        ...state,
-        branch,
-      })),
-    []
-  );
-
-  const renderInput = useCallback<
-    NonNullable<
-      CategoryTreeSelectProps<
-        Multiple,
-        DisableClearable,
-        FreeSolo
-      >["renderInput"]
-    >
-  >(
-    (params) => {
-      const errorMsg =
-        typeof errorProp === "string"
-          ? errorProp.trim()
-          : errorProp?.message || "";
-
-      if (iniValueResult.loading) {
-        return (renderInputProp || defaultInput)({
-          ...params,
-          name: "category",
-          InputProps: mergeInputEndAdornment(
-            "append",
-            <CircularProgress size={20} color="inherit" />,
-            params.InputProps || {}
-          ),
-        });
-      } else if (iniValueResult.error || queryResult.error || errorMsg) {
-        return (renderInputProp || defaultInput)({
-          ...params,
-          name: "category",
-          error: true,
-          helperText:
-            iniValueResult.error?.message ||
-            queryResult.error?.message ||
-            errorMsg,
-        });
-      } else {
-        return (renderInputProp || defaultInput)({
-          ...params,
-          name: "category",
-        });
-      }
-    },
-    [
-      renderInputProp,
-      iniValueResult.error,
-      iniValueResult.loading,
-      queryResult.error,
-      errorProp,
-    ]
-  );
-
-  const options = useMemo<CategoryTreeSelectProps["options"]>(
-    () =>
-      (() => {
-        const options: CategoryTreeSelectProps["options"] = [];
-
-        if (iniValueResult.loading) {
-          return options;
-        } else {
-          return (queryResult.data?.categories || []).reduce(
-            (options, category) => {
-              if (category.children.length) {
-                options.push(new BranchNode(category, state.branch));
-              }
-              options.push(category);
-
-              return options;
-            },
-            options
-          );
-        }
-      })().sort((a, b) => {
-        // Put branches at top of options to encourage, more detailed
-        // labeling for users.
-
-        const aIsBranch = a instanceof BranchNode;
-        const bIsBranch = b instanceof BranchNode;
-
-        if (aIsBranch) {
-          return bIsBranch ? 0 : -1;
-        } else if (bIsBranch) {
-          return aIsBranch ? 0 : 1;
-        } else {
-          return 0;
-        }
-      }),
-    [queryResult.data?.categories, iniValueResult.loading, state.branch]
-  );
-
-  const onChange = useCallback<
-    NonNullable<
-      CategoryTreeSelectProps<Multiple, DisableClearable, FreeSolo>["onChange"]
-    >
-  >(
-    (...args) => {
-      onChangeProp(...args);
-      if (state.useIniValue) {
-        setState((state) => ({
-          ...state,
-          useIniValue: false,
-        }));
-      }
-    },
-    [onChangeProp, state.useIniValue]
-  );
-
-  const value = useMemo<
-    CategoryTreeSelectProps<Multiple, DisableClearable, FreeSolo>["value"]
-  >(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (state.useIniValue ? state.iniValue : valueProp) ?? (null as any);
-  }, [state.iniValue, state.useIniValue, valueProp]);
-
-  if (iniValueResult.loading) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return <LoadingDefaultBlank name={name} {...(props as any)} />;
-  }
-
-  return (
-    <TreeSelect<
+  props: Omit<
+    CategoryInputProps<Multiple, DisableClearable, FreeSolo>,
+    "defaultValue"
+  > & {
+    defaultValue: TreeSelectValue<
       CategoryInputOpt,
       CategoryInputOpt,
       Multiple,
-      DisableClearable,
-      FreeSolo
+      false,
+      false
+    >;
+  },
+  ref: Ref<unknown>
+): JSX.Element {
+  const {
+    control,
+    namePrefix: namePrefixProp,
+    defaultValue,
+    renderInput: renderInputProp = defaultInput,
+    disabled,
+    onBlur: onBlurProp,
+    rules,
+    ...rest
+  } = props;
+
+  const {
+    field: {
+      onBlur: onBlurControlled,
+      name,
+      onChange: onChangeControlled,
+      ref: inputRef,
+      ...field
+    },
+    fieldState: { isTouched, error },
+    formState: { isSubmitting },
+  } = useController({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    name: categoryName(namePrefixProp) as any,
+    control,
+    defaultValue,
+    rules,
+    shouldUnregister: true,
+  });
+
+  const handleBlur = useCallback<NonNullable<CategoryInputBaseProps["onBlur"]>>(
+    (...args) => {
+      onBlurControlled();
+      if (onBlurProp) {
+        onBlurProp(...args);
+      }
+    },
+    [onBlurControlled, onBlurProp]
+  );
+
+  const renderInput = useCallback<
+    NonNullable<CategoryInputBaseProps["renderInput"]>
+  >(
+    (params) =>
+      renderInputProp({
+        ...params,
+        inputRef,
+        name,
+        ...(isTouched && error
+          ? {
+              error: true,
+              helperText: error?.message || "Invalid",
+            }
+          : {}),
+      }),
+    [renderInputProp, inputRef, name, isTouched, error]
+  );
+
+  const handleChange = useCallback<
+    NonNullable<
+      CategoryInputBaseProps<Multiple, DisableClearable, FreeSolo>["onChange"]
     >
+  >(
+    (_, value) => {
+      onChangeControlled(value);
+    },
+    [onChangeControlled]
+  );
+
+  return (
+    <CategoryInputBase
       {...rest}
-      disabled={disabledProp || iniValueResult.loading}
-      loading={queryResult.loading || iniValueResult.loading}
-      getOptionLabel={getOptionLabel}
-      getOptionSelected={getOptionSelected}
-      onBranchChange={onBranchChange}
-      branch={state.branch}
+      {...field}
+      disabled={isSubmitting || disabled}
+      ref={ref}
+      onChange={handleChange}
       renderInput={renderInput}
-      options={options}
-      onChange={onChange}
-      value={value}
+      onBlur={handleBlur}
     />
   );
-};
+});
+
+export const CategoryInput = forwardRef(function CategoryInput<
+  Multiple extends boolean | undefined = undefined,
+  DisableClearable extends boolean | undefined = undefined,
+  FreeSolo extends boolean | undefined = undefined
+>(
+  props: CategoryInputProps<Multiple, DisableClearable, FreeSolo>,
+  ref: Ref<unknown>
+): JSX.Element {
+  const {
+    defaultValue: defaultValueProp,
+    renderInput: renderInputProp = defaultInput,
+    ...rest
+  } = props;
+
+  const { loading, error, data } = useQuery<
+    CategoryIniValue,
+    CategoryIniValueVars
+  >(CATEGORY_DEFAULT_VALUE, {
+    skip: !defaultValueProp,
+    variables: useMemo(
+      () => ({
+        where: defaultValueProp as CategoriesWhere,
+      }),
+      [defaultValueProp]
+    ),
+  });
+
+  const renderInput = useCallback<
+    NonNullable<
+      CategoryInputProps<Multiple, DisableClearable, FreeSolo>["renderInput"]
+    >
+  >(
+    (params) =>
+      renderInputProp({
+        ...params,
+        ...(error
+          ? {
+              error: true,
+              helperText: error.message,
+            }
+          : {}),
+      }),
+    [error, renderInputProp]
+  );
+
+  const defaultValues = useMemo(
+    () =>
+      (data?.categories || []).map(
+        (value) => new ValueNode(value, [...value.ancestors].reverse())
+      ),
+    [data?.categories]
+  );
+
+  if (loading) {
+    return <LoadingDefaultBlank {...rest} />;
+  }
+
+  return (
+    <CategoryInputControlled<Multiple, DisableClearable, FreeSolo>
+      {...rest}
+      ref={ref}
+      renderInput={renderInput}
+      defaultValue={
+        ((props.multiple
+          ? defaultValues
+          : defaultValues[0] ?? null) as unknown) as TreeSelectValue<
+          CategoryInputOpt,
+          CategoryInputOpt,
+          Multiple,
+          false,
+          false
+        >
+      }
+    />
+  );
+});

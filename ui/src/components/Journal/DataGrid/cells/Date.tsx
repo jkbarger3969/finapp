@@ -189,6 +189,8 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
     selectorValue: "equal",
   });
 
+  const { onFilter } = props;
+
   const onChangeDate = useCallback<KeyboardDatePickerProps["onChange"]>(
     (date) => {
       if (
@@ -218,7 +220,7 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
         }));
       }
 
-      props.onFilter(
+      onFilter(
         ...getOnFilterArgs(
           columnName,
           state.selectorValue,
@@ -229,12 +231,11 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
       );
     },
     [
-      setState,
-      state.selectorValue,
       state.rangeSelectorValue,
-      columnName,
       state.boundDate,
-      props.onFilter,
+      state.selectorValue,
+      onFilter,
+      columnName,
     ]
   );
 
@@ -246,7 +247,7 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
         rangeSelectorValue: boundDate ? state.rangeSelectorValue : undefined,
       }));
 
-      props.onFilter(
+      onFilter(
         ...getOnFilterArgs(
           columnName,
           state.selectorValue,
@@ -257,12 +258,11 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
       );
     },
     [
-      setState,
+      onFilter,
+      columnName,
       state.selectorValue,
       state.date,
       state.rangeSelectorValue,
-      columnName,
-      props.onFilter,
     ]
   );
 
@@ -322,7 +322,7 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
         }
       }
 
-      props.onFilter(
+      onFilter(
         ...getOnFilterArgs(
           columnName,
           selectorValue as AvailableFilterOperations,
@@ -333,12 +333,11 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
       );
     },
     [
-      setState,
       state.date,
       state.rangeSelectorValue,
       state.boundDate,
+      onFilter,
       columnName,
-      props.onFilter,
     ]
   );
 
@@ -369,7 +368,7 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
         }));
       }
 
-      props.onFilter(
+      onFilter(
         ...getOnFilterArgs(
           columnName,
           state.selectorValue as AvailableFilterOperations,
@@ -379,14 +378,7 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
         )
       );
     },
-    [
-      setState,
-      state.date,
-      state.boundDate,
-      state.selectorValue,
-      columnName,
-      props.onFilter,
-    ]
+    [state.date, state.boundDate, state.selectorValue, onFilter, columnName]
   );
 
   const minDate = useMemo<KeyboardDatePickerProps["minDate"]>(() => {

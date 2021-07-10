@@ -1,33 +1,19 @@
-import React, { useCallback, useMemo, useState } from "react";
-import {
-  Table,
-  TableEditRow,
-  TableFilterRow,
-} from "@devexpress/dx-react-grid-material-ui";
+import React, { useCallback, useMemo } from "react";
+import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
 import { TextField, TextFieldProps } from "@material-ui/core";
 import Autocomplete, { AutocompleteProps } from "@material-ui/lab/Autocomplete";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
-import { ValueNode, FreeSoloNode } from "mui-tree-select";
+import { ValueNode } from "mui-tree-select";
 
-import {
-  DepartmentsWhere,
-  GridEntrySrcDeptFragment,
-} from "../../../../apollo/graphTypes";
-import {
-  DepartmentInput,
-  DepartmentInputOpt,
-  DepartmentTreeSelectProps,
-  DepartmentInputProps,
-} from "../../../Inputs/Department";
+import { GridEntrySrcDeptFragment } from "../../../../apollo/graphTypes";
+import { DepartmentInputOpt } from "../../../Inputs/Department";
 import { OnFilter } from "../plugins";
 import { Filter, LogicFilter } from "../plugins";
 import {
   inlineAutoCompleteProps,
   inlineInputProps,
   inlinePadding,
-  RowChangesProp,
 } from "./shared";
-import { GridEntry } from "../Grid";
 
 export const DeptCell = (props: Table.DataCellProps): JSX.Element => {
   const { value, ...rest } = props;
@@ -73,6 +59,8 @@ export const DeptFilter = (props: DeptFilterProps): JSX.Element => {
 
   type Props = AutocompleteProps<DepartmentInputOpt, true, false, false>;
 
+  const { onFilter } = props;
+
   const onChange = useCallback<NonNullable<Props["onChange"]>>(
     (_, value) => {
       if (value.length) {
@@ -88,15 +76,15 @@ export const DeptFilter = (props: DeptFilterProps): JSX.Element => {
           });
         }
 
-        props.onFilter({
+        onFilter({
           columnName,
           filters: [logicFilter],
         });
       } else {
-        props.onFilter(null);
+        onFilter(null);
       }
     },
-    [columnName, props.onFilter]
+    [columnName, onFilter]
   );
 
   return (
@@ -145,58 +133,4 @@ export const deptFilterColumnExtension = (
 
 export type DeptRowChanges = {
   department: ValueNode<DepartmentInputOpt, DepartmentInputOpt> | null;
-};
-
-export type DeptEditorProps = TableEditRow.CellProps & {
-  root: DepartmentsWhere;
-  options?: Pick<DepartmentInputProps, "renderInput" | "disabled">;
-} & RowChangesProp<DeptRowChanges>;
-
-export const DeptEditor = (props: DeptEditorProps): JSX.Element => {
-  const {
-    root,
-    options = {},
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    rowChanges,
-    ...rest
-  } = props;
-
-  const { onValueChange, value: valueProp } = props;
-
-  const value = (valueProp instanceof ValueNode ||
-  valueProp instanceof FreeSoloNode
-    ? valueProp
-    : null) as DeptRowChanges["department"];
-
-  const [iniValue] = useState<DepartmentsWhere | undefined>(() => {
-    if (valueProp) {
-      return {
-        id: {
-          eq: (valueProp as GridEntry["department"]).id,
-        },
-      };
-    }
-  });
-
-  const onChange = useCallback<
-    NonNullable<DepartmentTreeSelectProps<false, false, false>["onChange"]>
-  >(
-    (...[, value]) => {
-      onValueChange(value);
-    },
-    [onValueChange]
-  );
-
-  return (
-    <TableEditRow.Cell {...rest}>
-      <DepartmentInput<false, false, false>
-        {...options}
-        root={root}
-        iniValue={iniValue}
-        value={value}
-        disabled={!props.editingEnabled || !!options?.disabled}
-        onChange={onChange}
-      />
-    </TableEditRow.Cell>
-  );
 };

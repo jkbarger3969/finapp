@@ -73,23 +73,25 @@ export const BoolFilter = (props: BoolFilterProps): JSX.Element => {
 
   type Props = AutocompleteProps<boolean, false, false, false>;
 
+  const { onFilter } = props;
+
   const onChange = useCallback<NonNullable<Props["onChange"]>>(
     (_, value) => {
       if (value === true) {
-        props.onFilter({
+        onFilter({
           columnName,
           value: value.toString(),
         });
       } else if (value === false) {
-        props.onFilter({
+        onFilter({
           columnName,
           value: value.toString(),
         });
       } else {
-        props.onFilter(null);
+        onFilter(null);
       }
     },
-    [columnName, props.onFilter]
+    [columnName, onFilter]
   );
 
   const getOptionLabel = useCallback<NonNullable<Props["getOptionLabel"]>>(
