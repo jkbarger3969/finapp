@@ -21,7 +21,7 @@ export const useController = <
   const {
     name,
     defaultValue,
-    control: { defaultValuesRef } = methods.control,
+    control: { defaultValuesRef, fieldsRef } = methods.control,
   } = props;
 
   const localDefaultValue = useRef({
@@ -29,17 +29,31 @@ export const useController = <
     name,
     defaultValue,
     defaultValuesRef,
+    fieldsRef,
   });
 
-  useEffect(() => {
-    const { name, defaultValue, defaultValuesRef } = localDefaultValue.current;
+  if (
+    !localDefaultValue.current.setByLocal &&
+    defaultValue !== undefined &&
+    !has(defaultValuesRef.current, name)
+  ) {
+    set(defaultValuesRef.current, name, defaultValue);
+    localDefaultValue.current.setByLocal = true;
 
-    if (defaultValue !== undefined && !has(defaultValuesRef.current, name)) {
-      set(defaultValuesRef.current, name, defaultValue);
-      localDefaultValue.current.setByLocal = true;
+    if (!has(fieldsRef.current, name)) {
+      set(fieldsRef.current, name, defaultValue);
     }
+  }
 
-    const { setByLocal } = localDefaultValue.current;
+  useEffect(() => {
+    // const { name, defaultValue, defaultValuesRef } = localDefaultValue.current;
+
+    // if (defaultValue !== undefined && !has(defaultValuesRef.current, name)) {
+    //   set(defaultValuesRef.current, name, defaultValue);
+    //   localDefaultValue.current.setByLocal = true;
+    // }
+
+    const { name, setByLocal, defaultValuesRef } = localDefaultValue.current;
 
     return () => {
       if (setByLocal) {

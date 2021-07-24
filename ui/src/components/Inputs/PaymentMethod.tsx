@@ -566,7 +566,7 @@ export const PaymentMethodInputBase = forwardRef(
     ]);
 
     if (queryResult.loading) {
-      return <LoadingDefaultBlank {...rest} />;
+      return <LoadingDefaultBlank {...rest} renderInput={renderInput} />;
     }
 
     return (
@@ -880,7 +880,7 @@ export const PaymentMethodInput = forwardRef(function PaymentMethodInput<
   >;
 
   if (loading) {
-    return <LoadingDefaultBlank {...rest} />;
+    return <LoadingDefaultBlank {...rest} renderInput={renderInput} />;
   }
 
   return (

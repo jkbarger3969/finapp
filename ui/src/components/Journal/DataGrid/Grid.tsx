@@ -799,6 +799,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
       </Box>
       {loading && <OverlayLoading zIndex="modal" />}
       <AddEntry
+        keepMounted={false}
         entryProps={addEntryProps}
         open={state.openAddEntry}
         onClose={onCloseAddEntry}

@@ -6,6 +6,7 @@ import {
 } from "@material-ui/pickers";
 import DateFnsUtils from "@date-io/date-fns";
 import { Control, UseControllerProps } from "react-hook-form";
+import { MarkOptional } from "ts-essentials";
 
 import { useController } from "../../utils/reactHookForm";
 
@@ -13,9 +14,9 @@ export type DateInputProps = {
   control?: Control;
   rules?: UseControllerProps["rules"];
   defaultValue?: Date;
-} & Omit<
-  KeyboardDatePickerProps,
-  "value" | "onChange" | "inputRef" | "required"
+} & MarkOptional<
+  Omit<KeyboardDatePickerProps, "value" | "inputRef" | "required">,
+  "onChange"
 >;
 
 export const DateInput = forwardRef(
@@ -23,9 +24,10 @@ export const DateInput = forwardRef(
     const {
       control,
       rules,
-      defaultValue,
+      defaultValue = null,
       name: nameProp = "date",
       onBlur: onBlurProp,
+      onChange: onChangeProp,
       disabled,
       ...rest
     } = props;
@@ -49,14 +51,19 @@ export const DateInput = forwardRef(
       shouldUnregister: true,
     });
 
-    const onChange = useCallback<KeyboardDatePickerProps["onChange"]>(
+    const handleChange = useCallback<KeyboardDatePickerProps["onChange"]>(
       (...args) => {
         onChangeControlled(args[0]);
+        if (onChangeProp) {
+          onChangeProp(...args);
+        }
       },
-      [onChangeControlled]
+      [onChangeControlled, onChangeProp]
     );
 
-    const onBlur = useCallback<NonNullable<KeyboardDatePickerProps["onBlur"]>>(
+    const handleBlur = useCallback<
+      NonNullable<KeyboardDatePickerProps["onBlur"]>
+    >(
       (...args) => {
         onBlurControlled();
 
@@ -81,8 +88,8 @@ export const DateInput = forwardRef(
             : {})}
           inputRef={inputRef}
           value={value || null}
-          onChange={onChange}
-          onBlur={onBlur}
+          onChange={handleChange}
+          onBlur={handleBlur}
           disabled={isSubmitting || disabled}
         />
       </MuiPickersUtilsProvider>

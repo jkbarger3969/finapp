@@ -487,6 +487,8 @@ const EntityInputControlled = forwardRef(function EntityInputControlled<
     shouldUnregister: true,
   });
 
+  console.log("Entity", name, field.value);
+
   const handleBlur = useCallback<NonNullable<EntityInputBaseProps["onBlur"]>>(
     (...args) => {
       onBlurControlled();

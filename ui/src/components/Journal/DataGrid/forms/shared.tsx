@@ -1,4 +1,6 @@
 import { GridProps, TextField, TextFieldProps } from "@material-ui/core";
+import { KeyboardDatePickerProps } from "@material-ui/pickers";
+import { defaultInput, TreeSelectProps } from "mui-tree-select";
 import React, { useCallback, forwardRef, Ref, PropsWithChildren } from "react";
 import {
   useController,
@@ -64,7 +66,7 @@ export const removeNullishProperties = <T extends Record<string, unknown>>(
     return newObj;
   }, {} as OmitProperties<T, undefined | null>);
 
-export const inputGridContainerProps: GridProps = {
+export const inputGridItemProps: GridProps = {
   item: true,
   lg: 4,
   sm: 6,
@@ -159,3 +161,56 @@ export const TextFieldControlled = forwardRef(function TextFieldControlled(
     </TextField>
   );
 });
+
+export const DATE_INLINE_INPUT_PROPS: Readonly<
+  Pick<
+    KeyboardDatePickerProps,
+    | "autoOk"
+    | "disableFuture"
+    | "disableToolbar"
+    | "format"
+    | "placeholder"
+    | "variant"
+  >
+> = {
+  autoOk: true,
+  disableFuture: true,
+  disableToolbar: true,
+  format: "MM/dd/yyyy",
+  placeholder: "mm/dd/yyyy",
+  variant: "inline",
+};
+
+const DIALOG_INPUT_PROPS: Readonly<{
+  TextFieldProps: Pick<TextFieldProps, "variant" | "fullWidth">;
+  TreeSelectProps: Pick<
+    TreeSelectProps<unknown, unknown, undefined, undefined, undefined>,
+    "renderInput" | "fullWidth"
+  >;
+  DateInputProps: Pick<
+    KeyboardDatePickerProps,
+    "inputVariant" | "fullWidth" | keyof typeof DATE_INLINE_INPUT_PROPS
+  >;
+}> = {
+  TextFieldProps: {
+    variant: "filled",
+    fullWidth: true,
+  },
+  TreeSelectProps: {
+    fullWidth: true,
+    renderInput: (params) =>
+      defaultInput({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        variant: "filled" as any,
+        fullWidth: true,
+        ...params,
+      }),
+  },
+  DateInputProps: {
+    inputVariant: "filled",
+    fullWidth: true,
+    ...DATE_INLINE_INPUT_PROPS,
+  },
+};
+export const useSharedDialogInputProps = (): typeof DIALOG_INPUT_PROPS =>
+  DIALOG_INPUT_PROPS;

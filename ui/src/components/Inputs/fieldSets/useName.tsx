@@ -1,9 +1,9 @@
-import React, { Fragment, useMemo } from "react";
+import React, { useMemo } from "react";
 import { UseControllerProps } from "react-hook-form";
 
 import { TextFieldControlled, TextFieldControlledProps } from "../shared";
 
-export type NameProps = {
+export type NameInputProps = {
   firstName?: Partial<
     Omit<
       TextFieldControlledProps,
@@ -16,8 +16,13 @@ export type NameProps = {
       "type" | "control" | "name" | "shouldUnregister"
     >
   >;
+};
+
+export type NameProps = {
+  showLabels?: boolean;
   namePrefix?: string;
-} & Omit<TextFieldControlledProps, "name" | "defaultValue" | "type">;
+} & NameInputProps &
+  Omit<TextFieldControlledProps, "name" | "defaultValue" | "type">;
 
 const nameRules: NonNullable<UseControllerProps["rules"]> = {
   minLength: {
@@ -31,8 +36,17 @@ const nameRules: NonNullable<UseControllerProps["rules"]> = {
 };
 
 export const NAME_NAME = "name";
-export const Name = (props: NameProps): JSX.Element => {
+
+export const useName = (
+  props: NameProps
+): {
+  [Name in keyof NameInputProps as `${Name}Input`]-?: JSX.Element;
+} &
+  {
+    [Name in keyof NameInputProps as `${Name}InputName`]-?: string;
+  } => {
   const {
+    showLabels,
     firstName: firstNameProps = {},
     lastName: lastNameProps = {},
     namePrefix,
@@ -41,10 +55,10 @@ export const Name = (props: NameProps): JSX.Element => {
 
   const name = namePrefix ? `${namePrefix}.${NAME_NAME}` : NAME_NAME;
 
-  return (
-    <Fragment>
+  return {
+    firstNameInput: (
       <TextFieldControlled
-        label="First Name"
+        label={showLabels && "First Name"}
         {...globalProps}
         {...firstNameProps}
         rules={useMemo(
@@ -59,8 +73,11 @@ export const Name = (props: NameProps): JSX.Element => {
         name={`${name}.first` as any}
         type="text"
       />
+    ),
+    firstNameInputName: `${name}.first`,
+    lastNameInput: (
       <TextFieldControlled
-        label="Last Name"
+        label={showLabels && "Last Name"}
         {...globalProps}
         {...lastNameProps}
         rules={useMemo(
@@ -75,6 +92,7 @@ export const Name = (props: NameProps): JSX.Element => {
         name={`${name}.last` as any}
         type="text"
       />
-    </Fragment>
-  );
+    ),
+    lastNameInputName: `${name}.last`,
+  };
 };
