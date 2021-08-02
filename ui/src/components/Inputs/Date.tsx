@@ -5,73 +5,86 @@ import {
   MuiPickersUtilsProvider,
 } from "@material-ui/pickers";
 import DateFnsUtils from "@date-io/date-fns";
-import { Control, UseControllerProps } from "react-hook-form";
 import { MarkOptional } from "ts-essentials";
+import { isValid } from "date-fns";
 
-import { useController } from "../../utils/reactHookForm";
+import {
+  useField,
+  useFormContext,
+  Validator,
+  UseFieldOptions,
+  FieldValue,
+} from "../../useKISSForm/form";
 
-export type DateInputProps = {
-  control?: Control;
-  rules?: UseControllerProps["rules"];
-  defaultValue?: Date;
-} & MarkOptional<
-  Omit<KeyboardDatePickerProps, "value" | "inputRef" | "required">,
+const validDate: Validator<Date, string> = (value) => {
+  // Do NOT test 'blank' field i.e. undefined
+  if (value === undefined || isValid(value)) {
+    return;
+  }
+  return new TypeError("Invalid Date");
+};
+
+export type DateInputProps = MarkOptional<
+  Omit<KeyboardDatePickerProps, "value">,
   "onChange"
->;
+> &
+  Omit<UseFieldOptions<Date>, "validator">;
+
+export const DATE_NAME = "date";
+export type DateFieldDef<TName extends string = typeof DATE_NAME> = {
+  [key in TName]: FieldValue<Date>;
+};
 
 export const DateInput = forwardRef(
   (props: DateInputProps, ref: Ref<HTMLDivElement>) => {
     const {
-      control,
-      rules,
-      defaultValue = null,
-      name: nameProp = "date",
+      defaultValue,
+      name: nameProp = DATE_NAME,
+      shouldUnregister,
+      form,
       onBlur: onBlurProp,
       onChange: onChangeProp,
       disabled,
       ...rest
     } = props;
 
+    const isSubmitting = useFormContext(form)?.isSubmitting ?? false;
+
     const {
-      field: {
-        onBlur: onBlurControlled,
-        onChange: onChangeControlled,
-        ref: inputRef,
-        value,
-        ...field
-      },
-      fieldState: { isTouched, error },
-      formState: { isSubmitting },
-    } = useController({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      name: nameProp as any,
-      control,
+      props: { name, value },
+      state: { isTouched, errors },
+      setValue,
+      setTouched,
+    } = useField<Date>({
+      name: nameProp,
       defaultValue,
-      rules,
-      shouldUnregister: true,
+      validator: validDate,
+      shouldUnregister,
+      form,
     });
 
     const handleChange = useCallback<KeyboardDatePickerProps["onChange"]>(
       (...args) => {
-        onChangeControlled(args[0]);
+        // undefined clears values in KISS form
+        setValue(args[0] ?? undefined);
         if (onChangeProp) {
           onChangeProp(...args);
         }
       },
-      [onChangeControlled, onChangeProp]
+      [setValue, onChangeProp]
     );
 
     const handleBlur = useCallback<
       NonNullable<KeyboardDatePickerProps["onBlur"]>
     >(
       (...args) => {
-        onBlurControlled();
+        setTouched(true);
 
         if (onBlurProp) {
           onBlurProp(...args);
         }
       },
-      [onBlurControlled, onBlurProp]
+      [setTouched, onBlurProp]
     );
 
     return (
@@ -79,15 +92,15 @@ export const DateInput = forwardRef(
         <KeyboardDatePicker
           ref={ref}
           {...rest}
-          {...field}
-          {...(isTouched && error
+          {...(isTouched && errors.length
             ? {
                 error: true,
-                helperText: error.message,
+                helperText: errors[0].message,
               }
             : {})}
-          inputRef={inputRef}
-          value={value || null}
+          name={name}
+          // Must control value with null
+          value={value ?? null}
           onChange={handleChange}
           onBlur={handleBlur}
           disabled={isSubmitting || disabled}

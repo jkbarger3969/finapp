@@ -12,10 +12,17 @@ import {
   FormHelperText,
   FormHelperTextProps,
 } from "@material-ui/core";
-import { Control, UseControllerProps } from "react-hook-form";
-import { MarkRequired } from "ts-essentials";
 
-import { useController } from "../../utils/reactHookForm";
+import {
+  useField,
+  UseFieldOptions,
+  useFormContext,
+  FieldValue,
+} from "../../useKISSForm/form";
+
+export type BoolFieldDef<TName extends string> = {
+  [key in TName]: FieldValue<boolean>;
+};
 
 export type BoolBaseInputVariant = "checkbox" | "switch";
 
@@ -119,80 +126,70 @@ export const BoolBaseInput = forwardRef(function BoolBaseInput<
 
 export type BoolInputProps<
   BoolVariant extends BoolBaseInputVariant | undefined = undefined
-> = {
-  control?: Control;
-  rules?: UseControllerProps["rules"];
-  defaultValue?: boolean;
-} & MarkRequired<
-  Omit<BoolBaseInputProps<BoolVariant>, "checked" | "inputRef">,
-  "name"
->;
+> = Omit<UseFieldOptions<boolean>, "validator"> &
+  Omit<BoolBaseInputProps<BoolVariant>, "checked" | "name">;
 
 export const BoolInput = forwardRef(function BoolInput<
   BoolVariant extends BoolBaseInputVariant | undefined = undefined
 >(props: BoolInputProps<BoolVariant>, ref: Ref<HTMLDivElement>) {
   const {
-    control,
-    rules,
-    defaultValue = false,
     name: nameProp,
+    defaultValue,
+    form,
+    shouldUnregister,
     onBlur: onBlurProp,
     onChange: onChangeProp,
     disabled,
     ...rest
   } = props;
 
+  const isSubmitting = useFormContext(form)?.isSubmitting ?? false;
+
   const {
-    field: {
-      onBlur: onBlurControlled,
-      onChange: onChangeControlled,
-      ref: inputRef,
-      ...field
-    },
-    fieldState: { isTouched, error },
-    formState: { isSubmitting },
-  } = useController({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    name: nameProp as any,
-    control,
+    props: { name, value },
+    state: { isTouched, errors },
+    setValue,
+    setTouched,
+  } = useField<boolean>({
+    name: nameProp,
     defaultValue,
-    rules,
-    shouldUnregister: true,
+    shouldUnregister,
+    form,
   });
 
   const handleChange = useCallback<NonNullable<BoolBaseInputProps["onChange"]>>(
     (...args) => {
-      onChangeControlled(args[0]);
+      setValue(args[1]);
       if (onChangeProp) {
         onChangeProp(...args);
       }
     },
-    [onChangeControlled, onChangeProp]
+    [setValue, onChangeProp]
   );
 
   const handleBlur = useCallback<NonNullable<BoolBaseInputProps["onBlur"]>>(
     (...args) => {
-      onBlurControlled();
+      setTouched(true);
 
       if (onBlurProp) {
         onBlurProp(...args);
       }
     },
-    [onBlurControlled, onBlurProp]
+    [setTouched, onBlurProp]
   );
 
   return (
     <BoolBaseInput
       ref={ref}
       {...rest}
-      {...field}
-      {...(isTouched && error
+      {...(isTouched && errors.length
         ? {
             error: true,
-            helperText: error.message,
+            helperText: errors[0].message,
           }
         : {})}
-      inputRef={inputRef}
+      name={name}
+      checked={value ?? false}
       onChange={handleChange}
       onBlur={handleBlur}
       disabled={isSubmitting || disabled}

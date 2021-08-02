@@ -8,8 +8,8 @@ import {
   UseControllerReturn,
   set,
 } from "react-hook-form";
-import unset from "lodash.unset";
-import has from "lodash.has";
+import { unset } from "lodash";
+import { has } from "lodash";
 
 export const useController = <
   TFieldValues extends FieldValues = FieldValues,

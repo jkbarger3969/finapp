@@ -8,8 +8,7 @@ import TreeSelect, {
   TreeSelectValue,
 } from "mui-tree-select";
 import React, { forwardRef, Ref, useCallback, useMemo, useState } from "react";
-import { MarkOptional, MarkRequired } from "ts-essentials";
-import { Control, UseControllerProps } from "react-hook-form";
+import { MarkOptional, MarkRequired, Merge } from "ts-essentials";
 
 import {
   EntityInputIniValueQuery as EntityInputIniValue,
@@ -28,7 +27,13 @@ import {
 } from "./Department";
 import { useControlled } from "@material-ui/core";
 import { LoadingDefaultBlank } from "./shared";
-import { useController } from "../../utils/reactHookForm";
+import {
+  FieldValue,
+  useField,
+  UseFieldOptions,
+  useFormContext,
+  useLoading,
+} from "../../useKISSForm/form";
 
 export type EntityDefaultInputOpt =
   | EntityBusinessInputOptFragment["__typename"]
@@ -424,79 +429,107 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
   );
 });
 
+export const ENTITY_NAME = "entity";
 export type EntityInputProps<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 > = {
   defaultValue?: EntitiesWhere;
-  control?: Control;
   name?: string;
-  rules?: UseControllerProps["rules"];
 } & Omit<
   EntityInputBaseProps<Multiple, DisableClearable, FreeSolo>,
   "onChange" | "value"
->;
+> &
+  Pick<UseFieldOptions, "form" | "shouldUnregister">;
 
+export type EntityFieldDef<
+  Name extends string = typeof ENTITY_NAME,
+  Multiple extends boolean | undefined = undefined,
+  FreeSolo extends boolean | undefined = undefined
+> = {
+  [key in Name]: FieldValue<
+    TreeSelectValue<
+      EntityInputOpt,
+      EntityBranchInputOpt,
+      Multiple,
+      false,
+      FreeSolo
+    >
+  >;
+};
 const EntityInputControlled = forwardRef(function EntityInputControlled<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 >(
-  props: Omit<
+  props: Merge<
     EntityInputProps<Multiple, DisableClearable, FreeSolo>,
-    "defaultValue"
-  > & {
-    defaultValue: TreeSelectValue<
-      EntityInputOpt,
-      EntityBranchInputOpt,
-      Multiple,
-      false,
-      false
-    >;
-  },
+    {
+      defaultValue?: TreeSelectValue<
+        EntityInputOpt,
+        EntityBranchInputOpt,
+        Multiple,
+        true,
+        false
+      >;
+    }
+  >,
   ref: Ref<unknown>
 ): JSX.Element {
   const {
-    control,
-    name: nameProp = "entity",
+    name: nameProp = ENTITY_NAME,
     defaultValue,
+    form,
+    shouldUnregister,
     renderInput: renderInputProp = defaultInput,
     disabled,
     onBlur: onBlurProp,
-    rules,
     ...rest
   } = props;
 
+  const isSubmitting = useFormContext(form)?.isSubmitting ?? false;
+
   const {
-    field: {
-      onBlur: onBlurControlled,
-      name,
-      onChange: onChangeControlled,
-      ref: inputRef,
-      ...field
-    },
-    fieldState: { isTouched, error },
-    formState: { isSubmitting, isValidating },
-  } = useController({
+    props: { value: fieldValue, name },
+    state: { isTouched, errors },
+    setValue,
+    setTouched,
+  } = useField<
+    TreeSelectValue<
+      EntityInputOpt,
+      EntityBranchInputOpt,
+      Multiple,
+      DisableClearable,
+      FreeSolo
+    >
+  >({
+    name: nameProp,
+    form,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    name: nameProp as any,
-    control,
-    defaultValue,
-    rules,
-    shouldUnregister: true,
+    defaultValue: defaultValue as any,
+    shouldUnregister,
   });
 
-  console.log("Entity", name, field.value);
+  const value = useMemo(() => fieldValue || (rest.multiple ? [] : null), [
+    fieldValue,
+    rest.multiple,
+  ]) as TreeSelectValue<
+    EntityInputOpt,
+    EntityBranchInputOpt,
+    Multiple,
+    DisableClearable,
+    FreeSolo
+  >;
 
   const handleBlur = useCallback<NonNullable<EntityInputBaseProps["onBlur"]>>(
     (...args) => {
-      onBlurControlled();
+      setTouched(true);
       if (onBlurProp) {
         onBlurProp(...args);
       }
     },
-    [onBlurControlled, onBlurProp]
+    [setTouched, onBlurProp]
   );
 
   const renderInput = useCallback<
@@ -505,16 +538,15 @@ const EntityInputControlled = forwardRef(function EntityInputControlled<
     (params) =>
       renderInputProp({
         ...params,
-        inputRef,
         name,
-        ...(isTouched && error
+        ...(isTouched && errors.length
           ? {
               error: true,
-              helperText: error?.message || "Invalid",
+              helperText: errors[0].message,
             }
           : {}),
       }),
-    [renderInputProp, inputRef, name, isTouched, error]
+    [renderInputProp, name, isTouched, errors]
   );
 
   const handleChange = useCallback<
@@ -523,16 +555,16 @@ const EntityInputControlled = forwardRef(function EntityInputControlled<
     >
   >(
     (_, value) => {
-      onChangeControlled(value);
+      setValue(value ?? undefined);
     },
-    [onChangeControlled]
+    [setValue]
   );
 
   return (
-    <EntityInputBase
+    <EntityInputBase<Multiple, DisableClearable, FreeSolo>
       {...rest}
-      {...field}
-      disabled={isValidating || isSubmitting || disabled}
+      value={value}
+      disabled={isSubmitting || disabled}
       ref={ref}
       onChange={handleChange}
       renderInput={renderInput}
@@ -570,6 +602,13 @@ export const EntityInput = forwardRef(function EntityInput<
       [defaultValueProp]
     )
   );
+
+  useLoading({
+    loading,
+    name: rest.name || ENTITY_NAME,
+    form: rest.form,
+    shouldUnregister: true,
+  });
 
   const renderInput = useCallback<
     NonNullable<
@@ -635,12 +674,14 @@ export const EntityInput = forwardRef(function EntityInput<
       renderInput={renderInput}
       defaultValue={
         ((props.multiple
-          ? defaultValues
-          : defaultValues[0] ?? null) as unknown) as TreeSelectValue<
+          ? defaultValues.length
+            ? defaultValues
+            : undefined
+          : defaultValues[0] ?? undefined) as unknown) as TreeSelectValue<
           EntityInputOpt,
           EntityBranchInputOpt,
           Multiple,
-          false,
+          true,
           false
         >
       }

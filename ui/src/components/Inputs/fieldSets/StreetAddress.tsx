@@ -69,28 +69,25 @@ export type StreetAddressProps = {
   control?: Control;
   addressLine1?: Omit<
     TextFieldControlledProps,
-    "rules" | "name" | "control" | "type" | "setValueAs" | "select"
+    "name" | "type" | "setValueAs" | "select"
   >;
   addressLine2?: Omit<
     TextFieldControlledProps,
-    "rules" | "name" | "control" | "type" | "setValueAs" | "select"
+    "name" | "type" | "setValueAs" | "select"
   >;
   city?: Omit<
     TextFieldControlledProps,
-    "rules" | "name" | "control" | "type" | "setValueAs" | "select"
+    "name" | "type" | "setValueAs" | "select"
   >;
   state?: Omit<
     TextFieldControlledProps,
-    "rules" | "name" | "control" | "type" | "setValueAs" | "select"
+    "name" | "type" | "setValueAs" | "select"
   >;
   zip?: Omit<
     TextFieldControlledProps,
-    "rules" | "name" | "control" | "type" | "setValueAs" | "select"
+    "name" | "type" | "setValueAs" | "select"
   >;
-} & Omit<
-  TextFieldControlledProps,
-  "rules" | "name" | "control" | "type" | "setValueAs" | "select"
->;
+} & Omit<TextFieldControlledProps, "name" | "type" | "setValueAs" | "select">;
 
 export type StreetAddressNames =
   | "addressLine1"
@@ -126,10 +123,9 @@ export const StreetAddress = (props: StreetAddressProps): JSX.Element => {
         {...rest}
         {...addressLine1Props}
         type="text"
-        control={control}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         name={streetAddressName("addressLine1", namePrefix) as any}
-        rules={useMemo<NonNullable<UseControllerProps["rules"]>>(
+        /* rules={useMemo<NonNullable<UseControllerProps["rules"]>>(
           () => ({
             minLength: {
               value: 5,
@@ -143,16 +139,15 @@ export const StreetAddress = (props: StreetAddressProps): JSX.Element => {
             ...(required ? { required: "Required" } : {}),
           }),
           [required]
-        )}
+        )} */
       />
       <TextFieldControlled
         {...rest}
         {...addressLine2Props}
         type="text"
-        control={control}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         name={streetAddressName("addressLine2", namePrefix) as any}
-        rules={useMemo<NonNullable<UseControllerProps["rules"]>>(
+        /* rules={useMemo<NonNullable<UseControllerProps["rules"]>>(
           () => ({
             validate: (value: string) => {
               if (!isAscii(value)) {
@@ -161,16 +156,15 @@ export const StreetAddress = (props: StreetAddressProps): JSX.Element => {
             },
           }),
           []
-        )}
+        )} */
       />
       <TextFieldControlled
         {...rest}
         {...cityProps}
         type="text"
-        control={control}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         name={streetAddressName("city", namePrefix) as any}
-        rules={useMemo<NonNullable<UseControllerProps["rules"]>>(
+        /* rules={useMemo<NonNullable<UseControllerProps["rules"]>>(
           () => ({
             minLength: {
               value: 2,
@@ -184,21 +178,20 @@ export const StreetAddress = (props: StreetAddressProps): JSX.Element => {
             ...(required ? { required: "Required" } : {}),
           }),
           [required]
-        )}
+        )} */
       />
       <TextFieldControlled
         {...rest}
         {...stateProps}
-        control={control}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         name={streetAddressName("state", namePrefix) as any}
         select
-        rules={useMemo<NonNullable<UseControllerProps["rules"]>>(
+        /* rules={useMemo<NonNullable<UseControllerProps["rules"]>>(
           () => ({
             ...(required ? { required: "Required" } : {}),
           }),
           [required]
-        )}
+        )} */
       >
         {STATES}
       </TextFieldControlled>
@@ -206,10 +199,9 @@ export const StreetAddress = (props: StreetAddressProps): JSX.Element => {
         {...rest}
         {...zipProps}
         type="text"
-        control={control}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         name={streetAddressName("zip", namePrefix) as any}
-        rules={useMemo<NonNullable<UseControllerProps["rules"]>>(
+        /* rules={useMemo<NonNullable<UseControllerProps["rules"]>>(
           () => ({
             ...(required ? { required: "Required" } : {}),
             validate: (value: string) => {
@@ -219,7 +211,7 @@ export const StreetAddress = (props: StreetAddressProps): JSX.Element => {
             },
           }),
           [required]
-        )}
+        )} */
       />
     </Fragment>
   );

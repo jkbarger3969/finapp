@@ -10,9 +10,8 @@ import TreeSelect, {
   TreeSelectValue,
 } from "mui-tree-select";
 import { ApolloError, gql, QueryHookOptions, useQuery } from "@apollo/client";
-import { DeepPartial, MarkOptional, MarkRequired } from "ts-essentials";
+import { DeepPartial, MarkOptional, MarkRequired, Merge } from "ts-essentials";
 import { capitalCase } from "change-case";
-import { Control, UseControllerProps } from "react-hook-form";
 
 import {
   AccountCard,
@@ -36,7 +35,13 @@ import {
 } from "../../apollo/graphTypes";
 import { LoadingDefaultBlank } from "./shared";
 import { useControlled } from "@material-ui/core";
-import { useController } from "../../utils/reactHookForm";
+import {
+  FieldValue,
+  useField,
+  UseFieldOptions,
+  useFormContext,
+  useLoading,
+} from "../../useKISSForm/form";
 
 const NULLISH = Symbol("NULLISH");
 
@@ -601,77 +606,101 @@ export type PaymentMethodInputProps<
   DisableClearable extends boolean | undefined = undefined
 > = {
   defaultValue?: PayMethodIniValue;
-  control?: Control;
-  namePrefix?: string;
-  rules?: UseControllerProps["rules"];
 } & Omit<
   PaymentMethodInputBaseProps<Multiple, DisableClearable>,
   "onChange" | "value" | "name"
->;
+> &
+  Pick<UseFieldOptions, "form" | "shouldUnregister">;
 
 export const PAYMENT_METHOD_NAME = "paymentMethod";
-export const paymentMethodName = (namePrefix?: string): string =>
-  namePrefix ? `${namePrefix}.${PAYMENT_METHOD_NAME}` : PAYMENT_METHOD_NAME;
+export type PaymentMethodFieldDef<
+  Multiple extends boolean | undefined = undefined,
+  FreeSolo extends boolean | undefined = undefined
+> = {
+  [PAYMENT_METHOD_NAME]: FieldValue<
+    TreeSelectValue<
+      PayMethodInputOpt,
+      PaymentMethodInputBranchOpt,
+      Multiple,
+      false,
+      FreeSolo
+    >
+  >;
+};
 
 const PaymentMethodInputControlled = forwardRef(
   function PaymentMethodInputControlled<
     Multiple extends boolean | undefined = undefined,
     DisableClearable extends boolean | undefined = undefined
   >(
-    props: Omit<
+    props: Merge<
       PaymentMethodInputProps<Multiple, DisableClearable>,
-      "defaultValue"
-    > & {
-      defaultValue: TreeSelectValue<
-        PayMethodInputOpt,
-        PaymentMethodInputBranchOpt,
-        Multiple,
-        false,
-        false | true
-      >;
-    },
+      {
+        defaultValue?: TreeSelectValue<
+          PayMethodInputOpt,
+          PaymentMethodInputBranchOpt,
+          Multiple,
+          true,
+          false | true
+        >;
+      }
+    >,
     ref: Ref<unknown>
   ): JSX.Element {
     const {
-      control,
-      namePrefix: namePrefixProp,
       defaultValue,
+      form,
+      shouldUnregister,
       renderInput: renderInputProp = defaultInput,
       disabled,
       onBlur: onBlurProp,
-      rules,
       ...rest
     } = props;
 
+    const isSubmitting = useFormContext(form)?.isSubmitting ?? false;
+
     const {
-      field: {
-        onBlur: onBlurControlled,
-        name,
-        onChange: onChangeControlled,
-        ref: inputRef,
-        ...field
-      },
-      fieldState: { isTouched, error },
-      formState: { isSubmitting, isValidating },
-    } = useController({
+      props: { value: fieldValue, name },
+      state: { isTouched, errors },
+      setValue,
+      setTouched,
+    } = useField<
+      TreeSelectValue<
+        PayMethodInputOpt,
+        PaymentMethodInputBranchOpt,
+        Multiple,
+        DisableClearable,
+        false | true
+      >
+    >({
+      name: PAYMENT_METHOD_NAME,
+      form,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      name: paymentMethodName(namePrefixProp) as any,
-      control,
-      defaultValue,
-      rules,
-      shouldUnregister: true,
+      defaultValue: defaultValue as any,
+      shouldUnregister,
     });
+
+    const value = useMemo(() => fieldValue || (rest.multiple ? [] : null), [
+      fieldValue,
+      rest.multiple,
+    ]) as TreeSelectValue<
+      PayMethodInputOpt,
+      PaymentMethodInputBranchOpt,
+      Multiple,
+      DisableClearable,
+      false | true
+    >;
 
     const handleBlur = useCallback<
       NonNullable<PaymentMethodInputBaseProps["onBlur"]>
     >(
       (...args) => {
-        onBlurControlled();
+        setTouched(true);
         if (onBlurProp) {
           onBlurProp(...args);
         }
       },
-      [onBlurControlled, onBlurProp]
+      [setTouched, onBlurProp]
     );
 
     const renderInput = useCallback<
@@ -680,16 +709,15 @@ const PaymentMethodInputControlled = forwardRef(
       (params) =>
         renderInputProp({
           ...params,
-          inputRef,
           name,
-          ...(isTouched && error
+          ...(isTouched && errors.length
             ? {
                 error: true,
-                helperText: error?.message || "Invalid",
+                helperText: errors[0].message,
               }
             : {}),
         }),
-      [renderInputProp, inputRef, name, isTouched, error]
+      [renderInputProp, name, isTouched, errors]
     );
 
     const handleChange = useCallback<
@@ -698,16 +726,17 @@ const PaymentMethodInputControlled = forwardRef(
       >
     >(
       (_, value) => {
-        onChangeControlled(value);
+        setValue(value ?? undefined);
       },
-      [onChangeControlled]
+      [setValue]
     );
 
     return (
       <PaymentMethodInputBase
         {...rest}
-        {...field}
-        disabled={isValidating || isSubmitting || disabled}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        value={value ?? (null as any)}
+        disabled={isSubmitting || disabled}
         ref={ref}
         onChange={handleChange}
         renderInput={renderInput}
@@ -782,6 +811,13 @@ export const PaymentMethodInput = forwardRef(function PaymentMethodInput<
       (defaultValueProp as any)?.check?.account?.id,
     ])
   );
+
+  useLoading({
+    loading,
+    name: PAYMENT_METHOD_NAME,
+    form: rest.form,
+    shouldUnregister: true,
+  });
 
   const renderInput = useCallback<
     NonNullable<PayMethodTreeSelectProps["renderInput"]>
@@ -861,7 +897,7 @@ export const PaymentMethodInput = forwardRef(function PaymentMethodInput<
         break;
     }
 
-    return props.multiple ? [] : null;
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     data?.accounts,
@@ -875,7 +911,7 @@ export const PaymentMethodInput = forwardRef(function PaymentMethodInput<
     PayMethodInputOpt,
     PaymentMethodInputBranchOpt,
     Multiple,
-    false,
+    true,
     true | false
   >;
 

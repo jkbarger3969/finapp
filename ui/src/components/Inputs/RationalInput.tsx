@@ -1,11 +1,15 @@
-import React, { useCallback, forwardRef, Ref } from "react";
+import React, { useCallback, forwardRef, Ref, useMemo } from "react";
 import { TextField, TextFieldProps, useControlled } from "@material-ui/core";
 import Fraction from "fraction.js";
-import { Control, UseControllerProps } from "react-hook-form";
 
-import { useController } from "../../utils/reactHookForm";
+import {
+  useField,
+  UseFieldOptions,
+  useFormContext,
+  FieldValue,
+} from "../../useKISSForm/form";
 
-const NULLISH = Symbol();
+const NULLISH = Symbol("NULLISH");
 
 export type RationalInputBaseProps = Omit<
   TextFieldProps,
@@ -82,75 +86,84 @@ export const RationalInputBase = forwardRef(function RationalInputBase(
   );
 });
 
-export type RationalInputProps = {
-  control?: Control;
-  rules?: UseControllerProps["rules"];
-} & Omit<RationalInputBaseProps, "onChange" | "value" | "inputRef">;
+export type RationalInputProps = Omit<
+  RationalInputBaseProps,
+  "value" | "name"
+> &
+  Omit<UseFieldOptions, "defaultValue" | "validator">;
 
+export type RationalFieldDef<TName extends string> = {
+  [key in TName]: FieldValue<Fraction>;
+};
 export const RationalInput = forwardRef(function RationalInput(
   props: RationalInputProps,
   ref: Ref<HTMLDivElement>
 ): JSX.Element {
   const {
-    control,
-    name: nameProp = "rational",
+    name: nameProp,
+    form,
+    shouldUnregister,
     onBlur: onBlurProp,
+    onChange: onChangeProp,
     disabled,
-    defaultValue = null,
-    rules,
+    defaultValue,
     ...rest
   } = props;
 
+  const isSubmitting = useFormContext(form)?.isSubmitting ?? false;
+
   const {
-    field: {
-      onBlur: onBlurControlled,
-      onChange: onChangeControlled,
-      ref: inputRef,
-      ...field
-    },
-    fieldState: { isTouched, error },
-    formState: { isSubmitting, isValidating },
-  } = useController({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    name: nameProp as any,
-    control,
-    defaultValue,
-    rules,
-    shouldUnregister: true,
+    props: { name, value },
+    state: { isTouched, errors },
+    setValue,
+    setTouched,
+  } = useField<Fraction>({
+    name: nameProp,
+    defaultValue: useMemo(() => {
+      if (defaultValue !== undefined) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return new Fraction(defaultValue as any);
+      }
+    }, [defaultValue]),
+    shouldUnregister,
+    form,
   });
 
   const handleBlur = useCallback<NonNullable<RationalInputBaseProps["onBlur"]>>(
     (...args) => {
-      onBlurControlled();
+      setTouched(true);
       if (onBlurProp) {
         onBlurProp(...args);
       }
     },
-    [onBlurControlled, onBlurProp]
+    [setTouched, onBlurProp]
   );
 
   const handleChange = useCallback<
     NonNullable<RationalInputBaseProps["onChange"]>
   >(
-    (_, value) => {
-      onChangeControlled(value);
+    (...args) => {
+      setValue(args[1] ?? undefined);
+      if (onChangeProp) {
+        onChangeProp(...args);
+      }
     },
-    [onChangeControlled]
+    [setValue, onChangeProp]
   );
 
   return (
     <RationalInputBase
       {...rest}
-      {...field}
-      {...(isTouched && error
+      {...(isTouched && errors.length
         ? {
             error: true,
-            helperText: error.message,
+            helperText: errors[0].message,
           }
         : {})}
       ref={ref}
-      disabled={isSubmitting || isValidating || disabled}
-      inputRef={inputRef}
+      name={name}
+      value={value}
+      disabled={isSubmitting || disabled}
       onBlur={handleBlur}
       onChange={handleChange}
     />

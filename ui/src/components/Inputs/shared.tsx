@@ -8,9 +8,12 @@ import {
   defaultInput,
   BranchNode,
 } from "mui-tree-select";
-import { UseControllerProps, FieldValues, FieldPath } from "react-hook-form";
-
-import { useController } from "../../utils/reactHookForm";
+import {
+  FieldDef,
+  useField,
+  UseFieldOptions,
+  useFormContext,
+} from "../../useKISSForm/form";
 
 export type QueryHookOptions = Omit<QueryHookOptionsApollo, "variables">;
 
@@ -97,17 +100,14 @@ export const sortBranchesToTop = (
 };
 
 export type TextFieldControlledProps<
-  TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
-> = UseControllerProps<TFieldValues, TName> &
-  Omit<
-    TextFieldProps,
-    keyof UseControllerProps | "value" | "inputRef" | "required"
-  > & {
+  T = unknown,
+  TName extends string = string,
+  TFieldDef extends FieldDef = FieldDef
+> = UseFieldOptions<T, TName, TFieldDef> &
+  Omit<TextFieldProps, keyof UseFieldOptions | "value"> & {
     setValueAs?: (
       ...args: Parameters<NonNullable<TextFieldProps["onChange"]>>
-    ) => // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any;
+    ) => T;
   };
 
 export const TextFieldControlled = forwardRef(function TextFieldControlled(
@@ -115,11 +115,11 @@ export const TextFieldControlled = forwardRef(function TextFieldControlled(
   ref: Ref<HTMLDivElement>
 ) {
   const {
-    name,
-    control,
+    name: nameProp,
     defaultValue,
-    rules,
+    validator,
     shouldUnregister,
+    form,
     onBlur: onBlurProp,
     onChange: onChangeProp,
     disabled,
@@ -128,59 +128,57 @@ export const TextFieldControlled = forwardRef(function TextFieldControlled(
     ...rest
   } = props;
 
+  const isSubmitting = useFormContext(form)?.isSubmitting ?? false;
+
   const {
-    field: {
-      onBlur: onBlurControlled,
-      onChange: onChangeControlled,
-      ref: inputRef,
-      ...field
-    },
-    fieldState: { isTouched, error },
-    formState: { isSubmitting },
-  } = useController({
-    name,
-    control,
+    props: { value, name },
+    state: { isTouched, errors },
+    setValue,
+    setTouched,
+  } = useField({
+    name: nameProp,
     defaultValue,
-    rules,
+    validator,
+    form,
     shouldUnregister,
   });
 
   return (
     <TextField
       {...rest}
-      {...field}
+      name={name}
+      value={value ?? ""}
       ref={ref}
       disabled={disabled || isSubmitting}
-      innerRef={inputRef}
-      {...(isTouched && error
+      {...(isTouched && errors.length
         ? {
             error: true,
-            helperText: error.message,
+            helperText: errors[0].message,
           }
         : {})}
       onBlur={useCallback<NonNullable<TextFieldProps["onBlur"]>>(
         (...args) => {
-          onBlurControlled();
+          setTouched(true);
 
           if (onBlurProp) {
             onBlurProp(...args);
           }
         },
-        [onBlurControlled, onBlurProp]
+        [setTouched, onBlurProp]
       )}
       onChange={useCallback<NonNullable<TextFieldProps["onChange"]>>(
         (...args) => {
           if (setValueAs) {
-            onChangeControlled(setValueAs(...args));
+            setValue(setValueAs(...args));
           } else {
-            onChangeControlled(...args);
+            setValue();
           }
 
           if (onChangeProp) {
             onChangeProp(...args);
           }
         },
-        [onChangeControlled, onChangeProp, setValueAs]
+        [setValue, onChangeProp, setValueAs]
       )}
     >
       {children}

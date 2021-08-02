@@ -6,18 +6,22 @@ import {
   DialogTitle,
   Grid,
 } from "@material-ui/core";
-import { useForm, FormProvider, useFormContext } from "react-hook-form";
 import { FreeSoloNode, nodeStringifyReplacer } from "mui-tree-select";
 
 import {
   EntryProps,
   useEntry,
-  ENTRY_NAME_PREFIX,
+  ENTRY_NAME,
 } from "../../../Inputs/fieldSets/useEntry";
 import { usePrePrint } from "../../../utils/usePrePrint";
 import { inputGridItemProps, useSharedDialogInputProps } from "./shared";
 import { usePerson } from "../../../Inputs/fieldSets/usePerson";
 import { EntityInputOpt } from "../../../Inputs/Entity";
+import {
+  FormProvider,
+  useForm,
+  useWatchAll,
+} from "../../../../useKISSForm/form";
 
 export type AddEntryProps = {
   entryProps: Omit<EntryProps, "paymentMethod" | "source"> & {
@@ -26,25 +30,26 @@ export type AddEntryProps = {
   };
 } & Omit<DialogProps, "children" | "PaperProps">;
 
-const AddEntryInner = (props: AddEntryProps & { innerRef: Ref<unknown> }) => {
-  const { entryProps, innerRef, ...rest } = props;
+export const AddEntry = forwardRef(function AddEntry(
+  props: AddEntryProps,
+  ref: Ref<unknown>
+) {
+  const form = useForm({
+    onSubmit: (...args) => console.log(...args),
+  });
 
-  const methods = useFormContext();
+  const { dirtyValues, values } = useWatchAll({ form });
 
-  const {
-    control: { defaultValuesRef },
-    handleSubmit,
-    watch,
-  } = methods;
+  const { entryProps, ...rest } = props;
 
   const printToScreen = usePrePrint(
     {
-      values: watch(),
-      defaultValues: defaultValuesRef.current,
+      form,
+      values,
+      dirtyValues,
     },
     {
       stringify: (value) => JSON.stringify(value, nodeStringifyReplacer, 2),
-      poll: 750,
     }
   );
 
@@ -53,6 +58,7 @@ const AddEntryInner = (props: AddEntryProps & { innerRef: Ref<unknown> }) => {
   const entryInputs = useEntry(
     useMemo<EntryProps<true>>(
       () => ({
+        form: form,
         showLabels: true,
         ...entryProps,
         required: true,
@@ -93,6 +99,7 @@ const AddEntryInner = (props: AddEntryProps & { innerRef: Ref<unknown> }) => {
       }),
       [
         entryProps,
+        form,
         sharedInputProps.DateInputProps,
         sharedInputProps.TextFieldProps,
         sharedInputProps.TreeSelectProps,
@@ -101,96 +108,42 @@ const AddEntryInner = (props: AddEntryProps & { innerRef: Ref<unknown> }) => {
   );
 
   const personInputs = usePerson({
-    namePrefix: ENTRY_NAME_PREFIX,
+    form,
     showLabels: true,
     ...sharedInputProps.TextFieldProps,
   });
 
-  // Watch Source
-  const sourceValue = watch(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    entryInputs.sourceInputName as any,
-    null
-  ) as null | EntityInputOpt;
-  console.log("Source", entryInputs.sourceInputName, sourceValue);
-  /* const handlePersonChange = useCallback<
-    NonNullable<AddPersonFieldsProps["onChange"]>
-  >(
-    (event) => {
-      if (
-        !(
-          formik.values.source instanceof FreeSoloNode ||
-          formik.values.source?.parent?.valueOf() === "Person"
-        )
-      ) {
-        return;
-      }
-
-      switch (event.target.name) {
-        case "person.name.first":
-          {
-            const value = event.target.value ?? "";
-
-            const attr = human.parseName(formik.values.source.toString());
-
-            setFieldValue(
-              "source",
-              new FreeSoloNode(
-                `${value} ${attr.lastName}`.trim(),
-                formik.values.source.parent
-              )
-            );
-          }
-
-          break;
-
-        case "person.name.last":
-          {
-            const value = event.target.value ?? "";
-
-            const attr = human.parseName(formik.values.source.toString());
-
-            setFieldValue(
-              "source",
-              new FreeSoloNode(
-                `${attr.firstName} ${value}`.trim(),
-                formik.values.source.parent
-              )
-            );
-          }
-          break;
-      }
-    },
-    [formik.values.source, setFieldValue]
-  ); */
-
   return (
-    <Dialog
-      {...rest}
-      PaperProps={useMemo(
-        () =>
-          ({
-            component: "form",
-            onSubmit: handleSubmit,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } as any),
-        [handleSubmit]
-      )}
-      ref={innerRef}
-    >
-      <DialogTitle>Add Entry</DialogTitle>
-      <DialogContent dividers>
-        <Grid spacing={3} container>
-          <Grid {...inputGridItemProps}>{entryInputs.dateInput}</Grid>
-          <Grid {...inputGridItemProps}>{entryInputs.dateOfRecordInput}</Grid>
-          <Grid {...inputGridItemProps}>{entryInputs.departmentInput}</Grid>
-          <Grid {...inputGridItemProps}>{entryInputs.sourceInput}</Grid>
-          <Grid {...inputGridItemProps}>{entryInputs.categoryInput}</Grid>
-          <Grid {...inputGridItemProps}>{entryInputs.paymentMethodInput}</Grid>
-          <Grid {...inputGridItemProps}>{entryInputs.totalInput}</Grid>
-          <Grid {...inputGridItemProps}>{entryInputs.reconciledInput}</Grid>
-        </Grid>
-        {sourceValue instanceof FreeSoloNode &&
+    <FormProvider form={form}>
+      <Dialog
+        {...rest}
+        PaperProps={useMemo(
+          () =>
+            ({
+              component: "form",
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              onSubmit: (e: any) => e.preventDefault(),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any),
+          []
+        )}
+        ref={ref}
+      >
+        <DialogTitle>Add Entry</DialogTitle>
+        <DialogContent dividers>
+          <Grid spacing={3} container>
+            <Grid {...inputGridItemProps}>{entryInputs.dateInput}</Grid>
+            <Grid {...inputGridItemProps}>{entryInputs.dateOfRecordInput}</Grid>
+            <Grid {...inputGridItemProps}>{entryInputs.departmentInput}</Grid>
+            <Grid {...inputGridItemProps}>{entryInputs.sourceInput}</Grid>
+            <Grid {...inputGridItemProps}>{entryInputs.categoryInput}</Grid>
+            <Grid {...inputGridItemProps}>
+              {entryInputs.paymentMethodInput}
+            </Grid>
+            <Grid {...inputGridItemProps}>{entryInputs.totalInput}</Grid>
+            <Grid {...inputGridItemProps}>{entryInputs.reconciledInput}</Grid>
+          </Grid>
+          {/* {sourceValue instanceof FreeSoloNode &&
           sourceValue.parent?.valueOf() === "Person" && (
             <Grid spacing={3} container>
               <Grid {...inputGridItemProps}>
@@ -202,26 +155,16 @@ const AddEntryInner = (props: AddEntryProps & { innerRef: Ref<unknown> }) => {
               <Grid {...inputGridItemProps}>{personInputs.phoneInput}</Grid>
               <Grid {...inputGridItemProps}>{personInputs.emailInput}</Grid>
             </Grid>
-          )}
-        <div>{printToScreen}</div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-export const AddEntry = forwardRef(function AddEntry(
-  props: AddEntryProps,
-  ref: Ref<unknown>
-) {
-  return (
-    <FormProvider
-      {...useForm({
-        shouldFocusError: true,
-        mode: "onBlur",
-        reValidateMode: "onBlur",
-      })}
-    >
-      <AddEntryInner {...props} innerRef={ref} />
+          )}*/}
+          <div>{printToScreen}</div>
+        </DialogContent>
+      </Dialog>
     </FormProvider>
   );
+
+  // return (
+  //   <FormProvider onSubmit={(...args) => console.log(...args)}>
+  //     <AddEntryInner {...props} innerRef={ref} />
+  //   </FormProvider>
+  // );
 });

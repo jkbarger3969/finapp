@@ -1,18 +1,21 @@
 import React from "react";
 import { TextFieldProps } from "@material-ui/core";
-import { Control } from "react-hook-form";
 
 import { useName, NameProps } from "./useName";
-import { Email, EmailProps, emailName } from "../Email";
-import { Phone, PhoneProps, phoneName } from "../Phone";
+import { Email, EmailProps, EMAIL_NAME } from "../Email";
+import { Phone, PhoneProps, PHONE_NAME } from "../Phone";
+import {
+  NamePrefixProvider,
+  prefixName,
+  UseFieldOptions,
+  useNamePrefix,
+} from "../../../useKISSForm/form";
 
 export type PersonProps = {
   showLabels?: boolean;
-  control?: Control;
-  namePrefix?: string;
-  name?: Omit<NameProps, "control" | "namePrefix">;
-  email?: Omit<EmailProps, "control" | "namePrefix">;
-  phone?: Omit<PhoneProps, "control" | "namePrefix">;
+  name?: Omit<NameProps, "form" | "shouldUnregister">;
+  email?: Omit<EmailProps, "form" | "shouldUnregister" | "name">;
+  phone?: Omit<PhoneProps, "form" | "shouldUnregister" | "name">;
 } & Partial<
   Pick<
     TextFieldProps,
@@ -25,11 +28,10 @@ export type PersonProps = {
     | "size"
     | "variant"
   >
->;
+> &
+  Pick<UseFieldOptions, "form" | "shouldUnregister">;
 
 export const PERSON_NAME_PREFIX = "person";
-export const personNamePrefix = (namePrefix?: string): string =>
-  namePrefix ? `${namePrefix}.${PERSON_NAME_PREFIX}` : PERSON_NAME_PREFIX;
 
 export const usePerson = (
   props: PersonProps
@@ -52,40 +54,50 @@ export const usePerson = (
     name: nameProps = {},
     email: emailProps = {},
     phone: phoneProps = {},
-    namePrefix: namePrefixProp,
-    control,
     ...rest
   } = props;
 
-  const namePrefix = personNamePrefix(namePrefixProp);
+  const namePrefix = useNamePrefix(PERSON_NAME_PREFIX);
+
+  const name = useName({
+    showLabels,
+    ...rest,
+    ...nameProps,
+  });
 
   return {
-    name: useName({
-      showLabels,
-      ...rest,
-      ...nameProps,
-      control,
-      namePrefix,
-    }),
+    name: {
+      ...name,
+      firstNameInput: (
+        <NamePrefixProvider namePrefix={PERSON_NAME_PREFIX}>
+          {name.firstNameInput}
+        </NamePrefixProvider>
+      ),
+      lastNameInput: (
+        <NamePrefixProvider namePrefix={PERSON_NAME_PREFIX}>
+          {name.lastNameInput}
+        </NamePrefixProvider>
+      ),
+    },
     emailInput: (
-      <Email
-        label={showLabels && "Email"}
-        {...rest}
-        {...(emailProps || {})}
-        control={control}
-        namePrefix={namePrefix}
-      />
+      <NamePrefixProvider namePrefix={PERSON_NAME_PREFIX}>
+        <Email
+          label={showLabels && "Email"}
+          {...rest}
+          {...(emailProps || {})}
+        />
+      </NamePrefixProvider>
     ),
-    emailInputName: emailName(namePrefix),
+    emailInputName: prefixName(EMAIL_NAME, namePrefix),
     phoneInput: (
-      <Phone
-        label={showLabels && "Phone"}
-        {...rest}
-        {...(phoneProps || {})}
-        control={control}
-        namePrefix={namePrefix}
-      />
+      <NamePrefixProvider namePrefix={PERSON_NAME_PREFIX}>
+        <Phone
+          label={showLabels && "Phone"}
+          {...rest}
+          {...(phoneProps || {})}
+        />
+      </NamePrefixProvider>
     ),
-    phoneInputName: phoneName(namePrefix),
+    phoneInputName: prefixName(PHONE_NAME, namePrefix),
   };
 };

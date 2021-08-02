@@ -8,8 +8,7 @@ import TreeSelect, {
   TreeSelectValue,
 } from "mui-tree-select";
 import { gql, useQuery } from "@apollo/client";
-import { MarkOptional, MarkRequired } from "ts-essentials";
-import { Control, UseControllerProps } from "react-hook-form";
+import { MarkOptional, MarkRequired, Merge } from "ts-essentials";
 
 import {
   CategoryInputOptsQuery as CategoryOpts,
@@ -20,10 +19,18 @@ import {
   CategoriesWhere,
 } from "../../apollo/graphTypes";
 import { LoadingDefaultBlank, sortBranchesToTop } from "./shared";
-import { useController } from "../../utils/reactHookForm";
+import {
+  FieldValue,
+  useField,
+  UseFieldOptions,
+  useFormContext,
+  useLoading,
+} from "../../useKISSForm/form";
 
-export type CategoryInputOpt = Omit<CategoryInputOptFragment, "children"> &
-  Partial<Pick<CategoryInputOptFragment, "children">>;
+export type CategoryInputOpt = MarkOptional<
+  CategoryInputOptFragment,
+  "children"
+>;
 
 export const CATEGORY_INPUT_OPTS_FRAGMENTS = gql`
   fragment CategoryInputOpt on Category {
@@ -240,75 +247,98 @@ export type CategoryInputProps<
   FreeSolo extends boolean | undefined = undefined
 > = {
   defaultValue?: CategoriesWhere;
-  control?: Control;
-  namePrefix?: string;
-  rules?: UseControllerProps["rules"];
 } & Omit<
   CategoryInputBaseProps<Multiple, DisableClearable, FreeSolo>,
   "onChange" | "value" | "name"
->;
+> &
+  Pick<UseFieldOptions, "form" | "shouldUnregister">;
 
 export const CATEGORY_NAME = "category";
-export const categoryName = (namePrefix?: string): string =>
-  namePrefix ? `${namePrefix}.${CATEGORY_NAME}` : CATEGORY_NAME;
-
+export interface CategoryFieldDef<
+  Multiple extends boolean | undefined = undefined,
+  FreeSolo extends boolean | undefined = undefined
+> {
+  [CATEGORY_NAME]: FieldValue<
+    TreeSelectValue<
+      CategoryInputOpt,
+      CategoryInputOpt,
+      Multiple,
+      false,
+      FreeSolo
+    >
+  >;
+}
 const CategoryInputControlled = forwardRef(function CategoryInputControlled<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 >(
-  props: Omit<
+  props: Merge<
     CategoryInputProps<Multiple, DisableClearable, FreeSolo>,
-    "defaultValue"
-  > & {
-    defaultValue: TreeSelectValue<
-      CategoryInputOpt,
-      CategoryInputOpt,
-      Multiple,
-      false,
-      false
-    >;
-  },
+    {
+      defaultValue?: TreeSelectValue<
+        CategoryInputOpt,
+        CategoryInputOpt,
+        Multiple,
+        false,
+        false
+      >;
+    }
+  >,
   ref: Ref<unknown>
 ): JSX.Element {
   const {
-    control,
-    namePrefix: namePrefixProp,
     defaultValue,
+    form,
+    shouldUnregister,
     renderInput: renderInputProp = defaultInput,
     disabled,
     onBlur: onBlurProp,
-    rules,
     ...rest
   } = props;
 
+  const isSubmitting = useFormContext(form)?.isSubmitting ?? false;
+
   const {
-    field: {
-      onBlur: onBlurControlled,
-      name,
-      onChange: onChangeControlled,
-      ref: inputRef,
-      ...field
-    },
-    fieldState: { isTouched, error },
-    formState: { isSubmitting },
-  } = useController({
+    props: { value: fieldValue, name },
+    state: { isTouched, errors },
+    setValue,
+    setTouched,
+  } = useField<
+    TreeSelectValue<
+      CategoryInputOpt,
+      CategoryInputOpt,
+      Multiple,
+      DisableClearable,
+      FreeSolo
+    >
+  >({
+    name: CATEGORY_NAME,
+    form,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    name: categoryName(namePrefixProp) as any,
-    control,
-    defaultValue,
-    rules,
-    shouldUnregister: true,
+    defaultValue: defaultValue as any,
+    shouldUnregister,
   });
+
+  const value = useMemo(() => fieldValue || (rest.multiple ? [] : null), [
+    fieldValue,
+    rest.multiple,
+  ]) as TreeSelectValue<
+    CategoryInputOpt,
+    CategoryInputOpt,
+    Multiple,
+    DisableClearable,
+    FreeSolo
+  >;
 
   const handleBlur = useCallback<NonNullable<CategoryInputBaseProps["onBlur"]>>(
     (...args) => {
-      onBlurControlled();
+      setTouched(true);
       if (onBlurProp) {
         onBlurProp(...args);
       }
     },
-    [onBlurControlled, onBlurProp]
+    [setTouched, onBlurProp]
   );
 
   const renderInput = useCallback<
@@ -317,16 +347,15 @@ const CategoryInputControlled = forwardRef(function CategoryInputControlled<
     (params) =>
       renderInputProp({
         ...params,
-        inputRef,
         name,
-        ...(isTouched && error
+        ...(isTouched && errors.length
           ? {
               error: true,
-              helperText: error?.message || "Invalid",
+              helperText: errors[0].message,
             }
           : {}),
       }),
-    [renderInputProp, inputRef, name, isTouched, error]
+    [renderInputProp, name, isTouched, errors]
   );
 
   const handleChange = useCallback<
@@ -335,15 +364,16 @@ const CategoryInputControlled = forwardRef(function CategoryInputControlled<
     >
   >(
     (_, value) => {
-      onChangeControlled(value);
+      setValue(value ?? undefined);
     },
-    [onChangeControlled]
+    [setValue]
   );
 
   return (
-    <CategoryInputBase
+    <CategoryInputBase<Multiple, DisableClearable, FreeSolo>
       {...rest}
-      {...field}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      value={value ?? (null as any)}
       disabled={isSubmitting || disabled}
       ref={ref}
       onChange={handleChange}
@@ -378,6 +408,13 @@ export const CategoryInput = forwardRef(function CategoryInput<
       }),
       [defaultValueProp]
     ),
+  });
+
+  useLoading({
+    loading,
+    name: CATEGORY_NAME,
+    form: rest.form,
+    shouldUnregister: true,
   });
 
   const renderInput = useCallback<
@@ -417,8 +454,10 @@ export const CategoryInput = forwardRef(function CategoryInput<
       renderInput={renderInput}
       defaultValue={
         ((props.multiple
-          ? defaultValues
-          : defaultValues[0] ?? null) as unknown) as TreeSelectValue<
+          ? defaultValues.length
+            ? defaultValues
+            : undefined
+          : defaultValues[0] ?? undefined) as unknown) as TreeSelectValue<
           CategoryInputOpt,
           CategoryInputOpt,
           Multiple,

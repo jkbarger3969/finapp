@@ -8,8 +8,7 @@ import TreeSelect, {
   TreeSelectValue,
 } from "mui-tree-select";
 import { gql, QueryHookOptions, useQuery } from "@apollo/client";
-import { MarkOptional, MarkRequired } from "ts-essentials";
-import { Control, UseControllerProps } from "react-hook-form";
+import { MarkOptional, MarkRequired, Merge } from "ts-essentials";
 
 import {
   DepartmentInputOptsQuery as DepartmentInputOpts,
@@ -20,7 +19,13 @@ import {
   DepartmentsWhere,
 } from "../../apollo/graphTypes";
 import { LoadingDefaultBlank, sortBranchesToTop } from "./shared";
-import { useController } from "../../utils/reactHookForm";
+import {
+  FieldValue,
+  useField,
+  UseFieldOptions,
+  useFormContext,
+  useLoading,
+} from "../../useKISSForm/form";
 
 export type DepartmentInputOpt = MarkOptional<
   DepartmentInputOptFragment,
@@ -295,77 +300,100 @@ export type DepartmentInputProps<
 > = {
   root: DepartmentsWhere;
   defaultValue?: DepartmentsWhere;
-  control?: Control;
-  namePrefix?: string;
-  rules?: UseControllerProps["rules"];
 } & Omit<
   DepartmentInputBaseProps<Multiple, DisableClearable, FreeSolo>,
   "onChange" | "value" | "name"
->;
+> &
+  Pick<UseFieldOptions, "form" | "shouldUnregister">;
 
 export const DEPARTMENT_NAME = "department";
-export const departmentName = (namePrefix?: string): string =>
-  namePrefix ? `${namePrefix}.${DEPARTMENT_NAME}` : DEPARTMENT_NAME;
-
+export interface DepartmentFieldDef<
+  Multiple extends boolean | undefined = undefined,
+  FreeSolo extends boolean | undefined = undefined
+> {
+  [DEPARTMENT_NAME]: FieldValue<
+    TreeSelectValue<
+      DepartmentInputOpt,
+      DepartmentInputOpt,
+      Multiple,
+      false,
+      FreeSolo
+    >
+  >;
+}
 const DepartmentInputControlled = forwardRef(function DepartmentInputControlled<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 >(
-  props: Omit<
+  props: Merge<
     DepartmentInputProps<Multiple, DisableClearable, FreeSolo>,
-    "defaultValue"
-  > & {
-    defaultValue: TreeSelectValue<
-      DepartmentInputOpt,
-      DepartmentInputOpt,
-      Multiple,
-      false,
-      false
-    >;
-  },
+    {
+      defaultValue?: TreeSelectValue<
+        DepartmentInputOpt,
+        DepartmentInputOpt,
+        Multiple,
+        true,
+        false
+      >;
+    }
+  >,
   ref: Ref<unknown>
 ): JSX.Element {
   const {
-    control,
-    namePrefix: namePrefixProp,
     defaultValue,
+    form,
+    shouldUnregister,
     renderInput: renderInputProp = defaultInput,
     disabled,
     onBlur: onBlurProp,
-    rules,
     ...rest
   } = props;
 
+  const isSubmitting = useFormContext(form)?.isSubmitting ?? false;
+
   const {
-    field: {
-      onBlur: onBlurControlled,
-      name,
-      onChange: onChangeControlled,
-      ref: inputRef,
-      ...field
-    },
-    fieldState: { isTouched, error },
-    formState: { isSubmitting },
-  } = useController({
+    props: { value: fieldValue, name },
+    state: { isTouched, errors },
+    setValue,
+    setTouched,
+  } = useField<
+    TreeSelectValue<
+      DepartmentInputOpt,
+      DepartmentInputOpt,
+      Multiple,
+      DisableClearable,
+      FreeSolo
+    >
+  >({
+    name: DEPARTMENT_NAME,
+    form,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    name: departmentName(namePrefixProp) as any,
-    control,
-    defaultValue,
-    rules,
-    shouldUnregister: true,
+    defaultValue: defaultValue as any,
+    shouldUnregister,
   });
+
+  const value = useMemo(() => fieldValue || (rest.multiple ? [] : null), [
+    fieldValue,
+    rest.multiple,
+  ]) as TreeSelectValue<
+    DepartmentInputOpt,
+    DepartmentInputOpt,
+    Multiple,
+    DisableClearable,
+    FreeSolo
+  >;
 
   const handleBlur = useCallback<
     NonNullable<DepartmentInputBaseProps["onBlur"]>
   >(
     (...args) => {
-      onBlurControlled();
+      setTouched(true);
       if (onBlurProp) {
         onBlurProp(...args);
       }
     },
-    [onBlurControlled, onBlurProp]
+    [setTouched, onBlurProp]
   );
 
   const renderInput = useCallback<
@@ -374,16 +402,15 @@ const DepartmentInputControlled = forwardRef(function DepartmentInputControlled<
     (params) =>
       renderInputProp({
         ...params,
-        inputRef,
         name,
-        ...(isTouched && error
+        ...(isTouched && errors.length
           ? {
               error: true,
-              helperText: error?.message || "Invalid",
+              helperText: errors[0].message,
             }
           : {}),
       }),
-    [renderInputProp, inputRef, name, isTouched, error]
+    [renderInputProp, name, isTouched, errors]
   );
 
   const handleChange = useCallback<
@@ -392,15 +419,15 @@ const DepartmentInputControlled = forwardRef(function DepartmentInputControlled<
     >
   >(
     (_, value) => {
-      onChangeControlled(value);
+      setValue(value ?? undefined);
     },
-    [onChangeControlled]
+    [setValue]
   );
 
   return (
     <DepartmentInputBase
       {...rest}
-      {...field}
+      value={value}
       disabled={isSubmitting || disabled}
       ref={ref}
       onChange={handleChange}
@@ -435,6 +462,13 @@ export const DepartmentInput = forwardRef(function DepartmentInput<
       }),
       [defaultValueProp]
     ),
+  });
+
+  useLoading({
+    loading,
+    name: DEPARTMENT_NAME,
+    form: rest.form,
+    shouldUnregister: true,
   });
 
   const renderInput = useCallback<
@@ -486,12 +520,14 @@ export const DepartmentInput = forwardRef(function DepartmentInput<
       renderInput={renderInput}
       defaultValue={
         ((props.multiple
-          ? defaultValues
-          : defaultValues[0] ?? null) as unknown) as TreeSelectValue<
+          ? defaultValues.length
+            ? defaultValues
+            : undefined
+          : defaultValues[0] ?? undefined) as unknown) as TreeSelectValue<
           DepartmentInputOpt,
           DepartmentInputOpt,
           Multiple,
-          false,
+          true,
           false
         >
       }

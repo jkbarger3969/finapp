@@ -8,13 +8,14 @@ export const RationalEditor = (
   const { autoFocus, value, onBlur, onFocus } = props;
 
   return (
-    <RationalInput
-      autoFocus={autoFocus}
-      defaultValue={value}
-      onBlur={onBlur}
-      onFocus={onFocus}
-      size="small"
-      margin="none"
-    />
+    <div></div>
+    // <RationalInput
+    //   autoFocus={autoFocus}
+    //   defaultValue={value}
+    //   onBlur={onBlur}
+    //   onFocus={onFocus}
+    //   size="small"
+    //   margin="none"
+    // />
   );
 };
