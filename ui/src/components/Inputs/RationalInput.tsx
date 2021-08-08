@@ -15,12 +15,12 @@ export type RationalInputBaseProps = Omit<
   TextFieldProps,
   "value" | "onChange" | "defaultValue" | "type"
 > & {
+  decimals?: number;
   onChange?: (
     event: Parameters<NonNullable<TextFieldProps["onChange"]>>[0],
     rational: Fraction | null,
     value: string
   ) => void;
-  decimalPlaces?: number;
   defaultValue?: string | number | Fraction;
   value?: string | number | Fraction | null;
 };
@@ -31,13 +31,13 @@ export const RationalInputBase = forwardRef(function RationalInputBase(
 ): JSX.Element {
   const {
     defaultValue,
-    decimalPlaces,
     onChange: onChangeProp,
+    decimals,
     value: valueProp,
     ...rest
   } = props;
 
-  const [value, setValue] = useControlled({
+  const [valueUnformatted, setValue] = useControlled({
     controlled: valueProp,
     default: defaultValue,
     name: "RationalInputBase",
@@ -46,7 +46,19 @@ export const RationalInputBase = forwardRef(function RationalInputBase(
 
   const onChange = useCallback<NonNullable<TextFieldProps["onChange"]>>(
     (event) => {
-      const value = event.target.value.trim() ?? "";
+      const value = (() => {
+        const value = event.target.value.trim() ?? "";
+        if (value && decimals !== undefined) {
+          const [whole, decimal = ""] = value.split(".");
+          if (decimals === 0) {
+            return whole;
+          } else if (decimal.length > decimals) {
+            return `${whole}.${decimal.slice(0, decimals)}`;
+          }
+        }
+
+        return value;
+      })();
 
       setValue(value);
 
@@ -64,8 +76,25 @@ export const RationalInputBase = forwardRef(function RationalInputBase(
         );
       }
     },
-    [onChangeProp, setValue]
+    [decimals, onChangeProp, setValue]
   );
+
+  const value = useMemo<string>(() => {
+    if ((valueUnformatted ?? NULLISH) === NULLISH) {
+      return "";
+    } else if (valueUnformatted instanceof Fraction) {
+      return valueUnformatted.toString();
+    } else {
+      switch (typeof valueUnformatted) {
+        case "string":
+          return valueUnformatted;
+        case "number":
+          return valueUnformatted.toString();
+        default:
+          return "";
+      }
+    }
+  }, [valueUnformatted]);
 
   return (
     <TextField
@@ -73,15 +102,7 @@ export const RationalInputBase = forwardRef(function RationalInputBase(
       ref={ref}
       onChange={onChange}
       type="number"
-      value={(() => {
-        if ((value ?? NULLISH) === NULLISH) {
-          return "";
-        } else if (value instanceof Fraction) {
-          return value.toString(decimalPlaces);
-        } else {
-          return (value as number | string).toString();
-        }
-      })()}
+      value={value}
     />
   );
 });
@@ -102,7 +123,6 @@ export const RationalInput = forwardRef(function RationalInput(
   const {
     name: nameProp,
     form,
-    shouldUnregister,
     onBlur: onBlurProp,
     onChange: onChangeProp,
     disabled,
@@ -125,7 +145,6 @@ export const RationalInput = forwardRef(function RationalInput(
         return new Fraction(defaultValue as any);
       }
     }, [defaultValue]),
-    shouldUnregister,
     form,
   });
 
@@ -162,7 +181,7 @@ export const RationalInput = forwardRef(function RationalInput(
         : {})}
       ref={ref}
       name={name}
-      value={value}
+      value={value ?? null}
       disabled={isSubmitting || disabled}
       onBlur={handleBlur}
       onChange={handleChange}

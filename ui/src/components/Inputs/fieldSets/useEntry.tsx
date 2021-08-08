@@ -1,94 +1,114 @@
 import React, { useCallback, useMemo } from "react";
-import Fraction from "fraction.js";
 import { defaultInput, TreeSelectValue } from "mui-tree-select";
-import { isEqual } from "date-fns";
+import Fraction from "fraction.js";
 
-import { DateInput, DateInputProps } from "../Date";
+import { DateInput, DateInputProps, DateFieldDef } from "../Date";
 import {
   DepartmentInput,
   DepartmentInputProps,
+  DepartmentFieldDef,
   DEPARTMENT_NAME,
 } from "../Department";
-import { EntityInput, EntityInputProps } from "../Entity";
+import { EntityInput, EntityInputProps, EntityFieldDef } from "../Entity";
 import {
   CategoryInputOpt,
   CategoryInput,
   CategoryInputProps,
+  CategoryFieldDef,
   CATEGORY_NAME,
 } from "../Category";
 import {
   PaymentMethodInput,
   PaymentMethodInputProps,
+  PaymentMethodFieldDef,
   PAYMENT_METHOD_NAME,
 } from "../PaymentMethod";
-import { RationalInput, RationalInputProps } from "../RationalInput";
-import { BoolInput, BoolInputProps } from "../BoolInput";
+import {
+  RationalInput,
+  RationalInputProps,
+  RationalFieldDef,
+} from "../RationalInput";
+import { BoolInput, BoolInputProps, BoolFieldDef } from "../BoolInput";
 import {
   NamePrefixProvider,
   prefixName,
-  useField,
   UseFieldOptions,
   useNamePrefix,
+  useValidators,
   useWatcher,
+  UseValidatorOptions,
+  useDefaultValues,
+  FieldValue,
+  Validator,
 } from "../../../useKISSForm/form";
+import { requiredValidator } from "../shared";
 
 export type EntryInputProps<
   AllowNewSource extends boolean | undefined = undefined
 > = {
-  date?: Omit<DateInputProps, "name" | "shouldUnregister" | "form">;
-  dateOfRecord?: Omit<DateInputProps, "name" | "shouldUnregister" | "form">;
+  date?: Omit<DateInputProps, "name" | "form">;
+  dateOfRecord?: Omit<DateInputProps, "name" | "form">;
 
-  department: Omit<
-    DepartmentInputProps,
-    "multiple" | "shouldUnregister" | "form"
-  >;
+  department: Omit<DepartmentInputProps, "multiple" | "form">;
   source?: Omit<
     EntityInputProps<false, undefined, AllowNewSource>,
-    | "name"
-    | "multiple"
-    | "allowNewBusiness"
-    | "allowNewPerson"
-    | "shouldUnregister"
-    | "form"
+    "name" | "multiple" | "allowNewBusiness" | "allowNewPerson" | "form"
   > & {
     allowNewSource?: AllowNewSource;
   };
-  category?: Omit<CategoryInputProps, "multiple" | "shouldUnregister" | "form">;
+  category?: Omit<CategoryInputProps, "multiple" | "form">;
   paymentMethod: Omit<
     PaymentMethodInputProps,
-    "multiple" | "entryType" | "shouldUnregister" | "form"
+    "multiple" | "entryType" | "form"
   >;
-  total?: Omit<RationalInputProps, "name" | "shouldUnregister" | "form">;
+  total?: Omit<RationalInputProps, "name" | "form">;
   reconciled?:
-    | Partial<
-        Omit<BoolInputProps<"checkbox">, "name" | "shouldUnregister" | "form">
-      >
-    | Partial<
-        Omit<BoolInputProps<"switch">, "name" | "shouldUnregister" | "form">
-      >;
+    | Partial<Omit<BoolInputProps<"checkbox">, "name" | "form">>
+    | Partial<Omit<BoolInputProps<"switch">, "name" | "form">>;
 };
 
-export type EntryProps<
-  AllowNewSource extends boolean | undefined = undefined
-> = {
-  showLabels?: boolean;
-  required?: boolean;
-} & EntryInputProps<AllowNewSource> &
-  Pick<UseFieldOptions, "form" | "shouldUnregister">;
+const gtZero: Validator<Fraction> = (value) => {
+  if (value && value.compare(0) <= 0) {
+    return new RangeError("Must be greater than zero.");
+  }
+};
 
-const TOTAL_NAME = "total";
-const SOURCE_NAME = "source";
-const RECONCILED_NAME = "reconciled";
-export const ENTRY_NAME = "entry";
-type EntryFieldNames =
-  | "date"
-  | "dateOfRecord"
+export type EntryProps<AllowNewSource extends boolean | undefined = undefined> =
+  {
+    showLabels?: boolean;
+    insertNamePrefix?: string;
+    required?: boolean;
+  } & EntryInputProps<AllowNewSource> &
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Pick<UseFieldOptions<any, string, any>, "form">;
+
+export const DATE_NAME = "date";
+export const DATE_OF_RECORD_NAME = "dateOfRecord";
+export const SOURCE_NAME = "source";
+export const TOTAL_NAME = "total";
+export const RECONCILED_NAME = "reconciled";
+
+export type EntryFieldDef = {
+  entry: DateFieldDef<typeof DATE_NAME> &
+    DateFieldDef<typeof DATE_OF_RECORD_NAME> &
+    DepartmentFieldDef<false, false> &
+    EntityFieldDef<typeof SOURCE_NAME, false, true> &
+    CategoryFieldDef<false, false> &
+    PaymentMethodFieldDef<false, false> &
+    RationalFieldDef<typeof TOTAL_NAME> &
+    BoolFieldDef<typeof RECONCILED_NAME>;
+};
+export const ENTRY_NAME: keyof EntryFieldDef = "entry";
+
+export type EntryFieldNames =
+  | typeof DATE_NAME
+  | typeof DATE_OF_RECORD_NAME
   | typeof DEPARTMENT_NAME
-  | "source"
+  | typeof SOURCE_NAME
   | typeof CATEGORY_NAME
   | typeof PAYMENT_METHOD_NAME
-  | "total"
-  | "reconciled";
+  | typeof TOTAL_NAME
+  | typeof RECONCILED_NAME;
 
 export const useEntry = <
   AllowNewSource extends boolean | undefined = undefined
@@ -102,10 +122,10 @@ export const useEntry = <
   } => {
   const {
     form,
-    shouldUnregister,
     required,
     showLabels,
-    date: { onChange: onChangeDateProp, ...dateProps } = {} as DateInputProps,
+    insertNamePrefix,
+    date: dateProps = {} as DateInputProps,
     dateOfRecord: dateOfRecordProps = {},
     department: departmentProps,
     source: { allowNewSource, ...sourceProps } = {},
@@ -115,7 +135,11 @@ export const useEntry = <
     reconciled: reconciledProps = {},
   } = props;
 
-  const namePrefix = useNamePrefix(ENTRY_NAME);
+  const entryName = insertNamePrefix
+    ? prefixName(ENTRY_NAME, insertNamePrefix)
+    : ENTRY_NAME;
+
+  const fullName = useNamePrefix(entryName);
 
   const categoryValue = useWatcher<
     TreeSelectValue<CategoryInputOpt, CategoryInputOpt, false, true, false>
@@ -124,51 +148,53 @@ export const useEntry = <
     form,
   });
 
+  useValidators<EntryFieldDef>(
+    useMemo<UseValidatorOptions<EntryFieldDef>>(() => {
+      if (required) {
+        return {
+          validators: {
+            entry: {
+              date: requiredValidator,
+              department: requiredValidator,
+              source: requiredValidator,
+              category: requiredValidator,
+              paymentMethod: requiredValidator,
+              total: [requiredValidator, gtZero],
+            },
+          },
+          form,
+        };
+      } else {
+        return {
+          validators: {
+            entry: {
+              total: gtZero,
+            },
+          },
+          form,
+        };
+      }
+    }, [form, required])
+  );
+
   // Handle conditions where date of record should take the value of
   // date.
-  const dateOfRecordName = prefixName("dateOfRecord", ENTRY_NAME);
-  const {
-    props: { value: dateOfRecordValue },
-    state: { isDirty: dateOfRecordIsDirty },
-    setValue: dateOfRecordSetValue,
-  } = useField<Date>({
-    name: dateOfRecordName,
-    defaultValue: dateOfRecordProps?.defaultValue,
-    shouldUnregister,
+  const { value: dateValue } = useWatcher<Date>({
+    name: prefixName(DATE_NAME, ENTRY_NAME),
     form,
   });
-
-  const dateValue = useWatcher<Date>({
-    name: prefixName("date", ENTRY_NAME),
-    form,
-  });
-
-  const handleDateChange = useCallback<NonNullable<DateInputProps["onChange"]>>(
-    (...args) => {
-      // date of record should mirror date
-      if (
-        !dateOfRecordIsDirty &&
-        (!dateOfRecordValue ||
-          isEqual(
-            dateOfRecordValue || 0,
-            dateValue.value || dateValue.defaultValue || 0
-          ))
-      ) {
-        dateOfRecordSetValue(args[0] ?? undefined);
-      }
-
-      if (onChangeDateProp) {
-        onChangeDateProp(...args);
-      }
-    },
-    [
-      dateOfRecordIsDirty,
-      dateOfRecordSetValue,
-      dateOfRecordValue,
-      dateValue.defaultValue,
-      dateValue.value,
-      onChangeDateProp,
-    ]
+  useDefaultValues(
+    useMemo(
+      () => ({
+        defaultValues: {
+          [prefixName(DATE_OF_RECORD_NAME, ENTRY_NAME)]: new FieldValue(
+            dateValue
+          ),
+        },
+        form,
+      }),
+      [dateValue, form]
+    )
   );
 
   const entryType =
@@ -177,28 +203,27 @@ export const useEntry = <
 
   return {
     dateInput: (
-      <NamePrefixProvider namePrefix={ENTRY_NAME}>
+      <NamePrefixProvider namePrefix={entryName}>
         <DateInput
           label={showLabels && "Date"}
           {...dateProps}
-          onChange={handleDateChange}
-          name="date"
+          name={DATE_NAME}
         />
       </NamePrefixProvider>
     ),
-    dateInputName: prefixName("date", namePrefix),
+    dateInputName: prefixName(DATE_NAME, fullName),
     dateOfRecordInput: (
-      <NamePrefixProvider namePrefix={ENTRY_NAME}>
+      <NamePrefixProvider namePrefix={entryName}>
         <DateInput
           label={showLabels && "Date of Record"}
           {...dateOfRecordProps}
-          name="dateOfRecord"
+          name={DATE_OF_RECORD_NAME}
         />
       </NamePrefixProvider>
     ),
-    dateOfRecordInputName: prefixName(" dateOfRecord", namePrefix),
+    dateOfRecordInputName: prefixName(DATE_OF_RECORD_NAME, fullName),
     departmentInput: (
-      <NamePrefixProvider namePrefix={ENTRY_NAME}>
+      <NamePrefixProvider namePrefix={entryName}>
         <DepartmentInput<false>
           {...departmentProps}
           renderInput={useCallback<
@@ -215,9 +240,9 @@ export const useEntry = <
         />
       </NamePrefixProvider>
     ),
-    departmentInputName: prefixName(DEPARTMENT_NAME, namePrefix),
+    departmentInputName: prefixName(DEPARTMENT_NAME, fullName),
     sourceInput: (
-      <NamePrefixProvider namePrefix={ENTRY_NAME}>
+      <NamePrefixProvider namePrefix={entryName}>
         <EntityInput<false, undefined, AllowNewSource>
           allowNewBusiness={allowNewSource}
           allowNewPerson={allowNewSource}
@@ -237,9 +262,9 @@ export const useEntry = <
         />
       </NamePrefixProvider>
     ),
-    sourceInputName: prefixName(SOURCE_NAME, namePrefix),
+    sourceInputName: prefixName(SOURCE_NAME, fullName),
     categoryInput: (
-      <NamePrefixProvider namePrefix={ENTRY_NAME}>
+      <NamePrefixProvider namePrefix={entryName}>
         <CategoryInput
           {...categoryProps}
           renderInput={useCallback<
@@ -256,9 +281,9 @@ export const useEntry = <
         />
       </NamePrefixProvider>
     ),
-    categoryInputName: prefixName(CATEGORY_NAME, namePrefix),
+    categoryInputName: prefixName(CATEGORY_NAME, fullName),
     paymentMethodInput: (
-      <NamePrefixProvider namePrefix={ENTRY_NAME}>
+      <NamePrefixProvider namePrefix={entryName}>
         <PaymentMethodInput<false>
           {...paymentMethodProps}
           renderInput={useCallback<
@@ -276,46 +301,20 @@ export const useEntry = <
         />
       </NamePrefixProvider>
     ),
-    paymentMethodInputName: prefixName(PAYMENT_METHOD_NAME, namePrefix),
+    paymentMethodInputName: prefixName(PAYMENT_METHOD_NAME, fullName),
     totalInput: (
-      <NamePrefixProvider namePrefix={ENTRY_NAME}>
+      <NamePrefixProvider namePrefix={entryName}>
         <RationalInput
           label={showLabels && "Total"}
+          decimals={2}
           {...totalProps}
-          inputProps={useMemo<NonNullable<RationalInputProps["inputProps"]>>(
-            () => ({
-              min: "0.01",
-            }),
-            []
-          )}
-          /* rules={useMemo(
-            () =>
-              addRequired(required, {
-                ...(totalProps.rules || {}),
-                validate: {
-                  greaterThanZero: (value: Fraction | null) => {
-                    if (value instanceof Fraction && value.compare(0) <= 0) {
-                      return "Must Be Greater Than 0";
-                    }
-                  },
-                  ...(typeof totalProps.rules?.validate === "function"
-                    ? {
-                        validate: totalProps.rules?.validate,
-                      }
-                    : {
-                        ...(totalProps.rules?.validate || {}),
-                      }),
-                },
-              }),
-            [totalProps.rules, required]
-          )} */
           name={TOTAL_NAME}
         />
       </NamePrefixProvider>
     ),
-    totalInputName: prefixName(TOTAL_NAME, namePrefix),
+    totalInputName: prefixName(TOTAL_NAME, fullName),
     reconciledInput: (
-      <NamePrefixProvider namePrefix={ENTRY_NAME}>
+      <NamePrefixProvider namePrefix={entryName}>
         <BoolInput
           label={showLabels && "Reconciled"}
           {...reconciledProps}
@@ -323,6 +322,6 @@ export const useEntry = <
         />
       </NamePrefixProvider>
     ),
-    reconciledInputName: prefixName(RECONCILED_NAME, namePrefix),
+    reconciledInputName: prefixName(RECONCILED_NAME, fullName),
   };
 };

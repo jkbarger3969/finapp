@@ -61,6 +61,18 @@ export type EntityTreeSelectProps<
   FreeSolo
 >;
 
+export type EntityTreeSelectValue<
+  Multiple extends boolean | undefined = undefined,
+  DisableClearable extends boolean | undefined = undefined,
+  FreeSolo extends boolean | undefined = undefined
+> = TreeSelectValue<
+  EntityInputOpt,
+  EntityBranchInputOpt,
+  Multiple,
+  DisableClearable,
+  FreeSolo
+>;
+
 export const ENTITY_INPUT_OPT_FRAGMENTS = gql`
   fragment EntityBusinessInputOpt on Business {
     __typename
@@ -441,7 +453,7 @@ export type EntityInputProps<
   EntityInputBaseProps<Multiple, DisableClearable, FreeSolo>,
   "onChange" | "value"
 > &
-  Pick<UseFieldOptions, "form" | "shouldUnregister">;
+  Pick<UseFieldOptions, "form">;
 
 export type EntityFieldDef<
   Name extends string = typeof ENTITY_NAME,
@@ -481,7 +493,6 @@ const EntityInputControlled = forwardRef(function EntityInputControlled<
     name: nameProp = ENTITY_NAME,
     defaultValue,
     form,
-    shouldUnregister,
     renderInput: renderInputProp = defaultInput,
     disabled,
     onBlur: onBlurProp,
@@ -508,13 +519,12 @@ const EntityInputControlled = forwardRef(function EntityInputControlled<
     form,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultValue: defaultValue as any,
-    shouldUnregister,
   });
 
-  const value = useMemo(() => fieldValue || (rest.multiple ? [] : null), [
-    fieldValue,
-    rest.multiple,
-  ]) as TreeSelectValue<
+  const value = useMemo(
+    () => fieldValue || (rest.multiple ? [] : null),
+    [fieldValue, rest.multiple]
+  ) as TreeSelectValue<
     EntityInputOpt,
     EntityBranchInputOpt,
     Multiple,
@@ -607,7 +617,6 @@ export const EntityInput = forwardRef(function EntityInput<
     loading,
     name: rest.name || ENTITY_NAME,
     form: rest.form,
-    shouldUnregister: true,
   });
 
   const renderInput = useCallback<
@@ -673,11 +682,11 @@ export const EntityInput = forwardRef(function EntityInput<
       ref={ref}
       renderInput={renderInput}
       defaultValue={
-        ((props.multiple
+        (props.multiple
           ? defaultValues.length
             ? defaultValues
             : undefined
-          : defaultValues[0] ?? undefined) as unknown) as TreeSelectValue<
+          : defaultValues[0] ?? undefined) as unknown as TreeSelectValue<
           EntityInputOpt,
           EntityBranchInputOpt,
           Multiple,

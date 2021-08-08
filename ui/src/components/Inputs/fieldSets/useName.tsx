@@ -1,6 +1,10 @@
-import React from "react";
+import React, { useMemo } from "react";
 
-import { TextFieldControlled, TextFieldControlledProps } from "../shared";
+import {
+  TextFieldControlled,
+  TextFieldControlledProps,
+  requiredValidator,
+} from "../shared";
 import {
   Validator,
   FieldValue,
@@ -10,28 +14,27 @@ import {
 
 export type NameInputProps = {
   firstName?: Partial<
-    Omit<
-      TextFieldControlledProps,
-      "type" | "name" | "form" | "shouldUnregister" | "validator"
-    >
+    Omit<TextFieldControlledProps, "type" | "name" | "form" | "validator">
   >;
   lastName?: Partial<
-    Omit<
-      TextFieldControlledProps,
-      "type" | "name" | "form" | "shouldUnregister" | "validator"
-    >
+    Omit<TextFieldControlledProps, "type" | "name" | "form" | "validator">
   >;
 };
 
 export type NameProps = {
   showLabels?: boolean;
+  insertNamePrefix?: string;
+  required?: boolean;
+  shouldUnregister?: boolean;
 } & NameInputProps &
   Omit<
     TextFieldControlledProps,
     "defaultValue" | "name" | "type" | "validator"
   >;
 
-const validName: Validator<string | undefined> = (value) => {
+const validName: Validator<string | undefined> = (_, { form, name }) => {
+  // Validate default values too
+  const value = form.getFieldValue(name, false) as string | undefined;
   if (value === undefined) {
     return;
   } else if (!/^[.A-Za-z\s]+$/i.test(value)) {
@@ -41,13 +44,13 @@ const validName: Validator<string | undefined> = (value) => {
   }
 };
 
-export const NAME_NAME = "name";
 export type NameFieldDef = {
-  [NAME_NAME]: {
+  name: {
     first: FieldValue<string>;
     last: FieldValue<string>;
   };
 };
+export const NAME_NAME: keyof NameFieldDef = "name";
 
 export const useName = (
   props: NameProps
@@ -59,12 +62,23 @@ export const useName = (
   } => {
   const {
     showLabels,
+    insertNamePrefix,
+    required,
     firstName: firstNameProps = {},
     lastName: lastNameProps = {},
     ...globalProps
   } = props;
 
-  const namePrefix = useNamePrefix(NAME_NAME);
+  const name = insertNamePrefix
+    ? prefixName(NAME_NAME, insertNamePrefix)
+    : NAME_NAME;
+
+  const fullName = useNamePrefix(name);
+
+  const validator = useMemo(
+    () => (required ? [requiredValidator, validName] : validName),
+    [required]
+  );
 
   return {
     firstNameInput: (
@@ -72,22 +86,23 @@ export const useName = (
         label={showLabels && "First Name"}
         {...globalProps}
         {...firstNameProps}
-        validator={validName}
-        name={prefixName("first", NAME_NAME)}
+        validator={validator}
+        name={prefixName("first", name)}
         type="text"
       />
     ),
-    firstNameInputName: prefixName("first", namePrefix),
+    firstNameInputName: prefixName("first", fullName),
     lastNameInput: (
       <TextFieldControlled
         label={showLabels && "Last Name"}
         {...globalProps}
+        required={required}
         {...lastNameProps}
-        validator={validName}
-        name={prefixName("last", NAME_NAME)}
+        validator={validator}
+        name={prefixName("last", name)}
         type="text"
       />
     ),
-    lastNameInputName: prefixName("last", namePrefix),
+    lastNameInputName: prefixName("last", fullName),
   };
 };

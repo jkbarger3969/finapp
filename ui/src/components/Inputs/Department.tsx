@@ -304,14 +304,13 @@ export type DepartmentInputProps<
   DepartmentInputBaseProps<Multiple, DisableClearable, FreeSolo>,
   "onChange" | "value" | "name"
 > &
-  Pick<UseFieldOptions, "form" | "shouldUnregister">;
+  Pick<UseFieldOptions, "form">;
 
-export const DEPARTMENT_NAME = "department";
-export interface DepartmentFieldDef<
+export type DepartmentFieldDef<
   Multiple extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
-> {
-  [DEPARTMENT_NAME]: FieldValue<
+> = {
+  department: FieldValue<
     TreeSelectValue<
       DepartmentInputOpt,
       DepartmentInputOpt,
@@ -320,7 +319,8 @@ export interface DepartmentFieldDef<
       FreeSolo
     >
   >;
-}
+};
+export const DEPARTMENT_NAME: keyof DepartmentFieldDef = "department";
 const DepartmentInputControlled = forwardRef(function DepartmentInputControlled<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
@@ -343,7 +343,6 @@ const DepartmentInputControlled = forwardRef(function DepartmentInputControlled<
   const {
     defaultValue,
     form,
-    shouldUnregister,
     renderInput: renderInputProp = defaultInput,
     disabled,
     onBlur: onBlurProp,
@@ -370,13 +369,12 @@ const DepartmentInputControlled = forwardRef(function DepartmentInputControlled<
     form,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultValue: defaultValue as any,
-    shouldUnregister,
   });
 
-  const value = useMemo(() => fieldValue || (rest.multiple ? [] : null), [
-    fieldValue,
-    rest.multiple,
-  ]) as TreeSelectValue<
+  const value = useMemo(
+    () => fieldValue || (rest.multiple ? [] : null),
+    [fieldValue, rest.multiple]
+  ) as TreeSelectValue<
     DepartmentInputOpt,
     DepartmentInputOpt,
     Multiple,
@@ -468,7 +466,6 @@ export const DepartmentInput = forwardRef(function DepartmentInput<
     loading,
     name: DEPARTMENT_NAME,
     form: rest.form,
-    shouldUnregister: true,
   });
 
   const renderInput = useCallback<
@@ -519,11 +516,11 @@ export const DepartmentInput = forwardRef(function DepartmentInput<
       ref={ref}
       renderInput={renderInput}
       defaultValue={
-        ((props.multiple
+        (props.multiple
           ? defaultValues.length
             ? defaultValues
             : undefined
-          : defaultValues[0] ?? undefined) as unknown) as TreeSelectValue<
+          : defaultValues[0] ?? undefined) as unknown as TreeSelectValue<
           DepartmentInputOpt,
           DepartmentInputOpt,
           Multiple,

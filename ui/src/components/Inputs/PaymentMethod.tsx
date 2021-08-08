@@ -346,7 +346,8 @@ export const PaymentMethodInputBase = forwardRef(
             where: accountsWhere,
           },
           onCompleted: (data) => {
-            const checkingAccountBranchOpts: BranchNode<PaymentMethodInputBranchOpt>[] = [];
+            const checkingAccountBranchOpts: BranchNode<PaymentMethodInputBranchOpt>[] =
+              [];
             const cardOpts = new Map<
               PaymentCardType,
               AccountCardPayMethodInputOpt[]
@@ -610,14 +611,13 @@ export type PaymentMethodInputProps<
   PaymentMethodInputBaseProps<Multiple, DisableClearable>,
   "onChange" | "value" | "name"
 > &
-  Pick<UseFieldOptions, "form" | "shouldUnregister">;
+  Pick<UseFieldOptions, "form">;
 
-export const PAYMENT_METHOD_NAME = "paymentMethod";
 export type PaymentMethodFieldDef<
   Multiple extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 > = {
-  [PAYMENT_METHOD_NAME]: FieldValue<
+  paymentMethod: FieldValue<
     TreeSelectValue<
       PayMethodInputOpt,
       PaymentMethodInputBranchOpt,
@@ -627,6 +627,7 @@ export type PaymentMethodFieldDef<
     >
   >;
 };
+export const PAYMENT_METHOD_NAME: keyof PaymentMethodFieldDef = "paymentMethod";
 
 const PaymentMethodInputControlled = forwardRef(
   function PaymentMethodInputControlled<
@@ -650,7 +651,6 @@ const PaymentMethodInputControlled = forwardRef(
     const {
       defaultValue,
       form,
-      shouldUnregister,
       renderInput: renderInputProp = defaultInput,
       disabled,
       onBlur: onBlurProp,
@@ -677,13 +677,12 @@ const PaymentMethodInputControlled = forwardRef(
       form,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       defaultValue: defaultValue as any,
-      shouldUnregister,
     });
 
-    const value = useMemo(() => fieldValue || (rest.multiple ? [] : null), [
-      fieldValue,
-      rest.multiple,
-    ]) as TreeSelectValue<
+    const value = useMemo(
+      () => fieldValue || (rest.multiple ? [] : null),
+      [fieldValue, rest.multiple]
+    ) as TreeSelectValue<
       PayMethodInputOpt,
       PaymentMethodInputBranchOpt,
       Multiple,
@@ -816,7 +815,6 @@ export const PaymentMethodInput = forwardRef(function PaymentMethodInput<
     loading,
     name: PAYMENT_METHOD_NAME,
     form: rest.form,
-    shouldUnregister: true,
   });
 
   const renderInput = useCallback<

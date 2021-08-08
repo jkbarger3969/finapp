@@ -9,10 +9,10 @@ import {
   BranchNode,
 } from "mui-tree-select";
 import {
-  FieldDef,
   useField,
   UseFieldOptions,
   useFormContext,
+  Validator,
 } from "../../useKISSForm/form";
 
 export type QueryHookOptions = Omit<QueryHookOptionsApollo, "variables">;
@@ -102,7 +102,7 @@ export const sortBranchesToTop = (
 export type TextFieldControlledProps<
   T = unknown,
   TName extends string = string,
-  TFieldDef extends FieldDef = FieldDef
+  TFieldDef extends Record<string, unknown> = Record<string, unknown>
 > = UseFieldOptions<T, TName, TFieldDef> &
   Omit<TextFieldProps, keyof UseFieldOptions | "value"> & {
     setValueAs?: (
@@ -118,6 +118,7 @@ export const TextFieldControlled = forwardRef(function TextFieldControlled(
     name: nameProp,
     defaultValue,
     validator,
+    shouldRunValidation,
     shouldUnregister,
     form,
     onBlur: onBlurProp,
@@ -139,8 +140,9 @@ export const TextFieldControlled = forwardRef(function TextFieldControlled(
     name: nameProp,
     defaultValue,
     validator,
-    form,
+    shouldRunValidation,
     shouldUnregister,
+    form,
   });
 
   return (
@@ -171,7 +173,7 @@ export const TextFieldControlled = forwardRef(function TextFieldControlled(
           if (setValueAs) {
             setValue(setValueAs(...args));
           } else {
-            setValue();
+            setValue(args[0].target.value.trim() || undefined);
           }
 
           if (onChangeProp) {
@@ -185,3 +187,16 @@ export const TextFieldControlled = forwardRef(function TextFieldControlled(
     </TextField>
   );
 });
+
+const REQUIRED_ERROR = new Error("Required");
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const requiredValidator: Validator<any> = (_, { form, name }) => {
+  const value = form.getFieldValue(name, false);
+  if (
+    value === undefined ||
+    value === null ||
+    (typeof value === "string" && value.trim() === "")
+  ) {
+    return REQUIRED_ERROR;
+  }
+};

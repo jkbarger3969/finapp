@@ -26,10 +26,10 @@ interface AsyncButtonProgressProps {
 
 export type AsyncButtonProps = ButtonProps & AsyncButtonProgressProps;
 
-const AsyncButtonInner = (
+export const AsyncButton = React.forwardRef(function AsyncButton(
   props: AsyncButtonProps,
   ref: React.Ref<HTMLButtonElement>
-): JSX.Element => {
+): JSX.Element {
   const classes = useStyles();
 
   const {
@@ -80,16 +80,14 @@ const AsyncButtonInner = (
       {children}
     </Button>
   );
-};
-
-export const AsyncButton = React.forwardRef(AsyncButtonInner);
+});
 
 export type AsyncIconButtonProps = IconButtonProps & AsyncButtonProgressProps;
 
-const AsyncIconButtonInner = (
+export const AsyncIconButton = React.forwardRef(function AsyncIconButton(
   props: AsyncIconButtonProps,
   ref: React.Ref<HTMLButtonElement>
-): JSX.Element => {
+): JSX.Element {
   const classes = useStyles();
 
   const {
@@ -130,6 +128,4 @@ const AsyncIconButtonInner = (
       {children}
     </IconButton>
   );
-};
-
-export const AsyncIconButton = React.forwardRef(AsyncIconButtonInner);
+});

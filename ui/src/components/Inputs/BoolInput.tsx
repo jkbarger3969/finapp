@@ -136,7 +136,6 @@ export const BoolInput = forwardRef(function BoolInput<
     name: nameProp,
     defaultValue,
     form,
-    shouldUnregister,
     onBlur: onBlurProp,
     onChange: onChangeProp,
     disabled,
@@ -153,7 +152,6 @@ export const BoolInput = forwardRef(function BoolInput<
   } = useField<boolean>({
     name: nameProp,
     defaultValue,
-    shouldUnregister,
     form,
   });
 

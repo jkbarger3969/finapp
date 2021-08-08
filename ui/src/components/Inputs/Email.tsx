@@ -10,7 +10,7 @@ export type EmailProps = Partial<
 >;
 
 const validEmail: Validator<string> = (email?: string) => {
-  if (!isEmail(email ?? "")) {
+  if (email && !isEmail(email)) {
     return new TypeError("Invalid Email");
   }
 };

@@ -14,7 +14,7 @@ export type PhoneProps = Omit<
 >;
 
 const validPhone: Validator<string> = (phone?: string) => {
-  if (!isValidPhoneNumber(phone ?? "", "US")) {
+  if (phone && !isValidPhoneNumber(phone, "US")) {
     return new TypeError("Invalid Phone Number");
   }
 };

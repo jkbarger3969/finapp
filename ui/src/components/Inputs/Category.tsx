@@ -251,14 +251,13 @@ export type CategoryInputProps<
   CategoryInputBaseProps<Multiple, DisableClearable, FreeSolo>,
   "onChange" | "value" | "name"
 > &
-  Pick<UseFieldOptions, "form" | "shouldUnregister">;
+  Pick<UseFieldOptions, "form">;
 
-export const CATEGORY_NAME = "category";
-export interface CategoryFieldDef<
+export type CategoryFieldDef<
   Multiple extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
-> {
-  [CATEGORY_NAME]: FieldValue<
+> = {
+  category: FieldValue<
     TreeSelectValue<
       CategoryInputOpt,
       CategoryInputOpt,
@@ -267,7 +266,9 @@ export interface CategoryFieldDef<
       FreeSolo
     >
   >;
-}
+};
+export const CATEGORY_NAME: keyof CategoryFieldDef = "category";
+
 const CategoryInputControlled = forwardRef(function CategoryInputControlled<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
@@ -290,7 +291,6 @@ const CategoryInputControlled = forwardRef(function CategoryInputControlled<
   const {
     defaultValue,
     form,
-    shouldUnregister,
     renderInput: renderInputProp = defaultInput,
     disabled,
     onBlur: onBlurProp,
@@ -317,13 +317,12 @@ const CategoryInputControlled = forwardRef(function CategoryInputControlled<
     form,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultValue: defaultValue as any,
-    shouldUnregister,
   });
 
-  const value = useMemo(() => fieldValue || (rest.multiple ? [] : null), [
-    fieldValue,
-    rest.multiple,
-  ]) as TreeSelectValue<
+  const value = useMemo(
+    () => fieldValue || (rest.multiple ? [] : null),
+    [fieldValue, rest.multiple]
+  ) as TreeSelectValue<
     CategoryInputOpt,
     CategoryInputOpt,
     Multiple,
@@ -414,7 +413,6 @@ export const CategoryInput = forwardRef(function CategoryInput<
     loading,
     name: CATEGORY_NAME,
     form: rest.form,
-    shouldUnregister: true,
   });
 
   const renderInput = useCallback<
@@ -453,11 +451,11 @@ export const CategoryInput = forwardRef(function CategoryInput<
       ref={ref}
       renderInput={renderInput}
       defaultValue={
-        ((props.multiple
+        (props.multiple
           ? defaultValues.length
             ? defaultValues
             : undefined
-          : defaultValues[0] ?? undefined) as unknown) as TreeSelectValue<
+          : defaultValues[0] ?? undefined) as unknown as TreeSelectValue<
           CategoryInputOpt,
           CategoryInputOpt,
           Multiple,

@@ -40,7 +40,6 @@ export const DateInput = forwardRef(
     const {
       defaultValue,
       name: nameProp = DATE_NAME,
-      shouldUnregister,
       form,
       onBlur: onBlurProp,
       onChange: onChangeProp,
@@ -59,7 +58,6 @@ export const DateInput = forwardRef(
       name: nameProp,
       defaultValue,
       validator: validDate,
-      shouldUnregister,
       form,
     });
 

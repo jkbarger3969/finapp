@@ -6,26 +6,9 @@ import React, {
   useMemo,
   useEffect,
   PropsWithChildren,
+  useRef,
 } from "react";
 import { set } from "lodash";
-
-class DefaultValue {
-  private readonly _name_: string;
-  private readonly _defaultValue_: any;
-
-  constructor({ name, defaultValue }: { name: string; defaultValue: any }) {
-    this._name_ = name;
-    this._defaultValue_ = defaultValue;
-  }
-
-  get name() {
-    return this._name_;
-  }
-
-  valueOf() {
-    return this._defaultValue_;
-  }
-}
 
 class FieldWatcher<T extends string | Field<any, string, any>> {
   private readonly _name_: string;
@@ -184,7 +167,8 @@ class FieldValidator {
   private readonly _field_: Field | undefined = undefined;
   private readonly _validators_: Validator<any>[] = [];
   private readonly _errors_: InvalidResponse[] = [];
-  _validating_: Promise<boolean> | null = null;
+  private _validating_: Promise<boolean> | null = null;
+  private _hasRun_ = false;
 
   constructor({
     field,
@@ -201,6 +185,7 @@ class FieldValidator {
     } else {
       this._name_ = field;
     }
+
     this._validators_.push(...validators);
     this._form_ = form;
   }
@@ -216,11 +201,11 @@ class FieldValidator {
   reset(): void {
     this._validating_ = null;
     this._errors_.splice(0);
+    this._hasRun_ = false;
   }
 
   validate(): Promise<boolean> | boolean {
     let hasPromise = false;
-
     const value = this._form_.getFieldValue(this._name_, true);
 
     const errors = this._validators_.reduce((errors, validator) => {
@@ -247,6 +232,7 @@ class FieldValidator {
         }
 
         this._validating_ = null;
+        this._hasRun_ = true;
         const errors = results.filter((error) => !!error) as InvalidResponse[];
         this._errors_.splice(
           0,
@@ -261,6 +247,7 @@ class FieldValidator {
       return promise;
     } else {
       this._validating_ = null;
+      this._hasRun_ = true;
       this._errors_.splice(
         0,
         this._errors_.length,
@@ -268,6 +255,10 @@ class FieldValidator {
       );
       return !errors.length;
     }
+  }
+
+  get hasRun(): boolean {
+    return this._hasRun_;
   }
 }
 
@@ -281,7 +272,7 @@ export interface InvalidResponse {
 export type Validator<
   T = unknown,
   Name extends string = string,
-  TFieldDef extends FieldDef = any
+  TFieldDef extends Record<string, unknown> = any
 > = (
   value: T | undefined,
   context: {
@@ -316,7 +307,6 @@ class Field<
 > {
   readonly #name: Name;
   readonly #form: Form<any>;
-  readonly #shouldUnregister: boolean;
   readonly #props: FieldProps<T, Name, DefaultValue> = (() => {
     const propsDef: {
       [key in keyof FieldProps<T>]: PropertyDescriptor;
@@ -365,14 +355,16 @@ class Field<
     return Object.create(null, stateDef);
   })();
 
+  readonly #shouldUnregister: boolean;
+
   constructor({
     name,
     form,
-    shouldUnregister,
+    shouldUnregister = false,
   }: {
     name: Name;
     form: Form<any>;
-    shouldUnregister: boolean;
+    shouldUnregister?: boolean;
   }) {
     this.#name = name;
     this.#form = form;
@@ -397,7 +389,7 @@ class Field<
   get state(): FieldState {
     return this.#state;
   }
-  get shouldUnregister() {
+  get shouldUnregister(): boolean {
     return this.#shouldUnregister;
   }
   readonly setValue = (value?: T) =>
@@ -410,23 +402,28 @@ class Field<
   readonly reset = (): void => this.#form.resetField(this.props.name);
 }
 
-export interface SubmitState<TFieldDef extends FieldDef> {
-  event?: React.FormEvent<HTMLFormElement>;
-  dirtyValues: Values<TFieldDef>;
-  values: Values<TFieldDef>;
+export type ValidateOn = "change" | "blur" | "submit" | "touched" | "all";
+
+export interface SubmitState<TFieldDef extends Record<string, unknown>> {
+  event?:
+    | React.FormEvent<HTMLFormElement>
+    | React.FormEvent<HTMLButtonElement>
+    | React.FormEvent<HTMLInputElement>;
+  dirtyValues: ValuesObject<TFieldDef>;
+  values: ValuesObject<TFieldDef>;
   form: Form<TFieldDef>;
 }
-export type OnSubmitCb<TFieldDef extends FieldDef> = (
+export type OnSubmitCb<TFieldDef extends Record<string, unknown>> = (
   submitState: SubmitState<TFieldDef>
 ) => Promise<void> | void;
 
-export type OnSubmit<TFieldDef extends FieldDef> =
+export type OnSubmit<TFieldDef extends Record<string, unknown>> =
   | OnSubmitCb<TFieldDef>
   | {
       onStart?: OnSubmitCb<TFieldDef>;
       onInvalid?: (
         submitState: SubmitState<TFieldDef> & {
-          errors: Map<string, InvalidResponse[]>;
+          errors: ErrorsObject<TFieldDef>;
         }
       ) => Promise<void> | void;
       onSubmit: OnSubmitCb<TFieldDef>;
@@ -436,24 +433,8 @@ export type OnSubmit<TFieldDef extends FieldDef> =
         }
       ) => Promise<void> | void;
       onSuccess?: OnSubmitCb<TFieldDef>;
+      finally?: OnSubmitCb<TFieldDef>;
     };
-
-export type UseFormOptions<TFieldDef extends FieldDef> = {
-  onSubmit: OnSubmit<TFieldDef>;
-  defaultValues?: TFieldDef;
-  validators?: ValidatorDefs<TFieldDef>;
-};
-export type UseFieldOptions<
-  T = unknown,
-  Name extends string = string,
-  TFieldDef extends FieldDef = FieldDef
-> = {
-  name: Name;
-  defaultValue?: T;
-  validator?: Validator<any> | Iterable<Validator<any>>;
-  form?: Form<TFieldDef>;
-  shouldUnregister?: boolean;
-};
 
 export class FieldValue<T = unknown> {
   _value_: T;
@@ -472,12 +453,18 @@ export class FieldValue<T = unknown> {
 }
 export const fieldValue = FieldValue.value;
 
-const FIELDS = new WeakMap<Form<any>, Set<Field<any>>>();
+const FIELDS = new WeakMap<Form<any>, Map<string, Field<any, string>>>();
 const VALUES = new WeakMap<Form<any>, Map<string, any>>();
-const DEFAULT_VALUES = new WeakMap<Form<any>, Set<DefaultValue>>();
+const DEFAULT_VALUES = new WeakMap<Form<any>, Map<symbol, Map<string, any>>>();
 const LOADING = new WeakMap<Form<any>, Map<string, Set<symbol>>>();
-const FIELD_VALIDATORS = new WeakMap<Form<any>, Set<FieldValidator>>();
-const FIELD_WATCHERS = new WeakMap<Form<any>, Set<FieldWatcher<any>>>();
+const FIELD_VALIDATORS = new WeakMap<
+  Form<any>,
+  Map<string, Set<FieldValidator>>
+>();
+const FIELD_WATCHERS = new WeakMap<
+  Form<any>,
+  Map<string, Set<FieldWatcher<any>>>
+>();
 const FORM_WATCHERS = new WeakMap<Form<any>, Set<(updateId: symbol) => void>>();
 const RUN_FIELD_STATE_TRACKERS = new WeakMap<
   Form<any>,
@@ -488,12 +475,14 @@ const RUN_FORM_STATE_TRACKER = new WeakMap<
   (updateId: symbol) => void
 >();
 
-class Form<TFieldDef extends FieldDef> {
-  readonly #fields = new Set<Field<any, Names<TFieldDef>>>();
+class Form<TFieldDef extends Record<string, unknown>> {
+  readonly #fields = new Map<Names<TFieldDef>, Field<any, Names<TFieldDef>>>();
   readonly #values = new Map<string, any>();
-  readonly #defaultValues = new Set<DefaultValue>();
+  readonly #clearedValues = new Set<Names<TFieldDef>>();
+  readonly #defaultValues = new Map<symbol, Map<string, any>>();
   readonly #touchedFields = new WeakSet<Field<any, string, any>>();
   readonly #validatingFields = new Map<string, Promise<boolean>>();
+  readonly #validateOn: ValidateOn;
   #validatingAll: Promise<boolean> | null = null;
   #submitCount = 0;
   #isSubmitting = false;
@@ -501,19 +490,19 @@ class Form<TFieldDef extends FieldDef> {
   #submissionError: InvalidResponse | null = null;
   #loading = new Map<string, Set<symbol>>();
 
-  readonly #fieldValidators = new Set<FieldValidator>();
+  readonly #fieldValidators = new Map<Names<TFieldDef>, Set<FieldValidator>>();
 
-  readonly #fieldWatchers = new Set<FieldWatcher<any>>();
+  readonly #fieldWatchers = new Map<Names<TFieldDef>, Set<FieldWatcher<any>>>();
   readonly #formWatchers = new Set<(updateId: symbol) => void>();
 
   readonly #runFieldStateTrackers = (
     name: string,
     updateId = Symbol()
   ): void => {
-    for (const fieldWatcher of this.#fieldWatchers) {
-      if (fieldWatcher.name === name) {
-        fieldWatcher.run(updateId);
-      }
+    for (const fieldWatcher of this.#fieldWatchers
+      .get(name as Names<TFieldDef>)
+      ?.values() || []) {
+      fieldWatcher.run(updateId);
     }
 
     this.#runFormStateTracker(updateId);
@@ -521,7 +510,13 @@ class Form<TFieldDef extends FieldDef> {
 
   readonly #onSubmit: Exclude<OnSubmit<TFieldDef>, OnSubmitCb<TFieldDef>>;
 
-  constructor({ onSubmit }: { onSubmit: OnSubmit<TFieldDef> }) {
+  constructor({
+    onSubmit,
+    validateOn,
+  }: {
+    onSubmit: OnSubmit<TFieldDef>;
+    validateOn: ValidateOn;
+  }) {
     this.#onSubmit =
       typeof onSubmit === "function"
         ? {
@@ -529,6 +524,7 @@ class Form<TFieldDef extends FieldDef> {
           }
         : onSubmit;
 
+    this.#validateOn = validateOn;
     FIELDS.set(this, this.#fields);
     VALUES.set(this, this.#values);
     DEFAULT_VALUES.set(this, this.#defaultValues);
@@ -565,7 +561,6 @@ class Form<TFieldDef extends FieldDef> {
     return !!this.#values.size;
   }
   get isValid(): boolean {
-    console.log(this);
     return !!this.errors().next().done;
   }
   get isValidating(): boolean {
@@ -586,6 +581,9 @@ class Form<TFieldDef extends FieldDef> {
   get loading(): boolean {
     return !!this.#loading.size;
   }
+  get validateOn(): ValidateOn {
+    return this.#validateOn;
+  }
 
   readonly isFieldRegistered = (name: Names<TFieldDef>): boolean =>
     !!this.getRegisteredField(name);
@@ -604,13 +602,47 @@ class Form<TFieldDef extends FieldDef> {
     value: PathValue<TFieldDef, Name> | undefined
   ): void => {
     if (value == undefined) {
+      this.#clearedValues.add(name);
       this.#values.delete(name);
     } else {
       this.#values.set(name, value);
     }
 
-    //NOTE: validateField calls state trackers
-    this.validateField(name);
+    switch (this.#validateOn) {
+      case "submit":
+        if (this.submitCount > 0 && !this.isFieldValid(name)) {
+          //NOTE: validateField calls state trackers
+          this.validateField(name);
+          return;
+        }
+        break;
+      case "blur":
+        // If field is NOT registered validation will occur on change
+        if (!this.isFieldRegistered(name)) {
+          //NOTE: validateField calls state trackers
+          this.validateField(name);
+          return;
+        }
+        break;
+      case "touched":
+        {
+          // If field is NOT registered validation will occur on change
+          const field = this.getRegisteredField(name);
+          if (!field || this.isFieldTouched(field)) {
+            //NOTE: validateField calls state trackers
+            this.validateField(name);
+            return;
+          }
+        }
+        break;
+      case "all":
+      case "change":
+        //NOTE: validateField calls state trackers
+        this.validateField(name);
+        return;
+    }
+    // If validateField is NOT called, run field state tracker.
+    this.#runFieldStateTrackers(name);
   };
   readonly getFieldValue = <Name extends Names<TFieldDef>>(
     name: Name,
@@ -618,16 +650,16 @@ class Form<TFieldDef extends FieldDef> {
   ): PathValue<TFieldDef, Name> | undefined => {
     if (this.#values.has(name) || dirtyOnly) {
       return this.#values.get(name);
-    } else {
+    } else if (!this.#clearedValues.has(name)) {
       return this.getFieldDefaultValue(name);
     }
   };
   readonly getFieldDefaultValue = <Name extends Names<TFieldDef>>(
     name: Name
   ): PathValue<TFieldDef, Name> | undefined => {
-    for (const defaultValue of this.#defaultValues) {
-      if (name === defaultValue.name) {
-        return defaultValue.valueOf();
+    for (const defaultValues of this.#defaultValues.values()) {
+      if (defaultValues.has(name)) {
+        return defaultValues.get(name);
       }
     }
   };
@@ -644,11 +676,33 @@ class Form<TFieldDef extends FieldDef> {
     { updateId }: { updateId?: symbol } = {}
   ): void => {
     if (touched) {
-      this.#touchedFields.add(field);
-    } else {
+      const isNotTouched = !this.isFieldTouched(field);
+      if (isNotTouched) {
+        this.#touchedFields.add(field);
+      }
+      switch (this.#validateOn) {
+        case "blur":
+        case "all":
+          this.validateField(field.props.name as Names<TFieldDef>, {
+            updateId,
+          });
+          return;
+        case "touched":
+          if (isNotTouched) {
+            this.validateField(field.props.name as Names<TFieldDef>, {
+              updateId,
+            });
+            return;
+          }
+          break;
+        default:
+          break;
+      }
+      this.#runFieldStateTrackers(field.props.name, updateId);
+    } else if (this.isFieldTouched(field)) {
       this.#touchedFields.delete(field);
+      this.#runFieldStateTrackers(field.props.name, updateId);
     }
-    this.#runFieldStateTrackers(field.props.name, updateId);
   };
   readonly setTouchedAll = (
     touched: boolean,
@@ -665,12 +719,11 @@ class Form<TFieldDef extends FieldDef> {
     this.#loading.has(name);
   readonly getFieldErrors = function* (
     this: Form<TFieldDef>,
-    name: string
+    name: Names<TFieldDef>
   ): IterableIterator<InvalidResponse> {
-    for (const fieldValidator of this.#fieldValidators) {
-      if (name === fieldValidator.name) {
-        yield* fieldValidator.errors();
-      }
+    for (const fieldValidator of this.#fieldValidators.get(name)?.values() ||
+      []) {
+      yield* fieldValidator.errors();
     }
   }.bind(this);
 
@@ -681,17 +734,15 @@ class Form<TFieldDef extends FieldDef> {
     let hasPromise = false;
 
     const results: (Promise<boolean> | boolean)[] = [];
+    for (const fieldValidator of this.#fieldValidators.get(name)?.values() ||
+      []) {
+      const result = fieldValidator.validate();
 
-    for (const fieldValidator of this.#fieldValidators) {
-      if (name === fieldValidator.name) {
-        const result = fieldValidator.validate();
-
-        if (result instanceof Promise) {
-          hasPromise = true;
-          results.push(result);
-        } else {
-          results.push(result);
-        }
+      if (result instanceof Promise) {
+        hasPromise = true;
+        results.push(result);
+      } else {
+        results.push(result);
       }
     }
 
@@ -721,19 +772,14 @@ class Form<TFieldDef extends FieldDef> {
 
     const results: (Promise<boolean> | boolean)[] = [];
 
-    const validatedFields = new Set<string>();
-
-    for (const { name } of this.#fieldValidators) {
-      if (!validatedFields.has(name)) {
-        validatedFields.add(name);
-        const result = this.validateField(name as Names<TFieldDef>, {
-          updateId,
-        });
-        if (result instanceof Promise) {
-          hasPromise = true;
-        }
-        results.push(result);
+    for (const name of this.#fieldValidators.keys()) {
+      const result = this.validateField(name, {
+        updateId,
+      });
+      if (result instanceof Promise) {
+        hasPromise = true;
       }
+      results.push(result);
     }
 
     if (hasPromise) {
@@ -760,10 +806,11 @@ class Form<TFieldDef extends FieldDef> {
    * @returns {Promise<InvalidResponse>} when user defined onSubmit callback throws or rejects with an error.
    */
   readonly submit = async (
-    event?: React.FormEvent<HTMLFormElement>
-  ): Promise<
-    InvalidResponse | Map<Names<TFieldDef>, InvalidResponse[]> | undefined
-  > => {
+    event?:
+      | React.FormEvent<HTMLFormElement>
+      | React.FormEvent<HTMLButtonElement>
+      | React.FormEvent<HTMLInputElement>
+  ): Promise<InvalidResponse | ErrorsObject<TFieldDef> | undefined> => {
     if (this.#onSubmit.onStart) {
       this.#onSubmit.onStart({
         event,
@@ -789,7 +836,7 @@ class Form<TFieldDef extends FieldDef> {
     if (!isValid) {
       this.#isSubmitting = false;
 
-      const errors = new Map(this.errors());
+      const errors = this.getErrorsObject();
 
       this.#runFormStateTracker();
 
@@ -800,6 +847,15 @@ class Form<TFieldDef extends FieldDef> {
           values: this.getValuesObject(false),
           form: this,
           errors,
+        });
+      }
+
+      if (this.#onSubmit.finally) {
+        this.#onSubmit.finally({
+          event,
+          dirtyValues: this.getValuesObject(true),
+          values: this.getValuesObject(false),
+          form: this,
         });
       }
 
@@ -831,7 +887,14 @@ class Form<TFieldDef extends FieldDef> {
           error,
         });
       }
-
+      if (this.#onSubmit.finally) {
+        this.#onSubmit.finally({
+          event,
+          dirtyValues: this.getValuesObject(true),
+          values: this.getValuesObject(false),
+          form: this,
+        });
+      }
       return error;
     }
 
@@ -848,9 +911,19 @@ class Form<TFieldDef extends FieldDef> {
         form: this,
       });
     }
+
+    if (this.#onSubmit.finally) {
+      this.#onSubmit.finally({
+        event,
+        dirtyValues: this.getValuesObject(true),
+        values: this.getValuesObject(false),
+        form: this,
+      });
+    }
   };
 
   readonly handleSubmit = (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     this.submit(event);
   };
 
@@ -869,14 +942,16 @@ class Form<TFieldDef extends FieldDef> {
       yieldedKeys.add(name);
       yield [name as Names<TFieldDef>, value];
     }
-
     if (!dirtyOnly) {
-      for (const defaultValue of this.#defaultValues) {
-        if (!yieldedKeys.has(defaultValue.name)) {
-          yieldedKeys.add(defaultValue.name);
-          const value = defaultValue.valueOf();
-          if (value !== undefined) {
-            yield [defaultValue.name as Names<TFieldDef>, value];
+      for (const name of this.#clearedValues) {
+        yieldedKeys.add(name);
+      }
+
+      for (const defaultValues of this.#defaultValues.values()) {
+        for (const [name, defaultValue] of defaultValues) {
+          if (!yieldedKeys.has(name)) {
+            yieldedKeys.add(name);
+            yield [name as Names<TFieldDef>, defaultValue];
           }
         }
       }
@@ -886,19 +961,15 @@ class Form<TFieldDef extends FieldDef> {
   readonly errors = function* (
     this: Form<TFieldDef>
   ): IterableIterator<[Names<TFieldDef>, InvalidResponse[]]> {
-    const checkedFields = new Set<string>();
-
-    for (const { name } of this.#fieldValidators) {
-      if (!checkedFields.has(name)) {
-        const errors = [...this.getFieldErrors(name)];
-        if (errors.length) {
-          yield [name as Names<TFieldDef>, errors];
-        }
+    for (const name of this.#fieldValidators.keys()) {
+      const errors = [...this.getFieldErrors(name)];
+      if (errors.length) {
+        yield [name as Names<TFieldDef>, errors];
       }
     }
   }.bind(this);
-  readonly getValuesObject = (dirtyOnly = true): Values<TFieldDef> => {
-    const valueObj = {} as Values<TFieldDef>;
+  readonly getValuesObject = (dirtyOnly = true): ValuesObject<TFieldDef> => {
+    const valueObj = {} as ValuesObject<TFieldDef>;
 
     for (const [name, value] of this.values(dirtyOnly)) {
       set(valueObj, name, value);
@@ -906,15 +977,23 @@ class Form<TFieldDef extends FieldDef> {
 
     return valueObj;
   };
+  readonly getErrorsObject = (): ErrorsObject<TFieldDef> => {
+    const errorsObj = {} as ErrorsObject<TFieldDef>;
+
+    for (const [name, value] of this.errors()) {
+      set(errorsObj, name, value);
+    }
+
+    return errorsObj;
+  };
 
   readonly resetFieldErrors = (
     name: Names<TFieldDef>,
     { updateId }: { updateId?: symbol } = {}
   ): void => {
-    for (const fieldValidator of this.#fieldValidators) {
-      if (fieldValidator.name === name) {
-        fieldValidator.reset();
-      }
+    for (const fieldValidator of this.#fieldValidators.get(name)?.values() ||
+      []) {
+      fieldValidator.reset();
     }
     this.#runFieldStateTrackers(name, updateId);
   };
@@ -922,13 +1001,8 @@ class Form<TFieldDef extends FieldDef> {
   readonly resetAllErrors = ({
     updateId = Symbol(),
   }: { updateId?: symbol } = {}): void => {
-    const resetFields = new Set<string>();
-
-    for (const validator of this.#fieldValidators) {
-      if (!resetFields.has(validator.name)) {
-        resetFields.add(validator.name);
-        this.resetFieldErrors(validator.name as Names<TFieldDef>, { updateId });
-      }
+    for (const name of this.#fieldValidators.keys()) {
+      this.resetFieldErrors(name, { updateId });
     }
   };
 
@@ -985,16 +1059,13 @@ class Form<TFieldDef extends FieldDef> {
 
     for (const {
       props: { name },
-    } of this.#fields) {
+    } of this.#fields.values()) {
       resetFields.add(name);
       this.resetField(name, { updateId });
     }
 
-    for (const validator of this.#fieldValidators) {
-      if (!resetFields.has(validator.name)) {
-        resetFields.add(validator.name);
-        this.resetField(validator.name as Names<TFieldDef>, { updateId });
-      }
+    for (const name of this.#fieldValidators.keys()) {
+      this.resetField(name, { updateId });
     }
 
     for (const name of this.#values.keys()) {
@@ -1034,6 +1105,7 @@ class Form<TFieldDef extends FieldDef> {
         | "values"
         | "errors"
         | "getValuesObject"
+        | "getErrorsObject"
         | "setTouchedAll"
         | "resetFieldErrors"
         | "resetAllErrors"
@@ -1042,6 +1114,7 @@ class Form<TFieldDef extends FieldDef> {
         | "resetSubmitCount"
         | "resetSubmitted"
         | "resetSubmissionError"
+        | "validateOn"
       >;
 
       const getSnapShot = (): StateSnapShot => ({
@@ -1082,7 +1155,9 @@ class Form<TFieldDef extends FieldDef> {
 }
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
-export const parseFieldDef = function* <TFieldDef extends FieldDef>(
+export const parseFieldDef = function* <
+  TFieldDef extends Record<string, unknown>
+>(
   fieldDef: TFieldDef,
   namePrefix?: string
 ): IterableIterator<
@@ -1095,12 +1170,14 @@ export const parseFieldDef = function* <TFieldDef extends FieldDef>(
       if (value instanceof FieldValue) {
         yield [name as any, value.valueOf()];
       } else {
-        yield* parseFieldDef(value, name) as any;
+        yield* parseFieldDef(value as Record<string, unknown>, name) as any;
       }
     }
   }
 };
-const parseValidatorDefs = function* <TFieldDef extends FieldDef>(
+const parseValidatorDefs = function* <
+  TFieldDef extends Record<string, unknown>
+>(
   validatorDef: ValidatorDefs<TFieldDef>,
   namePrefix?: string
 ): IterableIterator<
@@ -1127,50 +1204,48 @@ const parseValidatorDefs = function* <TFieldDef extends FieldDef>(
   }
 };
 
-export interface FieldDef {
-  [key: string]: FieldValue<any> | FieldDef;
-}
-
 type PathImpl<
   K extends string,
   V,
   LeafsOnly extends boolean
 > = V extends FieldValue<any>
   ? `${K}`
-  : V extends FieldDef
+  : V extends Record<string, unknown>
   ? LeafsOnly extends true
     ? `${K}.${Path<V, LeafsOnly>}`
     : `${K}` | `${K}.${Path<V, LeafsOnly>}`
   : never;
-export type Path<T extends FieldDef, LeafsOnly extends boolean> = {
+export type Path<
+  T extends Record<string, unknown>,
+  LeafsOnly extends boolean
+> = {
   [K in keyof T]-?: PathImpl<K & string, T[K], LeafsOnly>;
 }[keyof T];
-export type Names<T extends FieldDef> = Path<T, true>;
+export type Names<T extends Record<string, unknown>> = Path<T, true>;
 
 type PathValueImpl<
-  T extends FieldDef,
+  T extends Record<string, unknown>,
   P extends Path<T, false>
 > = T[P] extends FieldValue<infer U>
   ? U
   : P extends `${infer K}.${infer R}`
   ? T[K] extends FieldValue<infer U>
     ? U
-    : T[K] extends FieldDef
+    : T[K] extends Record<string, unknown>
     ? R extends Path<T[K], false>
       ? PathValueImpl<T[K], R>
       : never
     : never
   : never;
-
 export type PathValue<
-  T extends FieldDef,
+  T extends Record<string, unknown>,
   P extends Path<T, true>
 > = T[P] extends FieldValue<infer U>
   ? U
   : P extends `${infer K}.${infer R}`
   ? T[K] extends FieldValue<infer U>
     ? U
-    : T[K] extends FieldDef
+    : T[K] extends Record<string, unknown>
     ? R extends Path<T[K], false>
       ? PathValueImpl<T[K], R>
       : never
@@ -1186,38 +1261,47 @@ export type PrefixPath<
     }
   : { [key in Prefix]: T };
 
-export type Values<T extends FieldDef> = {
+export type ValuesObject<T extends Record<string, unknown>> = {
   [K in keyof T]?: T[K] extends FieldValue<infer U>
     ? U
-    : T[K] extends FieldDef
-    ? Values<T[K]>
+    : T[K] extends Record<string, unknown>
+    ? ValuesObject<T[K]>
     : never;
 };
 
-type ValidatorDefsImpl<T extends FieldDef, P extends string> = {
-  [K in keyof T as string]?: T[K] extends infer G
+export type ErrorsObject<T extends Record<string, unknown>> = {
+  [K in keyof T]?: T[K] extends FieldValue
+    ? InvalidResponse[]
+    : T[K] extends Record<string, unknown>
+    ? ErrorsObject<T[K]>
+    : never;
+};
+
+type ValidatorDefsImpl<T extends Record<string, unknown>, P extends string> = {
+  [K in keyof T]?: T[K] extends infer G
     ? K extends string
       ? G extends FieldValue<infer U>
         ? Validator<U, `${P}.${K}`> | Iterable<Validator<U, `${P}.${K}`>>
-        : G extends FieldDef
+        : G extends Record<string, unknown>
         ? ValidatorDefsImpl<G, `${P}.${K}`>
         : never
       : never
     : never;
 };
-export type ValidatorDefs<T extends FieldDef> = {
+export type ValidatorDefs<T extends Record<string, unknown>> = {
   [K in keyof T]?: T[K] extends infer G
     ? K extends string
       ? G extends FieldValue<infer U>
         ? Validator<U, K> | Iterable<Validator<U, K>>
-        : G extends FieldDef
+        : G extends Record<string, unknown>
         ? ValidatorDefsImpl<G, K>
         : never
       : never
     : never;
 };
 
-export type IForm<TFieldDef extends FieldDef = FieldDef> = Form<TFieldDef>;
+export type IForm<TFieldDef extends Record<string, unknown> = any> =
+  Form<TFieldDef>;
 export type IField<T = unknown, Name extends string = string> = Field<T, Name>;
 
 const FormContext = createContext<null | Form<any>>(null);
@@ -1266,11 +1350,17 @@ export const NamePrefixProvider = (
     </NamePrefixContext.Provider>
   );
 };
-
-export const useForm = <TFieldDef extends FieldDef>({
+export type UseFormOptions<TFieldDef extends Record<string, unknown>> = {
+  onSubmit: OnSubmit<TFieldDef>;
+  defaultValues?: TFieldDef;
+  validators?: ValidatorDefs<TFieldDef>;
+  validateOn?: ValidateOn;
+};
+export const useForm = <TFieldDef extends Record<string, unknown>>({
   onSubmit,
   defaultValues,
   validators,
+  validateOn = "submit",
 }: UseFormOptions<TFieldDef>): Form<TFieldDef> => {
   const [, watcher] = useState(Symbol());
 
@@ -1279,7 +1369,7 @@ export const useForm = <TFieldDef extends FieldDef>({
       mount: Symbol(),
       unMount: Symbol(),
     };
-    const form = new Form<TFieldDef>({ onSubmit });
+    const form = new Form<TFieldDef>({ onSubmit, validateOn });
 
     (FORM_WATCHERS.get(form) as Set<(updateId: symbol) => void>).add(watcher);
 
@@ -1307,9 +1397,11 @@ export const useForm = <TFieldDef extends FieldDef>({
   return state.form;
 };
 
-export const useFormContext = <TFieldDef extends FieldDef = FieldDef>(
+export const useFormContext = <
+  TFieldDef extends Record<string, unknown> = Record<string, unknown>
+>(
   formContext?: Form<TFieldDef>
-): Form<TFieldDef> | null => {
+): Form<TFieldDef> | undefined => {
   const form = useFormContextUtil({
     form: formContext,
     hookName: "useFormContext",
@@ -1333,7 +1425,7 @@ export const useFormContext = <TFieldDef extends FieldDef = FieldDef>(
     if (form) {
       (FORM_WATCHERS.get(form) as Set<(updateId: symbol) => void>).add(watcher);
     }
-    return form;
+    return form || undefined;
   }, [form]);
 };
 
@@ -1380,89 +1472,104 @@ export const useNamePrefix = (name?: string): string => {
   }
 };
 
-const useDefaultValuesUtil = (options: {
-  defaultValues: FieldDef;
-  shouldUnregister?: boolean;
-  form?: Form<any>;
-  updateIds?: {
-    mount: symbol;
-    unMount: symbol;
-  };
-}): void => {
+const useDefaultValuesUtil = (
+  options: UseDefaultValuesOptions<any> & {
+    updateIds?: {
+      mount: symbol;
+      unMount: symbol;
+    };
+  }
+): void => {
   const form = useFormContextUtil({
     form: options.form,
     hookName: "useDefaultValues",
   });
 
-  const namePrefix = useNamePrefix();
-
   const [state] = useState(() => {
-    const defaultValues: DefaultValue[] = [];
-    for (const [name, defaultValue] of parseFieldDef(options.defaultValues)) {
-      defaultValues.push(
-        new DefaultValue({
-          name: namePrefix ? prefixName(name, namePrefix) : name,
-          defaultValue,
-        })
-      );
-    }
-    return {
-      defaultValues,
-      shouldUnregister: options.shouldUnregister ?? true,
-      form,
-      updateIds: options.updateIds || {
-        mount: Symbol(),
-        unMount: Symbol(),
-      },
-    };
+    const id = Symbol();
+    const defaultValuesMap = new Map<string, any>();
+    (DEFAULT_VALUES.get(form) as Map<symbol, Map<string, any>>).set(
+      id,
+      defaultValuesMap
+    );
+
+    return { id, defaultValuesMap };
   });
 
+  const namePrefix = useNamePrefix();
+
+  const updateIdsRef = useRef<{
+    mount: symbol;
+    unMount: symbol;
+  }>();
+  updateIdsRef.current = options.updateIds;
+
   useEffect(() => {
-    state.defaultValues.forEach((defaultValue) => {
-      (DEFAULT_VALUES.get(state.form) as Set<DefaultValue>).add(defaultValue);
-      (
-        RUN_FIELD_STATE_TRACKERS.get(state.form) as (
-          name: string,
-          updateId: symbol
-        ) => void
-      )(defaultValue.name, state.updateIds.mount);
-    });
+    const { defaultValuesMap } = state;
 
-    return () => {
-      if (state.shouldUnregister) {
-        state.defaultValues.forEach((defaultValue) => {
-          (DEFAULT_VALUES.get(state.form) as Set<DefaultValue>).delete(
-            defaultValue
-          );
-          (
-            RUN_FIELD_STATE_TRACKERS.get(state.form) as (
-              name: string,
-              updateId: symbol
-            ) => void
-          )(defaultValue.name, state.updateIds.unMount);
-        });
+    const modifiedFields = new Set<string>(defaultValuesMap.keys());
+
+    defaultValuesMap.clear();
+
+    for (const [name, defaultValue] of parseFieldDef(options.defaultValues)) {
+      modifiedFields.add(name);
+      defaultValuesMap.set(
+        namePrefix ? prefixName(name, namePrefix) : name,
+        defaultValue
+      );
+    }
+
+    const updateId = updateIdsRef.current?.mount || Symbol();
+
+    const fieldStateTracker = RUN_FIELD_STATE_TRACKERS.get(form) as (
+      name: string,
+      updateId: symbol
+    ) => void;
+
+    for (const name of modifiedFields) {
+      fieldStateTracker(name, updateId);
+    }
+  }, [form, namePrefix, options.defaultValues, state]);
+
+  useEffect(
+    () => () => {
+      const { defaultValuesMap, id } = state;
+
+      (DEFAULT_VALUES.get(form) as Map<symbol, Map<string, any>>).delete(id);
+
+      const updateId = updateIdsRef.current?.unMount || Symbol();
+
+      const fieldStateTracker = RUN_FIELD_STATE_TRACKERS.get(form) as (
+        name: string,
+        updateId: symbol
+      ) => void;
+
+      for (const name of defaultValuesMap.keys()) {
+        fieldStateTracker(name, updateId);
       }
-    };
-  }, [state]);
+    },
+    [form, state]
+  );
 };
-
-export const useDefaultValues = <TFieldDef extends FieldDef>(options: {
-  defaultValues: TFieldDef;
-  shouldUnregister?: boolean;
-  form?: Form<TFieldDef>;
-}): void => {
+export type UseDefaultValuesOptions<TFieldDef extends Record<string, unknown>> =
+  {
+    defaultValues: TFieldDef;
+    form?: Form<TFieldDef>;
+  };
+export const useDefaultValues = <TFieldDef extends Record<string, unknown>>(
+  options: UseDefaultValuesOptions<TFieldDef>
+): void => {
   return useDefaultValuesUtil(options);
 };
 
-const useValidatorsUtil = (options: {
-  validators: ValidatorDefs<any>;
-  shouldUnregister?: boolean;
-  form?: Form<any>;
-  updateIds?: {
-    mount: symbol;
-    unMount: symbol;
-  };
-}): void => {
+const useValidatorsUtil = (
+  options: {
+    updateIds?: {
+      mount: symbol;
+      unMount: symbol;
+    };
+  } & UseValidatorOptions<any>
+): void => {
   const form = useFormContextUtil({
     form: options.form,
     hookName: "useValidators",
@@ -1470,67 +1577,104 @@ const useValidatorsUtil = (options: {
 
   const namePrefix = useNamePrefix();
 
-  const [state] = useState(() => {
-    const fieldValidators: FieldValidator[] = [];
+  const updateIdsRef = useRef<{
+    mount: symbol;
+    unMount: symbol;
+  }>();
+  updateIdsRef.current = options.updateIds;
 
-    for (const [name, validators] of parseValidatorDefs(options.validators)) {
-      fieldValidators.push(
-        new FieldValidator({
-          field: namePrefix ? prefixName(name, namePrefix) : name,
-          form,
-          validators:
-            typeof validators === "function" ? [validators] : validators,
-        })
-      );
-    }
-
-    return {
-      fieldValidators,
-      shouldUnregister: options.shouldUnregister ?? true,
-      form,
-      updateIds: options.updateIds || {
-        mount: Symbol(),
-        unMount: Symbol(),
+  const fieldValidators = useMemo(
+    () =>
+      function* () {
+        for (const [name, validators] of parseValidatorDefs(
+          options.validators
+        )) {
+          yield new FieldValidator({
+            field: namePrefix ? prefixName(name, namePrefix) : name,
+            form,
+            validators:
+              typeof validators === "function" ? [validators] : validators,
+          });
+        }
       },
-    };
-  });
+    [form, namePrefix, options.validators]
+  );
 
   useEffect(() => {
-    state.fieldValidators.forEach((fieldValidators) => {
-      (FIELD_VALIDATORS.get(state.form) as Set<FieldValidator>).add(
-        fieldValidators
-      );
-      state.form.validateField(fieldValidators.name, {
-        updateId: state.updateIds.mount,
-      });
-    });
+    const fieldValidatorsMap = FIELD_VALIDATORS.get(form) as Map<
+      string,
+      Set<FieldValidator>
+    >;
 
-    return () => {
-      if (state.shouldUnregister) {
-        state.fieldValidators.forEach((fieldValidators) => {
-          (FIELD_VALIDATORS.get(state.form) as Set<FieldValidator>).delete(
-            fieldValidators
-          );
-          state.form.validateField(fieldValidators.name, {
-            updateId: state.updateIds.unMount,
-          });
+    const updateId = updateIdsRef.current?.mount || Symbol();
+
+    const fieldValidatorsForRemoval: FieldValidator[] = [];
+
+    for (const fieldValidator of fieldValidators()) {
+      fieldValidatorsForRemoval.push(fieldValidator);
+
+      const shouldRunValidation = (() => {
+        if (options.shouldRunValidation === "auto") {
+          for (const curFieldValidator of fieldValidatorsMap.get(
+            fieldValidator.name
+          ) || []) {
+            if (curFieldValidator.hasRun) {
+              return true;
+            }
+          }
+          return false;
+        } else {
+          return options.shouldRunValidation ?? false;
+        }
+      })();
+
+      if (fieldValidatorsMap.has(fieldValidator.name)) {
+        (
+          fieldValidatorsMap.get(fieldValidator.name) as Set<FieldValidator>
+        ).add(fieldValidator);
+      } else {
+        fieldValidatorsMap.set(fieldValidator.name, new Set([fieldValidator]));
+      }
+
+      if (shouldRunValidation) {
+        form.validateField(fieldValidator.name, {
+          updateId,
         });
       }
+    }
+
+    return () => {
+      for (const fieldValidator of fieldValidatorsForRemoval) {
+        const fieldValidators = fieldValidatorsMap.get(fieldValidator.name);
+        if (fieldValidators) {
+          fieldValidators.delete(fieldValidator);
+          if (!fieldValidators.size) {
+            fieldValidatorsMap.delete(fieldValidator.name);
+          }
+        }
+      }
     };
-  }, [state]);
+  }, [fieldValidators, form, options.shouldRunValidation]);
 };
 
-export const useValidators = <TFieldDef extends FieldDef>(options: {
+export type UseValidatorOptions<TFieldDef extends Record<string, unknown>> = {
   validators: ValidatorDefs<TFieldDef>;
-  shouldUnregister?: boolean;
   form?: Form<TFieldDef>;
-}): void => {
+  /**
+   * @default ["auto"]
+   * `"auto"` will run the {@link UseValidatorOptions.validators} on first mount when current validators on the same field have already run.
+   */
+  shouldRunValidation?: boolean | "auto";
+};
+export const useValidators = <TFieldDef extends Record<string, unknown>>(
+  options: UseValidatorOptions<TFieldDef>
+): void => {
   return useValidatorsUtil(options);
 };
 
 export const useWatcher = function <
   T = unknown,
-  TFieldDef extends FieldDef = any
+  TFieldDef extends Record<string, unknown> = any
 >(options: {
   name: string | Field<any, string, any>;
   form?: Form<TFieldDef>;
@@ -1548,9 +1692,9 @@ export const useWatcher = function <
 
   const [updateId, watcher] = useState(Symbol());
 
-  const [state] = useState(() => {
+  const fieldWatcher = useMemo(() => {
     const name = options.name;
-    const fieldWatcher = new FieldWatcher({
+    return new FieldWatcher({
       nameOrField:
         name instanceof Field || !namePrefix
           ? name
@@ -1558,44 +1702,68 @@ export const useWatcher = function <
       form,
       watcher,
     });
+  }, [form, namePrefix, options.name]);
 
-    (FIELD_WATCHERS.get(form) as Set<FieldWatcher<any>>).add(fieldWatcher);
+  useEffect(() => {
+    const fieldWatchersMap = FIELD_WATCHERS.get(form) as Map<
+      string,
+      Set<FieldWatcher<any>>
+    >;
 
-    return {
-      form,
-      fieldWatcher,
-    };
-  });
-
-  useEffect(
-    () => () => {
-      (FIELD_WATCHERS.get(state.form) as Set<FieldWatcher<any>>).delete(
-        state.fieldWatcher
+    if (fieldWatchersMap.has(fieldWatcher.name)) {
+      (fieldWatchersMap.get(fieldWatcher.name) as Set<FieldWatcher<any>>).add(
+        fieldWatcher
       );
-    },
-    [state]
-  );
+    } else {
+      fieldWatchersMap.set(fieldWatcher.name, new Set([fieldWatcher]));
+    }
+
+    return () => {
+      const fieldWatchers = fieldWatchersMap.get(fieldWatcher.name);
+      if (fieldWatchers) {
+        fieldWatchers.delete(fieldWatcher);
+        if (!fieldWatchers.size) {
+          fieldWatchersMap.delete(fieldWatcher.name);
+        }
+      }
+    };
+  }, [fieldWatcher, form]);
 
   return useMemo(
     () => ({
-      value: state.form.getFieldValue(state.fieldWatcher.name) as T,
-      defaultValue: state.form.getFieldDefaultValue(
-        state.fieldWatcher.name
-      ) as T,
-      errors: [...state.form.getFieldErrors(state.fieldWatcher.name)],
+      value: form.getFieldValue(fieldWatcher.name) as T,
+      defaultValue: form.getFieldDefaultValue(fieldWatcher.name) as T,
+      errors: [...form.getFieldErrors(fieldWatcher.name)],
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state, updateId]
+    [fieldWatcher, form, updateId]
   );
 };
 
+export type UseFieldOptions<
+  T = unknown,
+  Name extends string = string,
+  TFieldDef extends Record<string, unknown> = Record<string, unknown>
+> = {
+  name: Name;
+  defaultValue?: T;
+  validator?: Validator<any> | Iterable<Validator<any>>;
+  /**
+   * @see UseValidatorOptions.shouldRunValidation
+   */
+  shouldRunValidation?: boolean | "auto";
+  shouldUnregister?: boolean;
+  form?: Form<TFieldDef>;
+};
+
+const FIELDS_REF_COUNT = new WeakMap<Field<any, string, undefined>, number>();
 /**
  * @returns the **same** {@link Field} instance for every call to with matching `name` and {@link Form}.  The fist call creates the {@link Field} instance.
  */
 export const useField = function <
   T = unknown,
   Name extends string = string,
-  TFieldDef extends FieldDef = FieldDef
+  TFieldDef extends Record<string, unknown> = Record<string, unknown>
 >(options: UseFieldOptions<T, Name, TFieldDef>): Field<T, Name> {
   const form = useFormContextUtil({
     form: options.form,
@@ -1606,13 +1774,10 @@ export const useField = function <
 
   const [, watcher] = useState(Symbol());
 
-  const [state] = useState(() => {
-    const shouldUnregister = options.shouldUnregister ?? true;
-    const updateIds = {
-      mount: Symbol(),
-      unMount: Symbol(),
-    };
+  const shouldUnregisterRef = useRef<boolean>();
+  shouldUnregisterRef.current = options.shouldUnregister;
 
+  const field = useMemo(() => {
     const name = namePrefix
       ? prefixName(options.name, namePrefix)
       : options.name;
@@ -1621,81 +1786,119 @@ export const useField = function <
       new Field<T, string>({
         name,
         form,
-        shouldUnregister,
+        shouldUnregister: shouldUnregisterRef.current,
       })) as Field<T, string>;
+
+    FIELDS_REF_COUNT.set(field, (FIELDS_REF_COUNT.get(field) ?? 0) + 1);
+
+    // Set immediately so that any sync useField calls will get the same field
+    (FIELDS.get(form) as Map<string, Field<any, string, undefined>>).set(
+      field.props.name,
+      field
+    );
+
+    return field;
+  }, [form, namePrefix, options.name]);
+
+  const updateIdsRef = useRef() as React.MutableRefObject<{
+    mount: symbol;
+    unMount: symbol;
+  }>;
+  updateIdsRef.current = {
+    mount: Symbol(),
+    unMount: Symbol(),
+  };
+
+  const defaultValuesOpts = useMemo(
+    () => ({
+      defaultValues:
+        options.defaultValue === undefined
+          ? {}
+          : // Name prefix will be added by useDefaultValuesUtil
+            { [options.name]: new FieldValue(options.defaultValue) },
+      form,
+      updateIds: updateIdsRef.current,
+    }),
+    [form, options.defaultValue, options.name]
+  );
+
+  const validatorDef = useMemo(
+    () =>
+      options.validator === undefined
+        ? {}
+        : // Name prefix will be added by _useValidators_
+          { [options.name]: options.validator },
+    [options.name, options.validator]
+  );
+
+  const validatorOps = useMemo(
+    () => ({
+      validators: validatorDef,
+      form,
+      updateIds: updateIdsRef.current,
+      shouldRunValidation: options.shouldRunValidation,
+    }),
+    [form, options.shouldRunValidation, validatorDef]
+  );
+
+  useEffect(() => {
+    const fieldWatchersMap = FIELD_WATCHERS.get(form) as Map<
+      string,
+      Set<FieldWatcher<any>>
+    >;
 
     const fieldWatcher = new FieldWatcher({
       nameOrField: field,
       watcher,
     });
 
-    (FIELDS.get(form) as Set<Field<any>>).add(field);
-    (FIELD_WATCHERS.get(form) as Set<FieldWatcher<any>>).add(fieldWatcher);
-
-    return {
-      field,
-      useDefaultValuesOptions: {
-        defaultValues:
-          options.defaultValue === undefined
-            ? {}
-            : // Name prefix will be added by _useDefaultValues_
-              { [options.name]: new FieldValue(options.defaultValue) },
-        form,
-        shouldUnregister,
-        updateIds,
-      },
-      useValidatorsOptions: {
-        validators:
-          options.validator === undefined
-            ? {}
-            : // Name prefix will be added by _useValidators_
-              { [options.name]: options.validator },
-        form,
-        shouldUnregister,
-        updateIds,
-      },
-      fieldWatcher,
-      form,
-      updateIds,
-    };
-  });
-
-  useEffect(
-    () => () => {
-      (FIELD_WATCHERS.get(state.form) as Set<FieldWatcher<any>>).delete(
-        state.fieldWatcher
+    if (fieldWatchersMap.has(fieldWatcher.name)) {
+      (fieldWatchersMap.get(fieldWatcher.name) as Set<FieldWatcher<any>>).add(
+        fieldWatcher
       );
+    } else {
+      fieldWatchersMap.set(field.props.name, new Set([fieldWatcher]));
+    }
 
-      if (state.field.shouldUnregister) {
-        (VALUES.get(state.form) as Map<string, any>).delete(
-          state.field.props.name
-        );
-        (FIELDS.get(state.form) as Set<Field<any>>).delete(state.field);
-        (
-          RUN_FIELD_STATE_TRACKERS.get(state.form) as (
-            name: string,
-            updateId: symbol
-          ) => void
-        )(state.field.props.name, state.updateIds.unMount);
+    return () => {
+      const fieldWatchers = fieldWatchersMap.get(fieldWatcher.name);
+      if (fieldWatchers) {
+        fieldWatchers.delete(fieldWatcher);
+        if (!fieldWatchers.size) {
+          fieldWatchersMap.delete(fieldWatcher.name);
+        }
       }
-    },
-    [state]
-  );
 
-  useDefaultValuesUtil(state.useDefaultValuesOptions);
+      const refCount = (FIELDS_REF_COUNT.get(field) as number) - 1;
+      FIELDS_REF_COUNT.set(field, refCount);
 
-  useValidatorsUtil(state.useValidatorsOptions);
+      if (refCount === 0) {
+        (FIELDS.get(form) as Map<string, Field<any, string, undefined>>).delete(
+          field.props.name
+        );
 
-  return state.field as Field<T, Name>;
+        if (field.shouldUnregister) {
+          field.reset();
+        }
+      }
+    };
+  }, [field, form]); // NOTE if the form changes, the field changes.
+
+  useDefaultValuesUtil(defaultValuesOpts);
+
+  useValidatorsUtil(validatorOps);
+
+  return field as Field<T, Name>;
 };
 
 /**
  * @param options.shouldUnregister `true` (default) sets loading to false for this invocation of {@link Form.useLoading} when it is unmounted.
  */
-export const useLoading = <TFieldDef extends FieldDef = any>(options: {
+export const useLoading = <
+  TFieldDef extends Record<string, unknown> = any
+>(options: {
   loading: boolean;
   name: string | Field<any, string, any>;
-  shouldUnregister?: boolean;
   form?: Form<TFieldDef>;
 }): void => {
   const form = useFormContextUtil({
@@ -1705,91 +1908,87 @@ export const useLoading = <TFieldDef extends FieldDef = any>(options: {
 
   const namePrefix = useNamePrefix();
 
-  const [state] = useState(() => {
-    const id = Symbol();
+  const [id] = useState(Symbol());
 
+  const setLoading = useMemo(() => {
     const fieldName =
       options.name instanceof Field ? options.name.props.name : options.name;
 
     const name = namePrefix ? prefixName(fieldName, namePrefix) : fieldName;
 
-    return {
-      setLoading: (loading: boolean) => {
-        const loadingMap = LOADING.get(form) as Map<string, Set<symbol>>;
-        if (loading) {
-          if (loadingMap.has(name)) {
-            (loadingMap.get(name) as Set<symbol>).add(id);
-          } else {
-            loadingMap.set(name, new Set([id]));
-          }
+    return (loading: boolean) => {
+      const loadingMap = LOADING.get(form) as Map<string, Set<symbol>>;
+      if (loading) {
+        if (loadingMap.has(name)) {
+          (loadingMap.get(name) as Set<symbol>).add(id);
         } else {
-          if (loadingMap.has(name)) {
-            (loadingMap.get(name) as Set<symbol>).delete(id);
-            if (!loadingMap.size) {
-              loadingMap.delete(name);
-            }
+          loadingMap.set(name, new Set([id]));
+        }
+      } else {
+        if (loadingMap.has(name)) {
+          (loadingMap.get(name) as Set<symbol>).delete(id);
+          if (!loadingMap.size) {
+            loadingMap.delete(name);
           }
         }
-        const updateId = Symbol();
-        (
-          RUN_FIELD_STATE_TRACKERS.get(form) as (
-            name: string,
-            updateId: symbol
-          ) => void
-        )(name, updateId);
-        (RUN_FORM_STATE_TRACKER.get(form) as (updateId: symbol) => void)(
-          updateId
-        );
-      },
-      shouldUnregister: options.shouldUnregister ?? true,
+      }
+      const updateId = Symbol();
+      (
+        RUN_FIELD_STATE_TRACKERS.get(form) as (
+          name: string,
+          updateId: symbol
+        ) => void
+      )(name, updateId);
+      (RUN_FORM_STATE_TRACKER.get(form) as (updateId: symbol) => void)(
+        updateId
+      );
     };
-  });
+  }, [form, id, namePrefix, options.name]);
 
   useEffect(() => {
-    state.setLoading(options.loading);
-  }, [options.loading, state]);
+    setLoading(options.loading);
+  }, [options.loading, setLoading]);
 
   useEffect(
     () => () => {
-      if (state.shouldUnregister) {
-        state.setLoading(false);
-      }
+      setLoading(false);
     },
-    [state]
+    [setLoading]
   );
 };
 
-export const useWatchAll = <TFieldDef extends FieldDef = any>(options: {
+export const useWatchAll = <
+  TFieldDef extends Record<string, unknown> = any
+>(options: {
   form?: Form<TFieldDef>;
-}): Pick<SubmitState<TFieldDef>, "dirtyValues" | "values"> => {
-  const _form = useFormContextUtil({
+}): Pick<SubmitState<TFieldDef>, "dirtyValues" | "values"> & {
+  errors: ErrorsObject<TFieldDef>;
+} => {
+  const form = useFormContextUtil({
     form: options.form,
     hookName: "useWatchAll",
   });
 
   const [updateId, watchAllCb] = useState(Symbol());
-  const [form] = useState(() => {
-    (FORM_WATCHERS.get(_form) as Set<(updateId: symbol) => void>).add(
+
+  useEffect(() => {
+    (FORM_WATCHERS.get(form) as Set<(updateId: symbol) => void>).add(
       watchAllCb
     );
-    return _form;
-  });
-
-  useEffect(
-    () => () => {
+    return () => {
       (FORM_WATCHERS.get(form) as Set<(updateId: symbol) => void>).delete(
         watchAllCb
       );
-    },
-    [form]
-  );
+    };
+  }, [form]);
 
   return useMemo(
     () => ({
       values: form.getValuesObject(false),
       dirtyValues: form.getValuesObject(true),
+      errors: form.getErrorsObject(),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [updateId]
+    [updateId, form]
   );
 };
