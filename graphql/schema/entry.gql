@@ -143,6 +143,7 @@ type EntryRefund {
   date: Date!
   deleted: Boolean!
   description: String
+  entry: Entry!
   lastUpdate: Date!
   paymentMethod: PaymentMethodInterface!
   reconciled: Boolean!
@@ -153,6 +154,7 @@ input EntryRefundsWhere {
   # Fields
   id: WhereId
   date: WhereDateBeta
+  entry: EntriesWhere
   # paymentMethod: PaymentMethodsWhere
   total: WhereRational
   reconciled: Boolean
@@ -240,6 +242,7 @@ type Query {
   entries(where: EntriesWhere): [Entry!]!
   entry(id: ID!): Entry
   entryRefund(id: ID!): EntryRefund
+  entryRefunds(where: EntryRefundsWhere): [EntryRefund!]!
   entryItem(id: ID!): EntryItem
 }
 

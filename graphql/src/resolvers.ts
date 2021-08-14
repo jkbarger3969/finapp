@@ -26,6 +26,7 @@ import { entryAdded, entryUpdated, entryDelete } from "./resolvers/entry";
 import {
   entry,
   entries,
+  entryRefunds,
   Entry,
   EntryItem,
   EntryRefund,
@@ -100,6 +101,7 @@ const resolvers: Resolvers = {
     entryRefund,
     entryItem,
     entries,
+    entryRefunds,
     sources,
     categories,
     category,

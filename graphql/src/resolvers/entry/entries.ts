@@ -38,7 +38,24 @@ export const whereEntryRefunds = (
           entryRefundsWhere[whereKey]
         );
         break;
+      case "entry": {
+        if (!("$and" in filterQuery)) {
+          filterQuery.$and = [];
+        }
+        const result = whereEntries(entryRefundsWhere[whereKey], db);
 
+        if (result instanceof Promise) {
+          promises.push(
+            result.then((result) => {
+              filterQuery.$and.push(result);
+            })
+          );
+        } else {
+          filterQuery.$and.push(result);
+        }
+
+        break;
+      }
       case "total":
         if (!("$and" in filterQuery)) {
           filterQuery.$and = [];
@@ -64,16 +81,14 @@ export const whereEntryRefunds = (
       case "and":
         {
           let hasPromise = false;
-          const $and: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = entryRefundsWhere[whereKey].map((where) => {
-            const result = whereEntryRefunds(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $and: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            entryRefundsWhere[whereKey].map((where) => {
+              const result = whereEntryRefunds(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -95,16 +110,14 @@ export const whereEntryRefunds = (
       case "or":
         {
           let hasPromise = false;
-          const $or: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = entryRefundsWhere[whereKey].map((where) => {
-            const result = whereEntryRefunds(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $or: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            entryRefundsWhere[whereKey].map((where) => {
+              const result = whereEntryRefunds(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -126,16 +139,14 @@ export const whereEntryRefunds = (
       case "nor":
         {
           let hasPromise = false;
-          const $nor: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = entryRefundsWhere[whereKey].map((where) => {
-            const result = whereEntryRefunds(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $nor: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            entryRefundsWhere[whereKey].map((where) => {
+              const result = whereEntryRefunds(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -242,16 +253,14 @@ export const whereEntryItems = (
       case "and":
         {
           let hasPromise = false;
-          const $and: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = itemRefundsWhere[whereKey].map((where) => {
-            const result = whereEntryItems(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $and: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            itemRefundsWhere[whereKey].map((where) => {
+              const result = whereEntryItems(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -273,16 +282,14 @@ export const whereEntryItems = (
       case "or":
         {
           let hasPromise = false;
-          const $or: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = itemRefundsWhere[whereKey].map((where) => {
-            const result = whereEntryItems(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $or: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            itemRefundsWhere[whereKey].map((where) => {
+              const result = whereEntryItems(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -304,16 +311,14 @@ export const whereEntryItems = (
       case "nor":
         {
           let hasPromise = false;
-          const $nor: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = itemRefundsWhere[whereKey].map((where) => {
-            const result = whereEntryItems(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $nor: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            itemRefundsWhere[whereKey].map((where) => {
+              const result = whereEntryItems(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -654,16 +659,14 @@ export const whereEntries = (entriesWhere: EntriesWhere, db: Db) => {
       case "and":
         {
           let hasPromise = false;
-          const $and: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = entriesWhere[whereKey].map((where) => {
-            const result = whereEntries(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $and: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            entriesWhere[whereKey].map((where) => {
+              const result = whereEntries(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -685,16 +688,14 @@ export const whereEntries = (entriesWhere: EntriesWhere, db: Db) => {
       case "or":
         {
           let hasPromise = false;
-          const $or: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = entriesWhere[whereKey].map((where) => {
-            const result = whereEntries(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $or: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            entriesWhere[whereKey].map((where) => {
+              const result = whereEntries(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -716,16 +717,14 @@ export const whereEntries = (entriesWhere: EntriesWhere, db: Db) => {
       case "nor":
         {
           let hasPromise = false;
-          const $nor: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = entriesWhere[whereKey].map((where) => {
-            const result = whereEntries(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $nor: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            entriesWhere[whereKey].map((where) => {
+              const result = whereEntries(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(

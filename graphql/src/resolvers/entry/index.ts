@@ -1,4 +1,5 @@
 export { entry } from "./entry";
+export { entryRefunds } from "./entryRefunds";
 export { entries, whereEntries } from "./entries";
 export {
   Entry,

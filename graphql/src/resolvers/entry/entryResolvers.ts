@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { Db, ObjectId } from "mongodb";
 
 import {
   EntryResolvers,
@@ -83,6 +83,8 @@ const EntryRefundResolver: EntryRefundResolvers<Context, EntryRefundDbRecord> =
     deleted: ({ deleted }) => deleted[0].value,
     description: ({ description }) =>
       description ? description[0].value : null,
+    entry: ({ id }, _, { db }) =>
+      db.collection("entries").findOne({ "refunds.id": id }),
     // lastUpdate: Default works
     paymentMethod: ({ paymentMethod }) => paymentMethod[0].value,
     reconciled: ({ reconciled }) => reconciled[0].value,

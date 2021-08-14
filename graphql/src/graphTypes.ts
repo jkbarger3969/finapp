@@ -448,6 +448,7 @@ export type EntryRefund = {
   date: Scalars['Date'];
   deleted: Scalars['Boolean'];
   description?: Maybe<Scalars['String']>;
+  entry: Entry;
   lastUpdate: Scalars['Date'];
   paymentMethod: PaymentMethodCard | PaymentMethodCash | PaymentMethodCheck | PaymentMethodCombination | PaymentMethodOnline | PaymentMethodUnknown;
   reconciled: Scalars['Boolean'];
@@ -457,6 +458,7 @@ export type EntryRefund = {
 export type EntryRefundsWhere = {
   id?: Maybe<WhereId>;
   date?: Maybe<WhereDateBeta>;
+  entry?: Maybe<EntriesWhere>;
   total?: Maybe<WhereRational>;
   reconciled?: Maybe<Scalars['Boolean']>;
   lastUpdate?: Maybe<WhereDateBeta>;
@@ -851,6 +853,7 @@ export type Query = {
   entry?: Maybe<Entry>;
   entryItem?: Maybe<EntryItem>;
   entryRefund?: Maybe<EntryRefund>;
+  entryRefunds: Array<EntryRefund>;
   fiscalYear: FiscalYear;
   fiscalYears: Array<FiscalYear>;
   people: Array<Person>;
@@ -951,6 +954,11 @@ export type QueryEntryItemArgs = {
 
 export type QueryEntryRefundArgs = {
   id: Scalars['ID'];
+};
+
+
+export type QueryEntryRefundsArgs = {
+  where?: Maybe<EntryRefundsWhere>;
 };
 
 
@@ -1630,6 +1638,7 @@ export type EntryRefundResolvers<ContextType = Context, ParentType = ResolversPa
   date?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
   deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  entry?: Resolver<ResolversTypes['Entry'], ParentType, ContextType>;
   lastUpdate?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
   paymentMethod?: Resolver<ResolversTypes['PaymentMethodInterface'], ParentType, ContextType>;
   reconciled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
@@ -1750,6 +1759,7 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   entry?: Resolver<Maybe<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntryArgs, 'id'>>;
   entryItem?: Resolver<Maybe<ResolversTypes['EntryItem']>, ParentType, ContextType, RequireFields<QueryEntryItemArgs, 'id'>>;
   entryRefund?: Resolver<Maybe<ResolversTypes['EntryRefund']>, ParentType, ContextType, RequireFields<QueryEntryRefundArgs, 'id'>>;
+  entryRefunds?: Resolver<Array<ResolversTypes['EntryRefund']>, ParentType, ContextType, RequireFields<QueryEntryRefundsArgs, never>>;
   fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType, RequireFields<QueryFiscalYearArgs, 'id'>>;
   fiscalYears?: Resolver<Array<ResolversTypes['FiscalYear']>, ParentType, ContextType, RequireFields<QueryFiscalYearsArgs, never>>;
   people?: Resolver<Array<ResolversTypes['Person']>, ParentType, ContextType, RequireFields<QueryPeopleArgs, never>>;

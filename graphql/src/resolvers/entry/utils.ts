@@ -160,6 +160,7 @@ export const entryAddFieldsStage = {
                             paymentMethod: null,
                             description: null,
                             deleted: null,
+                            entry: null,
                           };
                           return Object.keys(obj);
                         })(),
