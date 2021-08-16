@@ -10,25 +10,16 @@ import TreeSelect, {
   TreeSelectValue,
 } from "mui-tree-select";
 import { ApolloError, gql, QueryHookOptions, useQuery } from "@apollo/client";
-import { DeepPartial, MarkOptional, MarkRequired, Merge } from "ts-essentials";
+import { MarkOptional, MarkRequired } from "ts-essentials";
 import { capitalCase } from "change-case";
 
 import {
-  AccountCard,
-  PaymentCard,
-  PaymentCheck,
-  PaymentMethodCard,
-  PaymentMethodCash,
-  PaymentMethodCheck,
-  PaymentMethodCombination,
-  PaymentMethodOnline,
-  PaymentMethodUnknown,
+  PayMethodDefaultValueFragment,
   AccountCardPayMethodInputOptFragment as AccountCardPayMethodInputOpt,
   PaymentMethodType,
   PaymentCardType,
   AccountCheckingPayMethodInputOptFragment as AccountCheckingPayMethodInputOpt,
   AccountsWhere,
-  AccountCheck,
   AccountPayMethodInputOptsQuery as AccountInputOpts,
   AccountPayMethodInputOptsQueryVariables as AccountInputOptsVars,
   EntryType,
@@ -40,12 +31,23 @@ import {
   useField,
   UseFieldOptions,
   useFormContext,
-  useLoading,
 } from "../../useKISSForm/form";
 
 const NULLISH = Symbol("NULLISH");
 
-const PAY_METHOD_INPUT_OPTS_FRAGMENTS = gql`
+export type PayMethodInputOpt =
+  | AccountCardPayMethodInputOpt
+  | PaymentMethodType.Cash
+  | PaymentMethodType.Combination
+  | PaymentMethodType.Online
+  | PaymentMethodType.Unknown;
+
+export type PaymentMethodInputBranchOpt =
+  | Exclude<PaymentMethodType, PayMethodInputOpt>
+  | PaymentCardType
+  | AccountCheckingPayMethodInputOpt;
+
+const ACCOUNT_CARD_PAY_METHOD_INPUT_OPT = gql`
   fragment AccountCardPayMethodInputOpt on AccountCard {
     __typename
     id
@@ -53,7 +55,9 @@ const PAY_METHOD_INPUT_OPTS_FRAGMENTS = gql`
     type
     trailingDigits
   }
+`;
 
+const ACCOUNT_OWNER_PAY_METHOD_INPUT_OPT = gql`
   fragment AccountOwnerPayMethodInputOpt on Entity {
     __typename
     ... on Business {
@@ -72,7 +76,9 @@ const PAY_METHOD_INPUT_OPTS_FRAGMENTS = gql`
       }
     }
   }
+`;
 
+const ACCOUNT_CHECKING_PAY_METHOD_INPUT_OPT = gql`
   fragment AccountCheckingPayMethodInputOpt on AccountChecking {
     __typename
     id
@@ -86,7 +92,11 @@ const PAY_METHOD_INPUT_OPTS_FRAGMENTS = gql`
       ...AccountOwnerPayMethodInputOpt
     }
   }
+  ${ACCOUNT_OWNER_PAY_METHOD_INPUT_OPT}
+  ${ACCOUNT_CARD_PAY_METHOD_INPUT_OPT}
+`;
 
+const ACCOUNT_CREDIT_CARD_PAY_METHOD_INPUT_OPT = gql`
   fragment AccountCreditCardPayMethodInputOpt on AccountCreditCard {
     __typename
     id
@@ -99,6 +109,8 @@ const PAY_METHOD_INPUT_OPTS_FRAGMENTS = gql`
       ...AccountOwnerPayMethodInputOpt
     }
   }
+  ${ACCOUNT_OWNER_PAY_METHOD_INPUT_OPT}
+  ${ACCOUNT_CARD_PAY_METHOD_INPUT_OPT}
 `;
 
 const PAY_METHOD_INPUT_OPTS = gql`
@@ -108,56 +120,122 @@ const PAY_METHOD_INPUT_OPTS = gql`
       ...AccountCreditCardPayMethodInputOpt
     }
   }
-  ${PAY_METHOD_INPUT_OPTS_FRAGMENTS}
+  ${ACCOUNT_CHECKING_PAY_METHOD_INPUT_OPT}
+  ${ACCOUNT_CREDIT_CARD_PAY_METHOD_INPUT_OPT}
 `;
 
-export type PayMethodIniValue =
-  | (Required<Pick<PaymentMethodCard, "__typename" | "currency">> & {
-      card:
-        | Required<Extract<PaymentMethodCard["card"], PaymentCard>>
-        | Required<
-            Pick<
-              Extract<PaymentMethodCard["card"], AccountCard>,
-              "__typename" | "id"
-            >
-          >;
-    })
-  | (Required<Pick<PaymentMethodCheck, "__typename" | "currency">> & {
-      check:
-        | Required<Extract<PaymentMethodCheck["check"], PaymentCheck>>
-        | (Required<
-            Pick<
-              Extract<PaymentMethodCheck["check"], AccountCheck>,
-              "__typename" | "checkNumber"
-            >
-          > & {
-            account: Required<
-              Pick<
-                Extract<PaymentMethodCheck["check"], AccountCheck>["account"],
-                "id"
-              >
-            >;
-          });
-    })
-  | MarkRequired<DeepPartial<PaymentMethodCash>, "__typename" | "currency">
-  | MarkRequired<DeepPartial<PaymentMethodOnline>, "__typename" | "currency">
-  | MarkRequired<
-      DeepPartial<PaymentMethodCombination>,
-      "__typename" | "currency"
-    >
-  | MarkRequired<DeepPartial<PaymentMethodUnknown>, "__typename" | "currency">;
+export const PAY_METHOD_DEFAULT_VALUE_FRAGMENT = gql`
+  fragment PayMethodDefaultValue on PaymentMethodInterface {
+    __typename
+    currency
+    ... on PaymentMethodCard {
+      card {
+        __typename
+        trailingDigits
+        type
+        ...AccountCardPayMethodInputOpt
+      }
+    }
+    ... on PaymentMethodCheck {
+      check {
+        __typename
+        checkNumber
+        ... on AccountCheck {
+          account {
+            ...AccountCheckingPayMethodInputOpt
+          }
+        }
+      }
+    }
+  }
+  ${ACCOUNT_CARD_PAY_METHOD_INPUT_OPT}
+  ${ACCOUNT_CHECKING_PAY_METHOD_INPUT_OPT}
+`;
 
-export type PayMethodInputOpt =
-  | AccountCardPayMethodInputOpt
-  | PaymentMethodType.Cash
-  | PaymentMethodType.Combination
-  | PaymentMethodType.Online
-  | PaymentMethodType.Unknown;
+export const PAY_METHOD_DEFAULT_VALUE_FROM_ENTRY = gql`
+  query PayMethodDefaultValueFromEntry($where: EntriesWhere!) {
+    entries(where: $where) {
+      __typename
+      id
+      paymentMethod {
+        ...PayMethodDefaultValue
+      }
+    }
+  }
+  ${PAY_METHOD_DEFAULT_VALUE_FRAGMENT}
+`;
 
-export type PaymentMethodInputBranchOpt =
-  | Exclude<PaymentMethodType, PayMethodInputOpt>
-  | PaymentCardType
-  | AccountCheckingPayMethodInputOpt;
+export const PAY_METHOD_DEFAULT_VALUE_FROM_REFUND = gql`
+  query PayMethodDefaultValueFromRefund($where: EntryRefundsWhere!) {
+    entryRefunds(where: $where) {
+      __typename
+      id
+      paymentMethod {
+        ...PayMethodDefaultValue
+      }
+    }
+  }
+  ${PAY_METHOD_DEFAULT_VALUE_FRAGMENT}
+`;
+
+export const usePaymentMethodDefaultValue = (
+  defaultValue?: PayMethodDefaultValueFragment
+):
+  | ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>
+  | FreeSoloNode<PaymentMethodInputBranchOpt>
+  | undefined =>
+  useMemo(() => {
+    switch (defaultValue?.__typename) {
+      case undefined:
+        return undefined;
+      case "PaymentMethodCash":
+        return new ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>(
+          PaymentMethodType.Cash
+        );
+      case "PaymentMethodCombination":
+        return new ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>(
+          PaymentMethodType.Combination
+        );
+      case "PaymentMethodOnline":
+        return new ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>(
+          PaymentMethodType.Online
+        );
+      case "PaymentMethodUnknown":
+        return new ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>(
+          PaymentMethodType.Unknown
+        );
+      case "PaymentMethodCard": {
+        const card = defaultValue?.card;
+
+        if (card.__typename === "AccountCard") {
+          return new ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>(
+            card,
+            new BranchNode(card.type, cardBranch)
+          );
+        } else {
+          return new FreeSoloNode<PaymentMethodInputBranchOpt>(
+            card.trailingDigits,
+            new BranchNode(card.type, cardBranch)
+          );
+        }
+      }
+      case "PaymentMethodCheck": {
+        const check = defaultValue?.check;
+
+        if (check.__typename === "AccountCheck") {
+          return new FreeSoloNode<PaymentMethodInputBranchOpt>(
+            check.checkNumber,
+            new BranchNode(check.account, checkBranch)
+          );
+        } else {
+          return new FreeSoloNode<PaymentMethodInputBranchOpt>(
+            check.checkNumber,
+            checkBranch
+          );
+        }
+      }
+    }
+  }, [defaultValue]);
 
 export type PayMethodTreeSelectProps<
   Multiple extends boolean | undefined = undefined,
@@ -606,10 +684,19 @@ export type PaymentMethodInputProps<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined
 > = {
-  defaultValue?: PayMethodIniValue;
-} & Omit<
-  PaymentMethodInputBaseProps<Multiple, DisableClearable>,
-  "onChange" | "value" | "name"
+  defaultValue?: TreeSelectValue<
+    PayMethodInputOpt,
+    PaymentMethodInputBranchOpt,
+    Multiple,
+    true,
+    false | true
+  >;
+} & MarkOptional<
+  Omit<
+    PaymentMethodInputBaseProps<Multiple, DisableClearable>,
+    "value" | "name"
+  >,
+  "onChange"
 > &
   Pick<UseFieldOptions, "form">;
 
@@ -629,122 +716,6 @@ export type PaymentMethodFieldDef<
 };
 export const PAYMENT_METHOD_NAME: keyof PaymentMethodFieldDef = "paymentMethod";
 
-const PaymentMethodInputControlled = forwardRef(
-  function PaymentMethodInputControlled<
-    Multiple extends boolean | undefined = undefined,
-    DisableClearable extends boolean | undefined = undefined
-  >(
-    props: Merge<
-      PaymentMethodInputProps<Multiple, DisableClearable>,
-      {
-        defaultValue?: TreeSelectValue<
-          PayMethodInputOpt,
-          PaymentMethodInputBranchOpt,
-          Multiple,
-          true,
-          false | true
-        >;
-      }
-    >,
-    ref: Ref<unknown>
-  ): JSX.Element {
-    const {
-      defaultValue,
-      form,
-      renderInput: renderInputProp = defaultInput,
-      disabled,
-      onBlur: onBlurProp,
-      ...rest
-    } = props;
-
-    const isSubmitting = useFormContext(form)?.isSubmitting ?? false;
-
-    const {
-      props: { value: fieldValue, name },
-      state: { isTouched, errors },
-      setValue,
-      setTouched,
-    } = useField<
-      TreeSelectValue<
-        PayMethodInputOpt,
-        PaymentMethodInputBranchOpt,
-        Multiple,
-        DisableClearable,
-        false | true
-      >
-    >({
-      name: PAYMENT_METHOD_NAME,
-      form,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      defaultValue: defaultValue as any,
-    });
-
-    const value = useMemo(
-      () => fieldValue || (rest.multiple ? [] : null),
-      [fieldValue, rest.multiple]
-    ) as TreeSelectValue<
-      PayMethodInputOpt,
-      PaymentMethodInputBranchOpt,
-      Multiple,
-      DisableClearable,
-      false | true
-    >;
-
-    const handleBlur = useCallback<
-      NonNullable<PaymentMethodInputBaseProps["onBlur"]>
-    >(
-      (...args) => {
-        setTouched(true);
-        if (onBlurProp) {
-          onBlurProp(...args);
-        }
-      },
-      [setTouched, onBlurProp]
-    );
-
-    const renderInput = useCallback<
-      NonNullable<PaymentMethodInputBaseProps["renderInput"]>
-    >(
-      (params) =>
-        renderInputProp({
-          ...params,
-          name,
-          ...(isTouched && errors.length
-            ? {
-                error: true,
-                helperText: errors[0].message,
-              }
-            : {}),
-        }),
-      [renderInputProp, name, isTouched, errors]
-    );
-
-    const handleChange = useCallback<
-      NonNullable<
-        PaymentMethodInputBaseProps<Multiple, DisableClearable>["onChange"]
-      >
-    >(
-      (_, value) => {
-        setValue(value ?? undefined);
-      },
-      [setValue]
-    );
-
-    return (
-      <PaymentMethodInputBase
-        {...rest}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        value={value ?? (null as any)}
-        disabled={isSubmitting || disabled}
-        ref={ref}
-        onChange={handleChange}
-        renderInput={renderInput}
-        onBlur={handleBlur}
-      />
-    );
-  }
-);
-
 export const PaymentMethodInput = forwardRef(function PaymentMethodInput<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined
@@ -753,176 +724,101 @@ export const PaymentMethodInput = forwardRef(function PaymentMethodInput<
   ref: Ref<unknown>
 ): JSX.Element {
   const {
+    defaultValue,
+    form,
     renderInput: renderInputProp = defaultInput,
-    defaultValue: defaultValueProp,
+    disabled,
+    onBlur: onBlurProp,
+    onChange: onChangeProp,
     ...rest
   } = props;
 
-  const { loading, error, data } = useQuery<
-    AccountInputOpts,
-    AccountInputOptsVars
-  >(
-    PAY_METHOD_INPUT_OPTS,
-    useMemo<QueryHookOptions<AccountInputOpts, AccountInputOptsVars>>(() => {
-      if (
-        defaultValueProp?.__typename === "PaymentMethodCard" &&
-        defaultValueProp.card.__typename === "AccountCard"
-      ) {
-        return {
-          variables: {
-            where: {
-              cards: {
-                id: {
-                  eq: defaultValueProp.card.id,
-                },
-              },
-            },
-          },
-        };
-      } else if (
-        defaultValueProp?.__typename === "PaymentMethodCheck" &&
-        defaultValueProp.check.__typename === "AccountCheck"
-      ) {
-        return {
-          variables: {
-            where: {
-              id: {
-                eq: defaultValueProp.check.account.id,
-              },
-            },
-          },
-        };
-      }
+  const isSubmitting = useFormContext(form)?.isSubmitting ?? false;
 
-      return {
-        skip: true,
-      };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [
-      defaultValueProp?.__typename,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps,
-      (defaultValueProp as any)?.card?.__typename,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps,
-      (defaultValueProp as any)?.card?.id,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps,
-      (defaultValueProp as any)?.check?.__typename,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps,
-      (defaultValueProp as any)?.check?.account?.id,
-    ])
-  );
-
-  useLoading({
-    loading,
+  const {
+    props: { value: fieldValue, name },
+    state: { isTouched, errors },
+    setValue,
+    setTouched,
+  } = useField<
+    TreeSelectValue<
+      PayMethodInputOpt,
+      PaymentMethodInputBranchOpt,
+      Multiple,
+      DisableClearable,
+      false | true
+    >
+  >({
     name: PAYMENT_METHOD_NAME,
-    form: rest.form,
+    form,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    defaultValue: defaultValue as any,
   });
 
+  const value = useMemo(
+    () => fieldValue || (rest.multiple ? [] : null),
+    [fieldValue, rest.multiple]
+  ) as TreeSelectValue<
+    PayMethodInputOpt,
+    PaymentMethodInputBranchOpt,
+    Multiple,
+    DisableClearable,
+    false | true
+  >;
+
+  const handleBlur = useCallback<
+    NonNullable<PaymentMethodInputBaseProps["onBlur"]>
+  >(
+    (...args) => {
+      setTouched(true);
+      if (onBlurProp) {
+        onBlurProp(...args);
+      }
+    },
+    [setTouched, onBlurProp]
+  );
+
   const renderInput = useCallback<
-    NonNullable<PayMethodTreeSelectProps["renderInput"]>
+    NonNullable<PaymentMethodInputBaseProps["renderInput"]>
   >(
     (params) =>
       renderInputProp({
         ...params,
-        ...(error
+        name,
+        ...(isTouched && errors.length
           ? {
               error: true,
-              helperText: error.message,
+              helperText: errors[0].message,
             }
           : {}),
       }),
-    [renderInputProp, error]
+    [renderInputProp, name, isTouched, errors]
   );
 
-  const defaultValue = useMemo(() => {
-    switch (defaultValueProp?.__typename) {
-      case "PaymentMethodCash":
-        return new ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>(
-          PaymentMethodType.Cash
-        );
-      case "PaymentMethodCombination":
-        return new ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>(
-          PaymentMethodType.Combination
-        );
-      case "PaymentMethodOnline":
-        return new ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>(
-          PaymentMethodType.Online
-        );
-      case "PaymentMethodUnknown":
-        return new ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>(
-          PaymentMethodType.Unknown
-        );
-      case "PaymentMethodCard":
-        {
-          const iniCard = defaultValueProp.card;
-
-          if (iniCard.__typename === "AccountCard") {
-            for (const account of data?.accounts || []) {
-              for (const card of account.cards) {
-                if (card.id === iniCard.id) {
-                  return new ValueNode<
-                    PayMethodInputOpt,
-                    PaymentMethodInputBranchOpt
-                  >(card, new BranchNode(card.type, cardBranch));
-                }
-              }
-            }
-          } else {
-            return new FreeSoloNode<PaymentMethodInputBranchOpt>(
-              iniCard.trailingDigits,
-              new BranchNode(iniCard.type, cardBranch)
-            );
-          }
-        }
-        break;
-      case "PaymentMethodCheck":
-        {
-          const iniCheck = defaultValueProp.check;
-
-          if (iniCheck.__typename === "AccountCheck") {
-            for (const account of data?.accounts || []) {
-              if (
-                account.__typename === "AccountChecking" &&
-                account.id === iniCheck.account.id
-              ) {
-                return new FreeSoloNode<PaymentMethodInputBranchOpt>(
-                  iniCheck.checkNumber,
-                  new BranchNode(account, checkBranch)
-                );
-              }
-            }
-          }
-        }
-        break;
-    }
-
-    return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    data?.accounts,
-    defaultValueProp?.__typename,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps
-    (defaultValueProp as any)?.card,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps
-    (defaultValueProp as any)?.check,
-    props.multiple,
-  ]) as TreeSelectValue<
-    PayMethodInputOpt,
-    PaymentMethodInputBranchOpt,
-    Multiple,
-    true,
-    true | false
-  >;
-
-  if (loading) {
-    return <LoadingDefaultBlank {...rest} renderInput={renderInput} />;
-  }
+  const handleChange = useCallback<
+    NonNullable<
+      PaymentMethodInputBaseProps<Multiple, DisableClearable>["onChange"]
+    >
+  >(
+    (...args) => {
+      setValue(args[1] ?? undefined);
+      if (onChangeProp) {
+        onChangeProp(...args);
+      }
+    },
+    [setValue, onChangeProp]
+  );
 
   return (
-    <PaymentMethodInputControlled<Multiple, DisableClearable>
+    <PaymentMethodInputBase
       {...rest}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      value={value ?? (null as any)}
+      disabled={isSubmitting || disabled}
       ref={ref}
+      onChange={handleChange}
       renderInput={renderInput}
-      defaultValue={defaultValue}
+      onBlur={handleBlur}
     />
   );
 });

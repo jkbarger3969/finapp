@@ -1,9 +1,9 @@
 import React, { useMemo } from "react";
 import { TextFieldProps } from "@material-ui/core";
 
-import { useName, NameProps } from "./useName";
-import { Email, EmailProps, EMAIL_NAME } from "../Email";
-import { Phone, PhoneProps, PHONE_NAME } from "../Phone";
+import { useName, NameProps, NameFieldDef } from "./useName";
+import { Email, EmailProps, EMAIL_NAME, EmailFieldDef } from "../Email";
+import { Phone, PhoneProps, PHONE_NAME, PhoneFieldDef } from "../Phone";
 import {
   NamePrefixProvider,
   prefixName,
@@ -37,6 +37,8 @@ export type PersonProps = {
   Pick<UseFieldOptions, "form">;
 
 export const PERSON_NAME_PREFIX = "person";
+
+export type PersonFieldDef = NameFieldDef & EmailFieldDef & PhoneFieldDef;
 
 export const usePerson = (
   props: PersonProps
@@ -149,6 +151,7 @@ export const usePerson = (
           label={showLabels && "Email"}
           {...rest}
           {...(emailProps || {})}
+          form={form}
         />
       </NamePrefixProvider>
     ),
@@ -159,6 +162,7 @@ export const usePerson = (
           label={showLabels && "Phone"}
           {...rest}
           {...(phoneProps || {})}
+          form={form}
         />
       </NamePrefixProvider>
     ),

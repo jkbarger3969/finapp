@@ -216,7 +216,7 @@ export const FilterColumnsState = (
         setDefaultFilters(nextState);
       }
     },
-    [rawFilters, rawFilters, onFiltersChange, setDefaultFilters]
+    [rawFilters, onFiltersChange, defaultFilters]
   );
 
   return (
@@ -226,7 +226,7 @@ export const FilterColumnsState = (
         <Getter name="columnFilters" value={columnFilters} />
         <Getter
           name="filterExpression"
-          computed={(filterExpressionComputed as unknown) as ComputedFn}
+          computed={filterExpressionComputed as unknown as ComputedFn}
         />
         <Action name="changeColumnFilter" action={changeColumnFilter} />
         {/* Can test for changeColumnFilterState to identify FilterColumnsState override */}

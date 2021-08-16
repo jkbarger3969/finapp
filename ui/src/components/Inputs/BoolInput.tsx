@@ -127,7 +127,7 @@ export const BoolBaseInput = forwardRef(function BoolBaseInput<
 export type BoolInputProps<
   BoolVariant extends BoolBaseInputVariant | undefined = undefined
 > = Omit<UseFieldOptions<boolean>, "validator"> &
-  Omit<BoolBaseInputProps<BoolVariant>, "checked" | "name">;
+  Omit<BoolBaseInputProps<BoolVariant>, "checked" | "name" | "defaultValue">;
 
 export const BoolInput = forwardRef(function BoolInput<
   BoolVariant extends BoolBaseInputVariant | undefined = undefined

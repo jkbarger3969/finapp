@@ -7,6 +7,7 @@ import React, {
   useEffect,
   PropsWithChildren,
   useRef,
+  useCallback,
 } from "react";
 import { set } from "lodash";
 
@@ -272,12 +273,12 @@ export interface InvalidResponse {
 export type Validator<
   T = unknown,
   Name extends string = string,
-  TFieldDef extends Record<string, unknown> = any
+  FieldDef extends Record<string, unknown> = any
 > = (
   value: T | undefined,
   context: {
     name: Name;
-    form: Form<TFieldDef>;
+    form: Form<FieldDef>;
     field?: Field<T, Name>;
   }
 ) => Promise<InvalidResponse | void | null> | InvalidResponse | void | null;
@@ -404,36 +405,36 @@ class Field<
 
 export type ValidateOn = "change" | "blur" | "submit" | "touched" | "all";
 
-export interface SubmitState<TFieldDef extends Record<string, unknown>> {
+export interface SubmitState<FieldDef extends Record<string, unknown>> {
   event?:
     | React.FormEvent<HTMLFormElement>
     | React.FormEvent<HTMLButtonElement>
     | React.FormEvent<HTMLInputElement>;
-  dirtyValues: ValuesObject<TFieldDef>;
-  values: ValuesObject<TFieldDef>;
-  form: Form<TFieldDef>;
+  dirtyValues: ValuesObject<FieldDef>;
+  values: ValuesObject<FieldDef>;
+  form: Form<FieldDef>;
 }
-export type OnSubmitCb<TFieldDef extends Record<string, unknown>> = (
-  submitState: SubmitState<TFieldDef>
+export type OnSubmitCb<FieldDef extends Record<string, unknown>> = (
+  submitState: SubmitState<FieldDef>
 ) => Promise<void> | void;
 
-export type OnSubmit<TFieldDef extends Record<string, unknown>> =
-  | OnSubmitCb<TFieldDef>
+export type OnSubmit<FieldDef extends Record<string, unknown>> =
+  | OnSubmitCb<FieldDef>
   | {
-      onStart?: OnSubmitCb<TFieldDef>;
+      onStart?: OnSubmitCb<FieldDef>;
       onInvalid?: (
-        submitState: SubmitState<TFieldDef> & {
-          errors: ErrorsObject<TFieldDef>;
+        submitState: SubmitState<FieldDef> & {
+          errors: ErrorsObject<FieldDef>;
         }
       ) => Promise<void> | void;
-      onSubmit: OnSubmitCb<TFieldDef>;
+      onSubmit: OnSubmitCb<FieldDef>;
       onError?: (
-        submitState: SubmitState<TFieldDef> & {
+        submitState: SubmitState<FieldDef> & {
           error: InvalidResponse;
         }
       ) => Promise<void> | void;
-      onSuccess?: OnSubmitCb<TFieldDef>;
-      finally?: OnSubmitCb<TFieldDef>;
+      onSuccess?: OnSubmitCb<FieldDef>;
+      finally?: OnSubmitCb<FieldDef>;
     };
 
 export class FieldValue<T = unknown> {
@@ -475,10 +476,10 @@ const RUN_FORM_STATE_TRACKER = new WeakMap<
   (updateId: symbol) => void
 >();
 
-class Form<TFieldDef extends Record<string, unknown>> {
-  readonly #fields = new Map<Names<TFieldDef>, Field<any, Names<TFieldDef>>>();
+class Form<FieldDef extends Record<string, unknown>> {
+  readonly #fields = new Map<Names<FieldDef>, Field<any, Names<FieldDef>>>();
   readonly #values = new Map<string, any>();
-  readonly #clearedValues = new Set<Names<TFieldDef>>();
+  readonly #clearedValues = new Set<Names<FieldDef>>();
   readonly #defaultValues = new Map<symbol, Map<string, any>>();
   readonly #touchedFields = new WeakSet<Field<any, string, any>>();
   readonly #validatingFields = new Map<string, Promise<boolean>>();
@@ -490,9 +491,9 @@ class Form<TFieldDef extends Record<string, unknown>> {
   #submissionError: InvalidResponse | null = null;
   #loading = new Map<string, Set<symbol>>();
 
-  readonly #fieldValidators = new Map<Names<TFieldDef>, Set<FieldValidator>>();
+  readonly #fieldValidators = new Map<Names<FieldDef>, Set<FieldValidator>>();
 
-  readonly #fieldWatchers = new Map<Names<TFieldDef>, Set<FieldWatcher<any>>>();
+  readonly #fieldWatchers = new Map<Names<FieldDef>, Set<FieldWatcher<any>>>();
   readonly #formWatchers = new Set<(updateId: symbol) => void>();
 
   readonly #runFieldStateTrackers = (
@@ -500,7 +501,7 @@ class Form<TFieldDef extends Record<string, unknown>> {
     updateId = Symbol()
   ): void => {
     for (const fieldWatcher of this.#fieldWatchers
-      .get(name as Names<TFieldDef>)
+      .get(name as Names<FieldDef>)
       ?.values() || []) {
       fieldWatcher.run(updateId);
     }
@@ -508,13 +509,13 @@ class Form<TFieldDef extends Record<string, unknown>> {
     this.#runFormStateTracker(updateId);
   };
 
-  readonly #onSubmit: Exclude<OnSubmit<TFieldDef>, OnSubmitCb<TFieldDef>>;
+  readonly #onSubmit: Exclude<OnSubmit<FieldDef>, OnSubmitCb<FieldDef>>;
 
   constructor({
     onSubmit,
     validateOn,
   }: {
-    onSubmit: OnSubmit<TFieldDef>;
+    onSubmit: OnSubmit<FieldDef>;
     validateOn: ValidateOn;
   }) {
     this.#onSubmit =
@@ -523,7 +524,6 @@ class Form<TFieldDef extends Record<string, unknown>> {
             onSubmit,
           }
         : onSubmit;
-
     this.#validateOn = validateOn;
     FIELDS.set(this, this.#fields);
     VALUES.set(this, this.#values);
@@ -585,11 +585,11 @@ class Form<TFieldDef extends Record<string, unknown>> {
     return this.#validateOn;
   }
 
-  readonly isFieldRegistered = (name: Names<TFieldDef>): boolean =>
+  readonly isFieldRegistered = (name: Names<FieldDef>): boolean =>
     !!this.getRegisteredField(name);
-  readonly getRegisteredField = <Name extends Names<TFieldDef>>(
+  readonly getRegisteredField = <Name extends Names<FieldDef>>(
     name: Name
-  ): Field<PathValue<TFieldDef, Name>, Name> | undefined => {
+  ): Field<PathValue<FieldDef, Name>, Name> | undefined => {
     for (const field of this.fields()) {
       if (field.props.name === name) {
         return field as any;
@@ -597,9 +597,9 @@ class Form<TFieldDef extends Record<string, unknown>> {
     }
   };
 
-  readonly setFieldValue = <Name extends Names<TFieldDef>>(
+  readonly setFieldValue = <Name extends Names<FieldDef>>(
     name: Name,
-    value: PathValue<TFieldDef, Name> | undefined
+    value: PathValue<FieldDef, Name> | undefined
   ): void => {
     if (value == undefined) {
       this.#clearedValues.add(name);
@@ -644,19 +644,19 @@ class Form<TFieldDef extends Record<string, unknown>> {
     // If validateField is NOT called, run field state tracker.
     this.#runFieldStateTrackers(name);
   };
-  readonly getFieldValue = <Name extends Names<TFieldDef>>(
+  readonly getFieldValue = <Name extends Names<FieldDef>>(
     name: Name,
     dirtyOnly = true
-  ): PathValue<TFieldDef, Name> | undefined => {
+  ): PathValue<FieldDef, Name> | undefined => {
     if (this.#values.has(name) || dirtyOnly) {
       return this.#values.get(name);
     } else if (!this.#clearedValues.has(name)) {
       return this.getFieldDefaultValue(name);
     }
   };
-  readonly getFieldDefaultValue = <Name extends Names<TFieldDef>>(
+  readonly getFieldDefaultValue = <Name extends Names<FieldDef>>(
     name: Name
-  ): PathValue<TFieldDef, Name> | undefined => {
+  ): PathValue<FieldDef, Name> | undefined => {
     for (const defaultValues of this.#defaultValues.values()) {
       if (defaultValues.has(name)) {
         return defaultValues.get(name);
@@ -664,9 +664,9 @@ class Form<TFieldDef extends Record<string, unknown>> {
     }
   };
 
-  readonly isFieldValid = (name: Names<TFieldDef>): boolean =>
+  readonly isFieldValid = (name: Names<FieldDef>): boolean =>
     !!this.getFieldErrors(name).next().done;
-  readonly isFieldValidating = (name: Names<TFieldDef>): boolean =>
+  readonly isFieldValidating = (name: Names<FieldDef>): boolean =>
     this.#validatingFields.has(name);
   readonly isFieldTouched = (field: Field<any, string, any>): boolean =>
     this.#touchedFields.has(field);
@@ -683,13 +683,13 @@ class Form<TFieldDef extends Record<string, unknown>> {
       switch (this.#validateOn) {
         case "blur":
         case "all":
-          this.validateField(field.props.name as Names<TFieldDef>, {
+          this.validateField(field.props.name as Names<FieldDef>, {
             updateId,
           });
           return;
         case "touched":
           if (isNotTouched) {
-            this.validateField(field.props.name as Names<TFieldDef>, {
+            this.validateField(field.props.name as Names<FieldDef>, {
               updateId,
             });
             return;
@@ -713,13 +713,13 @@ class Form<TFieldDef extends Record<string, unknown>> {
     }
   };
 
-  readonly isFieldDirty = (name: Names<TFieldDef>): boolean =>
+  readonly isFieldDirty = (name: Names<FieldDef>): boolean =>
     this.#values.has(name);
-  readonly isFieldLoading = (name: Names<TFieldDef>): boolean =>
+  readonly isFieldLoading = (name: Names<FieldDef>): boolean =>
     this.#loading.has(name);
   readonly getFieldErrors = function* (
-    this: Form<TFieldDef>,
-    name: Names<TFieldDef>
+    this: Form<FieldDef>,
+    name: Names<FieldDef>
   ): IterableIterator<InvalidResponse> {
     for (const fieldValidator of this.#fieldValidators.get(name)?.values() ||
       []) {
@@ -728,7 +728,7 @@ class Form<TFieldDef extends Record<string, unknown>> {
   }.bind(this);
 
   readonly validateField = (
-    name: Names<TFieldDef>,
+    name: Names<FieldDef>,
     { updateId }: { updateId?: symbol } = {}
   ): Promise<boolean> | boolean => {
     let hasPromise = false;
@@ -810,9 +810,9 @@ class Form<TFieldDef extends Record<string, unknown>> {
       | React.FormEvent<HTMLFormElement>
       | React.FormEvent<HTMLButtonElement>
       | React.FormEvent<HTMLInputElement>
-  ): Promise<InvalidResponse | ErrorsObject<TFieldDef> | undefined> => {
+  ): Promise<InvalidResponse | ErrorsObject<FieldDef> | undefined> => {
     if (this.#onSubmit.onStart) {
-      this.#onSubmit.onStart({
+      await this.#onSubmit.onStart({
         event,
         dirtyValues: this.getValuesObject(true),
         values: this.getValuesObject(false),
@@ -841,7 +841,7 @@ class Form<TFieldDef extends Record<string, unknown>> {
       this.#runFormStateTracker();
 
       if (this.#onSubmit.onInvalid) {
-        this.#onSubmit.onInvalid({
+        await this.#onSubmit.onInvalid({
           event,
           dirtyValues: this.getValuesObject(true),
           values: this.getValuesObject(false),
@@ -851,7 +851,7 @@ class Form<TFieldDef extends Record<string, unknown>> {
       }
 
       if (this.#onSubmit.finally) {
-        this.#onSubmit.finally({
+        await this.#onSubmit.finally({
           event,
           dirtyValues: this.getValuesObject(true),
           values: this.getValuesObject(false),
@@ -863,23 +863,19 @@ class Form<TFieldDef extends Record<string, unknown>> {
     }
 
     try {
-      const submitResult = this.#onSubmit.onSubmit({
+      await this.#onSubmit.onSubmit({
         event,
         dirtyValues: this.getValuesObject(true),
         values: this.getValuesObject(false),
         form: this,
       });
-
-      if (submitResult instanceof Promise) {
-        await submitResult;
-      }
     } catch (error) {
       this.#isSubmitting = false;
 
       this.#runFormStateTracker();
 
       if (this.#onSubmit.onError) {
-        this.#onSubmit.onError({
+        await this.#onSubmit.onError({
           event,
           dirtyValues: this.getValuesObject(true),
           values: this.getValuesObject(false),
@@ -888,7 +884,7 @@ class Form<TFieldDef extends Record<string, unknown>> {
         });
       }
       if (this.#onSubmit.finally) {
-        this.#onSubmit.finally({
+        await this.#onSubmit.finally({
           event,
           dirtyValues: this.getValuesObject(true),
           values: this.getValuesObject(false),
@@ -904,7 +900,7 @@ class Form<TFieldDef extends Record<string, unknown>> {
     this.#runFormStateTracker();
 
     if (this.#onSubmit.onSuccess) {
-      this.#onSubmit.onSuccess({
+      await this.#onSubmit.onSuccess({
         event,
         dirtyValues: this.getValuesObject(true),
         values: this.getValuesObject(false),
@@ -913,7 +909,7 @@ class Form<TFieldDef extends Record<string, unknown>> {
     }
 
     if (this.#onSubmit.finally) {
-      this.#onSubmit.finally({
+      await this.#onSubmit.finally({
         event,
         dirtyValues: this.getValuesObject(true),
         values: this.getValuesObject(false),
@@ -928,19 +924,17 @@ class Form<TFieldDef extends Record<string, unknown>> {
   };
 
   readonly fields = (): IterableIterator<
-    Field<PathValue<TFieldDef, Names<TFieldDef>>>
+    Field<PathValue<FieldDef, Names<FieldDef>>>
   > => this.#fields.values();
   readonly values = function* (
-    this: Form<TFieldDef>,
+    this: Form<FieldDef>,
     dirtyOnly = true
-  ): IterableIterator<
-    [Names<TFieldDef>, PathValue<TFieldDef, Names<TFieldDef>>]
-  > {
+  ): IterableIterator<[Names<FieldDef>, PathValue<FieldDef, Names<FieldDef>>]> {
     const yieldedKeys = new Set<string>();
 
     for (const [name, value] of this.#values) {
       yieldedKeys.add(name);
-      yield [name as Names<TFieldDef>, value];
+      yield [name as Names<FieldDef>, value];
     }
     if (!dirtyOnly) {
       for (const name of this.#clearedValues) {
@@ -951,7 +945,7 @@ class Form<TFieldDef extends Record<string, unknown>> {
         for (const [name, defaultValue] of defaultValues) {
           if (!yieldedKeys.has(name)) {
             yieldedKeys.add(name);
-            yield [name as Names<TFieldDef>, defaultValue];
+            yield [name as Names<FieldDef>, defaultValue];
           }
         }
       }
@@ -959,17 +953,17 @@ class Form<TFieldDef extends Record<string, unknown>> {
   }.bind(this);
 
   readonly errors = function* (
-    this: Form<TFieldDef>
-  ): IterableIterator<[Names<TFieldDef>, InvalidResponse[]]> {
+    this: Form<FieldDef>
+  ): IterableIterator<[Names<FieldDef>, InvalidResponse[]]> {
     for (const name of this.#fieldValidators.keys()) {
       const errors = [...this.getFieldErrors(name)];
       if (errors.length) {
-        yield [name as Names<TFieldDef>, errors];
+        yield [name as Names<FieldDef>, errors];
       }
     }
   }.bind(this);
-  readonly getValuesObject = (dirtyOnly = true): ValuesObject<TFieldDef> => {
-    const valueObj = {} as ValuesObject<TFieldDef>;
+  readonly getValuesObject = (dirtyOnly = true): ValuesObject<FieldDef> => {
+    const valueObj = {} as ValuesObject<FieldDef>;
 
     for (const [name, value] of this.values(dirtyOnly)) {
       set(valueObj, name, value);
@@ -977,8 +971,8 @@ class Form<TFieldDef extends Record<string, unknown>> {
 
     return valueObj;
   };
-  readonly getErrorsObject = (): ErrorsObject<TFieldDef> => {
-    const errorsObj = {} as ErrorsObject<TFieldDef>;
+  readonly getErrorsObject = (): ErrorsObject<FieldDef> => {
+    const errorsObj = {} as ErrorsObject<FieldDef>;
 
     for (const [name, value] of this.errors()) {
       set(errorsObj, name, value);
@@ -988,7 +982,7 @@ class Form<TFieldDef extends Record<string, unknown>> {
   };
 
   readonly resetFieldErrors = (
-    name: Names<TFieldDef>,
+    name: Names<FieldDef>,
     { updateId }: { updateId?: symbol } = {}
   ): void => {
     for (const fieldValidator of this.#fieldValidators.get(name)?.values() ||
@@ -998,7 +992,7 @@ class Form<TFieldDef extends Record<string, unknown>> {
     this.#runFieldStateTrackers(name, updateId);
   };
 
-  readonly resetAllErrors = ({
+  readonly resetErrors = ({
     updateId = Symbol(),
   }: { updateId?: symbol } = {}): void => {
     for (const name of this.#fieldValidators.keys()) {
@@ -1007,13 +1001,15 @@ class Form<TFieldDef extends Record<string, unknown>> {
   };
 
   readonly resetField = (
-    name: Names<TFieldDef>,
+    name: Names<FieldDef>,
     { updateId = Symbol() }: { updateId?: symbol } = {}
   ): void => {
     // Reset Errors
     this.resetFieldErrors(name, { updateId });
 
     this.#values.delete(name);
+
+    this.#clearedValues.delete(name);
 
     const field = this.getRegisteredField(name);
     if (field) {
@@ -1052,7 +1048,7 @@ class Form<TFieldDef extends Record<string, unknown>> {
   /**
    * Resets all values, errors, and submission status data.  Resets **everything**.
    */
-  readonly resetForm = ({
+  readonly reset = ({
     updateId = Symbol(),
   }: { updateId?: symbol } = {}): void => {
     const resetFields = new Set<string>();
@@ -1070,7 +1066,7 @@ class Form<TFieldDef extends Record<string, unknown>> {
 
     for (const name of this.#values.keys()) {
       if (!resetFields.has(name)) {
-        this.resetField(name as Names<TFieldDef>, { updateId });
+        this.resetField(name as Names<FieldDef>, { updateId });
       }
     }
 
@@ -1082,9 +1078,9 @@ class Form<TFieldDef extends Record<string, unknown>> {
   };
 
   readonly #runFormStateTracker = (() => {
-    const stateTracker = function* (this: Form<TFieldDef>) {
+    const stateTracker = function* (this: Form<FieldDef>) {
       type StateSnapShot = Omit<
-        Form<TFieldDef>,
+        Form<FieldDef>,
         | "isFieldRegistered"
         | "getRegisteredField"
         | "setFieldValue"
@@ -1108,9 +1104,9 @@ class Form<TFieldDef extends Record<string, unknown>> {
         | "getErrorsObject"
         | "setTouchedAll"
         | "resetFieldErrors"
-        | "resetAllErrors"
+        | "resetErrors"
         | "resetField"
-        | "resetForm"
+        | "reset"
         | "resetSubmitCount"
         | "resetSubmitted"
         | "resetSubmissionError"
@@ -1156,13 +1152,11 @@ class Form<TFieldDef extends Record<string, unknown>> {
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 export const parseFieldDef = function* <
-  TFieldDef extends Record<string, unknown>
+  FieldDef extends Record<string, unknown>
 >(
-  fieldDef: TFieldDef,
+  fieldDef: FieldDef,
   namePrefix?: string
-): IterableIterator<
-  [Names<TFieldDef>, PathValue<TFieldDef, Names<TFieldDef>>]
-> {
+): IterableIterator<[Names<FieldDef>, PathValue<FieldDef, Names<FieldDef>>]> {
   for (const key in fieldDef) {
     if (hasOwnProperty.call(fieldDef, key)) {
       const value = fieldDef[key];
@@ -1175,18 +1169,16 @@ export const parseFieldDef = function* <
     }
   }
 };
-const parseValidatorDefs = function* <
-  TFieldDef extends Record<string, unknown>
->(
-  validatorDef: ValidatorDefs<TFieldDef>,
+const parseValidatorDefs = function* <FieldDef extends Record<string, unknown>>(
+  validatorDef: ValidatorDefs<FieldDef>,
   namePrefix?: string
 ): IterableIterator<
   [
-    Names<TFieldDef>,
+    Names<FieldDef>,
     (
-      | Validator<PathValue<TFieldDef, Names<TFieldDef>>, Names<TFieldDef>>
+      | Validator<PathValue<FieldDef, Names<FieldDef>>, Names<FieldDef>>
       | Iterable<
-          Validator<PathValue<TFieldDef, Names<TFieldDef>>, Names<TFieldDef>>
+          Validator<PathValue<FieldDef, Names<FieldDef>>, Names<FieldDef>>
         >
     )
   ]
@@ -1300,8 +1292,20 @@ export type ValidatorDefs<T extends Record<string, unknown>> = {
     : never;
 };
 
-export type IForm<TFieldDef extends Record<string, unknown> = any> =
-  Form<TFieldDef>;
+export type DefaultValuesDef<T extends Record<string, unknown>> = {
+  [K in keyof T]?: T[K] extends infer G
+    ? K extends string
+      ? G extends FieldValue<infer U>
+        ? FieldValue<U>
+        : G extends Record<string, unknown>
+        ? DefaultValuesDef<G>
+        : never
+      : never
+    : never;
+};
+
+export type IForm<FieldDef extends Record<string, unknown> = any> =
+  Form<FieldDef>;
 export type IField<T = unknown, Name extends string = string> = Field<T, Name>;
 
 const FormContext = createContext<null | Form<any>>(null);
@@ -1350,18 +1354,19 @@ export const NamePrefixProvider = (
     </NamePrefixContext.Provider>
   );
 };
-export type UseFormOptions<TFieldDef extends Record<string, unknown>> = {
-  onSubmit: OnSubmit<TFieldDef>;
-  defaultValues?: TFieldDef;
-  validators?: ValidatorDefs<TFieldDef>;
+
+export type UseFormOptions<FieldDef extends Record<string, unknown>> = {
+  onSubmit: OnSubmit<FieldDef>;
+  defaultValues?: FieldDef;
+  validators?: ValidatorDefs<FieldDef>;
   validateOn?: ValidateOn;
 };
-export const useForm = <TFieldDef extends Record<string, unknown>>({
+export const useForm = <FieldDef extends Record<string, unknown>>({
   onSubmit,
   defaultValues,
   validators,
   validateOn = "submit",
-}: UseFormOptions<TFieldDef>): Form<TFieldDef> => {
+}: UseFormOptions<FieldDef>): Form<FieldDef> => {
   const [, watcher] = useState(Symbol());
 
   const [state] = useState(() => {
@@ -1369,7 +1374,7 @@ export const useForm = <TFieldDef extends Record<string, unknown>>({
       mount: Symbol(),
       unMount: Symbol(),
     };
-    const form = new Form<TFieldDef>({ onSubmit, validateOn });
+    const form = new Form<FieldDef>({ onSubmit, validateOn });
 
     (FORM_WATCHERS.get(form) as Set<(updateId: symbol) => void>).add(watcher);
 
@@ -1398,10 +1403,10 @@ export const useForm = <TFieldDef extends Record<string, unknown>>({
 };
 
 export const useFormContext = <
-  TFieldDef extends Record<string, unknown> = Record<string, unknown>
+  FieldDef extends Record<string, unknown> = Record<string, unknown>
 >(
-  formContext?: Form<TFieldDef>
-): Form<TFieldDef> | undefined => {
+  formContext?: Form<FieldDef>
+): Form<FieldDef> | undefined => {
   const form = useFormContextUtil({
     form: formContext,
     hookName: "useFormContext",
@@ -1504,21 +1509,26 @@ const useDefaultValuesUtil = (
   }>();
   updateIdsRef.current = options.updateIds;
 
-  useEffect(() => {
+  const modifiedFields = useMemo(() => {
     const { defaultValuesMap } = state;
 
     const modifiedFields = new Set<string>(defaultValuesMap.keys());
 
     defaultValuesMap.clear();
 
-    for (const [name, defaultValue] of parseFieldDef(options.defaultValues)) {
+    for (const [_name, defaultValue] of parseFieldDef(options.defaultValues)) {
+      const name = namePrefix ? prefixName(_name, namePrefix) : _name;
       modifiedFields.add(name);
       defaultValuesMap.set(
-        namePrefix ? prefixName(name, namePrefix) : name,
+        name,
         defaultValue
       );
     }
 
+    return modifiedFields;
+  }, [namePrefix, options.defaultValues, state]);
+
+  useEffect(() => {
     const updateId = updateIdsRef.current?.mount || Symbol();
 
     const fieldStateTracker = RUN_FIELD_STATE_TRACKERS.get(form) as (
@@ -1529,7 +1539,7 @@ const useDefaultValuesUtil = (
     for (const name of modifiedFields) {
       fieldStateTracker(name, updateId);
     }
-  }, [form, namePrefix, options.defaultValues, state]);
+  }, [form, modifiedFields]);
 
   useEffect(
     () => () => {
@@ -1551,13 +1561,13 @@ const useDefaultValuesUtil = (
     [form, state]
   );
 };
-export type UseDefaultValuesOptions<TFieldDef extends Record<string, unknown>> =
+export type UseDefaultValuesOptions<FieldDef extends Record<string, unknown>> =
   {
-    defaultValues: TFieldDef;
-    form?: Form<TFieldDef>;
+    defaultValues: DefaultValuesDef<FieldDef>;
+    form?: Form<FieldDef>;
   };
-export const useDefaultValues = <TFieldDef extends Record<string, unknown>>(
-  options: UseDefaultValuesOptions<TFieldDef>
+export const useDefaultValues = <FieldDef extends Record<string, unknown>>(
+  options: UseDefaultValuesOptions<FieldDef>
 ): void => {
   return useDefaultValuesUtil(options);
 };
@@ -1657,27 +1667,27 @@ const useValidatorsUtil = (
   }, [fieldValidators, form, options.shouldRunValidation]);
 };
 
-export type UseValidatorOptions<TFieldDef extends Record<string, unknown>> = {
-  validators: ValidatorDefs<TFieldDef>;
-  form?: Form<TFieldDef>;
+export type UseValidatorOptions<FieldDef extends Record<string, unknown>> = {
+  validators: ValidatorDefs<FieldDef>;
+  form?: Form<FieldDef>;
   /**
    * @default ["auto"]
    * `"auto"` will run the {@link UseValidatorOptions.validators} on first mount when current validators on the same field have already run.
    */
   shouldRunValidation?: boolean | "auto";
 };
-export const useValidators = <TFieldDef extends Record<string, unknown>>(
-  options: UseValidatorOptions<TFieldDef>
+export const useValidators = <FieldDef extends Record<string, unknown>>(
+  options: UseValidatorOptions<FieldDef>
 ): void => {
   return useValidatorsUtil(options);
 };
 
 export const useWatcher = function <
   T = unknown,
-  TFieldDef extends Record<string, unknown> = any
+  FieldDef extends Record<string, unknown> = any
 >(options: {
   name: string | Field<any, string, any>;
-  form?: Form<TFieldDef>;
+  form?: Form<FieldDef>;
 }): {
   value: T | undefined;
   defaultValue: T | undefined;
@@ -1743,7 +1753,7 @@ export const useWatcher = function <
 export type UseFieldOptions<
   T = unknown,
   Name extends string = string,
-  TFieldDef extends Record<string, unknown> = Record<string, unknown>
+  FieldDef extends Record<string, unknown> = Record<string, unknown>
 > = {
   name: Name;
   defaultValue?: T;
@@ -1753,7 +1763,7 @@ export type UseFieldOptions<
    */
   shouldRunValidation?: boolean | "auto";
   shouldUnregister?: boolean;
-  form?: Form<TFieldDef>;
+  form?: Form<FieldDef>;
 };
 
 const FIELDS_REF_COUNT = new WeakMap<Field<any, string, undefined>, number>();
@@ -1763,8 +1773,8 @@ const FIELDS_REF_COUNT = new WeakMap<Field<any, string, undefined>, number>();
 export const useField = function <
   T = unknown,
   Name extends string = string,
-  TFieldDef extends Record<string, unknown> = Record<string, unknown>
->(options: UseFieldOptions<T, Name, TFieldDef>): Field<T, Name> {
+  FieldDef extends Record<string, unknown> = Record<string, unknown>
+>(options: UseFieldOptions<T, Name, FieldDef>): Field<T, Name> {
   const form = useFormContextUtil({
     form: options.form,
     hookName: "useField",
@@ -1895,11 +1905,11 @@ export const useField = function <
  * @param options.shouldUnregister `true` (default) sets loading to false for this invocation of {@link Form.useLoading} when it is unmounted.
  */
 export const useLoading = <
-  TFieldDef extends Record<string, unknown> = any
+  FieldDef extends Record<string, unknown> = any
 >(options: {
   loading: boolean;
-  name: string | Field<any, string, any>;
-  form?: Form<TFieldDef>;
+  name: string | Field<any, string, any> | (string | Field<any, string, any>)[];
+  form?: Form<FieldDef>;
 }): void => {
   const form = useFormContextUtil({
     form: options.form,
@@ -1910,40 +1920,51 @@ export const useLoading = <
 
   const [id] = useState(Symbol());
 
-  const setLoading = useMemo(() => {
-    const fieldName =
-      options.name instanceof Field ? options.name.props.name : options.name;
+  const setLoading = useCallback(
+    (loading: boolean) => {
+      const namesOrFields = Array.isArray(options.name)
+        ? options.name
+        : [options.name];
 
-    const name = namePrefix ? prefixName(fieldName, namePrefix) : fieldName;
-
-    return (loading: boolean) => {
       const loadingMap = LOADING.get(form) as Map<string, Set<symbol>>;
-      if (loading) {
-        if (loadingMap.has(name)) {
-          (loadingMap.get(name) as Set<symbol>).add(id);
+
+      const updateId = Symbol();
+
+      const runFieldStateTrackers = RUN_FIELD_STATE_TRACKERS.get(form) as (
+        name: string,
+        updateId: symbol
+      ) => void;
+
+      for (const nameOrField of namesOrFields) {
+        const fieldName =
+          nameOrField instanceof Field ? nameOrField.props.name : nameOrField;
+
+        const name = namePrefix ? prefixName(fieldName, namePrefix) : fieldName;
+
+        if (loading) {
+          if (loadingMap.has(name)) {
+            (loadingMap.get(name) as Set<symbol>).add(id);
+          } else {
+            loadingMap.set(name, new Set([id]));
+          }
         } else {
-          loadingMap.set(name, new Set([id]));
-        }
-      } else {
-        if (loadingMap.has(name)) {
-          (loadingMap.get(name) as Set<symbol>).delete(id);
-          if (!loadingMap.size) {
-            loadingMap.delete(name);
+          if (loadingMap.has(name)) {
+            const fieldLoading = loadingMap.get(name) as Set<symbol>;
+            fieldLoading.delete(id);
+            if (!fieldLoading.size) {
+              loadingMap.delete(name);
+            }
           }
         }
+        runFieldStateTrackers(name, updateId);
       }
-      const updateId = Symbol();
-      (
-        RUN_FIELD_STATE_TRACKERS.get(form) as (
-          name: string,
-          updateId: symbol
-        ) => void
-      )(name, updateId);
+
       (RUN_FORM_STATE_TRACKER.get(form) as (updateId: symbol) => void)(
         updateId
       );
-    };
-  }, [form, id, namePrefix, options.name]);
+    },
+    [form, id, namePrefix, options.name]
+  );
 
   useEffect(() => {
     setLoading(options.loading);
@@ -1958,11 +1979,11 @@ export const useLoading = <
 };
 
 export const useWatchAll = <
-  TFieldDef extends Record<string, unknown> = any
+  FieldDef extends Record<string, unknown> = any
 >(options: {
-  form?: Form<TFieldDef>;
-}): Pick<SubmitState<TFieldDef>, "dirtyValues" | "values"> & {
-  errors: ErrorsObject<TFieldDef>;
+  form?: Form<FieldDef>;
+}): Pick<SubmitState<FieldDef>, "dirtyValues" | "values"> & {
+  errors: ErrorsObject<FieldDef>;
 } => {
   const form = useFormContextUtil({
     form: options.form,

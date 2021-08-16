@@ -1,4 +1,10 @@
-import React, { useCallback, forwardRef, Ref, PropsWithChildren } from "react";
+import React, {
+  useCallback,
+  forwardRef,
+  Ref,
+  PropsWithChildren,
+  useMemo,
+} from "react";
 import { QueryHookOptions as QueryHookOptionsApollo } from "@apollo/client";
 import { CircularProgress, TextField, TextFieldProps } from "@material-ui/core";
 import { Autocomplete, AutocompleteProps } from "@material-ui/lab";
@@ -8,12 +14,17 @@ import {
   defaultInput,
   BranchNode,
 } from "mui-tree-select";
+import { KeyboardDatePickerProps } from "@material-ui/pickers";
+
 import {
   useField,
   UseFieldOptions,
   useFormContext,
   Validator,
 } from "../../useKISSForm/form";
+import Fraction from "fraction.js";
+import { RationalInputProps } from "./RationalInput";
+import { BoolInputProps } from "./BoolInput";
 
 export type QueryHookOptions = Omit<QueryHookOptionsApollo, "variables">;
 
@@ -73,6 +84,88 @@ export const LoadingDefaultBlank = forwardRef(function LoadingDefaultBlank(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any),
         [renderInput]
+      )}
+    />
+  );
+});
+
+export const LoadingTextFieldBlank = forwardRef(function LoadingTextFieldBlank(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  props:
+    | TextFieldProps
+    | Partial<KeyboardDatePickerProps>
+    | Partial<RationalInputProps>
+    | Partial<BoolInputProps<"switch" | "checkbox">>,
+  ref: Ref<HTMLDivElement>
+) {
+  const {
+    classes,
+    color,
+    error,
+    FormHelperTextProps,
+    fullWidth,
+    helperText,
+    id,
+    InputLabelProps,
+    inputProps,
+    InputProps,
+    inputRef,
+    label,
+    margin,
+    maxRows,
+    minRows,
+    multiline,
+    name,
+    placeholder,
+    size,
+
+    // FormControl
+    hiddenLabel,
+  } = props as TextFieldProps;
+
+  const variant = (() => {
+    switch (props.variant) {
+      case "dialog":
+      case "inline":
+      case "static":
+        return (props as KeyboardDatePickerProps).inputVariant;
+      default:
+        return props.variant || (props as KeyboardDatePickerProps).inputVariant;
+    }
+  })();
+
+  return (
+    <TextField
+      classes={classes}
+      color={color}
+      error={error}
+      FormHelperTextProps={FormHelperTextProps}
+      fullWidth={fullWidth}
+      helperText={helperText}
+      id={id}
+      InputLabelProps={InputLabelProps}
+      inputProps={inputProps}
+      inputRef={inputRef}
+      label={label}
+      margin={margin}
+      maxRows={maxRows}
+      minRows={minRows}
+      multiline={multiline}
+      name={name}
+      placeholder={placeholder}
+      size={size}
+      variant={variant}
+      hiddenLabel={hiddenLabel}
+      ref={ref}
+      disabled
+      InputProps={useMemo(
+        () =>
+          mergeInputEndAdornment(
+            "append",
+            <CircularProgress size={20} color="inherit" />,
+            InputProps
+          ),
+        [InputProps]
       )}
     />
   );
@@ -200,3 +293,47 @@ export const requiredValidator: Validator<any> = (_, { form, name }) => {
     return REQUIRED_ERROR;
   }
 };
+
+const GT_ZERO_ERROR = new RangeError("Must be greater than zero.");
+export const gtZero: Validator<Fraction> = (value) => {
+  if (value && value.compare(0) <= 0) {
+    return GT_ZERO_ERROR;
+  }
+};
+
+export const useRenderInputWithError = (
+  error?: Error | string | undefined,
+  renderInput = defaultInput
+) =>
+  useCallback<
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    NonNullable<TreeSelectProps<any, any, any, any, any>["renderInput"]>
+  >(
+    (params) =>
+      renderInput({
+        ...params,
+        ...(error
+          ? {
+              error: true,
+              helperText: typeof error === "string" ? error : error.message,
+            }
+          : {}),
+      }),
+    [error, renderInput]
+  );
+
+export const useRenderInputWithLabel = (
+  label?: string,
+  renderInput = defaultInput
+) =>
+  useCallback<
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    NonNullable<TreeSelectProps<any, any, any, any, any>["renderInput"]>
+  >(
+    (params) =>
+      renderInput({
+        label,
+        ...params,
+      }),
+    [label, renderInput]
+  );

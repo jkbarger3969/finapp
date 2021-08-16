@@ -1,4 +1,4 @@
-import { gql, useQuery, QueryHookOptions } from "@apollo/client";
+import { gql, useQuery } from "@apollo/client";
 import TreeSelect, {
   BranchNode,
   defaultInput,
@@ -8,31 +8,28 @@ import TreeSelect, {
   TreeSelectValue,
 } from "mui-tree-select";
 import React, { forwardRef, Ref, useCallback, useMemo, useState } from "react";
-import { MarkOptional, MarkRequired, Merge } from "ts-essentials";
+import { MarkOptional, MarkRequired } from "ts-essentials";
 
 import {
-  EntityInputIniValueQuery as EntityInputIniValue,
-  EntityInputIniValueQueryVariables as EntityInputIniValueVars,
   EntityInputOptsQuery as EntityInputOpts,
   EntityInputOptsQueryVariables as EntityInputOptsVars,
   EntityBusinessInputOptFragment,
   EntityPersonInputOptFragment,
+  EntityInputDefaultValueFragment,
   DepartmentInputOptFragment,
   RegexFlags,
-  EntitiesWhere,
 } from "../../apollo/graphTypes";
 import {
   getOptionLabel as getOptionLabelDept,
-  DEPT_INPUT_OPT_FRAGMENT,
+  DEPARTMENT_INPUT_OPT_FRAGMENT,
+  DEPARTMENT_DEFAULT_VALUE_FRAGMENT,
 } from "./Department";
 import { useControlled } from "@material-ui/core";
-import { LoadingDefaultBlank } from "./shared";
 import {
   FieldValue,
   useField,
   UseFieldOptions,
   useFormContext,
-  useLoading,
 } from "../../useKISSForm/form";
 
 export type EntityDefaultInputOpt =
@@ -94,6 +91,23 @@ export const ENTITY_INPUT_OPT_FRAGMENTS = gql`
   }
 `;
 
+export const ENTITY_INPUT_DEFAULT_VALUE_FRAGMENT = gql`
+  fragment EntityInputDefaultValue on Entity {
+    ...EntityBusinessInputOpt
+    ...EntityPersonInputOpt
+    ...DepartmentInputDefaultValue
+    ... on Department {
+      ancestors {
+        ...EntityBusinessInputOpt
+        ...DepartmentInputOpt
+      }
+    }
+  }
+  ${ENTITY_INPUT_OPT_FRAGMENTS}
+  ${DEPARTMENT_DEFAULT_VALUE_FRAGMENT}
+  ${DEPARTMENT_INPUT_OPT_FRAGMENT}
+`;
+
 export const ENTITY_INPUT_OPTS = gql`
   query EntityInputOpts($where: EntitiesWhere!) {
     entities(where: $where) {
@@ -102,27 +116,41 @@ export const ENTITY_INPUT_OPTS = gql`
       ...EntityPersonInputOpt
     }
   }
-  ${DEPT_INPUT_OPT_FRAGMENT}
+  ${DEPARTMENT_INPUT_OPT_FRAGMENT}
   ${ENTITY_INPUT_OPT_FRAGMENTS}
 `;
 
-export const ENTITY_INPUT_INI_VALUE = gql`
-  query EntityInputIniValue($where: EntitiesWhere!) {
+export const ENTITY_INPUT_DEFAULT_VALUE = gql`
+  query EntityInputDefaultValue($where: EntitiesWhere!) {
     entities(where: $where) {
-      ...EntityBusinessInputOpt
-      ...DepartmentInputOpt
-      ...EntityPersonInputOpt
-      ... on Department {
-        ancestors {
-          ...EntityBusinessInputOpt
-          ...DepartmentInputOpt
-        }
-      }
+      ...EntityInputDefaultValue
     }
   }
-  ${DEPT_INPUT_OPT_FRAGMENT}
-  ${ENTITY_INPUT_OPT_FRAGMENTS}
+  ${ENTITY_INPUT_DEFAULT_VALUE_FRAGMENT}
 `;
+
+export const useEntityDefaultValue = (
+  defaultValue?: EntityInputDefaultValueFragment
+): ValueNode<EntityInputOpt, EntityBranchInputOpt> | undefined =>
+  useMemo(() => {
+    switch (defaultValue?.__typename) {
+      case undefined:
+        return undefined;
+      case "Business":
+        return new ValueNode(defaultValue, businessBranch);
+      case "Department":
+        return new ValueNode(
+          defaultValue,
+          defaultValue.ancestors.reduceRight(
+            (branch, ancestor) =>
+              new BranchNode<EntityBranchInputOpt>(ancestor, branch),
+            businessBranch
+          )
+        );
+      case "Person":
+        return new ValueNode(defaultValue, personBranch);
+    }
+  }, [defaultValue]);
 
 export const getOptionLabel: NonNullable<
   EntityTreeSelectProps<undefined, undefined, true | false>["getOptionLabel"]
@@ -230,7 +258,6 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
     ENTITY_INPUT_OPTS,
     useMemo(() => {
       const curBranch = state.branch?.valueOf();
-
       if (!curBranch) {
         return {
           skip: true,
@@ -256,7 +283,6 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
         };
       } else if (curBranch === "Person") {
         const firstLetter = inputValue.trim().slice(0, 1);
-
         return {
           skip: !firstLetter,
           variables: {
@@ -447,11 +473,17 @@ export type EntityInputProps<
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 > = {
-  defaultValue?: EntitiesWhere;
   name?: string;
-} & Omit<
-  EntityInputBaseProps<Multiple, DisableClearable, FreeSolo>,
-  "onChange" | "value"
+  defaultValue?: TreeSelectValue<
+    EntityInputOpt,
+    EntityBranchInputOpt,
+    Multiple,
+    true,
+    false
+  >;
+} & MarkOptional<
+  Omit<EntityInputBaseProps<Multiple, DisableClearable, FreeSolo>, "value">,
+  "onChange"
 > &
   Pick<UseFieldOptions, "form">;
 
@@ -470,23 +502,12 @@ export type EntityFieldDef<
     >
   >;
 };
-const EntityInputControlled = forwardRef(function EntityInputControlled<
+export const EntityInput = forwardRef(function EntityInput<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 >(
-  props: Merge<
-    EntityInputProps<Multiple, DisableClearable, FreeSolo>,
-    {
-      defaultValue?: TreeSelectValue<
-        EntityInputOpt,
-        EntityBranchInputOpt,
-        Multiple,
-        true,
-        false
-      >;
-    }
-  >,
+  props: EntityInputProps<Multiple, DisableClearable, FreeSolo>,
   ref: Ref<unknown>
 ): JSX.Element {
   const {
@@ -496,6 +517,7 @@ const EntityInputControlled = forwardRef(function EntityInputControlled<
     renderInput: renderInputProp = defaultInput,
     disabled,
     onBlur: onBlurProp,
+    onChange: onChangeProp,
     ...rest
   } = props;
 
@@ -564,10 +586,13 @@ const EntityInputControlled = forwardRef(function EntityInputControlled<
       EntityInputBaseProps<Multiple, DisableClearable, FreeSolo>["onChange"]
     >
   >(
-    (_, value) => {
-      setValue(value ?? undefined);
+    (...args) => {
+      setValue(args[1] ?? undefined);
+      if (onChangeProp) {
+        onChangeProp(...args);
+      }
     },
-    [setValue]
+    [onChangeProp, setValue]
   );
 
   return (
@@ -583,7 +608,7 @@ const EntityInputControlled = forwardRef(function EntityInputControlled<
   );
 });
 
-export const EntityInput = forwardRef(function EntityInput<
+/* export const EntityInput = forwardRef(function EntityInput<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
@@ -601,7 +626,7 @@ export const EntityInput = forwardRef(function EntityInput<
     EntityInputIniValue,
     EntityInputIniValueVars
   >(
-    ENTITY_INPUT_INI_VALUE,
+    ENTITY_INPUT_DEFAULT_VALUE,
     useMemo<QueryHookOptions<EntityInputIniValue, EntityInputIniValueVars>>(
       () => ({
         skip: !defaultValueProp,
@@ -639,43 +664,29 @@ export const EntityInput = forwardRef(function EntityInput<
 
   const defaultValues = useMemo(
     () =>
-      (data?.entities || []).map(
-        (value) =>
-          new ValueNode(
-            value,
-            (() => {
-              switch (value.__typename) {
-                case "Business":
-                  return new ValueNode<EntityInputOpt, EntityBranchInputOpt>(
-                    value,
-                    businessBranch
-                  );
-                case "Department":
-                  return new ValueNode<EntityInputOpt, EntityBranchInputOpt>(
-                    value,
-                    value.ancestors.reduceRight(
-                      (branch, ancestor) =>
-                        new BranchNode<EntityBranchInputOpt>(ancestor, branch),
-                      businessBranch
-                    )
-                  );
-
-                case "Person":
-                  return new ValueNode<EntityInputOpt, EntityBranchInputOpt>(
-                    value,
-                    personBranch
-                  );
-              }
-            })()
-          )
-      ),
+      (data?.entities || []).map((value) => {
+        switch (value.__typename) {
+          case "Business":
+            return new ValueNode(value, businessBranch);
+          case "Department":
+            return new ValueNode(
+              value,
+              value.ancestors.reduceRight(
+                (branch, ancestor) =>
+                  new BranchNode<EntityBranchInputOpt>(ancestor, branch),
+                businessBranch
+              )
+            );
+          case "Person":
+            return new ValueNode(value, personBranch);
+        }
+      }),
     [data?.entities]
   );
 
   if (loading) {
-    return <LoadingDefaultBlank {...rest} />;
+    return <LoadingDefaultBlank {...rest} renderInput={renderInput} />;
   }
-
   return (
     <EntityInputControlled<Multiple, DisableClearable, FreeSolo>
       {...rest}
@@ -696,4 +707,4 @@ export const EntityInput = forwardRef(function EntityInput<
       }
     />
   );
-});
+}); */

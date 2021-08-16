@@ -132,6 +132,7 @@ export type Query = {
   entries: Array<Entry>;
   entry?: Maybe<Entry>;
   entryRefund?: Maybe<EntryRefund>;
+  entryRefunds: Array<EntryRefund>;
   entryItem?: Maybe<EntryItem>;
   fiscalYears: Array<FiscalYear>;
   fiscalYear: FiscalYear;
@@ -228,6 +229,11 @@ export type QueryEntryArgs = {
 
 export type QueryEntryRefundArgs = {
   id: Scalars['ID'];
+};
+
+
+export type QueryEntryRefundsArgs = {
+  where?: Maybe<EntryRefundsWhere>;
 };
 
 
@@ -664,6 +670,7 @@ export type EntryRefund = {
   date: Scalars['Date'];
   deleted: Scalars['Boolean'];
   description?: Maybe<Scalars['String']>;
+  entry: Entry;
   lastUpdate: Scalars['Date'];
   paymentMethod: PaymentMethodCard | PaymentMethodCheck | PaymentMethodCash | PaymentMethodOnline | PaymentMethodCombination | PaymentMethodUnknown;
   reconciled: Scalars['Boolean'];
@@ -673,6 +680,7 @@ export type EntryRefund = {
 export type EntryRefundsWhere = {
   id?: Maybe<WhereId>;
   date?: Maybe<WhereDateBeta>;
+  entry?: Maybe<EntriesWhere>;
   total?: Maybe<WhereRational>;
   reconciled?: Maybe<Scalars['Boolean']>;
   lastUpdate?: Maybe<WhereDateBeta>;
@@ -1221,17 +1229,22 @@ export type EntryUpdated_2Subscription = { __typename?: 'Subscription', entryUpd
 
 export type CategoryInputOptFragment = { __typename: 'Category', id: string, name: string, type: EntryType, children: Array<{ __typename: 'Category', id: string }>, parent?: Maybe<{ __typename: 'Category', id: string }> };
 
-export type CategoryInputIniValueQueryVariables = Exact<{
+export type CategoryInputDefaultValueFragment = (
+  { __typename?: 'Category', ancestors: Array<(
+    { __typename?: 'Category' }
+    & CategoryInputOptFragment
+  )> }
+  & CategoryInputOptFragment
+);
+
+export type CategoryInputDefaultValuesQueryVariables = Exact<{
   where: CategoriesWhere;
 }>;
 
 
-export type CategoryInputIniValueQuery = { __typename?: 'Query', categories: Array<(
-    { __typename?: 'Category', ancestors: Array<(
-      { __typename?: 'Category' }
-      & CategoryInputOptFragment
-    )> }
-    & CategoryInputOptFragment
+export type CategoryInputDefaultValuesQuery = { __typename?: 'Query', categories: Array<(
+    { __typename?: 'Category' }
+    & CategoryInputDefaultValueFragment
   )> };
 
 export type CategoryInputOptsQueryVariables = Exact<{
@@ -1246,17 +1259,22 @@ export type CategoryInputOptsQuery = { __typename?: 'Query', categories: Array<(
 
 export type DepartmentInputOptFragment = { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> };
 
-export type DepartmentInputIniValueQueryVariables = Exact<{
+export type DepartmentInputDefaultValueFragment = (
+  { __typename?: 'Department', ancestors: Array<(
+    { __typename: 'Department' }
+    & DepartmentInputOptFragment
+  ) | { __typename: 'Business' }> }
+  & DepartmentInputOptFragment
+);
+
+export type DepartmentInputDefaultValuesQueryVariables = Exact<{
   where: DepartmentsWhere;
 }>;
 
 
-export type DepartmentInputIniValueQuery = { __typename?: 'Query', departments: Array<(
-    { __typename?: 'Department', ancestors: Array<(
-      { __typename: 'Department' }
-      & DepartmentInputOptFragment
-    ) | { __typename: 'Business' }> }
-    & DepartmentInputOptFragment
+export type DepartmentInputDefaultValuesQuery = { __typename?: 'Query', departments: Array<(
+    { __typename?: 'Department' }
+    & DepartmentInputDefaultValueFragment
   )> };
 
 export type DepartmentInputOptsQueryVariables = Exact<{
@@ -1272,6 +1290,29 @@ export type DepartmentInputOptsQuery = { __typename?: 'Query', departments: Arra
 export type EntityBusinessInputOptFragment = { __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> };
 
 export type EntityPersonInputOptFragment = { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } };
+
+export type EntityInputDefaultValue_Person_Fragment = (
+  { __typename?: 'Person' }
+  & EntityPersonInputOptFragment
+);
+
+export type EntityInputDefaultValue_Business_Fragment = (
+  { __typename?: 'Business' }
+  & EntityBusinessInputOptFragment
+);
+
+export type EntityInputDefaultValue_Department_Fragment = (
+  { __typename?: 'Department', ancestors: Array<(
+    { __typename?: 'Department' }
+    & DepartmentInputOptFragment
+  ) | (
+    { __typename?: 'Business' }
+    & EntityBusinessInputOptFragment
+  )> }
+  & DepartmentInputDefaultValueFragment
+);
+
+export type EntityInputDefaultValueFragment = EntityInputDefaultValue_Person_Fragment | EntityInputDefaultValue_Business_Fragment | EntityInputDefaultValue_Department_Fragment;
 
 export type EntityInputOptsQueryVariables = Exact<{
   where: EntitiesWhere;
@@ -1289,26 +1330,20 @@ export type EntityInputOptsQuery = { __typename?: 'Query', entities: Array<(
     & DepartmentInputOptFragment
   )> };
 
-export type EntityInputIniValueQueryVariables = Exact<{
+export type EntityInputDefaultValueQueryVariables = Exact<{
   where: EntitiesWhere;
 }>;
 
 
-export type EntityInputIniValueQuery = { __typename?: 'Query', entities: Array<(
+export type EntityInputDefaultValueQuery = { __typename?: 'Query', entities: Array<(
     { __typename?: 'Person' }
-    & EntityPersonInputOptFragment
+    & EntityInputDefaultValue_Person_Fragment
   ) | (
     { __typename?: 'Business' }
-    & EntityBusinessInputOptFragment
+    & EntityInputDefaultValue_Business_Fragment
   ) | (
-    { __typename?: 'Department', ancestors: Array<(
-      { __typename?: 'Department' }
-      & DepartmentInputOptFragment
-    ) | (
-      { __typename?: 'Business' }
-      & EntityBusinessInputOptFragment
-    )> }
-    & DepartmentInputOptFragment
+    { __typename?: 'Department' }
+    & EntityInputDefaultValue_Department_Fragment
   )> };
 
 export type AccountCardPayMethodInputOptFragment = { __typename: 'AccountCard', id: string, active: boolean, type: PaymentCardType, trailingDigits: string };
@@ -1361,6 +1396,141 @@ export type AccountPayMethodInputOptsQuery = { __typename?: 'Query', accounts: A
     { __typename?: 'AccountCreditCard' }
     & AccountCreditCardPayMethodInputOptFragment
   )> };
+
+export type PayMethodDefaultValue_PaymentMethodCard_Fragment = { __typename: 'PaymentMethodCard', currency: Currency, card: (
+    { __typename: 'AccountCard', trailingDigits: string, type: PaymentCardType }
+    & AccountCardPayMethodInputOptFragment
+  ) | { __typename: 'PaymentCard', trailingDigits: string, type: PaymentCardType } };
+
+export type PayMethodDefaultValue_PaymentMethodCheck_Fragment = { __typename: 'PaymentMethodCheck', currency: Currency, check: { __typename: 'AccountCheck', checkNumber: string, account: (
+      { __typename?: 'AccountChecking' }
+      & AccountCheckingPayMethodInputOptFragment
+    ) } | { __typename: 'PaymentCheck', checkNumber: string } };
+
+export type PayMethodDefaultValue_PaymentMethodCash_Fragment = { __typename: 'PaymentMethodCash', currency: Currency };
+
+export type PayMethodDefaultValue_PaymentMethodOnline_Fragment = { __typename: 'PaymentMethodOnline', currency: Currency };
+
+export type PayMethodDefaultValue_PaymentMethodCombination_Fragment = { __typename: 'PaymentMethodCombination', currency: Currency };
+
+export type PayMethodDefaultValue_PaymentMethodUnknown_Fragment = { __typename: 'PaymentMethodUnknown', currency: Currency };
+
+export type PayMethodDefaultValueFragment = PayMethodDefaultValue_PaymentMethodCard_Fragment | PayMethodDefaultValue_PaymentMethodCheck_Fragment | PayMethodDefaultValue_PaymentMethodCash_Fragment | PayMethodDefaultValue_PaymentMethodOnline_Fragment | PayMethodDefaultValue_PaymentMethodCombination_Fragment | PayMethodDefaultValue_PaymentMethodUnknown_Fragment;
+
+export type PayMethodDefaultValueFromEntryQueryVariables = Exact<{
+  where: EntriesWhere;
+}>;
+
+
+export type PayMethodDefaultValueFromEntryQuery = { __typename?: 'Query', entries: Array<{ __typename: 'Entry', id: string, paymentMethod: (
+      { __typename?: 'PaymentMethodCard' }
+      & PayMethodDefaultValue_PaymentMethodCard_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodCheck' }
+      & PayMethodDefaultValue_PaymentMethodCheck_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodCash' }
+      & PayMethodDefaultValue_PaymentMethodCash_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodOnline' }
+      & PayMethodDefaultValue_PaymentMethodOnline_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodCombination' }
+      & PayMethodDefaultValue_PaymentMethodCombination_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodUnknown' }
+      & PayMethodDefaultValue_PaymentMethodUnknown_Fragment
+    ) }> };
+
+export type PayMethodDefaultValueFromRefundQueryVariables = Exact<{
+  where: EntryRefundsWhere;
+}>;
+
+
+export type PayMethodDefaultValueFromRefundQuery = { __typename?: 'Query', entryRefunds: Array<{ __typename: 'EntryRefund', id: string, paymentMethod: (
+      { __typename?: 'PaymentMethodCard' }
+      & PayMethodDefaultValue_PaymentMethodCard_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodCheck' }
+      & PayMethodDefaultValue_PaymentMethodCheck_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodCash' }
+      & PayMethodDefaultValue_PaymentMethodCash_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodOnline' }
+      & PayMethodDefaultValue_PaymentMethodOnline_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodCombination' }
+      & PayMethodDefaultValue_PaymentMethodCombination_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodUnknown' }
+      & PayMethodDefaultValue_PaymentMethodUnknown_Fragment
+    ) }> };
+
+export type UpdateEntryDefaultValuesQueryVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type UpdateEntryDefaultValuesQuery = { __typename?: 'Query', entry?: Maybe<{ __typename: 'Entry', id: string, date: string, description?: Maybe<string>, reconciled: boolean, total: string, dateOfRecord?: Maybe<{ __typename?: 'EntryDateOfRecord', date: string }>, category: (
+      { __typename?: 'Category' }
+      & CategoryInputDefaultValueFragment
+    ), department: (
+      { __typename?: 'Department' }
+      & DepartmentInputDefaultValueFragment
+    ), source: (
+      { __typename?: 'Person' }
+      & EntityInputDefaultValue_Person_Fragment
+    ) | (
+      { __typename?: 'Business' }
+      & EntityInputDefaultValue_Business_Fragment
+    ) | (
+      { __typename?: 'Department' }
+      & EntityInputDefaultValue_Department_Fragment
+    ), paymentMethod: (
+      { __typename?: 'PaymentMethodCard' }
+      & PayMethodDefaultValue_PaymentMethodCard_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodCheck' }
+      & PayMethodDefaultValue_PaymentMethodCheck_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodCash' }
+      & PayMethodDefaultValue_PaymentMethodCash_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodOnline' }
+      & PayMethodDefaultValue_PaymentMethodOnline_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodCombination' }
+      & PayMethodDefaultValue_PaymentMethodCombination_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodUnknown' }
+      & PayMethodDefaultValue_PaymentMethodUnknown_Fragment
+    ) }> };
+
+export type RefundEntryStateQueryVariables = Exact<{
+  where: EntriesWhere;
+}>;
+
+
+export type RefundEntryStateQuery = { __typename?: 'Query', entries: Array<{ __typename: 'Entry', id: string, date: string, total: string, category: { __typename: 'Category', id: string, type: EntryType }, paymentMethod: (
+      { __typename?: 'PaymentMethodCard' }
+      & PayMethodDefaultValue_PaymentMethodCard_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodCheck' }
+      & PayMethodDefaultValue_PaymentMethodCheck_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodCash' }
+      & PayMethodDefaultValue_PaymentMethodCash_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodOnline' }
+      & PayMethodDefaultValue_PaymentMethodOnline_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodCombination' }
+      & PayMethodDefaultValue_PaymentMethodCombination_Fragment
+    ) | (
+      { __typename?: 'PaymentMethodUnknown' }
+      & PayMethodDefaultValue_PaymentMethodUnknown_Fragment
+    ), refunds: Array<{ __typename: 'EntryRefund', id: string, deleted: boolean, total: string }> }> };
 
 export type GridEntrySrcPersonFragment = { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } };
 
@@ -2213,6 +2383,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, never>>;
   entry?: Resolver<Maybe<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntryArgs, 'id'>>;
   entryRefund?: Resolver<Maybe<ResolversTypes['EntryRefund']>, ParentType, ContextType, RequireFields<QueryEntryRefundArgs, 'id'>>;
+  entryRefunds?: Resolver<Array<ResolversTypes['EntryRefund']>, ParentType, ContextType, RequireFields<QueryEntryRefundsArgs, never>>;
   entryItem?: Resolver<Maybe<ResolversTypes['EntryItem']>, ParentType, ContextType, RequireFields<QueryEntryItemArgs, 'id'>>;
   fiscalYears?: Resolver<Array<ResolversTypes['FiscalYear']>, ParentType, ContextType, RequireFields<QueryFiscalYearsArgs, never>>;
   fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType, RequireFields<QueryFiscalYearArgs, 'id'>>;
@@ -2338,6 +2509,7 @@ export type EntryRefundResolvers<ContextType = Context, ParentType extends Resol
   date?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
   deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  entry?: Resolver<ResolversTypes['Entry'], ParentType, ContextType>;
   lastUpdate?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
   paymentMethod?: Resolver<ResolversTypes['PaymentMethodInterface'], ParentType, ContextType>;
   reconciled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;

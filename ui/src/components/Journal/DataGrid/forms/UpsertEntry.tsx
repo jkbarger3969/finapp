@@ -16,16 +16,21 @@ import {
   DialogContentText,
   Grid,
   Box,
-  Divider,
+  ButtonProps,
+  makeStyles,
 } from "@material-ui/core";
-import { FreeSoloNode, nodeStringifyReplacer } from "mui-tree-select";
+import { FreeSoloNode } from "mui-tree-select";
 import { parseName } from "humanparser";
 import { Add as AddIcon, Queue as QueueIcon } from "@material-ui/icons";
+import { TransitionProps } from "@material-ui/core/transitions";
 
-import { EntryProps, useEntry } from "../../../Inputs/fieldSets/useEntry";
-import { usePrePrint } from "../../../utils/usePrePrint";
+import {
+  EntryProps,
+  useEntry,
+  EntryFieldDef,
+} from "../../../Inputs/fieldSets/useEntry";
 import { inputGridItemProps, useSharedDialogInputProps } from "./shared";
-import { usePerson } from "../../../Inputs/fieldSets/usePerson";
+import { usePerson, PersonFieldDef } from "../../../Inputs/fieldSets/usePerson";
 import { EntityTreeSelectValue } from "../../../Inputs/Entity";
 import {
   FieldValue,
@@ -34,11 +39,11 @@ import {
   useDefaultValues,
   useForm,
   OnSubmitCb,
-  useWatchAll,
+  SubmitState,
   useWatcher,
 } from "../../../../useKISSForm/form";
 import { AsyncButton } from "../../../utils/AsyncButton";
-
+import OverlayLoading from "../../../utils/OverlayLoading";
 const Person = (props: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: IForm<any>;
@@ -100,17 +105,43 @@ const Person = (props: {
   );
 };
 
-export type AddEntryProps = {
+const useStyles = makeStyles({
+  dialogContent: {
+    position: "relative",
+  },
+});
+
+export type UpsertEntryProps = {
   entryProps: Omit<EntryProps, "paymentMethod" | "source"> & {
     paymentMethod: Omit<EntryProps["paymentMethod"], "isRefund">;
     source?: Omit<EntryProps<true>["source"], "allowNewSource">;
   };
-} & Omit<DialogProps, "children" | "PaperProps">;
+  onSuccess?: (results: {
+    submitState: SubmitState<EntryFieldDef & PersonFieldDef>;
+  }) => void;
+} & Omit<DialogProps, "children" | "PaperProps" | "onClose"> & {
+    onClose?: (
+      event: Parameters<NonNullable<DialogProps["onClose"]>>[0],
+      reason: Parameters<NonNullable<DialogProps["onClose"]>>[1] | "cancel"
+    ) => void;
+  };
 
-export const AddEntry = forwardRef(function AddEntry(
-  props: AddEntryProps,
+export const UpsertEntry = forwardRef(function UpsertEntry(
+  props: UpsertEntryProps,
   ref: Ref<unknown>
 ) {
+  const {
+    onSuccess,
+    entryProps,
+    onClose,
+    TransitionProps: _TransitionProps,
+    ...rest
+  } = props;
+
+  const classes = useStyles();
+
+  const isUpdate = !!entryProps.updateEntryId;
+
   const addRef = useRef<HTMLButtonElement | null>(null);
   const addAndNewRef = useRef<HTMLButtonElement | null>(null);
 
@@ -121,18 +152,35 @@ export const AddEntry = forwardRef(function AddEntry(
   const form = useForm({
     onSubmit: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onSubmit: useCallback<OnSubmitCb<any>>(async (submitState) => {
-        console.log(submitState);
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }, []),
+      onSubmit: useCallback<OnSubmitCb<any>>(
+        async (submitState) => {
+          console.log(submitState);
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          if (onSuccess) {
+            onSuccess({ submitState });
+          }
+        },
+        [onSuccess]
+      ),
       finally: useCallback(() => setSubmitButton(null), []),
     },
     validateOn: "submit",
   });
 
-  const { handleSubmit } = form;
+  const TransitionProps = useMemo<TransitionProps>(
+    () => ({
+      ..._TransitionProps,
+      onExited: (...args) => {
+        form.reset();
+        if (_TransitionProps?.onExited) {
+          _TransitionProps.onExited(...args);
+        }
+      },
+    }),
+    [_TransitionProps, form]
+  );
 
-  const { entryProps, ...rest } = props;
+  const { handleSubmit } = form;
 
   const sharedInputProps = useSharedDialogInputProps();
 
@@ -195,10 +243,25 @@ export const AddEntry = forwardRef(function AddEntry(
     form,
   });
 
+  const handleClose = useCallback<NonNullable<UpsertEntryProps["onClose"]>>(
+    (...args) => {
+      if (form.isSubmitting) {
+        return;
+      }
+
+      if (onClose) {
+        onClose(...args);
+      }
+    },
+    [form.isSubmitting, onClose]
+  );
+
   return (
     <FormProvider form={form}>
       <Dialog
         {...rest}
+        TransitionProps={TransitionProps}
+        onClose={handleClose}
         PaperProps={useMemo(
           () =>
             ({
@@ -214,9 +277,19 @@ export const AddEntry = forwardRef(function AddEntry(
           [form.isSubmitting, handleSubmit]
         )}
         ref={ref}
+        disableEscapeKeyDown={form.isSubmitting}
       >
-        <DialogTitle>Add Entry</DialogTitle>
-        <DialogContent dividers>
+        <DialogTitle>
+          {(() => {
+            if (isUpdate) {
+              return form.isSubmitting ? "Updating Entry..." : "Update Entry";
+            } else {
+              return form.isSubmitting ? "Adding Entry..." : "Add Entry";
+            }
+          })()}
+        </DialogTitle>
+        <DialogContent dividers className={classes.dialogContent}>
+          {form.loading && <OverlayLoading zIndex="modal" />}
           <Grid spacing={3} container>
             <Grid {...inputGridItemProps}>{entryInputs.dateInput}</Grid>
             <Grid {...inputGridItemProps}>{entryInputs.dateOfRecordInput}</Grid>
@@ -242,7 +315,7 @@ export const AddEntry = forwardRef(function AddEntry(
               !!submitButton &&
               submitButton === addRef.current
             }
-            disabled={form.isSubmitting}
+            disabled={form.isSubmitting || form.loading}
             type="submit"
             variant="contained"
             startIcon={<AddIcon />}
@@ -260,7 +333,7 @@ export const AddEntry = forwardRef(function AddEntry(
               !!submitButton &&
               submitButton === addAndNewRef.current
             }
-            disabled={form.isSubmitting}
+            disabled={form.isSubmitting || form.loading}
             type="submit"
             variant="outlined"
             startIcon={<QueueIcon />}
@@ -272,9 +345,15 @@ export const AddEntry = forwardRef(function AddEntry(
             Add & New
           </AsyncButton>
           <Button
+            type="reset"
             disabled={form.isSubmitting}
             variant="text"
-            // onClick={props.onClose}
+            onClick={useCallback<NonNullable<ButtonProps["onClick"]>>(
+              (event) => {
+                handleClose(event, "cancel");
+              },
+              [handleClose]
+            )}
           >
             {form.submissionError ? "Ok" : "Cancel"}
           </Button>

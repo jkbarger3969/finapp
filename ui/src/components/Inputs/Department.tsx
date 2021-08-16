@@ -8,14 +8,13 @@ import TreeSelect, {
   TreeSelectValue,
 } from "mui-tree-select";
 import { gql, QueryHookOptions, useQuery } from "@apollo/client";
-import { MarkOptional, MarkRequired, Merge } from "ts-essentials";
+import { MarkOptional, MarkRequired } from "ts-essentials";
 
 import {
   DepartmentInputOptsQuery as DepartmentInputOpts,
   DepartmentInputOptsQueryVariables as DepartmentInputOptsVars,
-  DepartmentInputIniValueQuery as DepartmentInputIniValue,
-  DepartmentInputIniValueQueryVariables as DepartmentInputIniValueVars,
   DepartmentInputOptFragment,
+  DepartmentInputDefaultValueFragment,
   DepartmentsWhere,
 } from "../../apollo/graphTypes";
 import { LoadingDefaultBlank, sortBranchesToTop } from "./shared";
@@ -24,7 +23,6 @@ import {
   useField,
   UseFieldOptions,
   useFormContext,
-  useLoading,
 } from "../../useKISSForm/form";
 
 export type DepartmentInputOpt = MarkOptional<
@@ -32,7 +30,7 @@ export type DepartmentInputOpt = MarkOptional<
   "children"
 >;
 
-export const DEPT_INPUT_OPT_FRAGMENT = gql`
+export const DEPARTMENT_INPUT_OPT_FRAGMENT = gql`
   fragment DepartmentInputOpt on Department {
     __typename
     id
@@ -44,29 +42,58 @@ export const DEPT_INPUT_OPT_FRAGMENT = gql`
   }
 `;
 
-export const DEPT_INPUT_INI_VALUE = gql`
-  query DepartmentInputIniValue($where: DepartmentsWhere!) {
-    departments(where: $where) {
-      ...DepartmentInputOpt
-      ancestors {
-        __typename
-        ... on Department {
-          ...DepartmentInputOpt
-        }
+export const DEPARTMENT_DEFAULT_VALUE_FRAGMENT = gql`
+  fragment DepartmentInputDefaultValue on Department {
+    ...DepartmentInputOpt
+    ancestors {
+      __typename
+      ... on Department {
+        ...DepartmentInputOpt
       }
     }
   }
-  ${DEPT_INPUT_OPT_FRAGMENT}
+  ${DEPARTMENT_INPUT_OPT_FRAGMENT}
 `;
 
-export const DEPT_INPUT_OPTS = gql`
+export const DEPARTMENT_DEFAULT_VALUE = gql`
+  query DepartmentInputDefaultValues($where: DepartmentsWhere!) {
+    departments(where: $where) {
+      ...DepartmentInputDefaultValue
+    }
+  }
+  ${DEPARTMENT_DEFAULT_VALUE_FRAGMENT}
+`;
+
+export const DEPARTMENT_INPUT_OPTS = gql`
   query DepartmentInputOpts($where: DepartmentsWhere!) {
     departments(where: $where) {
       ...DepartmentInputOpt
     }
   }
-  ${DEPT_INPUT_OPT_FRAGMENT}
+  ${DEPARTMENT_INPUT_OPT_FRAGMENT}
 `;
+
+export const useDepartmentDefaultValue = (
+  defaultValue?: DepartmentInputDefaultValueFragment
+): ValueNode<DepartmentInputOpt, DepartmentInputOpt> | undefined =>
+  useMemo(
+    () =>
+      defaultValue
+        ? new ValueNode(
+            defaultValue,
+            defaultValue.ancestors
+              .reduceRight((path, parent) => {
+                if (parent.__typename !== "Business") {
+                  path.push(parent);
+                }
+
+                return path;
+              }, [] as DepartmentInputOpt[])
+              .reverse()
+          )
+        : undefined,
+    [defaultValue]
+  );
 
 export type DepartmentTreeSelectProps<
   Multiple extends boolean | undefined = undefined,
@@ -145,7 +172,7 @@ export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
   });
 
   const rootResult = useQuery<DepartmentInputOpts, DepartmentInputOptsVars>(
-    DEPT_INPUT_OPTS,
+    DEPARTMENT_INPUT_OPTS,
     useMemo<QueryHookOptions<DepartmentInputOpts, DepartmentInputOptsVars>>(
       () => ({
         variables: {
@@ -181,7 +208,7 @@ export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
   );
 
   const queryResult = useQuery<DepartmentInputOpts, DepartmentInputOptsVars>(
-    DEPT_INPUT_OPTS,
+    DEPARTMENT_INPUT_OPTS,
     useMemo<QueryHookOptions<DepartmentInputOpts, DepartmentInputOptsVars>>(
       () => ({
         skip: !state.branch,
@@ -298,11 +325,19 @@ export type DepartmentInputProps<
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 > = {
-  root: DepartmentsWhere;
-  defaultValue?: DepartmentsWhere;
-} & Omit<
-  DepartmentInputBaseProps<Multiple, DisableClearable, FreeSolo>,
-  "onChange" | "value" | "name"
+  defaultValue?: TreeSelectValue<
+    DepartmentInputOpt,
+    DepartmentInputOpt,
+    Multiple,
+    true,
+    false
+  >;
+} & MarkOptional<
+  Omit<
+    DepartmentInputBaseProps<Multiple, DisableClearable, FreeSolo>,
+    "value" | "name"
+  >,
+  "onChange"
 > &
   Pick<UseFieldOptions, "form">;
 
@@ -321,23 +356,12 @@ export type DepartmentFieldDef<
   >;
 };
 export const DEPARTMENT_NAME: keyof DepartmentFieldDef = "department";
-const DepartmentInputControlled = forwardRef(function DepartmentInputControlled<
+export const DepartmentInput = forwardRef(function DepartmentInput<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 >(
-  props: Merge<
-    DepartmentInputProps<Multiple, DisableClearable, FreeSolo>,
-    {
-      defaultValue?: TreeSelectValue<
-        DepartmentInputOpt,
-        DepartmentInputOpt,
-        Multiple,
-        true,
-        false
-      >;
-    }
-  >,
+  props: DepartmentInputProps<Multiple, DisableClearable, FreeSolo>,
   ref: Ref<unknown>
 ): JSX.Element {
   const {
@@ -346,6 +370,7 @@ const DepartmentInputControlled = forwardRef(function DepartmentInputControlled<
     renderInput: renderInputProp = defaultInput,
     disabled,
     onBlur: onBlurProp,
+    onChange: onChangeProp,
     ...rest
   } = props;
 
@@ -416,10 +441,13 @@ const DepartmentInputControlled = forwardRef(function DepartmentInputControlled<
       DepartmentInputBaseProps<Multiple, DisableClearable, FreeSolo>["onChange"]
     >
   >(
-    (_, value) => {
-      setValue(value ?? undefined);
+    (...args) => {
+      setValue(args[1] ?? undefined);
+      if (onChangeProp) {
+        onChangeProp(...args);
+      }
     },
-    [setValue]
+    [setValue, onChangeProp]
   );
 
   return (
@@ -431,103 +459,6 @@ const DepartmentInputControlled = forwardRef(function DepartmentInputControlled<
       onChange={handleChange}
       renderInput={renderInput}
       onBlur={handleBlur}
-    />
-  );
-});
-
-export const DepartmentInput = forwardRef(function DepartmentInput<
-  Multiple extends boolean | undefined = undefined,
-  DisableClearable extends boolean | undefined = undefined,
-  FreeSolo extends boolean | undefined = undefined
->(
-  props: DepartmentInputProps<Multiple, DisableClearable, FreeSolo>,
-  ref: Ref<unknown>
-): JSX.Element {
-  const {
-    defaultValue: defaultValueProp,
-    renderInput: renderInputProp = defaultInput,
-    ...rest
-  } = props;
-
-  const { loading, error, data } = useQuery<
-    DepartmentInputIniValue,
-    DepartmentInputIniValueVars
-  >(DEPT_INPUT_INI_VALUE, {
-    skip: !defaultValueProp,
-    variables: useMemo(
-      () => ({
-        where: defaultValueProp as DepartmentsWhere,
-      }),
-      [defaultValueProp]
-    ),
-  });
-
-  useLoading({
-    loading,
-    name: DEPARTMENT_NAME,
-    form: rest.form,
-  });
-
-  const renderInput = useCallback<
-    NonNullable<
-      DepartmentInputProps<Multiple, DisableClearable, FreeSolo>["renderInput"]
-    >
-  >(
-    (params) =>
-      renderInputProp({
-        ...params,
-        ...(error
-          ? {
-              error: true,
-              helperText: error.message,
-            }
-          : {}),
-      }),
-    [error, renderInputProp]
-  );
-
-  const defaultValues = useMemo(
-    () =>
-      (data?.departments || []).map(
-        (value) =>
-          new ValueNode(
-            value,
-            value.ancestors
-              .reduceRight((path, parent) => {
-                if (parent.__typename !== "Business") {
-                  path.push(parent);
-                }
-
-                return path;
-              }, [] as DepartmentInputOpt[])
-              .reverse()
-          )
-      ),
-    [data?.departments]
-  );
-
-  if (loading) {
-    return <LoadingDefaultBlank {...rest} />;
-  }
-
-  return (
-    <DepartmentInputControlled<Multiple, DisableClearable, FreeSolo>
-      {...rest}
-      ref={ref}
-      renderInput={renderInput}
-      defaultValue={
-        (props.multiple
-          ? defaultValues.length
-            ? defaultValues
-            : undefined
-          : defaultValues[0] ?? undefined) as unknown as TreeSelectValue<
-          DepartmentInputOpt,
-          DepartmentInputOpt,
-          Multiple,
-          true,
-          false
-        >
-      }
     />
   );
 });

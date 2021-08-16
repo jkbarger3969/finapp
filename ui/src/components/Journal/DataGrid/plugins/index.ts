@@ -20,3 +20,5 @@ export {
   EditCell,
 } from "./TableCell";
 export type { CellProviderProps, CellProviderCellOptions } from "./TableCell";
+export { PopupEditing, PopupEditingComponentState } from "./PopupEditing";
+export type { PopupComponent } from "./PopupEditing";

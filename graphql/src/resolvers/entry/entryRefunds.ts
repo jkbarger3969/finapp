@@ -14,7 +14,7 @@ const getPipeline = (filterQuery: FilterQuery<unknown>): object[] => [
   },
 ];
 
-export const entryRefunds: QueryResolvers["entryRefunds"] = async (
+export const entryRefunds: QueryResolvers["entryRefunds"] = (
   _,
   { where },
   { db }
@@ -22,10 +22,10 @@ export const entryRefunds: QueryResolvers["entryRefunds"] = async (
   const query = where ? whereEntryRefunds(where, db) : {};
 
   if (query instanceof Promise) {
-    return db
-      .collection("entries")
-      .aggregate(getPipeline(await query))
-      .toArray()
+    return query
+      .then((query) =>
+        db.collection("entries").aggregate(getPipeline(query)).toArray()
+      )
       .then((entries) => entries.map(({ refunds }) => refunds));
   } else {
     return db

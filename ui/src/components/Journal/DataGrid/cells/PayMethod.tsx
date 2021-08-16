@@ -29,7 +29,6 @@ import {
   PaymentMethodInputBranchOpt,
   PayMethodTreeSelectProps,
   PaymentMethodInputProps,
-  PayMethodIniValue,
 } from "../../../Inputs/PaymentMethod";
 import {
   inlineAutoCompleteProps,
@@ -124,9 +123,10 @@ const getOptionLabelFilter: NonNullable<
 export const PayMethodFilter = (props: PayMethodFilterProps): JSX.Element => {
   const { payMethodFilterOpts, ...rest } = props;
 
-  const options = useMemo(() => payMethodFilterOpts || [], [
-    payMethodFilterOpts,
-  ]);
+  const options = useMemo(
+    () => payMethodFilterOpts || [],
+    [payMethodFilterOpts]
+  );
 
   const columnName = props.column.name;
 
@@ -231,12 +231,12 @@ export const payMethodFilterColumnExtension = (
     switch (filter.operation) {
       case "equal":
         return payMethodFilterEquals(
-          ((filter as unknown) as Filter<GridPaymentMethodFragment>).value,
+          (filter as unknown as Filter<GridPaymentMethodFragment>).value,
           value as GridPaymentMethodFragment
         );
       case "notEqual":
         return payMethodFilterEquals(
-          ((filter as unknown) as Filter<GridPaymentMethodFragment>).value,
+          (filter as unknown as Filter<GridPaymentMethodFragment>).value,
           value as GridPaymentMethodFragment
         );
       default:

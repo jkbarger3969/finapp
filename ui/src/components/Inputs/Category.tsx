@@ -8,23 +8,20 @@ import TreeSelect, {
   TreeSelectValue,
 } from "mui-tree-select";
 import { gql, useQuery } from "@apollo/client";
-import { MarkOptional, MarkRequired, Merge } from "ts-essentials";
+import { MarkOptional, MarkRequired } from "ts-essentials";
 
 import {
   CategoryInputOptsQuery as CategoryOpts,
   CategoryInputOptsQueryVariables as CategoryOptsVars,
-  CategoryInputIniValueQuery as CategoryIniValue,
-  CategoryInputIniValueQueryVariables as CategoryIniValueVars,
+  CategoryInputDefaultValueFragment,
   CategoryInputOptFragment,
-  CategoriesWhere,
 } from "../../apollo/graphTypes";
-import { LoadingDefaultBlank, sortBranchesToTop } from "./shared";
+import { sortBranchesToTop } from "./shared";
 import {
   FieldValue,
   useField,
   UseFieldOptions,
   useFormContext,
-  useLoading,
 } from "../../useKISSForm/form";
 
 export type CategoryInputOpt = MarkOptional<
@@ -32,7 +29,7 @@ export type CategoryInputOpt = MarkOptional<
   "children"
 >;
 
-export const CATEGORY_INPUT_OPTS_FRAGMENTS = gql`
+const CATEGORY_INPUT_OPTS_FRAGMENT = gql`
   fragment CategoryInputOpt on Category {
     __typename
     id
@@ -49,16 +46,23 @@ export const CATEGORY_INPUT_OPTS_FRAGMENTS = gql`
   }
 `;
 
-export const CATEGORY_DEFAULT_VALUE = gql`
-  query CategoryInputIniValue($where: CategoriesWhere!) {
-    categories(where: $where) {
+export const CATEGORY_DEFAULT_VALUE_FRAGMENT = gql`
+  fragment CategoryInputDefaultValue on Category {
+    ...CategoryInputOpt
+    ancestors {
       ...CategoryInputOpt
-      ancestors {
-        ...CategoryInputOpt
-      }
     }
   }
-  ${CATEGORY_INPUT_OPTS_FRAGMENTS}
+  ${CATEGORY_INPUT_OPTS_FRAGMENT}
+`;
+
+export const CATEGORY_DEFAULT_VALUE = gql`
+  query CategoryInputDefaultValues($where: CategoriesWhere!) {
+    categories(where: $where) {
+      ...CategoryInputDefaultValue
+    }
+  }
+  ${CATEGORY_DEFAULT_VALUE_FRAGMENT}
 `;
 
 export const CATEGORY_INPUT_OPTS = gql`
@@ -67,8 +71,19 @@ export const CATEGORY_INPUT_OPTS = gql`
       ...CategoryInputOpt
     }
   }
-  ${CATEGORY_INPUT_OPTS_FRAGMENTS}
+  ${CATEGORY_INPUT_OPTS_FRAGMENT}
 `;
+
+export const useCategoryDefaultValue = (
+  defaultValue?: CategoryInputDefaultValueFragment
+): ValueNode<CategoryInputOpt, CategoryInputOpt> | undefined =>
+  useMemo(
+    () =>
+      defaultValue
+        ? new ValueNode(defaultValue, [...defaultValue.ancestors].reverse())
+        : undefined,
+    [defaultValue]
+  );
 
 export type CategoryTreeSelectProps<
   Multiple extends boolean | undefined = undefined,
@@ -246,10 +261,18 @@ export type CategoryInputProps<
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 > = {
-  defaultValue?: CategoriesWhere;
-} & Omit<
-  CategoryInputBaseProps<Multiple, DisableClearable, FreeSolo>,
-  "onChange" | "value" | "name"
+  defaultValue?: TreeSelectValue<
+    CategoryInputOpt,
+    CategoryInputOpt,
+    Multiple,
+    false,
+    false
+  >;
+} & Partial<
+  Omit<
+    CategoryInputBaseProps<Multiple, DisableClearable, FreeSolo>,
+    "value" | "name"
+  >
 > &
   Pick<UseFieldOptions, "form">;
 
@@ -269,23 +292,12 @@ export type CategoryFieldDef<
 };
 export const CATEGORY_NAME: keyof CategoryFieldDef = "category";
 
-const CategoryInputControlled = forwardRef(function CategoryInputControlled<
+export const CategoryInput = forwardRef(function CategoryInputInner<
   Multiple extends boolean | undefined = undefined,
   DisableClearable extends boolean | undefined = undefined,
   FreeSolo extends boolean | undefined = undefined
 >(
-  props: Merge<
-    CategoryInputProps<Multiple, DisableClearable, FreeSolo>,
-    {
-      defaultValue?: TreeSelectValue<
-        CategoryInputOpt,
-        CategoryInputOpt,
-        Multiple,
-        false,
-        false
-      >;
-    }
-  >,
+  props: CategoryInputProps<Multiple, DisableClearable, FreeSolo>,
   ref: Ref<unknown>
 ): JSX.Element {
   const {
@@ -294,6 +306,7 @@ const CategoryInputControlled = forwardRef(function CategoryInputControlled<
     renderInput: renderInputProp = defaultInput,
     disabled,
     onBlur: onBlurProp,
+    onChange: onChangeProp,
     ...rest
   } = props;
 
@@ -362,10 +375,13 @@ const CategoryInputControlled = forwardRef(function CategoryInputControlled<
       CategoryInputBaseProps<Multiple, DisableClearable, FreeSolo>["onChange"]
     >
   >(
-    (_, value) => {
-      setValue(value ?? undefined);
+    (...args) => {
+      setValue(args[1] ?? undefined);
+      if (onChangeProp) {
+        onChangeProp(...args);
+      }
     },
-    [setValue]
+    [onChangeProp, setValue]
   );
 
   return (
@@ -378,91 +394,6 @@ const CategoryInputControlled = forwardRef(function CategoryInputControlled<
       onChange={handleChange}
       renderInput={renderInput}
       onBlur={handleBlur}
-    />
-  );
-});
-
-export const CategoryInput = forwardRef(function CategoryInput<
-  Multiple extends boolean | undefined = undefined,
-  DisableClearable extends boolean | undefined = undefined,
-  FreeSolo extends boolean | undefined = undefined
->(
-  props: CategoryInputProps<Multiple, DisableClearable, FreeSolo>,
-  ref: Ref<unknown>
-): JSX.Element {
-  const {
-    defaultValue: defaultValueProp,
-    renderInput: renderInputProp = defaultInput,
-    ...rest
-  } = props;
-
-  const { loading, error, data } = useQuery<
-    CategoryIniValue,
-    CategoryIniValueVars
-  >(CATEGORY_DEFAULT_VALUE, {
-    skip: !defaultValueProp,
-    variables: useMemo(
-      () => ({
-        where: defaultValueProp as CategoriesWhere,
-      }),
-      [defaultValueProp]
-    ),
-  });
-
-  useLoading({
-    loading,
-    name: CATEGORY_NAME,
-    form: rest.form,
-  });
-
-  const renderInput = useCallback<
-    NonNullable<
-      CategoryInputProps<Multiple, DisableClearable, FreeSolo>["renderInput"]
-    >
-  >(
-    (params) =>
-      renderInputProp({
-        ...params,
-        ...(error
-          ? {
-              error: true,
-              helperText: error.message,
-            }
-          : {}),
-      }),
-    [error, renderInputProp]
-  );
-
-  const defaultValues = useMemo(
-    () =>
-      (data?.categories || []).map(
-        (value) => new ValueNode(value, [...value.ancestors].reverse())
-      ),
-    [data?.categories]
-  );
-
-  if (loading) {
-    return <LoadingDefaultBlank {...rest} />;
-  }
-
-  return (
-    <CategoryInputControlled<Multiple, DisableClearable, FreeSolo>
-      {...rest}
-      ref={ref}
-      renderInput={renderInput}
-      defaultValue={
-        (props.multiple
-          ? defaultValues.length
-            ? defaultValues
-            : undefined
-          : defaultValues[0] ?? undefined) as unknown as TreeSelectValue<
-          CategoryInputOpt,
-          CategoryInputOpt,
-          Multiple,
-          false,
-          false
-        >
-      }
     />
   );
 });
