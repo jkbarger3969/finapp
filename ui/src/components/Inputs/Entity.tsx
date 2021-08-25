@@ -97,7 +97,7 @@ export const ENTITY_INPUT_DEFAULT_VALUE_FRAGMENT = gql`
     ...EntityPersonInputOpt
     ...DepartmentInputDefaultValue
     ... on Department {
-      ancestors {
+      ancestors(root: $deptRoot) {
         ...EntityBusinessInputOpt
         ...DepartmentInputOpt
       }
@@ -121,7 +121,10 @@ export const ENTITY_INPUT_OPTS = gql`
 `;
 
 export const ENTITY_INPUT_DEFAULT_VALUE = gql`
-  query EntityInputDefaultValue($where: EntitiesWhere!) {
+  query EntityInputDefaultValue(
+    $where: EntitiesWhere!
+    $deptRoot: DepartmentsWhere
+  ) {
     entities(where: $where) {
       ...EntityInputDefaultValue
     }
@@ -211,11 +214,11 @@ export type EntityInputBaseProps<
   MarkRequired<
     Omit<
       EntityTreeSelectProps<Multiple, DisableClearable, FreeSolo>,
-      "branch" | "options" | "defaultValue"
+      "options" | "defaultValue"
     >,
     "onChange" | "value"
   >,
-  "onBranchChange"
+  "branch" | "onBranchChange"
 > & {
   allowNewBusiness?: FreeSolo;
   allowNewPerson?: FreeSolo;
@@ -232,6 +235,7 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
   const {
     inputValue: inputValueProp,
     onInputChange: onInputChangeProp,
+    branch: branchProp,
     onBranchChange: onBranchChangeProp,
     loading,
     autoSelect,
@@ -248,16 +252,17 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
     state: "inputValue",
   });
 
-  const [state, setState] = useState<{
-    branch: Exclude<EntityTreeSelectProps["branch"], undefined>;
-  }>({
-    branch: props.value instanceof ValueNode ? props.value.parent : null,
+  const [branch, setBranch] = useControlled({
+    controlled: branchProp,
+    default: null,
+    name: "EntityInputBase",
+    state: "branch",
   });
 
   const queryResult = useQuery<EntityInputOpts, EntityInputOptsVars>(
     ENTITY_INPUT_OPTS,
     useMemo(() => {
-      const curBranch = state.branch?.valueOf();
+      const curBranch = branch?.valueOf();
       if (!curBranch) {
         return {
           skip: true,
@@ -343,22 +348,20 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
           },
         };
       }
-    }, [state.branch, inputValue])
+    }, [branch, inputValue])
   );
 
   const onBranchChange = useCallback<
     NonNullable<EntityTreeSelectProps["onBranchChange"]>
   >(
     (...args) => {
-      setState((state) => ({
-        ...state,
-        branch: args[1],
-      }));
+      setBranch(args[1]);
+
       if (onBranchChangeProp) {
         onBranchChangeProp(...args);
       }
     },
-    [onBranchChangeProp]
+    [onBranchChangeProp, setBranch]
   );
 
   const onInputChange = useCallback<
@@ -378,7 +381,7 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
     NonNullable<EntityTreeSelectProps["renderInput"]>
   >(
     (params) => {
-      const curBranch = state.branch?.valueOf();
+      const curBranch = branch?.valueOf();
 
       return renderInputProp({
         name: "entity",
@@ -403,26 +406,26 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
           : {}),
       });
     },
-    [queryResult.error, renderInputProp, state.branch]
+    [queryResult.error, renderInputProp, branch]
   );
 
   const options = useMemo<EntityTreeSelectProps["options"]>(() => {
     const options: EntityTreeSelectProps["options"] = [];
 
-    if (!state.branch) {
+    if (!branch) {
       return defaultOptions;
     } else {
       return (queryResult.data?.entities || []).reduce((options, entity) => {
         switch (entity.__typename) {
           case "Business":
             if (entity.departments.length) {
-              options.push(new BranchNode(entity, state.branch));
+              options.push(new BranchNode(entity, branch));
             }
             options.push(entity);
             break;
           case "Department":
             if (entity.children.length) {
-              options.push(new BranchNode(entity, state.branch));
+              options.push(new BranchNode(entity, branch));
             }
             options.push(entity);
             break;
@@ -434,13 +437,13 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
         return options;
       }, options);
     }
-  }, [queryResult.data?.entities, state.branch]);
+  }, [queryResult.data?.entities, branch]);
 
   const freeSolo = useMemo<FreeSolo>(() => {
-    const curBranch = state.branch?.valueOf();
+    const curBranch = branch?.valueOf();
     return ((curBranch === "Person" && !!allowNewPerson) ||
       (curBranch === "Business" && !!allowNewBusiness)) as FreeSolo;
-  }, [state.branch, allowNewPerson, allowNewBusiness]);
+  }, [branch, allowNewPerson, allowNewBusiness]);
 
   return (
     <TreeSelect<
@@ -455,7 +458,7 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
       {...rest}
       ref={ref}
       onBranchChange={onBranchChange}
-      branch={state.branch}
+      branch={branch}
       loading={queryResult.loading || loading}
       renderInput={renderInput}
       inputValue={inputValue}
@@ -482,10 +485,15 @@ export type EntityInputProps<
     false
   >;
 } & MarkOptional<
-  Omit<EntityInputBaseProps<Multiple, DisableClearable, FreeSolo>, "value">,
+  Omit<
+    EntityInputBaseProps<Multiple, DisableClearable, FreeSolo>,
+    "branch" | "value"
+  >,
   "onChange"
 > &
   Pick<UseFieldOptions, "form">;
+
+const BRANCH_NOT_SET = Symbol();
 
 export type EntityFieldDef<
   Name extends string = typeof ENTITY_NAME,
@@ -518,6 +526,7 @@ export const EntityInput = forwardRef(function EntityInput<
     disabled,
     onBlur: onBlurProp,
     onChange: onChangeProp,
+    onBranchChange: onBranchChangeProp,
     ...rest
   } = props;
 
@@ -595,6 +604,30 @@ export const EntityInput = forwardRef(function EntityInput<
     [onChangeProp, setValue]
   );
 
+  // The following accommodates async default value lookups.
+  const [branch, setBranch] = useState(() =>
+    value instanceof ValueNode ? value.parent : BRANCH_NOT_SET
+  );
+
+  const handleBranchChange = useCallback<
+    NonNullable<
+      EntityInputBaseProps<
+        Multiple,
+        DisableClearable,
+        FreeSolo
+      >["onBranchChange"]
+    >
+  >(
+    (...args) => {
+      setBranch(args[1]);
+
+      if (onBranchChangeProp) {
+        onBranchChangeProp(...args);
+      }
+    },
+    [onBranchChangeProp]
+  );
+
   return (
     <EntityInputBase<Multiple, DisableClearable, FreeSolo>
       {...rest}
@@ -602,109 +635,16 @@ export const EntityInput = forwardRef(function EntityInput<
       disabled={isSubmitting || disabled}
       ref={ref}
       onChange={handleChange}
+      branch={
+        branch === BRANCH_NOT_SET
+          ? value instanceof ValueNode
+            ? value.parent
+            : null
+          : branch
+      }
+      onBranchChange={handleBranchChange}
       renderInput={renderInput}
       onBlur={handleBlur}
     />
   );
 });
-
-/* export const EntityInput = forwardRef(function EntityInput<
-  Multiple extends boolean | undefined = undefined,
-  DisableClearable extends boolean | undefined = undefined,
-  FreeSolo extends boolean | undefined = undefined
->(
-  props: EntityInputProps<Multiple, DisableClearable, FreeSolo>,
-  ref: Ref<unknown>
-): JSX.Element {
-  const {
-    defaultValue: defaultValueProp,
-    renderInput: renderInputProp = defaultInput,
-    ...rest
-  } = props;
-
-  const { loading, error, data } = useQuery<
-    EntityInputIniValue,
-    EntityInputIniValueVars
-  >(
-    ENTITY_INPUT_DEFAULT_VALUE,
-    useMemo<QueryHookOptions<EntityInputIniValue, EntityInputIniValueVars>>(
-      () => ({
-        skip: !defaultValueProp,
-        variables: {
-          where: defaultValueProp as EntitiesWhere,
-        },
-      }),
-      [defaultValueProp]
-    )
-  );
-
-  useLoading({
-    loading,
-    name: rest.name || ENTITY_NAME,
-    form: rest.form,
-  });
-
-  const renderInput = useCallback<
-    NonNullable<
-      EntityInputProps<Multiple, DisableClearable, FreeSolo>["renderInput"]
-    >
-  >(
-    (params) =>
-      renderInputProp({
-        ...params,
-        ...(error
-          ? {
-              error: true,
-              helperText: error.message,
-            }
-          : {}),
-      }),
-    [error, renderInputProp]
-  );
-
-  const defaultValues = useMemo(
-    () =>
-      (data?.entities || []).map((value) => {
-        switch (value.__typename) {
-          case "Business":
-            return new ValueNode(value, businessBranch);
-          case "Department":
-            return new ValueNode(
-              value,
-              value.ancestors.reduceRight(
-                (branch, ancestor) =>
-                  new BranchNode<EntityBranchInputOpt>(ancestor, branch),
-                businessBranch
-              )
-            );
-          case "Person":
-            return new ValueNode(value, personBranch);
-        }
-      }),
-    [data?.entities]
-  );
-
-  if (loading) {
-    return <LoadingDefaultBlank {...rest} renderInput={renderInput} />;
-  }
-  return (
-    <EntityInputControlled<Multiple, DisableClearable, FreeSolo>
-      {...rest}
-      ref={ref}
-      renderInput={renderInput}
-      defaultValue={
-        (props.multiple
-          ? defaultValues.length
-            ? defaultValues
-            : undefined
-          : defaultValues[0] ?? undefined) as unknown as TreeSelectValue<
-          EntityInputOpt,
-          EntityBranchInputOpt,
-          Multiple,
-          true,
-          false
-        >
-      }
-    />
-  );
-}); */

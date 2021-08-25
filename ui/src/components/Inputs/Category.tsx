@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useMemo, useState, Ref } from "react";
+import React, { forwardRef, useCallback, useMemo, Ref, useState } from "react";
 import TreeSelect, {
   ValueNode,
   BranchNode,
@@ -23,6 +23,7 @@ import {
   UseFieldOptions,
   useFormContext,
 } from "../../useKISSForm/form";
+import { useControlled } from "@material-ui/core";
 
 export type CategoryInputOpt = MarkOptional<
   CategoryInputOptFragment,
@@ -126,11 +127,11 @@ export type CategoryInputBaseProps<
   MarkRequired<
     Omit<
       CategoryTreeSelectProps<Multiple, DisableClearable, FreeSolo>,
-      "branch" | "options" | "defaultValue"
+      "options" | "defaultValue"
     >,
     "onChange" | "value"
   >,
-  "onBranchChange"
+  "branch" | "onBranchChange"
 >;
 
 export const CategoryInputBase = forwardRef(function CategoryInputBase<
@@ -144,26 +145,28 @@ export const CategoryInputBase = forwardRef(function CategoryInputBase<
   const {
     renderInput: renderInputProp = defaultInput,
     onBranchChange: onBranchChangeProp,
+    branch: branchProp,
     loading,
     ...rest
   } = props;
 
-  const [state, setState] = useState<{
-    branch: Exclude<CategoryTreeSelectProps["branch"], undefined>;
-  }>({
-    branch: props.value instanceof ValueNode ? props.value.parent : null,
+  const [branch, setBranch] = useControlled({
+    controlled: branchProp,
+    default: null,
+    name: "CategoryInputBaseProps",
+    state: "branch",
   });
 
   const queryResult = useQuery<CategoryOpts, CategoryOptsVars>(
     CATEGORY_INPUT_OPTS,
     useMemo(() => {
-      if (state.branch) {
+      if (branch) {
         return {
           skip: false,
           variables: {
             where: {
               parent: {
-                eq: state.branch.valueOf().id,
+                eq: branch.valueOf().id,
               },
             },
           },
@@ -178,23 +181,20 @@ export const CategoryInputBase = forwardRef(function CategoryInputBase<
           },
         };
       }
-    }, [state.branch])
+    }, [branch])
   );
 
   const onBranchChange = useCallback<
     NonNullable<CategoryTreeSelectProps["onBranchChange"]>
   >(
     (...args) => {
-      setState((state) => ({
-        ...state,
-        branch: args[1],
-      }));
+      setBranch(args[1]);
 
       if (onBranchChangeProp) {
         onBranchChangeProp(...args);
       }
     },
-    [onBranchChangeProp]
+    [onBranchChangeProp, setBranch]
   );
 
   const renderInput = useCallback<
@@ -225,14 +225,14 @@ export const CategoryInputBase = forwardRef(function CategoryInputBase<
       (queryResult.data?.categories || [])
         .reduce((options, category) => {
           if (category.children.length) {
-            options.push(new BranchNode(category, state.branch));
+            options.push(new BranchNode(category, branch));
           }
           options.push(category);
 
           return options;
         }, [] as CategoryTreeSelectProps["options"])
         .sort(sortBranchesToTop),
-    [queryResult.data?.categories, state.branch]
+    [queryResult.data?.categories, branch]
   );
 
   return (
@@ -249,7 +249,7 @@ export const CategoryInputBase = forwardRef(function CategoryInputBase<
       ref={ref}
       loading={queryResult.loading || !!loading}
       onBranchChange={onBranchChange}
-      branch={state.branch}
+      branch={branch}
       renderInput={renderInput}
       options={options}
     />
@@ -271,7 +271,7 @@ export type CategoryInputProps<
 } & Partial<
   Omit<
     CategoryInputBaseProps<Multiple, DisableClearable, FreeSolo>,
-    "value" | "name"
+    "branch" | "value" | "name"
   >
 > &
   Pick<UseFieldOptions, "form">;
@@ -290,6 +290,9 @@ export type CategoryFieldDef<
     >
   >;
 };
+
+const BRANCH_NOT_SET = Symbol();
+
 export const CATEGORY_NAME: keyof CategoryFieldDef = "category";
 
 export const CategoryInput = forwardRef(function CategoryInputInner<
@@ -307,6 +310,7 @@ export const CategoryInput = forwardRef(function CategoryInputInner<
     disabled,
     onBlur: onBlurProp,
     onChange: onChangeProp,
+    onBranchChange: onBranchChangeProp,
     ...rest
   } = props;
 
@@ -384,6 +388,29 @@ export const CategoryInput = forwardRef(function CategoryInputInner<
     [onChangeProp, setValue]
   );
 
+  // The following accommodates async default value lookups.
+  const [branch, setBranch] = useState(() =>
+    value instanceof ValueNode ? value.parent : BRANCH_NOT_SET
+  );
+  const handleBranchChange = useCallback<
+    NonNullable<
+      CategoryInputBaseProps<
+        Multiple,
+        DisableClearable,
+        FreeSolo
+      >["onBranchChange"]
+    >
+  >(
+    (...args) => {
+      setBranch(args[1]);
+
+      if (onBranchChangeProp) {
+        onBranchChangeProp(...args);
+      }
+    },
+    [onBranchChangeProp]
+  );
+
   return (
     <CategoryInputBase<Multiple, DisableClearable, FreeSolo>
       {...rest}
@@ -392,6 +419,14 @@ export const CategoryInput = forwardRef(function CategoryInputInner<
       disabled={isSubmitting || disabled}
       ref={ref}
       onChange={handleChange}
+      branch={
+        branch === BRANCH_NOT_SET
+          ? value instanceof ValueNode
+            ? value.parent
+            : null
+          : branch
+      }
+      onBranchChange={handleBranchChange}
       renderInput={renderInput}
       onBlur={handleBlur}
     />

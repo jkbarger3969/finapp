@@ -249,6 +249,11 @@ export type Department = {
   aliases: Array<Alias>;
 };
 
+
+export type DepartmentAncestorsArgs = {
+  root?: Maybe<DepartmentsWhere>;
+};
+
 export type DepartmentAddFields = {
   name: Scalars['String'];
 };
@@ -1575,7 +1580,7 @@ export type DepartmentResolvers<ContextType = Context, ParentType = ResolversPar
   business?: Resolver<ResolversTypes['Business'], ParentType, ContextType>;
   parent?: Resolver<ResolversTypes['DepartmentAncestor'], ParentType, ContextType>;
   children?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>;
-  ancestors?: Resolver<Array<ResolversTypes['DepartmentAncestor']>, ParentType, ContextType>;
+  ancestors?: Resolver<Array<ResolversTypes['DepartmentAncestor']>, ParentType, ContextType, RequireFields<DepartmentAncestorsArgs, never>>;
   descendants?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>;
   virtualRoot?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType>;

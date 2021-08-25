@@ -140,8 +140,6 @@ export const UpsertEntry = forwardRef(function UpsertEntry(
 
   const classes = useStyles();
 
-  const isUpdate = !!entryProps.updateEntryId;
-
   const addRef = useRef<HTMLButtonElement | null>(null);
   const addAndNewRef = useRef<HTMLButtonElement | null>(null);
 
@@ -166,6 +164,8 @@ export const UpsertEntry = forwardRef(function UpsertEntry(
     },
     validateOn: "submit",
   });
+
+  const isUpdate = !!entryProps.updateEntryId;
 
   const TransitionProps = useMemo<TransitionProps>(
     () => ({
@@ -193,24 +193,28 @@ export const UpsertEntry = forwardRef(function UpsertEntry(
         required: true,
         date: {
           ...sharedInputProps.DateInputProps,
-          ...(entryProps.date || {}),
+          ...entryProps.date,
         },
         dateOfRecord: {
           ...sharedInputProps.DateInputProps,
-          ...(entryProps.dateOfRecord || {}),
+          ...entryProps.dateOfRecord,
         },
         department: {
           ...sharedInputProps.TreeSelectProps,
           ...entryProps.department,
         },
+        description: {
+          ...sharedInputProps.TextFieldProps,
+          ...entryProps.description,
+        },
         source: {
           ...sharedInputProps.TreeSelectProps,
-          ...(entryProps.source || {}),
+          ...entryProps.source,
           allowNewSource: true,
         },
         category: {
           ...sharedInputProps.TreeSelectProps,
-          ...(entryProps.category || {}),
+          ...entryProps.category,
         },
         paymentMethod: {
           ...sharedInputProps.TreeSelectProps,
@@ -223,7 +227,7 @@ export const UpsertEntry = forwardRef(function UpsertEntry(
         },
         reconciled: {
           ...sharedInputProps.TextFieldProps,
-          ...(entryProps.reconciled || {}),
+          ...entryProps.reconciled,
         },
       }),
       [
@@ -299,6 +303,7 @@ export const UpsertEntry = forwardRef(function UpsertEntry(
             <Grid {...inputGridItemProps}>
               {entryInputs.paymentMethodInput}
             </Grid>
+            <Grid {...inputGridItemProps}>{entryInputs.descriptionInput}</Grid>
             <Grid {...inputGridItemProps}>{entryInputs.totalInput}</Grid>
             <Grid {...inputGridItemProps}>{entryInputs.reconciledInput}</Grid>
           </Grid>

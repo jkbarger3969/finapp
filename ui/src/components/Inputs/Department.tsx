@@ -1,4 +1,11 @@
-import React, { forwardRef, Ref, useCallback, useMemo, useState } from "react";
+import React, {
+  forwardRef,
+  Ref,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import TreeSelect, {
   ValueNode,
   BranchNode,
@@ -24,6 +31,7 @@ import {
   UseFieldOptions,
   useFormContext,
 } from "../../useKISSForm/form";
+import { useControlled } from "@material-ui/core";
 
 export type DepartmentInputOpt = MarkOptional<
   DepartmentInputOptFragment,
@@ -45,7 +53,7 @@ export const DEPARTMENT_INPUT_OPT_FRAGMENT = gql`
 export const DEPARTMENT_DEFAULT_VALUE_FRAGMENT = gql`
   fragment DepartmentInputDefaultValue on Department {
     ...DepartmentInputOpt
-    ancestors {
+    ancestors(root: $deptRoot) {
       __typename
       ... on Department {
         ...DepartmentInputOpt
@@ -56,12 +64,14 @@ export const DEPARTMENT_DEFAULT_VALUE_FRAGMENT = gql`
 `;
 
 export const DEPARTMENT_DEFAULT_VALUE = gql`
-  query DepartmentInputDefaultValues($where: DepartmentsWhere!) {
+  query DepartmentInputDefaultValues(
+    $where: DepartmentsWhere!
+    $deptRoot: DepartmentsWhere
+  ) {
     departments(where: $where) {
       ...DepartmentInputDefaultValue
     }
   }
-  ${DEPARTMENT_DEFAULT_VALUE_FRAGMENT}
 `;
 
 export const DEPARTMENT_INPUT_OPTS = gql`
@@ -140,11 +150,11 @@ export type DepartmentInputBaseProps<
   MarkRequired<
     Omit<
       DepartmentTreeSelectProps<Multiple, DisableClearable, FreeSolo>,
-      "branch" | "options" | "defaultValue"
+      "options" | "defaultValue"
     >,
     "onChange" | "value"
   >,
-  "onBranchChange"
+  "branch" | "onBranchChange"
 > & {
   root: DepartmentsWhere;
 };
@@ -160,16 +170,21 @@ export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
   const {
     root,
     renderInput: renderInputProp = defaultInput,
+    branch: branchProp,
     onBranchChange: onBranchChangeProp,
     loading,
     ...rest
   } = props;
 
-  const [state, setState] = useState<{
-    branch: Exclude<DepartmentTreeSelectProps["branch"], undefined>;
-  }>({
-    branch: props.value instanceof ValueNode ? props.value.parent : null,
+  const [branch, setBranch] = useControlled({
+    controlled: branchProp,
+    default: null,
+    name: "CategoryInputBaseProps",
+    state: "branch",
   });
+
+  const branchRef = useRef(branch);
+  branchRef.current = branch;
 
   const rootResult = useQuery<DepartmentInputOpts, DepartmentInputOptsVars>(
     DEPARTMENT_INPUT_OPTS,
@@ -178,30 +193,6 @@ export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
         variables: {
           where: root,
         },
-        // Filter out any branch path that exceeds the root bounds.
-        onCompleted: (data) =>
-          setState((state) => {
-            if (state.branch) {
-              const filteredPath: DepartmentInputOpt[] = [];
-
-              for (const branch of state.branch.up()) {
-                const branchVal = branch.valueOf();
-                const branchId = branchVal.id;
-
-                filteredPath.push(branchVal);
-
-                if (data.departments.some(({ id }) => id === branchId)) {
-                  const [self, ...path] = filteredPath;
-
-                  return {
-                    ...state,
-                    branch: self ? new BranchNode(self, path.reverse()) : null,
-                  };
-                }
-              }
-            }
-            return { ...state };
-          }),
       }),
       [root]
     )
@@ -211,19 +202,19 @@ export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
     DEPARTMENT_INPUT_OPTS,
     useMemo<QueryHookOptions<DepartmentInputOpts, DepartmentInputOptsVars>>(
       () => ({
-        skip: !state.branch,
+        skip: !branch,
         variables: {
           where: {
             parent: {
               eq: {
                 type: "Department",
-                id: state.branch?.valueOf()?.id as string,
+                id: branch?.valueOf()?.id as string,
               },
             },
           },
         },
       }),
-      [state.branch]
+      [branch]
     )
   );
 
@@ -231,16 +222,13 @@ export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
     NonNullable<DepartmentTreeSelectProps["onBranchChange"]>
   >(
     (...args) => {
-      setState((state) => ({
-        ...state,
-        branch: args[1],
-      }));
+      setBranch(args[1]);
 
       if (onBranchChangeProp) {
         onBranchChangeProp(...args);
       }
     },
-    [onBranchChangeProp]
+    [onBranchChangeProp, setBranch]
   );
 
   const renderInput = useCallback<
@@ -275,13 +263,12 @@ export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
     }
 
     return (
-      (state.branch
-        ? queryResult.data?.departments
-        : rootResult.data?.departments) || []
+      (branch ? queryResult.data?.departments : rootResult.data?.departments) ||
+      []
     )
       .reduce((options, category) => {
         if (category.children.length) {
-          options.push(new BranchNode(category, state.branch));
+          options.push(new BranchNode(category, branch));
         }
         options.push(category);
 
@@ -291,7 +278,7 @@ export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
   }, [
     rootResult.loading,
     rootResult.data?.departments,
-    state.branch,
+    branch,
     queryResult.data?.departments,
   ]);
 
@@ -313,7 +300,7 @@ export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
       ref={ref}
       loading={queryResult.loading || !!loading}
       onBranchChange={onBranchChange}
-      branch={state.branch}
+      branch={branch}
       renderInput={renderInput}
       options={options}
     />
@@ -335,11 +322,13 @@ export type DepartmentInputProps<
 } & MarkOptional<
   Omit<
     DepartmentInputBaseProps<Multiple, DisableClearable, FreeSolo>,
-    "value" | "name"
+    "branch" | "value" | "name"
   >,
   "onChange"
 > &
   Pick<UseFieldOptions, "form">;
+
+const BRANCH_NOT_SET = Symbol();
 
 export type DepartmentFieldDef<
   Multiple extends boolean | undefined = undefined,
@@ -371,6 +360,7 @@ export const DepartmentInput = forwardRef(function DepartmentInput<
     disabled,
     onBlur: onBlurProp,
     onChange: onChangeProp,
+    onBranchChange: onBranchChangeProp,
     ...rest
   } = props;
 
@@ -450,6 +440,30 @@ export const DepartmentInput = forwardRef(function DepartmentInput<
     [setValue, onChangeProp]
   );
 
+  // The following accommodates async default value lookups.
+  const [branch, setBranch] = useState(() =>
+    value instanceof ValueNode ? value.parent : BRANCH_NOT_SET
+  );
+
+  const handleBranchChange = useCallback<
+    NonNullable<
+      DepartmentInputBaseProps<
+        Multiple,
+        DisableClearable,
+        FreeSolo
+      >["onBranchChange"]
+    >
+  >(
+    (...args) => {
+      setBranch(args[1]);
+
+      if (onBranchChangeProp) {
+        onBranchChangeProp(...args);
+      }
+    },
+    [onBranchChangeProp]
+  );
+
   return (
     <DepartmentInputBase
       {...rest}
@@ -457,6 +471,14 @@ export const DepartmentInput = forwardRef(function DepartmentInput<
       disabled={isSubmitting || disabled}
       ref={ref}
       onChange={handleChange}
+      branch={
+        branch === BRANCH_NOT_SET
+          ? value instanceof ValueNode
+            ? value.parent
+            : null
+          : branch
+      }
+      onBranchChange={handleBranchChange}
       renderInput={renderInput}
       onBlur={handleBlur}
     />

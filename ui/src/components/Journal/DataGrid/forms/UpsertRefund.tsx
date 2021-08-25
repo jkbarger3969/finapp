@@ -15,6 +15,7 @@ import {
   DialogProps,
   DialogTitle,
   Grid,
+  makeStyles,
 } from "@material-ui/core";
 import { Add as AddIcon } from "@material-ui/icons";
 import { TransitionProps } from "@material-ui/core/transitions";
@@ -32,12 +33,18 @@ import {
 } from "../../../Inputs/fieldSets/useRefund";
 import { inputGridItemProps, useSharedDialogInputProps } from "./shared";
 import { AsyncButton } from "../../../utils/AsyncButton";
+import OverlayLoading from "../../../utils/OverlayLoading";
+
+const useStyles = makeStyles({
+  dialogContent: {
+    position: "relative",
+  },
+});
 
 export type UpsertRefundProps = {
   refundProps: RefundProps;
   onSuccess?: (results: { submitState: SubmitState<RefundFieldDef> }) => void;
 } & Omit<DialogProps, "children" | "PaperProps" | "onClose"> & {
-    type: "update" | "add";
     onClose?: (
       event: Parameters<NonNullable<DialogProps["onClose"]>>[0],
       reason: Parameters<NonNullable<DialogProps["onClose"]>>[1] | "cancel"
@@ -53,9 +60,10 @@ export const UpsertRefund = forwardRef(function UpsertRefund(
     onClose,
     onSuccess,
     TransitionProps: _TransitionProps,
-    type,
     ...rest
   } = props;
+
+  const classes = useStyles();
 
   const addRef = useRef<HTMLButtonElement | null>(null);
   const [submitButton, setSubmitButton] = useState<HTMLButtonElement | null>(
@@ -78,6 +86,8 @@ export const UpsertRefund = forwardRef(function UpsertRefund(
     },
     validateOn: "submit",
   });
+
+  const isUpdate = "updateRefundId" in refundProps;
 
   const TransitionProps = useMemo<TransitionProps>(
     () => ({
@@ -105,20 +115,23 @@ export const UpsertRefund = forwardRef(function UpsertRefund(
         form,
         date: {
           ...sharedInputProps.DateInputProps,
-          ...(refundProps.date || {}),
+          ...refundProps.date,
         },
         paymentMethod: {
           ...sharedInputProps.TreeSelectProps,
           ...refundProps.paymentMethod,
         },
-
+        description: {
+          ...sharedInputProps.TextFieldProps,
+          ...refundProps.description,
+        },
         total: {
           ...sharedInputProps.TextFieldProps,
           ...refundProps.total,
         },
         reconciled: {
           ...sharedInputProps.TextFieldProps,
-          ...(refundProps.reconciled || {}),
+          ...refundProps.reconciled,
         },
       }),
       [
@@ -169,19 +182,21 @@ export const UpsertRefund = forwardRef(function UpsertRefund(
       >
         <DialogTitle>
           {(() => {
-            if (type === "add") {
-              return form.isSubmitting ? "Adding Refund..." : "Add Refund";
-            } else {
+            if (isUpdate) {
               return form.isSubmitting ? "Updating Refund..." : "Update Refund";
+            } else {
+              return form.isSubmitting ? "Adding Refund..." : "Add Refund";
             }
           })()}
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers className={classes.dialogContent}>
+          {form.loading && <OverlayLoading zIndex="modal" />}
           <Grid spacing={3} container>
             <Grid {...inputGridItemProps}>{refundInputs.dateInput}</Grid>
             <Grid {...inputGridItemProps}>
               {refundInputs.paymentMethodInput}
             </Grid>
+            <Grid {...inputGridItemProps}>{refundInputs.descriptionInput}</Grid>
             <Grid {...inputGridItemProps}>{refundInputs.totalInput}</Grid>
             <Grid {...inputGridItemProps}>{refundInputs.reconciledInput}</Grid>
           </Grid>

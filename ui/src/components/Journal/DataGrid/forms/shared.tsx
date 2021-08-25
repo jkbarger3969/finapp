@@ -174,7 +174,6 @@ export const DATE_INLINE_INPUT_PROPS: Readonly<
   >
 > = {
   autoOk: true,
-  disableFuture: true,
   disableToolbar: true,
   format: "MM/dd/yyyy",
   placeholder: "mm/dd/yyyy",

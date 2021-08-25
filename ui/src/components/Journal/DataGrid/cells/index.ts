@@ -38,3 +38,4 @@ export {
 export type { SourceFilterProps } from "./Source";
 export { TypeFilter, TypeEditor } from "./Type";
 export type { TypeEditorProps } from "./Type";
+export { EditColumnCell, EditColumnCommand } from "./EditColumn";

@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { TreeSelectValue } from "mui-tree-select";
 import { gql, useQuery } from "@apollo/client";
+import { isFuture } from "date-fns";
 
 import { DateInput, DateInputProps, DateFieldDef } from "../Date";
 import {
@@ -36,6 +37,12 @@ import {
   usePaymentMethodDefaultValue,
 } from "../PaymentMethod";
 import {
+  DescriptionInput,
+  DescriptionInputProps,
+  DESCRIPTION_NAME,
+  DescriptionFieldDef,
+} from "../Description";
+import {
   RationalInput,
   RationalInputProps,
   RationalFieldDef,
@@ -52,6 +59,7 @@ import {
   useDefaultValues,
   FieldValue,
   useLoading,
+  Validator,
 } from "../../../useKISSForm/form";
 import {
   requiredValidator,
@@ -65,8 +73,17 @@ import {
 } from "../../../apollo/graphTypes";
 import { deserializeDate, deserializeRational } from "../../../apollo/scalars";
 
+const notFutureError = new RangeError(
+  "Transaction cannot be recorded in the future."
+);
+const notFuture: Validator<Date> = (value) => {
+  if (value && isFuture(value)) {
+    return notFutureError;
+  }
+};
+
 const UPDATE_ENTRY_DEFAULT_VALUES = gql`
-  query UpdateEntryDefaultValues($id: ID!) {
+  query UpdateEntryDefaultValues($id: ID!, $deptRoot: DepartmentsWhere) {
     entry(id: $id) {
       __typename
       id
@@ -104,6 +121,7 @@ export type EntryInputProps<
   dateOfRecord?: Omit<DateInputProps, "name" | "form">;
 
   department: Omit<DepartmentInputProps<false>, "multiple" | "form">;
+  description?: Omit<DescriptionInputProps, "form">;
   source?: Omit<
     EntityInputProps<false, undefined, AllowNewSource>,
     "name" | "multiple" | "allowNewBusiness" | "allowNewPerson" | "form"
@@ -144,6 +162,7 @@ export type EntryFieldDef = {
   entry: DateFieldDef<typeof DATE_NAME> &
     DateFieldDef<typeof DATE_OF_RECORD_NAME> &
     DepartmentFieldDef<false, false> &
+    DescriptionFieldDef<typeof DESCRIPTION_NAME> &
     EntityFieldDef<typeof SOURCE_NAME, false, true> &
     CategoryFieldDef<false, false> &
     PaymentMethodFieldDef<false, false> &
@@ -181,6 +200,7 @@ export const useEntry = <
     date: dateProps,
     dateOfRecord: dateOfRecordProps,
     department: departmentProps,
+    description: descriptionProps,
     source: { allowNewSource, ...sourceProps } = {},
     category: categoryProps,
     paymentMethod: paymentMethodProps,
@@ -195,6 +215,7 @@ export const useEntry = <
     skip: !updateEntryId,
     variables: {
       id: updateEntryId as string,
+      deptRoot: departmentProps.root,
     },
   });
 
@@ -217,7 +238,7 @@ export const useEntry = <
         return {
           validators: {
             entry: {
-              date: requiredValidator,
+              date: [requiredValidator, notFuture],
               department: requiredValidator,
               source: requiredValidator,
               category: requiredValidator,
@@ -231,6 +252,7 @@ export const useEntry = <
         return {
           validators: {
             entry: {
+              date: notFuture,
               total: gtZero,
             },
           },
@@ -328,6 +350,7 @@ export const useEntry = <
         prefixName(DATE_NAME, entryName),
         prefixName(DATE_OF_RECORD_NAME, entryName),
         prefixName(DEPARTMENT_NAME, entryName),
+        prefixName(DESCRIPTION_NAME, entryName),
         prefixName(SOURCE_NAME, entryName),
         prefixName(CATEGORY_NAME, entryName),
         prefixName(PAYMENT_METHOD_NAME, entryName),
@@ -345,6 +368,7 @@ export const useEntry = <
         <NamePrefixProvider namePrefix={entryName}>
           <DateInput
             label={showLabels && "Date"}
+            disableFuture
             defaultValue={dateDefaultValue}
             {...dateProps}
             disabled={loading || dateProps?.disabled}
@@ -478,6 +502,21 @@ export const useEntry = <
       ]
     ),
     paymentMethodInputName: prefixName(PAYMENT_METHOD_NAME, fullName),
+    descriptionInput: useMemo(
+      () => (
+        <NamePrefixProvider namePrefix={entryName}>
+          <DescriptionInput
+            label={showLabels && "Description"}
+            defaultValue={data?.entry?.description ?? undefined}
+            {...descriptionProps}
+            name={DESCRIPTION_NAME}
+            form={form}
+          />
+        </NamePrefixProvider>
+      ),
+      [data?.entry?.description, descriptionProps, entryName, form, showLabels]
+    ),
+    descriptionInputName: prefixName(DESCRIPTION_NAME, fullName),
     totalInput: useMemo(
       () => (
         <NamePrefixProvider namePrefix={entryName}>

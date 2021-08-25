@@ -13,7 +13,6 @@ import {
   SearchState,
   TableFilterRow as TableFilterRowNS,
   IntegratedFiltering,
-  EditingState,
 } from "@devexpress/dx-react-grid";
 import {
   Grid,
@@ -65,6 +64,8 @@ import {
   DataCellProvider,
   FilterCellProvider,
   CellProviderProps,
+  EntryActionState,
+  EntryAction,
 } from "./plugins";
 import {
   BoolCell,
@@ -92,6 +93,8 @@ import {
   SourceFilterProps,
   sourceToStr,
   TypeFilter,
+  EditColumnCell,
+  EditColumnCommand,
 } from "./cells";
 import { DefaultEditor } from "./filters";
 import { DepartmentInputOpt } from "../../Inputs/Department";
@@ -100,8 +103,9 @@ import {
   getOptionLabel as getCategoryOptionLabel,
 } from "../../Inputs/Category";
 import { EntityInputOpt } from "../../Inputs/Entity";
-import { UpsertEntry, UpsertEntryProps } from "./forms/UpsertEntry";
-import { UpsertRefund, UpsertRefundProps } from "./forms/UpsertRefund";
+import { UpsertEntryProps } from "./forms/UpsertEntry";
+import { UpsertRefundProps } from "./forms/UpsertRefund";
+import { DeleteEntryProps } from "./forms/DeleteEntry";
 
 export type GridRefund = Omit<GridRefundFragment, "date" | "total"> & {
   date: Date;
@@ -515,11 +519,6 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     deleted?: string[];
   };
 
-  const onCommitChanges = useCallback<(changes: ChangeSet) => void>(
-    (changes) => console.log(changes),
-    []
-  );
-
   const variables = useMemo<GridEntriesQueryVariables>(
     () => ({
       where: props.where,
@@ -764,92 +763,37 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     };
   }, [dataCellColor]);
 
-  const [editingRowIds, setEditingRowIds] = useState<(number | string)[]>([]);
-  const [addedRows, setAddedRows] = useState<unknown[]>([]);
-
-  const editRowId = editingRowIds[0];
-  const editRow = editRowId
-    ? (rows.find(({ id }) => id === editRowId) as GridEntry)
-    : null;
-  const [upsertEntryProps, upsertRefundProps] = useMemo<
-    [UpsertEntryProps, UpsertRefundProps]
-  >(() => {
-    const upsertEntryProps = {
-      open: false,
-      keepMounted: false,
-      maxWidth: "lg",
-      fullWidth: true,
-      entryProps: {
-        paymentMethod: { accounts: props.selectableAccounts },
-        department: {
-          root: props.selectableDepts,
+  const [upsertEntryProps, upsertRefundProps, deleteEntryProps] = useMemo<
+    [UpsertEntryProps, UpsertRefundProps, DeleteEntryProps]
+  >(
+    () => [
+      {
+        keepMounted: false,
+        maxWidth: "lg",
+        fullWidth: true,
+        entryProps: {
+          paymentMethod: { accounts: props.selectableAccounts },
+          department: {
+            root: props.selectableDepts,
+          },
         },
-      },
-    } as UpsertEntryProps;
-
-    const upsertRefundProps = {
-      type: "add",
-      open: false,
-      keepMounted: false,
-      maxWidth: "lg",
-      fullWidth: true,
-      refundProps: {
-        paymentMethod: { accounts: props.selectableAccounts },
-      },
-    } as UpsertRefundProps;
-
-    if (editRow) {
-      // Update Entry
-      if (editRow.__typename === "Entry") {
-        upsertEntryProps.open = true;
-        (upsertEntryProps.onClose = () => setEditingRowIds([])),
-          (upsertEntryProps.entryProps = {
-            ...upsertEntryProps.entryProps,
-            updateEntryId: editRow.id,
-          });
-
-        if (editRow.dateOfRecord?.date) {
-          upsertEntryProps.entryProps.dateOfRecord = {
-            ...upsertEntryProps.entryProps.dateOfRecord,
-            defaultValue: editRow.dateOfRecord?.date,
-          };
-        }
-      } else {
-        // Update Refund
-        upsertRefundProps.open = true;
-        upsertRefundProps.type = "update";
-        upsertRefundProps.onClose = () => setEditingRowIds([]);
-        upsertRefundProps.refundProps = {
-          ...upsertRefundProps.refundProps,
-          entryId: editRow.id,
-          date: {
-            ...upsertEntryProps.entryProps.date,
-            defaultValue: editRow.date,
-          },
-          paymentMethod: {
-            ...upsertEntryProps.entryProps.paymentMethod,
-          },
-          total: {
-            ...upsertEntryProps.entryProps.total,
-            defaultValue: editRow.total,
-          },
-          reconciled: {
-            ...upsertEntryProps.entryProps.reconciled,
-            defaultValue: editRow.reconciled,
-          },
-        };
-      }
-    } else if (addedRows.length) {
-      upsertEntryProps.open = true;
-      upsertEntryProps.onClose = () => setAddedRows([]);
-    }
-    return [upsertEntryProps, upsertRefundProps];
-  }, [
-    props.selectableAccounts,
-    props.selectableDepts,
-    editRow,
-    addedRows.length,
-  ]);
+      } as UpsertEntryProps,
+      {
+        keepMounted: false,
+        maxWidth: "lg",
+        fullWidth: true,
+        refundProps: {
+          paymentMethod: { accounts: props.selectableAccounts },
+        },
+      } as UpsertRefundProps,
+      {
+        keepMounted: false,
+        maxWidth: "sm",
+        fullWidth: true,
+      } as DeleteEntryProps,
+    ],
+    [props.selectableAccounts, props.selectableDepts]
+  );
 
   if (error) {
     return <div>{error.message}</div>;
@@ -863,13 +807,10 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
           <DragDropProvider />
 
           {/* State Plugins */}
-          <EditingState
-            addedRows={addedRows}
-            onAddedRowsChange={setAddedRows}
-            editingRowIds={editingRowIds}
-            onEditingRowIdsChange={setEditingRowIds}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            onCommitChanges={onCommitChanges as any}
+          <EntryActionState
+            upsertEntryProps={upsertEntryProps}
+            upsertRefundProps={upsertRefundProps}
+            deleteEntryProps={deleteEntryProps}
           />
           <SearchState />
           {/* <DevExplorer getters={devExplorerGetters} /> */}
@@ -915,12 +856,17 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
           />
           <DataCellProvider {...dataCellProviderProps} />
           <FilterCellProvider {...filterCellProviderProps} />
-          <TableEditColumn showEditCommand showAddCommand showDeleteCommand />
+          {/* <TableEditColumn
+            cellComponent={EditColumnCell}
+            commandComponent={EditColumnCommand}
+            showEditCommand
+            showAddCommand
+            showDeleteCommand
+          /> */}
+          <EntryAction />
         </Grid>
       </Box>
       {loading && <OverlayLoading zIndex="modal" />}
-      <UpsertRefund {...upsertRefundProps} />
-      <UpsertEntry {...upsertEntryProps} />
     </Paper>
   );
 };

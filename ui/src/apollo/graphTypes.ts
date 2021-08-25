@@ -491,6 +491,11 @@ export type Department = {
   aliases: Array<Alias>;
 };
 
+
+export type DepartmentAncestorsArgs = {
+  root?: Maybe<DepartmentsWhere>;
+};
+
 export enum DepartmentAncestorType {
   Business = 'BUSINESS',
   Department = 'DEPARTMENT'
@@ -1269,6 +1274,7 @@ export type DepartmentInputDefaultValueFragment = (
 
 export type DepartmentInputDefaultValuesQueryVariables = Exact<{
   where: DepartmentsWhere;
+  deptRoot?: Maybe<DepartmentsWhere>;
 }>;
 
 
@@ -1332,6 +1338,7 @@ export type EntityInputOptsQuery = { __typename?: 'Query', entities: Array<(
 
 export type EntityInputDefaultValueQueryVariables = Exact<{
   where: EntitiesWhere;
+  deptRoot?: Maybe<DepartmentsWhere>;
 }>;
 
 
@@ -1469,6 +1476,7 @@ export type PayMethodDefaultValueFromRefundQuery = { __typename?: 'Query', entry
 
 export type UpdateEntryDefaultValuesQueryVariables = Exact<{
   id: Scalars['ID'];
+  deptRoot?: Maybe<DepartmentsWhere>;
 }>;
 
 
@@ -1507,12 +1515,32 @@ export type UpdateEntryDefaultValuesQuery = { __typename?: 'Query', entry?: Mayb
       & PayMethodDefaultValue_PaymentMethodUnknown_Fragment
     ) }> };
 
+export type UpdateRefundDefaultValuesFragment = { __typename: 'EntryRefund', id: string, date: string, deleted: boolean, description?: Maybe<string>, reconciled: boolean, total: string, paymentMethod: (
+    { __typename?: 'PaymentMethodCard' }
+    & PayMethodDefaultValue_PaymentMethodCard_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodCheck' }
+    & PayMethodDefaultValue_PaymentMethodCheck_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodCash' }
+    & PayMethodDefaultValue_PaymentMethodCash_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodOnline' }
+    & PayMethodDefaultValue_PaymentMethodOnline_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodCombination' }
+    & PayMethodDefaultValue_PaymentMethodCombination_Fragment
+  ) | (
+    { __typename?: 'PaymentMethodUnknown' }
+    & PayMethodDefaultValue_PaymentMethodUnknown_Fragment
+  ) };
+
 export type RefundEntryStateQueryVariables = Exact<{
   where: EntriesWhere;
 }>;
 
 
-export type RefundEntryStateQuery = { __typename?: 'Query', entries: Array<{ __typename: 'Entry', id: string, date: string, total: string, category: { __typename: 'Category', id: string, type: EntryType }, paymentMethod: (
+export type RefundEntryStateQuery = { __typename?: 'Query', entries: Array<{ __typename: 'Entry', id: string, date: string, total: string, dateOfRecord?: Maybe<{ __typename?: 'EntryDateOfRecord', date: string }>, category: { __typename: 'Category', id: string, type: EntryType }, paymentMethod: (
       { __typename?: 'PaymentMethodCard' }
       & PayMethodDefaultValue_PaymentMethodCard_Fragment
     ) | (
@@ -1530,7 +1558,10 @@ export type RefundEntryStateQuery = { __typename?: 'Query', entries: Array<{ __t
     ) | (
       { __typename?: 'PaymentMethodUnknown' }
       & PayMethodDefaultValue_PaymentMethodUnknown_Fragment
-    ), refunds: Array<{ __typename: 'EntryRefund', id: string, deleted: boolean, total: string }> }> };
+    ), refunds: Array<(
+      { __typename?: 'EntryRefund' }
+      & UpdateRefundDefaultValuesFragment
+    )> }> };
 
 export type GridEntrySrcPersonFragment = { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } };
 
@@ -1623,6 +1654,20 @@ export type GridEntriesQuery = { __typename?: 'Query', entries: Array<(
     { __typename?: 'Entry' }
     & GridEntryFragment
   )> };
+
+export type DeleteEntryStateQueryVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type DeleteEntryStateQuery = { __typename?: 'Query', entry?: Maybe<{ __typename: 'Entry', id: string, total: string }> };
+
+export type DeleteRefundStateQueryVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type DeleteRefundStateQuery = { __typename?: 'Query', entryRefund?: Maybe<{ __typename: 'EntryRefund', id: string, total: string }> };
 
 export type EntryPayMethod_1Fragment_PaymentMethodCard_ = { __typename: 'PaymentMethodCard' };
 
@@ -2468,7 +2513,7 @@ export type DepartmentResolvers<ContextType = Context, ParentType extends Resolv
   business?: Resolver<ResolversTypes['Business'], ParentType, ContextType>;
   parent?: Resolver<ResolversTypes['DepartmentAncestor'], ParentType, ContextType>;
   children?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>;
-  ancestors?: Resolver<Array<ResolversTypes['DepartmentAncestor']>, ParentType, ContextType>;
+  ancestors?: Resolver<Array<ResolversTypes['DepartmentAncestor']>, ParentType, ContextType, RequireFields<DepartmentAncestorsArgs, never>>;
   descendants?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>;
   virtualRoot?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType>;

@@ -365,11 +365,11 @@ export type PaymentMethodInputBaseProps<
   MarkRequired<
     Omit<
       PayMethodTreeSelectProps<Multiple, DisableClearable>,
-      "branch" | "options" | "defaultValue"
+      "options" | "defaultValue"
     >,
     "onChange" | "value"
   >,
-  "onBranchChange"
+  "onBranchChange" | "branch"
 > & {
   accounts: AccountsWhere;
   entryType: EntryType | null;
@@ -391,6 +391,7 @@ export const PaymentMethodInputBase = forwardRef(
       isRefund,
       renderInput: renderInputProp = defaultInput,
       inputValue: inputValueProp,
+      branch: branchProp,
       onBranchChange: onBranchChangeProp,
       onInputChange: onInputChangeProp,
       disabled,
@@ -406,12 +407,17 @@ export const PaymentMethodInputBase = forwardRef(
       state: "inputValue",
     });
 
+    const [branch, setBranch] = useControlled({
+      controlled: branchProp,
+      default: null,
+      name: "PaymentMethodInputBase",
+      state: "branch",
+    });
+
     const [state, setState] = useState<{
-      branch: BranchNode<PaymentMethodInputBranchOpt> | null;
       checkingAccountBranchOpts: BranchNode<PaymentMethodInputBranchOpt>[];
       cardOpts: Map<PaymentCardType, AccountCardPayMethodInputOpt[]>;
     }>({
-      branch: props.value instanceof ValueNode ? props.value.parent : null,
       checkingAccountBranchOpts: [],
       cardOpts: new Map<PaymentCardType, AccountCardPayMethodInputOpt[]>(),
     });
@@ -472,16 +478,13 @@ export const PaymentMethodInputBase = forwardRef(
           onInputChangeProp(args[0], "", "reset");
         }
 
-        setState((state) => ({
-          ...state,
-          branch: args[1],
-        }));
+        setBranch(args[1]);
 
         if (onBranchChangeProp) {
           onBranchChangeProp(...args);
         }
       },
-      [setInputValue, onInputChangeProp, onBranchChangeProp]
+      [setInputValue, onInputChangeProp, setBranch, onBranchChangeProp]
     );
 
     const onInputChange = useCallback<
@@ -505,7 +508,7 @@ export const PaymentMethodInputBase = forwardRef(
           return (
             <DefaultOption
               option={option}
-              curBranch={state.branch}
+              curBranch={branch}
               getOptionLabel={getOptionLabel}
             />
           );
@@ -513,13 +516,13 @@ export const PaymentMethodInputBase = forwardRef(
           return (
             <DefaultOption
               option={option}
-              curBranch={state.branch}
+              curBranch={branch}
               getOptionLabel={getOptionLabelWithPrefixes}
             />
           );
         }
       },
-      [state.branch]
+      [branch]
     );
 
     const renderInput = useCallback<
@@ -545,7 +548,7 @@ export const PaymentMethodInputBase = forwardRef(
                 }
               : {};
 
-            const curBranch = state.branch?.valueOf();
+            const curBranch = branch?.valueOf();
 
             if (typeof curBranch === "string") {
               switch (curBranch) {
@@ -603,14 +606,14 @@ export const PaymentMethodInputBase = forwardRef(
         entryTypeIsUndefined,
         renderInputProp,
         queryResult.error,
-        state.branch,
+        branch,
       ]
     );
 
     const [options, freeSolo] = useMemo<
       [options: PayMethodTreeSelectProps["options"], freeSolo: boolean]
     >(() => {
-      const curBranch = state.branch?.valueOf();
+      const curBranch = branch?.valueOf();
 
       if (queryResult.loading || entryTypeIsUndefined) {
         return [[], false];
@@ -646,7 +649,7 @@ export const PaymentMethodInputBase = forwardRef(
       queryResult.loading,
       state.checkingAccountBranchOpts,
       state.cardOpts,
-      state.branch,
+      branch,
     ]);
 
     if (queryResult.loading) {
@@ -669,7 +672,7 @@ export const PaymentMethodInputBase = forwardRef(
         ref={ref}
         options={options}
         onBranchChange={onBranchChange}
-        branch={state.branch}
+        branch={branch}
         renderOption={renderOption}
         renderInput={renderInput}
         freeSolo={freeSolo}
@@ -694,7 +697,7 @@ export type PaymentMethodInputProps<
 } & MarkOptional<
   Omit<
     PaymentMethodInputBaseProps<Multiple, DisableClearable>,
-    "value" | "name"
+    "branch" | "value" | "name"
   >,
   "onChange"
 > &
@@ -714,6 +717,9 @@ export type PaymentMethodFieldDef<
     >
   >;
 };
+
+const BRANCH_NOT_SET = Symbol();
+
 export const PAYMENT_METHOD_NAME: keyof PaymentMethodFieldDef = "paymentMethod";
 
 export const PaymentMethodInput = forwardRef(function PaymentMethodInput<
@@ -730,6 +736,7 @@ export const PaymentMethodInput = forwardRef(function PaymentMethodInput<
     disabled,
     onBlur: onBlurProp,
     onChange: onChangeProp,
+    onBranchChange: onBranchChangeProp,
     ...rest
   } = props;
 
@@ -809,6 +816,25 @@ export const PaymentMethodInput = forwardRef(function PaymentMethodInput<
     [setValue, onChangeProp]
   );
 
+  // The following accommodates async default value lookups.
+  const [branch, setBranch] = useState(() =>
+    value instanceof ValueNode ? value.parent : BRANCH_NOT_SET
+  );
+  const handleBranchChange = useCallback<
+    NonNullable<
+      PaymentMethodInputBaseProps<Multiple, DisableClearable>["onBranchChange"]
+    >
+  >(
+    (...args) => {
+      setBranch(args[1]);
+
+      if (onBranchChangeProp) {
+        onBranchChangeProp(...args);
+      }
+    },
+    [onBranchChangeProp]
+  );
+
   return (
     <PaymentMethodInputBase
       {...rest}
@@ -817,6 +843,14 @@ export const PaymentMethodInput = forwardRef(function PaymentMethodInput<
       disabled={isSubmitting || disabled}
       ref={ref}
       onChange={handleChange}
+      branch={
+        branch === BRANCH_NOT_SET
+          ? value instanceof ValueNode
+            ? value.parent
+            : null
+          : branch
+      }
+      onBranchChange={handleBranchChange}
       renderInput={renderInput}
       onBlur={handleBlur}
     />

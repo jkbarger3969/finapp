@@ -8,7 +8,14 @@ type Department {
   business: Business!
   parent: DepartmentAncestor!
   children: [Department!]!
-  ancestors: [DepartmentAncestor!]!
+  ancestors(
+    """
+    Set an alterative root for the `ancestor` path.
+    Default: `Business`.
+    Behavior: ancestors <= the shortest path to an ancestor matched by `DepartmentsWhere`.  If no ancestors are matched in the path, no ancestors are returned i.e. the `Department` is outside of the new root's tree.
+    """
+    root: DepartmentsWhere
+  ): [DepartmentAncestor!]!
   descendants: [Department!]!
   virtualRoot: Boolean
   aliases: [Alias!]!

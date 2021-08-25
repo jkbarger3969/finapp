@@ -93,13 +93,13 @@ export const DataCellProvider = <ColumnNames extends string = string>(
             const columnName = (params.tableColumn.column?.name ||
               "") as ColumnNames;
 
-            const cellProviderCellOptions = props[columnName];
+            const dataCellProviderCellOptions = props[columnName];
 
             return (
               <TemplatePlaceholder
                 params={{
                   ...params,
-                  cellProviderCellOptions,
+                  dataCellProviderCellOptions,
                 }}
               />
             );
@@ -227,13 +227,13 @@ export const AddCellProvider = <ColumnNames extends string = string>(
 };
 
 export const DataCell = (props: Table.DataCellProps): JSX.Element => {
-  const { cellProviderCellOptions, ...rest } = props as Table.DataCellProps & {
-    cellProviderCellOptions: CellProviderCellOptions;
-  };
+  const { dataCellProviderCellOptions, ...rest } =
+    props as Table.DataCellProps & {
+      dataCellProviderCellOptions?: CellProviderCellOptions;
+    };
 
-  const { cell: CellComponent = Table.Cell, props: cellProps = {} } =
-    cellProviderCellOptions || {};
-
+  const CellComponent = dataCellProviderCellOptions?.cell || Table.Cell;
+  const cellProps = dataCellProviderCellOptions?.props;
   return (
     <CellComponent
       {...(typeof cellProps === "function"
@@ -244,14 +244,11 @@ export const DataCell = (props: Table.DataCellProps): JSX.Element => {
 };
 
 export const FilterCell = (props: TableFilterRow.CellProps): JSX.Element => {
-  const {
-    cellProviderCellOptions,
-    changeColumnFilterState,
-    ...rest
-  } = props as TableFilterRow.CellProps & {
-    changeColumnFilterState?: ChangeColumnFilter;
-    cellProviderCellOptions: CellProviderCellOptions;
-  };
+  const { cellProviderCellOptions, changeColumnFilterState, ...rest } =
+    props as TableFilterRow.CellProps & {
+      changeColumnFilterState?: ChangeColumnFilter;
+      cellProviderCellOptions: CellProviderCellOptions;
+    };
 
   const { cell: CellComponent = TableFilterRow.Cell, props: cellProps = {} } =
     cellProviderCellOptions || {};
@@ -300,14 +297,11 @@ export const FilterCell = (props: TableFilterRow.CellProps): JSX.Element => {
 };
 
 export const EditCell = (props: TableEditRow.CellProps): JSX.Element => {
-  const {
-    cellProviderCellOptions,
-    rowChanges,
-    ...rest
-  } = props as TableEditRow.CellProps & {
-    cellProviderCellOptions: CellProviderCellOptions;
-    rowChanges: unknown;
-  };
+  const { cellProviderCellOptions, rowChanges, ...rest } =
+    props as TableEditRow.CellProps & {
+      cellProviderCellOptions: CellProviderCellOptions;
+      rowChanges: unknown;
+    };
 
   const { cell: CellComponent, props: cellProps = {} } =
     cellProviderCellOptions || {};

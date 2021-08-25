@@ -1,16 +1,23 @@
-import React, { useCallback, useMemo } from "react";
-import { defaultInput } from "mui-tree-select";
+import React, { useMemo } from "react";
 import { ApolloError, gql, useQuery } from "@apollo/client";
 import Fraction from "fraction.js";
+import { isBefore, isFuture } from "date-fns";
 
 import { BoolFieldDef, BoolInput, BoolInputProps } from "../BoolInput";
 import { DateFieldDef, DateInput, DateInputProps } from "../Date";
+import {
+  DescriptionInput,
+  DescriptionInputProps,
+  DESCRIPTION_NAME,
+  DescriptionFieldDef,
+} from "../Description";
 import {
   PaymentMethodFieldDef,
   PaymentMethodInput,
   PaymentMethodInputProps,
   PAYMENT_METHOD_NAME,
   PAY_METHOD_DEFAULT_VALUE_FRAGMENT,
+  usePaymentMethodDefaultValue,
 } from "../PaymentMethod";
 import {
   RationalFieldDef,
@@ -27,19 +34,27 @@ import {
   useValidators,
   Validator,
 } from "../../../useKISSForm/form";
-import { gtZero, requiredValidator } from "../shared";
-import { DepartmentInputProps } from "../Department";
+import {
+  gtZero,
+  requiredValidator,
+  useRenderInputWithError,
+  useRenderInputWithLabel,
+} from "../shared";
 import {
   EntryType,
   RefundEntryStateQuery as RefundEntryState,
   RefundEntryStateQueryVariables as RefundEntryStateVars,
+  UpdateRefundDefaultValuesFragment as UpdateRefundDefaultValues,
 } from "../../../apollo/graphTypes";
-import { deserializeRational } from "../../../apollo/scalars";
+import { deserializeDate, deserializeRational } from "../../../apollo/scalars";
+import { startOfDay } from "date-fns/esm";
+
 export type RefundInputProps = {
   date?: Omit<DateInputProps, "name" | "form">;
+  description?: Omit<DescriptionInputProps, "form">;
   paymentMethod: Omit<
     PaymentMethodInputProps,
-    "multiple" | "entryType" | "form" | "isRefund"
+    "multiple" | "entryType" | "form" | "isRefund" | "branch"
   >;
   total?: Omit<RationalInputProps, "name" | "form">;
   reconciled?:
@@ -53,25 +68,35 @@ export const RECONCILED_NAME = "reconciled";
 
 export type RefundFieldDef = {
   refund: DateFieldDef<typeof DATE_NAME> &
+    DescriptionFieldDef<typeof DESCRIPTION_NAME> &
     PaymentMethodFieldDef<false, false> &
     RationalFieldDef<typeof TOTAL_NAME> &
     BoolFieldDef<typeof RECONCILED_NAME>;
 };
 export const REFUND_NAME: keyof RefundFieldDef = "refund";
 
-const nameLoading = [
-  prefixName(DATE_NAME, REFUND_NAME),
-  prefixName(PAYMENT_METHOD_NAME, REFUND_NAME),
-  prefixName(TOTAL_NAME, REFUND_NAME),
-  prefixName(RECONCILED_NAME, REFUND_NAME),
-] as const;
-
 const REFUND_ENTRY_STATE = gql`
+  fragment UpdateRefundDefaultValues on EntryRefund {
+    __typename
+    id
+    date
+    deleted
+    description
+    paymentMethod {
+      ...PayMethodDefaultValue
+    }
+    reconciled
+    total
+  }
+
   query RefundEntryState($where: EntriesWhere!) {
     entries(where: $where) {
       __typename
       id
       date
+      dateOfRecord {
+        date
+      }
       category {
         __typename
         id
@@ -82,10 +107,7 @@ const REFUND_ENTRY_STATE = gql`
       }
       total
       refunds {
-        __typename
-        id
-        deleted
-        total
+        ...UpdateRefundDefaultValues
       }
     }
   }
@@ -96,7 +118,7 @@ export type RefundProps = (
   | {
       entryId: string;
     }
-  | { refundId: string }
+  | { updateRefundId: string }
 ) & {
   showLabels?: boolean;
   insertNamePrefix?: string;
@@ -122,9 +144,13 @@ export const useRefund = (
     insertNamePrefix,
     date: dateProps = {} as DateInputProps,
     paymentMethod: paymentMethodProps,
+    description: descriptionProps,
     total: totalProps = {},
     reconciled: reconciledProps = {},
   } = props;
+
+  const [entryId, updateRefundId] =
+    "entryId" in props ? [props.entryId, null] : [null, props.updateRefundId];
 
   const refundName = insertNamePrefix
     ? prefixName(REFUND_NAME, insertNamePrefix)
@@ -132,21 +158,27 @@ export const useRefund = (
 
   const fullName = useNamePrefix(refundName);
 
-  const [refundId, entryId] =
-    "refundId" in props ? [props.refundId, null] : [null, props.entryId];
   const { loading, error, data } = useQuery<
     RefundEntryState,
     RefundEntryStateVars
   >(
     REFUND_ENTRY_STATE,
     useMemo(() => {
-      if (refundId) {
+      if (entryId) {
+        return {
+          variables: {
+            where: {
+              id: { eq: entryId },
+            },
+          },
+        };
+      } else if (updateRefundId) {
         return {
           variables: {
             where: {
               refunds: {
                 id: {
-                  eq: refundId,
+                  eq: updateRefundId as string,
                 },
               },
             },
@@ -154,21 +186,23 @@ export const useRefund = (
         };
       } else {
         return {
-          variables: {
-            where: {
-              id: {
-                eq: entryId,
-              },
-            },
-          },
+          skip: true,
         };
       }
-    }, [entryId, refundId])
+    }, [entryId, updateRefundId])
   );
 
   useLoading({
     loading,
-    name: nameLoading as unknown as string[],
+    name: useMemo(
+      () => [
+        prefixName(DATE_NAME, refundName),
+        prefixName(PAYMENT_METHOD_NAME, refundName),
+        prefixName(TOTAL_NAME, refundName),
+        prefixName(RECONCILED_NAME, refundName),
+      ],
+      [refundName]
+    ),
     form,
   });
 
@@ -176,29 +210,54 @@ export const useRefund = (
 
   const entryType: EntryType | null = entry?.category?.type ?? null;
 
-  const maxRefund = useMemo(
-    () =>
-      (entry?.refunds || []).reduce(
-        (maxRefund, refund) => {
-          return refund.deleted || refund.id === refundId
-            ? maxRefund
-            : maxRefund.sub(deserializeRational(refund.total));
-        },
-        entry?.total ? deserializeRational(entry?.total) : new Fraction(0)
-      ),
-    [entry?.refunds, entry?.total, refundId]
-  );
+  const [maxRefund, updateRefund] = useMemo(() => {
+    let updateRefund: UpdateRefundDefaultValues | undefined;
+    const maxRefund = (entry?.refunds || []).reduce(
+      (maxRefund, refund) => {
+        if (refund.id === updateRefundId) {
+          updateRefund = refund;
+          return maxRefund;
+        }
 
-  console.log(refundId, entryId, entryType, maxRefund);
+        return refund.deleted
+          ? maxRefund
+          : maxRefund.sub(deserializeRational(refund.total));
+      },
+      entry?.total ? deserializeRational(entry?.total) : new Fraction(0)
+    );
+
+    return [maxRefund, updateRefund];
+  }, [entry?.refunds, entry?.total, updateRefundId]);
+
+  const minDate = useMemo(
+    () => (entry ? deserializeDate(entry.date) : new Date("1900-01-01")),
+    [entry]
+  );
 
   useValidators<RefundFieldDef>(
     useMemo<UseValidatorOptions<RefundFieldDef>>(() => {
-      const lteMaxError = new RangeError(
+      const lteMaxTotalError = new RangeError(
         `Refund cannot exceed $${maxRefund.toString(2)}`
       );
-      const lteMax: Validator<Fraction> = (value) => {
+      const lteMaxTotal: Validator<Fraction> = (value) => {
         if (value && value.compare(maxRefund) > 0) {
-          return lteMaxError;
+          return lteMaxTotalError;
+        }
+      };
+
+      const beforeMinDateError = new RangeError(
+        `Refund cannot be given before originating transaction.`
+      );
+      const afterMaxDateError = new RangeError(
+        `Refund cannot recorded in the future.`
+      );
+      const validDateRange: Validator<Date> = (value) => {
+        if (!value) {
+          return;
+        } else if (isFuture(value)) {
+          return afterMaxDateError;
+        } else if (isBefore(value, startOfDay(minDate))) {
+          return beforeMinDateError;
         }
       };
 
@@ -206,9 +265,9 @@ export const useRefund = (
         return {
           validators: {
             refund: {
-              date: requiredValidator,
+              date: [requiredValidator, validDateRange],
               paymentMethod: requiredValidator,
-              total: [requiredValidator, gtZero, lteMax],
+              total: [requiredValidator, gtZero, lteMaxTotal],
             },
           },
           form,
@@ -217,72 +276,137 @@ export const useRefund = (
         return {
           validators: {
             refund: {
-              total: [gtZero, lteMax],
+              date: validDateRange,
+              total: [gtZero, lteMaxTotal],
             },
           },
           form,
         };
       }
-    }, [form, maxRefund, required])
+    }, [form, maxRefund, minDate, required])
+  );
+
+  const dateDefaultValue = useMemo(
+    () => (updateRefund?.date ? deserializeDate(updateRefund.date) : undefined),
+    [updateRefund?.date]
+  );
+
+  const payMethodRenderInput = useRenderInputWithError(
+    error,
+    useRenderInputWithLabel(
+      showLabels ? "Payment Method" : undefined,
+      paymentMethodProps?.renderInput
+    )
+  );
+  const payMethodDefaultValue = usePaymentMethodDefaultValue(
+    (() => {
+      if (updateRefund?.paymentMethod) {
+        return updateRefund?.paymentMethod;
+      } else if (entry?.paymentMethod?.__typename === "PaymentMethodCard") {
+        return entry?.paymentMethod;
+      }
+    })()
+  );
+
+  const totalDefaultValue = useMemo(
+    () =>
+      updateRefund?.total ? deserializeRational(updateRefund.total) : undefined,
+    [updateRefund?.total]
   );
 
   return {
     error,
-    dateInput: (
-      <NamePrefixProvider namePrefix={refundName}>
-        <DateInput
-          label={showLabels && "Date"}
-          {...dateProps}
-          name={DATE_NAME}
-          form={form}
-        />
-      </NamePrefixProvider>
+    dateInput: useMemo(
+      () => (
+        <NamePrefixProvider namePrefix={refundName}>
+          <DateInput
+            label={showLabels && "Date"}
+            defaultValue={dateDefaultValue}
+            minDate={minDate}
+            {...dateProps}
+            name={DATE_NAME}
+            form={form}
+          />
+        </NamePrefixProvider>
+      ),
+      [dateDefaultValue, dateProps, form, minDate, refundName, showLabels]
     ),
     dateInputName: prefixName(DATE_NAME, fullName),
-    paymentMethodInput: (
-      <NamePrefixProvider namePrefix={refundName}>
-        <PaymentMethodInput<false>
-          {...paymentMethodProps}
-          isRefund
-          renderInput={useCallback<
-            NonNullable<DepartmentInputProps["renderInput"]>
-          >(
-            (params) =>
-              (paymentMethodProps.renderInput || defaultInput)({
-                label: showLabels ? "Payment Method" : undefined,
-                ...params,
-              }),
-            [paymentMethodProps.renderInput, showLabels]
-          )}
-          entryType={entryType}
-          multiple={false}
-          form={form}
-        />
-      </NamePrefixProvider>
+    paymentMethodInput: useMemo(
+      () => (
+        <NamePrefixProvider namePrefix={refundName}>
+          <PaymentMethodInput<false>
+            defaultValue={payMethodDefaultValue}
+            {...paymentMethodProps}
+            isRefund
+            renderInput={payMethodRenderInput}
+            entryType={entryType}
+            multiple={false}
+            form={form}
+          />
+        </NamePrefixProvider>
+      ),
+      [
+        entryType,
+        form,
+        payMethodDefaultValue,
+        payMethodRenderInput,
+        paymentMethodProps,
+        refundName,
+      ]
     ),
     paymentMethodInputName: prefixName(PAYMENT_METHOD_NAME, fullName),
-    totalInput: (
-      <NamePrefixProvider namePrefix={refundName}>
-        <RationalInput
-          label={showLabels && "Total"}
-          decimals={2}
-          helperText={`Max $${maxRefund.toString(2)}`}
-          {...totalProps}
-          name={TOTAL_NAME}
-          form={form}
-        />
-      </NamePrefixProvider>
+    descriptionInput: useMemo(
+      () => (
+        <NamePrefixProvider namePrefix={refundName}>
+          <DescriptionInput
+            label={showLabels && "Description"}
+            defaultValue={updateRefund?.description ?? undefined}
+            {...descriptionProps}
+            name={DESCRIPTION_NAME}
+            form={form}
+          />
+        </NamePrefixProvider>
+      ),
+      [
+        refundName,
+        showLabels,
+        updateRefund?.description,
+        descriptionProps,
+        form,
+      ]
+    ),
+    descriptionInputName: prefixName(DESCRIPTION_NAME, fullName),
+    totalInput: useMemo(
+      () => (
+        <NamePrefixProvider namePrefix={refundName}>
+          <RationalInput
+            label={showLabels && "Total"}
+            decimals={2}
+            helperText={`Max $${maxRefund.toString(2)}`}
+            defaultValue={totalDefaultValue}
+            {...totalProps}
+            name={TOTAL_NAME}
+            form={form}
+          />
+        </NamePrefixProvider>
+      ),
+      [form, maxRefund, refundName, showLabels, totalDefaultValue, totalProps]
     ),
     totalInputName: prefixName(TOTAL_NAME, fullName),
-    reconciledInput: (
-      <NamePrefixProvider namePrefix={refundName}>
-        <BoolInput
-          label={showLabels && "Reconciled"}
-          {...reconciledProps}
-          name={RECONCILED_NAME}
-          form={form}
-        />
-      </NamePrefixProvider>
+    reconciledInput: useMemo(
+      () => (
+        <NamePrefixProvider namePrefix={refundName}>
+          <BoolInput
+            label={showLabels && "Reconciled"}
+            defaultValue={!!updateRefund?.reconciled}
+            {...reconciledProps}
+            name={RECONCILED_NAME}
+            form={form}
+          />
+        </NamePrefixProvider>
+      ),
+      [form, reconciledProps, refundName, showLabels, updateRefund?.reconciled]
     ),
     reconciledInputName: prefixName(RECONCILED_NAME, fullName),
   };

@@ -173,16 +173,14 @@ export const whereDepartments = (
       case "and":
         {
           let hasPromise = false;
-          const $and: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = deptWhere[whereKey].map((where) => {
-            const result = whereDepartments(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $and: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            deptWhere[whereKey].map((where) => {
+              const result = whereDepartments(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -206,16 +204,14 @@ export const whereDepartments = (
       case "or":
         {
           let hasPromise = false;
-          const $or: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = deptWhere[whereKey].map((where) => {
-            const result = whereDepartments(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $or: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            deptWhere[whereKey].map((where) => {
+              const result = whereDepartments(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -239,16 +235,14 @@ export const whereDepartments = (
       case "nor":
         {
           let hasPromise = false;
-          const $nor: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = deptWhere[whereKey].map((where) => {
-            const result = whereDepartments(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $nor: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            deptWhere[whereKey].map((where) => {
+              const result = whereDepartments(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -283,17 +277,10 @@ export const departments: QueryResolvers["departments"] = async (
   _,
   { where },
   { db }
-) => {
-  const query = where ? whereDepartments(where, db) : {};
-
-  if (query instanceof Promise) {
-    return db
-      .collection("departments")
-      .find(await query)
-      .toArray();
-  }
-
-  return db.collection("departments").find(query).toArray();
-};
+) =>
+  db
+    .collection("departments")
+    .find(where ? await whereDepartments(where, db) : {})
+    .toArray();
 
 export default departments;
