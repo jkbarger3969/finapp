@@ -16,7 +16,7 @@ const entryDeleteItem: MutationResolvers["entryDeleteItem"] = async (
   info
 ) => {
   const { id } = args;
-  const { db, user, pubSub } = context;
+  const { db, user } = context;
 
   const collection = db.collection("journalEntries");
 
@@ -83,12 +83,6 @@ const entryDeleteItem: MutationResolvers["entryDeleteItem"] = async (
 
     return result;
   })();
-
-  pubSub
-    .publish(JOURNAL_ENTRY_UPSERTED, {
-      entryUpserted: result.entry,
-    })
-    .catch((error) => console.error(error));
 
   return result;
 };

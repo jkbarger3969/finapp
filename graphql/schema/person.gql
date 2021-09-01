@@ -8,8 +8,20 @@ input PersonNameInput {
   last: String!
 }
 
-input PersonAddFields {
+input PersonAddFields @requireOneField(fields: [["email", "phone"]]) {
   name: PersonNameInput!
+  email: String
+  phone: String
+}
+
+input AddNewPerson @requireOneField(fields: [["email", "phone"]]) {
+  name: PersonNameInput!
+  email: String
+  phone: String
+}
+
+type AddNewPersonPayload {
+  newPerson: Person!
 }
 
 type Person {
@@ -52,4 +64,5 @@ extend type Query {
 
 extend type Mutation {
   addPerson(fields: PersonAddFields!): Person!
+  addNewPerson(input: AddNewPerson!): AddNewPersonPayload!
 }

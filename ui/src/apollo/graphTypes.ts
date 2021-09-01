@@ -17,8 +17,6 @@ export type Scalars = {
   Date: string;
   /** Rational Number JSON String: "{"s":-1|1,"n":Int,"d":Int}" */
   Rational: string;
-  /** The `Upload` scalar type represents a file upload. */
-  Upload: any;
 };
 
 
@@ -1164,12 +1162,6 @@ export type User = {
   user: Person;
 };
 
-export enum CacheControlScope {
-  Public = 'PUBLIC',
-  Private = 'PRIVATE'
-}
-
-
 export type DepartmentName_1QueryVariables = Exact<{
   id: Scalars['ID'];
 }>;
@@ -2227,8 +2219,6 @@ export type ResolversTypes = {
   WhereDate: WhereDate;
   Source: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'];
   User: ResolverTypeWrapper<User>;
-  CacheControlScope: CacheControlScope;
-  Upload: ResolverTypeWrapper<Scalars['Upload']>;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -2345,13 +2335,11 @@ export type ResolversParentTypes = {
   WhereDate: WhereDate;
   Source: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'];
   User: User;
-  Upload: Scalars['Upload'];
 };
 
-export type CacheControlDirectiveArgs = {   maxAge?: Maybe<Scalars['Int']>;
-  scope?: Maybe<CacheControlScope>; };
+export type MutexFieldsDirectiveArgs = {   fields?: Maybe<Array<Array<Scalars['String']>>>; };
 
-export type CacheControlDirectiveResolver<Result, Parent, ContextType = Context, Args = CacheControlDirectiveArgs> = DirectiveResolverFn<Result, Parent, ContextType, Args>;
+export type MutexFieldsDirectiveResolver<Result, Parent, ContextType = Context, Args = MutexFieldsDirectiveArgs> = DirectiveResolverFn<Result, Parent, ContextType, Args>;
 
 export type AccountInterfaceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AccountInterface'] = ResolversParentTypes['AccountInterface']> = {
   __resolveType: TypeResolveFn<'AccountChecking' | 'AccountCreditCard', ParentType, ContextType>;
@@ -2691,10 +2679,6 @@ export type UserResolvers<ContextType = Context, ParentType extends ResolversPar
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export interface UploadScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['Upload'], any> {
-  name: 'Upload';
-}
-
 export type Resolvers<ContextType = Context> = {
   AccountInterface?: AccountInterfaceResolvers<ContextType>;
   AccountCard?: AccountCardResolvers<ContextType>;
@@ -2739,7 +2723,6 @@ export type Resolvers<ContextType = Context> = {
   TypeNode?: TypeNodeResolvers<ContextType>;
   Source?: SourceResolvers<ContextType>;
   User?: UserResolvers<ContextType>;
-  Upload?: GraphQLScalarType;
 };
 
 
@@ -2749,7 +2732,7 @@ export type Resolvers<ContextType = Context> = {
  */
 export type IResolvers<ContextType = Context> = Resolvers<ContextType>;
 export type DirectiveResolvers<ContextType = Context> = {
-  cacheControl?: CacheControlDirectiveResolver<any, any, ContextType>;
+  mutexFields?: MutexFieldsDirectiveResolver<any, any, ContextType>;
 };
 
 

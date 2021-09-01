@@ -50,54 +50,52 @@ import { MutationResolvers } from "../graphTypes";
   }
 }; */
 
-export const addPerson: MutationResolvers["addPerson"] = async (
-  parent,
-  args,
-  context,
-  info
-) => {
-  const { db } = context;
+export const addPerson: Extract<MutationResolvers["addPerson"], Function> =
+  async (parent, args, context, info) => {
+    const { db } = context;
 
-  const session = context.ephemeral?.session;
+    const session = context.ephemeral?.session;
 
-  const {
-    fields: {
-      name: { first, last },
-    },
-  } = args;
-
-  // Ensure graphql required fields not defeated by blank string.
-  if (first.length === 0) {
-    throw new Error(`Mutation "addPerson" requires first name.`);
-  } else if (last.length === 0) {
-    throw new Error(`Mutation "addPerson" requires last name.`);
-  }
-
-  const { insertedId, insertedCount } = await db.collection("people").insertOne(
-    {
-      name: {
-        first,
-        last,
+    const {
+      fields: {
+        name: { first, last },
       },
-    },
-    { session }
-  );
+    } = args;
 
-  if (insertedCount === 0) {
-    throw new Error(`Failed to add person: ${JSON.stringify(args, null, 2)}`);
-  }
+    // Ensure graphql required fields not defeated by blank string.
+    if (first.length === 0) {
+      throw new Error(`Mutation "addPerson" requires first name.`);
+    } else if (last.length === 0) {
+      throw new Error(`Mutation "addPerson" requires last name.`);
+    }
 
-  const [newPerson] = await db
-    .collection("people")
-    .aggregate(
-      [
-        { $match: { _id: new ObjectId(insertedId) } },
-        { $limit: 1 },
-        { $addFields: { id: { $toString: "$_id" } } },
-      ],
-      { session }
-    )
-    .toArray();
+    const { insertedId, insertedCount } = await db
+      .collection("people")
+      .insertOne(
+        {
+          name: {
+            first,
+            last,
+          },
+        },
+        { session }
+      );
 
-  return newPerson;
-};
+    if (insertedCount === 0) {
+      throw new Error(`Failed to add person: ${JSON.stringify(args, null, 2)}`);
+    }
+
+    const [newPerson] = await db
+      .collection("people")
+      .aggregate(
+        [
+          { $match: { _id: new ObjectId(insertedId) } },
+          { $limit: 1 },
+          { $addFields: { id: { $toString: "$_id" } } },
+        ],
+        { session }
+      )
+      .toArray();
+
+    return newPerson;
+  };

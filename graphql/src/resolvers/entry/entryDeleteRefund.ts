@@ -12,7 +12,7 @@ const entryDeleteRefund: MutationResolvers["entryDeleteRefund"] = async (
   info
 ) => {
   const { id } = args;
-  const { db, user, pubSub } = context;
+  const { db, user } = context;
 
   const collection = db.collection("journalEntries");
 
@@ -62,10 +62,6 @@ const entryDeleteRefund: MutationResolvers["entryDeleteRefund"] = async (
   }
 
   const result = await entry(obj, { id: entryId.toHexString() }, context, info);
-
-  pubSub
-    .publish(JOURNAL_ENTRY_UPSERTED, { entryUpserted: result })
-    .catch((error) => console.error(error));
 
   return result;
 };

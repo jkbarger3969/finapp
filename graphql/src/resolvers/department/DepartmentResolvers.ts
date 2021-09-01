@@ -1,4 +1,3 @@
-import { tr } from "date-fns/locale";
 import { ObjectId } from "mongodb";
 
 import {
@@ -7,7 +6,6 @@ import {
   Department as TDepartment,
 } from "../../graphTypes";
 import { Context } from "../../types";
-import { getAliases } from "../alias/utils";
 import { BusinessDbRecord } from "../business/businessResolvers";
 import { addTypename } from "../utils/queryUtils";
 import { whereDepartments } from "./departments";
@@ -81,74 +79,74 @@ const children: DepartmentResolvers<Context, DepartmentDbRecord>["children"] = (
     })
     .toArray();
 
-const ancestors: DepartmentResolvers<Context, DepartmentDbRecord>["ancestors"] =
-  async (...args) => {
-    const [{ parent }, { root }, { db }] = args;
+const ancestors: Extract<
+  DepartmentResolvers<Context, DepartmentDbRecord>["ancestors"],
+  Function
+> = async (...args) => {
+  const [{ parent }, { root }, { db }] = args;
 
-    if (root) {
-      const [rootDepartments, ancestorsArr] = await Promise.all([
-        db
-          .collection("departments")
-          .find<{ _id: ObjectId }>(await whereDepartments(root, db), {
-            projection: {
-              _id: true,
-            },
-          })
-          .toArray()
-          .then(
-            (results) => new Set(results.map(({ _id }) => _id.toHexString()))
-          ),
-        ancestors(args[0], {}, args[2], args[3]) as unknown as Promise<
-          (DepartmentDbRecord | BusinessDbRecord)[]
-        >,
-      ]);
+  if (root) {
+    const [rootDepartments, ancestorsArr] = await Promise.all([
+      db
+        .collection("departments")
+        .find<{ _id: ObjectId }>(await whereDepartments(root, db), {
+          projection: {
+            _id: true,
+          },
+        })
+        .toArray()
+        .then(
+          (results) => new Set(results.map(({ _id }) => _id.toHexString()))
+        ),
+      ancestors(args[0], {}, args[2], args[3]) as unknown as Promise<
+        (DepartmentDbRecord | BusinessDbRecord)[]
+      >,
+    ]);
 
-      const results: unknown[] = [];
-
-      for (const ancestor of ancestorsArr) {
-        results.push(ancestor);
-        if (rootDepartments.has(ancestor._id.toHexString())) {
-          return results;
-        }
-      }
-
-      return [];
-    } else if (parent.type === "Business") {
-      return await addTypename(
-        "Business",
-        db.collection("businesses").find({ _id: parent.id }).toArray()
-      );
-    }
     const results: unknown[] = [];
 
-    let ancestor = await addTypename(
+    for (const ancestor of ancestorsArr) {
+      results.push(ancestor);
+      if (rootDepartments.has(ancestor._id.toHexString())) {
+        return results;
+      }
+    }
+
+    return [];
+  } else if (parent.type === "Business") {
+    return await addTypename(
+      "Business",
+      db.collection("businesses").find({ _id: parent.id }).toArray()
+    );
+  }
+  const results: unknown[] = [];
+
+  let ancestor = await addTypename(
+    "Department",
+    db.collection<DepartmentDbRecord>("departments").findOne({ _id: parent.id })
+  );
+
+  results.push(ancestor);
+
+  while (ancestor.parent.type !== "Business") {
+    ancestor = await addTypename(
       "Department",
       db
         .collection<DepartmentDbRecord>("departments")
-        .findOne({ _id: parent.id })
+        .findOne({ _id: ancestor.parent.id })
     );
-
     results.push(ancestor);
+  }
 
-    while (ancestor.parent.type !== "Business") {
-      ancestor = await addTypename(
-        "Department",
-        db
-          .collection<DepartmentDbRecord>("departments")
-          .findOne({ _id: ancestor.parent.id })
-      );
-      results.push(ancestor);
-    }
+  const biz = await addTypename(
+    "Business",
+    db.collection("businesses").findOne({ _id: ancestor.parent.id })
+  );
 
-    const biz = await addTypename(
-      "Business",
-      db.collection("businesses").findOne({ _id: ancestor.parent.id })
-    );
+  results.push(biz);
 
-    results.push(biz);
-
-    return results;
-  };
+  return results;
+};
 
 const descendants: DepartmentResolvers<
   Context,
@@ -200,10 +198,10 @@ const DepartmentResolver: DepartmentResolvers<Context, DepartmentDbRecord> = {
   ancestors,
   descendants,
   virtualRoot: ({ virtualRoot }) => !!virtualRoot,
-  aliases: ({ _id }, _, { db }) =>
-    getAliases("Department", _id, db) as unknown as ReturnType<
-      DepartmentResolvers["aliases"]
-    >,
+  // aliases: ({ _id }, _, { db }) =>
+  //   getAliases("Department", _id, db) as unknown as ReturnType<
+  //     DepartmentResolvers["aliases"]
+  //   >,
 };
 
 export const Department = DepartmentResolver as unknown as DepartmentResolvers;

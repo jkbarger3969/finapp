@@ -36,7 +36,7 @@ const entryUpdate: MutationResolvers["entryUpdate"] = (
   info
 ) =>
   new Promise(async (resolve, reject) => {
-    const { client, db, nodeMap, user, pubSub } = context;
+    const { client, db, nodeMap, user } = context;
 
     const session = context.ephemeral?.session || client.startSession();
 
@@ -47,14 +47,6 @@ const entryUpdate: MutationResolvers["entryUpdate"] = (
         yield; // Pause
         // on 3rd next resolve with the update doc and run pubSubs
         resolve(updatedDoc);
-        pubSub
-          .publish(JOURNAL_ENTRY_UPDATED, {
-            entryUpdated: updatedDoc,
-          })
-          .catch((error) => console.error(error));
-        pubSub
-          .publish(JOURNAL_ENTRY_UPSERTED, { entryUpserted: updatedDoc })
-          .catch((error) => console.error(error));
       } catch (error) {
         // on throw reject with error.
         reject(error);
@@ -389,9 +381,8 @@ const entryUpdate: MutationResolvers["entryUpdate"] = (
           // Department
           (async () => {
             if (departmentId) {
-              const { collection, id: node } = nodeMap.typename.get(
-                "Department"
-              );
+              const { collection, id: node } =
+                nodeMap.typename.get("Department");
               const id = new ObjectId(departmentId);
 
               if (

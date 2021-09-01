@@ -25,7 +25,7 @@ const entryUpdateRefund: MutationResolvers["entryUpdateRefund"] = async (
 ) => {
   const { id, fields, paymentMethodUpdate } = args;
 
-  const { db, user, nodeMap, pubSub } = context;
+  const { db, user, nodeMap } = context;
 
   const collection = db.collection("journalEntries");
 
@@ -180,10 +180,6 @@ const entryUpdateRefund: MutationResolvers["entryUpdateRefund"] = async (
   }
 
   const result = await entry(obj, { id: entryId.toHexString() }, context, info);
-
-  pubSub
-    .publish(JOURNAL_ENTRY_UPSERTED, { entryUpserted: result })
-    .catch((error) => console.error(error));
 
   return result;
 };

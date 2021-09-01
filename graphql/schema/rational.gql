@@ -1,3 +1,5 @@
+scalar Rational
+
 input WhereRational {
   eq: Rational
   ne: Rational
@@ -8,3 +10,15 @@ input WhereRational {
   gte: Rational
   lte: Rational
 }
+
+"""
+Date Constraints
+"""
+directive @rationalConstraint(
+  eq: Float
+  ne: Float
+  gt: Float
+  gte: Float
+  lt: Float
+  lte: Float
+) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION

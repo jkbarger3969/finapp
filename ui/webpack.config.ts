@@ -35,7 +35,7 @@ const config = (env): WebpackConfig => {
       hot: true,
       overlay: true,
       proxy: {
-        "/graphql": { target: "http://localhost:4000", ws: true },
+        "/graphql": { target: "http://localhost:4000" /* ws: true */ },
       },
       stats: "errors-warnings",
     },

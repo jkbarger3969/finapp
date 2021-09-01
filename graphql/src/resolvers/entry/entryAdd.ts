@@ -12,7 +12,7 @@ import { isValid } from "date-fns";
 
 const entryAdd: MutationResolvers["entryAdd"] = (obj, args, context, info) =>
   new Promise(async (resolve, reject) => {
-    const { client, db, nodeMap, user, pubSub } = context;
+    const { client, db, nodeMap, user } = context;
 
     const session = context.ephemeral?.session || client.startSession();
 
@@ -23,12 +23,6 @@ const entryAdd: MutationResolvers["entryAdd"] = (obj, args, context, info) =>
         yield; // Pause
         // on 3rd next resolve with the update doc and run pubSubs
         resolve(newEntry);
-        pubSub
-          .publish(JOURNAL_ENTRY_ADDED, { entryAdded: newEntry })
-          .catch((error) => console.error(error));
-        pubSub
-          .publish(JOURNAL_ENTRY_UPSERTED, { entryUpserted: newEntry })
-          .catch((error) => console.error(error));
       } catch (error) {
         // on throw reject with error.
         reject(error);
@@ -111,9 +105,8 @@ const entryAdd: MutationResolvers["entryAdd"] = (obj, args, context, info) =>
           // Department
           (async () => {
             if (departmentId) {
-              const { collection, id: node } = nodeMap.typename.get(
-                "Department"
-              );
+              const { collection, id: node } =
+                nodeMap.typename.get("Department");
               const id = new ObjectId(departmentId);
 
               if (

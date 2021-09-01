@@ -23,7 +23,7 @@ const entryUpdateItem: MutationResolvers["entryUpdateItem"] = async (
 ) => {
   const { id, fields } = args;
 
-  const { db, user, nodeMap, pubSub } = context;
+  const { db, user, nodeMap } = context;
 
   const collection = db.collection("journalEntries");
 
@@ -216,12 +216,6 @@ const entryUpdateItem: MutationResolvers["entryUpdateItem"] = async (
 
     return result;
   })();
-
-  pubSub
-    .publish(JOURNAL_ENTRY_UPSERTED, {
-      entryUpserted: result.entry,
-    })
-    .catch((error) => console.error(error));
 
   return result;
 };

@@ -67,48 +67,44 @@ export const departments: BusinessResolvers["departments"] = async (
   return departmentsResolver({}, { fromParent: id }, context, info);
 }; */
 
-export const addBusiness: MutationResolvers["addBusiness"] = async (
-  parent,
-  args,
-  context,
-  info
-) => {
-  const { db } = context;
+export const addBusiness: Extract<MutationResolvers["addBusiness"], Function> =
+  async (parent, args, context, info) => {
+    const { db } = context;
 
-  const session = context.ephemeral?.session;
+    const session = context.ephemeral?.session;
 
-  const {
-    fields: { name },
-  } = args;
+    const {
+      fields: { name },
+    } = args;
 
-  if (!name.trim()) {
-    throw new Error(`Mutation "addBusiness" name.`);
-  }
+    if (!name.trim()) {
+      throw new Error(`Mutation "addBusiness" name.`);
+    }
 
-  const { insertedCount, insertedId } = await db
-    .collection("businesses")
-    .insertOne({ name, verified: false }, { session });
+    const { insertedCount, insertedId } = await db
+      .collection("businesses")
+      .insertOne({ name, verified: false }, { session });
 
-  if (insertedCount === 0) {
-    throw new Error(
-      `Mutation "addBusiness" arguments "${JSON.stringify(args)}" failed.`
-    );
-  }
+    if (insertedCount === 0) {
+      throw new Error(
+        `Mutation "addBusiness" arguments "${JSON.stringify(args)}" failed.`
+      );
+    }
 
-  const newBusiness = await db
-    .collection("businesses")
-    .aggregate(
-      [
-        { $match: { _id: new ObjectId(insertedId) } },
-        { $limit: 1 },
-        { $addFields: { id: { $toString: "$_id" } } },
-      ],
-      { session }
-    )
-    .toArray();
+    const newBusiness = await db
+      .collection("businesses")
+      .aggregate(
+        [
+          { $match: { _id: new ObjectId(insertedId) } },
+          { $limit: 1 },
+          { $addFields: { id: { $toString: "$_id" } } },
+        ],
+        { session }
+      )
+      .toArray();
 
-  return newBusiness[0];
-};
+    return newBusiness[0];
+  };
 
 /* export const Business: BusinessResolvers = {
   budget: nodeFieldResolver,

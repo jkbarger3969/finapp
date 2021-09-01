@@ -1,4 +1,4 @@
-import { ObjectID, ObjectId } from "mongodb";
+import { ObjectId } from "mongodb";
 import {
   Currency,
   PaymentCardType,
@@ -9,7 +9,6 @@ import {
   PaymentMethodCheckResolvers,
 } from "../../graphTypes";
 import { Context } from "../../types";
-import { snakeCase } from "snake-case";
 import { deserializeGQLEnum } from "../utils/gqlEnums";
 import { addTypename } from "../utils/queryUtils";
 

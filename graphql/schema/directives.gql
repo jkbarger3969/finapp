@@ -1,0 +1,21 @@
+"""
+Enforces mutual exclusion of fields.
+"""
+directive @mutexFields(
+  """
+  Groups of mutually exclusive fields. Default: All Fields
+  """
+  fields: [[String!]!]
+) on INPUT_OBJECT
+
+"""
+Requires at least one field.
+"""
+directive @requireOneField(
+  """
+  Requires at least one field from each set.
+  Add a "!" to field set to require one field NOT in the set. `["!",...]`
+  Default: One of All fields
+  """
+  fields: [[String!]!]
+) on INPUT_OBJECT

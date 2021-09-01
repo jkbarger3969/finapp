@@ -40,7 +40,7 @@ const entryAddRefund: MutationResolvers["entryAddRefund"] = async (
     throw new Error(`Date "${dateStr}" not a valid ISO 8601 date string.`);
   }
 
-  const { db, user, nodeMap, pubSub } = context;
+  const { db, user, nodeMap } = context;
 
   const docHistory = new DocHistory(user.id);
 
@@ -130,10 +130,6 @@ const entryAddRefund: MutationResolvers["entryAddRefund"] = async (
   }
 
   const result = await entry(doc, { id }, context, info);
-
-  pubSub
-    .publish(JOURNAL_ENTRY_UPSERTED, { entryUpserted: result })
-    .catch((error) => console.error(error));
 
   return result;
 };

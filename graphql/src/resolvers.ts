@@ -22,7 +22,7 @@ import {
   DepartmentAncestor,
 } from "./resolvers/department";
 import { Entity, entities } from "./resolvers/entity";
-import { entryAdded, entryUpdated, entryDelete } from "./resolvers/entry";
+// import { entryDelete } from "./resolvers/entry";
 import {
   entry,
   entries,
@@ -41,7 +41,7 @@ import entryAddItem from "./resolvers/entry/entryAddItem";
 import entryUpdateItem from "./resolvers/entry/entryUpdateItem";
 import entryDeleteItem from "./resolvers/entry/entryDeleteItem";
 import entryItem from "./resolvers/entry/entryItem";
-import entryUpserted from "./resolvers/entry/entryUpserted";
+// import entryUpserted from "./resolvers/entry/entryUpserted";
 import {
   PaymentCardInterface,
   PaymentCheckInterface,
@@ -113,9 +113,9 @@ const resolvers: Resolvers = {
     fiscalYears,
   },
   Mutation: {
-    entryAdd,
+    // entryAdd,
     entryUpdate,
-    entryDelete,
+    // entryDelete,
     entryAddRefund,
     entryUpdateRefund,
     entryDeleteRefund,
@@ -126,9 +126,7 @@ const resolvers: Resolvers = {
     addBusiness,
   },
   Subscription: {
-    entryAdded,
-    entryUpdated,
-    entryUpserted,
+    // entryUpserted,
   },
 };
 

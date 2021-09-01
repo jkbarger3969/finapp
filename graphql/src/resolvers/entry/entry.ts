@@ -33,5 +33,9 @@ export const projection = {
   },
 } as const;
 
-export const entry: QueryResolvers["entry"] = (_, { id }, { db }) =>
+export const entry: Extract<QueryResolvers["entry"], Function> = (
+  _,
+  { id },
+  { db }
+) =>
   db.collection("entries").findOne({ _id: new ObjectId(id) }, { projection });

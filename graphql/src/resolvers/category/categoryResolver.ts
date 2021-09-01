@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { Db, ObjectID, ObjectId } from "mongodb";
 import { snakeCase } from "change-case";
 
 import {
@@ -7,46 +7,87 @@ import {
   EntryType,
 } from "../../graphTypes";
 import { Context } from "../../types";
-import { getAliases } from "../alias/utils";
-
-export interface CategoryDbRecord {
-  _id: ObjectId;
-  name: string;
-  code: string;
-  externalId: string;
-  type: "Debit" | "Credit";
-  inactive: boolean;
-  donation: boolean;
-  parent?: ObjectId | null;
-}
+import {
+  CategoryDbRecord,
+  EntryTypeDbRecord,
+  FindOneOptions,
+} from "../../dataSources/accountingDb/types";
+import { AccountingDb } from "../../dataSources/accountingDb/accountingDb";
 
 const NULLISH = Symbol("NULLISH");
+
+/**
+ * Lookup Category ancestors by passing parent.
+ */
+export const categoryAncestorPath = async function* ({
+  accountingDb,
+  fromCategory,
+  options,
+}: {
+  accountingDb: AccountingDb;
+  fromCategory?: CategoryDbRecord["parent"];
+  options?: FindOneOptions<"categories">;
+}) {
+  while ((fromCategory ?? NULLISH) !== NULLISH) {
+    const ancestor = await accountingDb.findOne({
+      collection: "categories",
+      filter: {
+        _id: fromCategory,
+      },
+      options,
+    });
+
+    yield ancestor;
+
+    fromCategory = ancestor.parent;
+  }
+};
+
+/**
+ * Look up category type
+ */ export const categoryType = async ({
+  accountingDb,
+  category,
+}: {
+  accountingDb: AccountingDb;
+  category: CategoryDbRecord["_id"];
+}): Promise<EntryTypeDbRecord> => {
+  for await (const { type, parent } of categoryAncestorPath({
+    accountingDb,
+    fromCategory: category,
+  })) {
+    if (!parent) {
+      return type;
+    }
+  }
+};
 
 const CategoryResolver: CategoryResolvers<Context, CategoryDbRecord> = {
   id: ({ _id }) => _id.toString(),
   parent: async ({ parent }, _, { db }) =>
     (await db.collection("categories").findOne({ _id: parent })) || null,
-  type: ({ type }) => snakeCase(type).toUpperCase() as EntryType,
+  type: async ({ _id }, _, { dataSources: { accountingDb } }) => {
+    const type = await categoryType({
+      accountingDb,
+      category: _id,
+    });
+
+    return snakeCase(type).toUpperCase() as EntryType;
+  },
   children: ({ _id }, _, { db }) =>
     db.collection("categories").find({ parent: _id }).toArray(),
-  ancestors: async ({ parent }, _, { db }) => {
+  ancestors: async ({ parent }, _, { dataSources: { accountingDb } }) => {
     const ancestors: CategoryType[] = [];
 
-    while ((parent ?? NULLISH) !== NULLISH) {
-      const ancestor = await db
-        .collection("categories")
-        .findOne({ _id: parent });
-      ancestors.push(ancestor);
-
-      parent = ancestor.parent;
+    for await (const ancestor of categoryAncestorPath({
+      accountingDb,
+      fromCategory: parent,
+    })) {
+      ancestors.push(ancestor as unknown as CategoryType);
     }
 
     return ancestors;
   },
-  aliases: ({ _id }, _, { db }) =>
-    getAliases("Category", _id, db) as unknown as ReturnType<
-      CategoryResolvers["aliases"]
-    >,
 };
 
 export const Category = CategoryResolver as unknown as CategoryResolvers;

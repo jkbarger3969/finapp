@@ -32,4 +32,4 @@ export const getEntities = (nodes: EntityDbRecord[], db: Db) =>
 const EntityResolver: EntityResolvers<Context, EntityType> = {
   __resolveType: ({ __typename }) => __typename,
 };
-export const Entity = (EntityResolver as unknown) as EntityResolvers;
+export const Entity = EntityResolver as unknown as EntityResolvers;

@@ -21,7 +21,7 @@ import {
 import { entry } from "./entry/entry";
 
 const userNodeType = new ObjectId("5dca0427bccd5c6f26b0cde2");
-
+/* 
 export const entryUpdate: MutationResolvers["entryUpdate"] = async (
   parent,
   args,
@@ -29,7 +29,7 @@ export const entryUpdate: MutationResolvers["entryUpdate"] = async (
   info
 ) => {
   const { id, fields } = args;
-  const { db, nodeMap, user, pubSub } = context;
+  const { db, nodeMap, user } = context;
 
   const createdBy = {
     node: userNodeType,
@@ -370,10 +370,6 @@ export const entryUpdate: MutationResolvers["entryUpdate"] = async (
     .aggregate([{ $match: { _id: new ObjectId(id) } }, addFields, project])
     .toArray();
 
-  pubSub
-    .publish(JOURNAL_ENTRY_UPDATED, { entryUpdated: doc[0] })
-    .catch((error) => console.error(error));
-
   return doc[0];
 };
 
@@ -396,7 +392,7 @@ export const entryAdd: MutationResolvers["entryAdd"] = async (
 
   const reconciled = args.fields.reconciled ?? false;
 
-  const { db, user, nodeMap, pubSub } = context;
+  const { db, user, nodeMap } = context;
 
   const createdOn = new Date();
   const lastUpdate = createdOn;
@@ -615,10 +611,6 @@ export const entryAdd: MutationResolvers["entryAdd"] = async (
     .aggregate([{ $match: { _id: insertedId } }, addFields, project])
     .toArray();
 
-  pubSub
-    .publish(JOURNAL_ENTRY_ADDED, { entryAdded: newEntry[0] })
-    .catch((error) => console.error(error));
-
   return newEntry[0];
 };
 
@@ -629,7 +621,7 @@ export const entryDelete: MutationResolvers["entryDelete"] = async (
   info
 ) => {
   const { id } = args;
-  const { db, user, pubSub } = context;
+  const { db, user } = context;
 
   const createdBy = {
     node: userNodeType,
@@ -676,16 +668,9 @@ export const entryDelete: MutationResolvers["entryDelete"] = async (
 
   const doc = await entry(parent, { id }, context, info);
 
-  pubSub
-    .publish(JOURNAL_ENTRY_UPDATED, { entryUpdated: doc })
-    .catch((error) => console.error(error));
-  pubSub
-    .publish(JOURNAL_ENTRY_UPSERTED, { entryUpserted: doc })
-    .catch((error) => console.error(error));
-
   return doc;
 };
-
+ 
 export const Entry: EntryResolvers = {
   department: nodeFieldResolver,
   category: nodeFieldResolver,
@@ -698,11 +683,4 @@ export const Entry: EntryResolvers = {
   //   return ((parent.lastUpdate as any) as Date).toISOString();
   // },
 };
-
-export const entryAdded: SubscriptionResolvers["entryAdded"] = {
-  subscribe: (_, __, { pubSub }) => pubSub.asyncIterator(JOURNAL_ENTRY_ADDED),
-};
-
-export const entryUpdated: SubscriptionResolvers["entryUpdated"] = {
-  subscribe: (_, __, { pubSub }) => pubSub.asyncIterator(JOURNAL_ENTRY_UPDATED),
-};
+*/
