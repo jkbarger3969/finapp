@@ -1,8 +1,19 @@
+import Fraction from "fraction.js";
+
 export interface Rational {
   s: 1 | -1;
   n: number;
   d: number;
 }
+
+/**
+ * Utility method to convert {@link Fraction} to {@link Rational}.
+ */
+export const fractionToRational = (fraction: Fraction): Rational => ({
+  s: fraction.s as 1 | -1,
+  n: fraction.n,
+  d: fraction.d,
+});
 
 // https://docs.mongodb.com/manual/reference/operator/query-comparison/index.html
 export type ComparisonOps = "$eq" | "$gt" | "$gte" | "$lt" | "$lte" | "$ne";

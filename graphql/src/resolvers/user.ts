@@ -1,6 +1,3 @@
-import {UserResolvers} from "../graphTypes";
-import {nodeFieldResolver} from "./utils/nodeResolver";
+import { UserResolvers } from "../graphTypes";
 
-export const User:UserResolvers = {
-  user:nodeFieldResolver
-};
+export const User: UserResolvers = {};

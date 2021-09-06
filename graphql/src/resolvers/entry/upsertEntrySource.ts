@@ -1,14 +1,12 @@
-import { UserInputError } from "apollo-server-core";
-import { Db, ObjectId } from "mongodb";
+import { ObjectId } from "mongodb";
 import { AccountingDb } from "../../dataSources/accountingDb/accountingDb";
-import {
-  EntityDbRecord,
-  PersonDbRecord,
-} from "../../dataSources/accountingDb/types";
-import { EntityType, Person, UpsertEntrySource } from "../../graphTypes";
+import { EntityDbRecord } from "../../dataSources/accountingDb/types";
+import { EntityType, UpsertEntrySource } from "../../graphTypes";
+import { addNewPersonRecord } from "../person/addNewPerson";
+import { validatePerson } from "../person/index";
 
 /**
- * Parses and validates {@link UpsertEntrySource} and creates records.
+ * Parses {@link UpsertEntrySource} and creates records.
  */
 export const upsertEntrySourceToEntityDbRecord = async ({
   upsertEntrySourceInput,
@@ -24,26 +22,13 @@ export const upsertEntrySourceToEntityDbRecord = async ({
 
     switch (name) {
       case "person": {
-        const addNewPerson = upsertEntrySourceInput[name];
+        const newPerson = upsertEntrySourceInput[name];
 
-        const newPerson: Omit<PersonDbRecord, "_id"> = {
-          name: {
-            first: addNewPerson.name.first,
-            last: addNewPerson.name.last,
-          },
-        };
+        validatePerson.newPerson({ newPerson });
 
-        if (addNewPerson.email) {
-          newPerson.email = addNewPerson.email;
-        }
-
-        if (addNewPerson.phone) {
-          newPerson.phone = addNewPerson.phone;
-        }
-
-        const { insertedId } = await accountingDb.insertOne({
-          collection: "people",
-          doc: newPerson,
+        const { insertedId } = await addNewPersonRecord({
+          newPerson,
+          accountingDb,
         });
 
         return {
@@ -59,67 +44,16 @@ export const upsertEntrySourceToEntityDbRecord = async ({
 
         switch (source.type) {
           case EntityType.Business:
-            if (
-              !(await accountingDb.findOne({
-                collection: "businesses",
-                filter: {
-                  _id: id,
-                },
-                options: {
-                  projection: {
-                    _id: true,
-                  },
-                },
-              }))
-            ) {
-              throw new UserInputError(
-                `"Business" id "${source.id}" does not exists.`
-              );
-            }
             return {
               type: "Business",
               id,
             };
           case EntityType.Department:
-            if (
-              !(await accountingDb.findOne({
-                collection: "departments",
-                filter: {
-                  _id: id,
-                },
-                options: {
-                  projection: {
-                    _id: true,
-                  },
-                },
-              }))
-            ) {
-              throw new UserInputError(
-                `"Department" id "${source.id}" does not exists.`
-              );
-            }
             return {
               type: "Department",
               id,
             };
           case EntityType.Person:
-            if (
-              !(await accountingDb.findOne({
-                collection: "people",
-                filter: {
-                  _id: id,
-                },
-                options: {
-                  projection: {
-                    _id: true,
-                  },
-                },
-              }))
-            ) {
-              throw new UserInputError(
-                `"Person" id "${source.id}" does not exists.`
-              );
-            }
             return {
               type: "Person",
               id,

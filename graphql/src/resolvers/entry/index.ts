@@ -9,3 +9,10 @@ export {
   EntryItemDbRecord,
   EntryRefundDbRecord,
 } from "./entryResolvers";
+export { addNewEntry } from "./addNewEntry";
+export { addNewEntryRefund } from "./addNewEntryRefund";
+export { updateEntry } from "./updateEntry";
+export { updateEntryRefund } from "./updateEntryRefund";
+export { deleteEntry } from "./deleteEntry";
+export { deleteEntryRefund } from "./deleteEntryRefund";
+export { validateEntry } from "./entryValidators";

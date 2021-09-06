@@ -36,10 +36,7 @@ export type HistoricalDoc<
 > &
   (Fields extends undefined
     ? {}
-    : Omit<
-        Fields,
-        keyof HistoricalFields | keyof HistoricalRoot | IDFieldKeys
-      >) &
+    : Omit<Fields, keyof HistoricalFields | keyof HistoricalRoot>) &
   (IsRootDoc extends true ? HistoricalRoot & IDField<IsMongoRoot> : {});
 
 export type ExtractHistoricalFields<THistoricalDoc> = OmitProperties<
@@ -57,9 +54,7 @@ export type ExtractFields<THistoricalDoc> = OmitProperties<
     [K in string &
       keyof Omit<
         THistoricalDoc,
-        | keyof HistoricalRoot
-        | IDFieldKeys
-        | keyof ExtractHistoricalFields<THistoricalDoc>
+        keyof HistoricalRoot | keyof ExtractHistoricalFields<THistoricalDoc>
       >]: THistoricalDoc[K];
   },
   never
@@ -113,7 +108,7 @@ export class NewHistoricalDoc<
   addFieldValued<
     K extends Exclude<
       keyof Fields,
-      keyof HistoricalFields | keyof HistoricalRoot | IDFieldKeys
+      keyof HistoricalFields | keyof HistoricalRoot
     >
   >(field: K, value: Fields[K]): this {
     this.#fields.set(field, value);
@@ -124,10 +119,7 @@ export class NewHistoricalDoc<
     return this.valueOf();
   }
 
-  valueOf(): Omit<
-    HistoricalDoc<IsRootDoc, HistoricalFields, Fields>,
-    IDFieldKeys
-  > {
+  valueOf(): HistoricalDoc<IsRootDoc, HistoricalFields, Fields> {
     const docHistory = this.#docHistory;
     const doc = {
       ...(this.#isRootDoc ? docHistory.rootHistory : undefined),
@@ -167,7 +159,7 @@ export type HistoricalFieldUpdate<
   FieldPrefix extends string | undefined = undefined
 > = PrefixFieldPath<
   {
-    [K in keyof HistoricalFields]: HistoricalFieldUpdateValue<
+    [K in keyof HistoricalFields]?: HistoricalFieldUpdateValue<
       HistoricalFields[K]
     >;
   },
@@ -175,7 +167,7 @@ export type HistoricalFieldUpdate<
 >;
 
 export type Update<
-  RootDoc extends true | false,
+  IsRootDoc extends true | false,
   HistoricalFields extends Record<string, unknown>,
   Fields extends Record<string, unknown> | undefined = undefined,
   FieldPrefix extends string | undefined = undefined
@@ -185,37 +177,42 @@ export type Update<
     FieldPrefix
   >;
 } & (Fields extends undefined
-  ? RootDoc extends true
+  ? IsRootDoc extends true
     ? {
         $set: PrefixFieldPath<Pick<HistoricalRoot, "lastUpdate">, FieldPrefix>;
       }
-    : Record<string, never>
-  : RootDoc extends true
+    : {}
+  : IsRootDoc extends true
   ? {
-      $set: PrefixFieldPath<
-        Omit<
-          Fields,
-          keyof HistoricalFields | keyof HistoricalRoot | IDFieldKeys
-        >,
-        FieldPrefix
-      > &
-        PrefixFieldPath<Pick<HistoricalRoot, "lastUpdate">, FieldPrefix>;
+      $set: Partial<
+        PrefixFieldPath<
+          Omit<
+            Fields,
+            keyof HistoricalFields | keyof HistoricalRoot | IDFieldKeys
+          >,
+          FieldPrefix
+        > &
+          PrefixFieldPath<Pick<HistoricalRoot, "lastUpdate">, FieldPrefix>
+      >;
     }
   : {
-      $set: PrefixFieldPath<
-        Omit<
-          Fields,
-          keyof HistoricalFields | keyof HistoricalRoot | IDFieldKeys
-        >,
-        FieldPrefix
+      $set: Partial<
+        PrefixFieldPath<
+          Omit<
+            Fields,
+            keyof HistoricalFields | keyof HistoricalRoot | IDFieldKeys
+          >,
+          FieldPrefix
+        >
       >;
     });
 
 export class UpdateHistoricalDoc<
-  RootDoc extends true | false,
-  HistoricalFields extends Record<string, unknown>,
-  Fields extends Record<string, unknown> | undefined = undefined,
-  FieldPrefix extends string | undefined = undefined
+  THistoricalDoc,
+  FieldPrefix extends string | undefined = undefined,
+  IsRootDoc extends true | false = ExtractIsRootDoc<THistoricalDoc>,
+  HistoricalFields extends ExtractHistoricalFields<THistoricalDoc> = ExtractHistoricalFields<THistoricalDoc>,
+  Fields extends ExtractFields<THistoricalDoc> = ExtractFields<THistoricalDoc>
 > {
   readonly #historicalFields = new Map<
     string & keyof HistoricalFields,
@@ -223,7 +220,7 @@ export class UpdateHistoricalDoc<
   >();
   readonly #fields = new Map<string & keyof Fields, Fields[keyof Fields]>();
   readonly #docHistory: DocHistory;
-  readonly #isRootDoc: RootDoc;
+  readonly #isRootDoc: IsRootDoc;
   readonly #fieldPrefix: FieldPrefix;
 
   constructor({
@@ -232,7 +229,7 @@ export class UpdateHistoricalDoc<
     fieldPrefix,
   }: {
     docHistory: DocHistory;
-    isRootDoc: RootDoc;
+    isRootDoc: IsRootDoc;
     fieldPrefix?: FieldPrefix;
   }) {
     this.#docHistory = docHistory;
@@ -270,7 +267,7 @@ export class UpdateHistoricalDoc<
     return this.valueOf();
   }
 
-  valueOf(): Update<RootDoc, HistoricalFields, Fields, FieldPrefix> | null {
+  valueOf(): Update<IsRootDoc, HistoricalFields, Fields, FieldPrefix> | null {
     if (!this.hasUpdate) {
       return null;
     }
@@ -279,17 +276,22 @@ export class UpdateHistoricalDoc<
 
     const fieldPrefix = this.#fieldPrefix;
 
-    const update = {} as Update<RootDoc, HistoricalFields, Fields, FieldPrefix>;
+    const update = {} as Update<
+      IsRootDoc,
+      HistoricalFields,
+      Record<string, unknown>,
+      FieldPrefix
+    >;
 
     const $set = {} as Update<
-      RootDoc,
+      IsRootDoc,
       HistoricalFields,
-      Fields,
+      Record<string, unknown>,
       FieldPrefix
     >["$set"];
 
     const $push = {} as Update<
-      RootDoc,
+      IsRootDoc,
       HistoricalFields,
       Fields,
       FieldPrefix
@@ -325,7 +327,7 @@ export class UpdateHistoricalDoc<
       update.$push = $push;
     }
 
-    return update;
+    return update as Update<IsRootDoc, HistoricalFields, Fields, FieldPrefix>;
   }
 
   toString() {

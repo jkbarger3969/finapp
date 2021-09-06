@@ -114,9 +114,9 @@ enum PaymentMethodType {
 }
 
 """
-One field is required and fields are mutually exclusive.  Checked at runtime.
+One field is required and fields are mutually exclusive..
 """
-input PaymentMethodInput @requireOneField @mutexFields {
+input UpsertPaymentMethod {
   card: PaymentMethodCardInput
   accountCard: PaymentMethodAccountCardInput
   check: PaymentMethodCheckInput

@@ -14,6 +14,7 @@ import mongoDb from "./mongoDb";
 import typeDefs from "./schema";
 import { ObjectId } from "mongodb";
 import { AccountingDb } from "./dataSources/accountingDb/accountingDb";
+import { makeExecutableSchema } from "@graphql-tools/schema";
 
 const PORT = process.env.PORT || 4000;
 
@@ -40,9 +41,13 @@ const PORT = process.env.PORT || 4000;
 
     const httpServer = http.createServer();
 
-    const server = new ApolloServer({
+    const schema = makeExecutableSchema({
       typeDefs,
       resolvers,
+    });
+
+    const server = new ApolloServer({
+      schema,
       context: () => ({
         ...context,
         reqDateTime: new Date(),

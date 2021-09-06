@@ -1,7 +1,6 @@
 import { UserInputError } from "apollo-server-core";
 import { pascalCase } from "change-case";
 import { ObjectId } from "mongodb";
-import { AccountingDb } from "../../dataSources/accountingDb/accountingDb";
 import {
   PaymentMethodCardDBRecord,
   PaymentMethodCheckDBRecord,
@@ -9,50 +8,33 @@ import {
   PaymentCardTypeDbRecord,
   PaymentMethodTypeOnlyDBRecord,
 } from "../../dataSources/accountingDb/types";
-import { PaymentMethodInput } from "../../graphTypes";
+import { UpsertPaymentMethod } from "../../graphTypes";
 
-export const paymentMethodInputToDbRecord = async ({
-  paymentMethodInput,
-  validate,
+export const upsertPaymentMethodToDbRecord = ({
+  upsertPaymentMethod,
 }: {
-  paymentMethodInput: PaymentMethodInput;
-  validate?: AccountingDb;
-}): Promise<PaymentMethodDBRecord> => {
-  const [name] = Object.keys(paymentMethodInput) as [keyof PaymentMethodInput];
+  upsertPaymentMethod: UpsertPaymentMethod;
+}): PaymentMethodDBRecord => {
+  const [field] = Object.keys(upsertPaymentMethod) as [
+    keyof UpsertPaymentMethod
+  ];
 
-  switch (name) {
+  switch (field) {
     case "accountCard": {
-      const { currency, card: cardId } = paymentMethodInput[name];
+      const { currency, card: cardId } = upsertPaymentMethod[field];
       const card = new ObjectId(cardId);
       const payMethod: PaymentMethodCardDBRecord = {
         currency,
         type: "Card",
         card,
       };
-      if (validate) {
-        if (
-          !(await validate.findOne({
-            collection: "paymentCards",
-            filter: { _id: card },
-            options: {
-              projection: {
-                _id: true,
-              },
-            },
-          }))
-        ) {
-          throw new UserInputError(
-            `"AccountCard" id "${cardId}" does not exists.`
-          );
-        }
-      }
       return payMethod;
     }
     case "accountCheck": {
       const {
         currency,
         check: { account: accountId, checkNumber },
-      } = paymentMethodInput[name];
+      } = upsertPaymentMethod[field];
       const account = new ObjectId(accountId);
 
       const payMethod: PaymentMethodCheckDBRecord = {
@@ -64,31 +46,13 @@ export const paymentMethodInputToDbRecord = async ({
         },
       };
 
-      if (validate) {
-        if (
-          !(await validate.findOne({
-            collection: "accounts",
-            filter: { _id: account },
-            options: {
-              projection: {
-                _id: true,
-              },
-            },
-          }))
-        ) {
-          throw new UserInputError(
-            `"Account" id "${accountId}" does not exists.`
-          );
-        }
-      }
-
       return payMethod;
     }
     case "card": {
       const {
         currency,
         card: { trailingDigits, type },
-      } = paymentMethodInput[name];
+      } = upsertPaymentMethod[field];
       const payMethod: PaymentMethodCardDBRecord = {
         currency,
         type: "Card",
@@ -104,7 +68,7 @@ export const paymentMethodInputToDbRecord = async ({
       const {
         currency,
         check: { checkNumber },
-      } = paymentMethodInput[name];
+      } = upsertPaymentMethod[field];
       const payMethod: PaymentMethodCheckDBRecord = {
         currency,
         type: "Check",
@@ -120,10 +84,10 @@ export const paymentMethodInputToDbRecord = async ({
     case "combination":
     case "online":
     case "unknown": {
-      const { currency } = paymentMethodInput[name];
+      const { currency } = upsertPaymentMethod[field];
       const payMethod: PaymentMethodTypeOnlyDBRecord = {
         currency,
-        type: pascalCase(name) as PaymentMethodTypeOnlyDBRecord["type"],
+        type: pascalCase(field) as PaymentMethodTypeOnlyDBRecord["type"],
       };
       return payMethod;
     }

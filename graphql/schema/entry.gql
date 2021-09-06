@@ -1,45 +1,19 @@
-# union EntrySource = Person | Business | Department
-
 enum EntryType {
   CREDIT
   DEBIT
 }
 
+"""
+`Entry.source` value.
+"""
 type EntryDateOfRecord {
-  """
-  ISO 8601
-  """
   date: Date!
   overrideFiscalYear: Boolean!
-}
-
-input EntryAddDateOfRecord {
-  """
-  ISO 8601
-  """
-  date: Date!
-  overrideFiscalYear: Boolean!
-}
-input EntryUpdateDateOfRecord
-  @mutexFields(fields: [["date", "clear"], ["date", "overrideFiscalYear"]]) {
-  """
-  ISO 8601
-  """
-  date: Date
-  overrideFiscalYear: Boolean
-  """
-  When "clear" field is true, the "date" and "overrideFiscalYear" are ignored.
-  When "clear" field is false or null, it is ignored i.e. does nothing.
-  """
-  clear: Boolean
 }
 
 type Entry {
   id: ID!
   category: Category!
-  """
-  ISO 8601
-  """
   date: Date!
   dateOfRecord: EntryDateOfRecord
   deleted: Boolean!
@@ -53,9 +27,9 @@ type Entry {
   refunds: [EntryRefund!]!
   source: Entity!
   total: Rational!
-  # type: EntryType!
 }
 
+# Entry Queries
 input EntriesWhereSource {
   businesses: BusinessesWhere
   departments: DepartmentsWhere
@@ -92,110 +66,63 @@ input EntriesWhere {
   nor: [EntriesWhere!]
 }
 
-enum SourceType {
-  BUSINESS
-  DEPARTMENT
-  PERSON
-}
-
 """
-One field is required and fields are mutually exclusive.  Checked at runtime.
+`NewEntry.source` and `UpdateEntry.source` input.  Choose ONE field only.
 """
-input UpsertEntrySource @requireOneField @mutexFields {
+input UpsertEntrySource {
   source: EntityInput
-  person: AddNewPerson
+  business: NewBusiness
+  person: NewPerson
 }
 
-input EntryUpdateFields {
-  """
-  ISO 8601
-  """
-  date: Date
-  dateOfRecord: EntryUpdateDateOfRecord
-  department: ID
-  category: ID
-  paymentMethod: ID
-  description: String
-  total: Rational
-  source: UpsertEntrySource
-  reconciled: Boolean
+"""
+`NewEntry.dateOfRecord` input.
+"""
+input NewEntryDateOfRecord {
+  date: Date!
+  overrideFiscalYear: Boolean!
 }
 
 input NewEntry {
-  """
-  ISO 8601
-  """
-  date: Date! @dateConstraint(allowFuture: false, precision: DAY)
-  dateOfRecord: EntryAddDateOfRecord
-  department: ID!
-  category: ID!
-  paymentMethod: PaymentMethodInput!
-  description: String
-  total: Rational! @rationalConstraint(gt: 0.0)
-  source: UpsertEntrySource!
-  reconciled: Boolean
-}
-
-input UpdateEntry @requireOneField(fields: [["!", "id"]]) {
-  id: ID!
-  """
-  ISO 8601
-  """
-  date: Date @dateConstraint(allowFuture: false, precision: DAY)
-  dateOfRecord: EntryUpdateDateOfRecord
-  department: ID
-  category: ID
-  paymentMethod: ID
-  description: String
-  total: Rational @rationalConstraint(gt: 0.0)
-  source: UpsertEntrySource
-  reconciled: Boolean
-}
-
-input EntryAddFields {
-  """
-  ISO 8601
-  """
   date: Date!
-  dateOfRecord: EntryAddDateOfRecord
+  dateOfRecord: NewEntryDateOfRecord
   department: ID!
   category: ID!
-  paymentMethod: PaymentMethodInput!
+  paymentMethod: UpsertPaymentMethod!
   description: String
   total: Rational!
   source: UpsertEntrySource!
+  reconciled: Boolean
+}
+
+"""
+`UpdateEntry.dateOfRecord` input.  Fields "date" and "overrideFiscalYear" are mutually exclusive to field "clear".  Requires at least ONE optional field.
+"""
+input UpdateEntryDateOfRecord {
+  date: Date
+  overrideFiscalYear: Boolean
+  clear: Boolean
+}
+
+"""
+Requirers at least ONE optional field.
+"""
+input UpdateEntry {
+  id: ID!
+  date: Date
+  dateOfRecord: UpdateEntryDateOfRecord
+  department: ID
+  category: ID
+  paymentMethod: UpsertPaymentMethod
+  description: String
+  total: Rational
+  source: UpsertEntrySource
   reconciled: Boolean
 }
 
 # Refunds
-input NewEntryRefund {
-  """
-  ISO 8601
-  """
-  date: Date!
-  description: String
-  paymentMethod: PaymentMethodInput!
-  total: Rational!
-  reconciled: Boolean
-}
-
-input UpdateEntryRefund @requireOneField(fields: [["!", "id"]]) {
-  id: ID!
-  """
-  ISO 8601
-  """
-  date: Date
-  description: String
-  paymentMethod: PaymentMethodInput
-  total: Rational
-  reconciled: Boolean
-}
-
 type EntryRefund {
   id: ID!
-  """
-  ISO 8601
-  """
   date: Date!
   deleted: Boolean!
   description: String
@@ -204,6 +131,24 @@ type EntryRefund {
   paymentMethod: PaymentMethodInterface!
   reconciled: Boolean!
   total: Rational!
+}
+
+input NewEntryRefund {
+  entry: ID!
+  date: Date!
+  description: String
+  paymentMethod: UpsertPaymentMethod!
+  total: Rational!
+  reconciled: Boolean
+}
+
+input UpdateEntryRefund {
+  id: ID!
+  date: Date
+  description: String
+  paymentMethod: UpsertPaymentMethod
+  total: Rational
+  reconciled: Boolean
 }
 
 input EntryRefundsWhere {
@@ -221,28 +166,6 @@ input EntryRefundsWhere {
   and: [EntryRefundsWhere!]
   or: [EntryRefundsWhere!]
   nor: [EntryRefundsWhere!]
-}
-
-input EntryAddRefundFields {
-  """
-  ISO 8601
-  """
-  date: Date!
-  description: String
-  paymentMethod: ID!
-  total: Rational!
-  reconciled: Boolean
-}
-
-input EntryUpdateRefundFields {
-  """
-  ISO 8601
-  """
-  date: Date
-  description: String
-  paymentMethod: ID
-  total: Rational
-  reconciled: Boolean
 }
 
 # Items
@@ -341,45 +264,6 @@ type Mutation {
   addNewEntryRefund(input: NewEntryRefund!): AddNewEntryRefundPayload!
   updateEntryRefund(input: UpdateEntryRefund!): UpdateEntryRefundPayload!
   deleteEntryRefund(id: ID!): DeleteEntryRefundPayload!
-
-  # entryUpdate(
-  #   id: ID!
-  #   fields: EntryUpdateFields!
-  #   """
-  #   paymentMethodAdd and paymentMethodUpdate are mutually exclusive.
-  #   """
-  #   # paymentMethodAdd: PaymentMethodAddFields
-  #   paymentMethodUpdate: EntryUpdatePaymentMethod
-  #   """
-  #   personAdd and businessAdd are mutually exclusive.
-  #   """
-  #   personAdd: PersonAddFields
-  #   businessAdd: BusinessAddFields
-  # ): Entry!
-  # entryAdd(
-  #   fields: EntryAddFields!
-  #   # paymentMethodAdd: PaymentMethodAddFields
-  #   personAdd: PersonAddFields
-  #   businessAdd: BusinessAddFields
-  # ): Entry!
-  # entryDelete(id: ID!): Entry!
-  # entryAddRefund(
-  #   id: ID!
-  #   fields: EntryAddRefundFields! # paymentMethodAdd: PaymentMethodAddFields
-  # ): Entry!
-  # entryUpdateRefund(
-  #   id: ID!
-  #   fields: EntryUpdateRefundFields!
-  #   # paymentMethodAdd: PaymentMethodAddFields
-  #   paymentMethodUpdate: EntryUpdatePaymentMethod
-  # ): Entry!
-  # entryDeleteRefund(id: ID!): Entry!
-  # entryAddItem(id: ID!, fields: EntryAddItemFields!): EntryItemUpsertResult!
-  # entryUpdateItem(
-  #   id: ID!
-  #   fields: EntryUpdateItemFields!
-  # ): EntryItemUpsertResult!
-  # entryDeleteItem(id: ID!): EntryItemUpsertResult!
 }
 
 type Subscription {

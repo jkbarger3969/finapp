@@ -1,11 +1,6 @@
 import { ObjectId } from "mongodb";
 
-import {
-  QueryResolvers,
-  MutationResolvers,
-  BusinessResolvers,
-} from "../graphTypes";
-import { nodeFieldResolver } from "./utils/nodeResolver";
+import { MutationResolvers } from "../graphTypes";
 
 const addId = { $addFields: { id: { $toString: "$_id" } } };
 
@@ -103,10 +98,5 @@ export const addBusiness: Extract<MutationResolvers["addBusiness"], Function> =
       )
       .toArray();
 
-    return newBusiness[0];
+    return newBusiness as any;
   };
-
-/* export const Business: BusinessResolvers = {
-  budget: nodeFieldResolver,
-  departments,
-}; */

@@ -8,13 +8,13 @@ input PersonNameInput {
   last: String!
 }
 
-input PersonAddFields @requireOneField(fields: [["email", "phone"]]) {
+input PersonAddFields @requireOneField(fieldGroups: [["email", "phone"]]) {
   name: PersonNameInput!
   email: String
   phone: String
 }
 
-input AddNewPerson @requireOneField(fields: [["email", "phone"]]) {
+input NewPerson @requireOneField(fieldGroups: [["email", "phone"]]) {
   name: PersonNameInput!
   email: String
   phone: String
@@ -64,5 +64,5 @@ extend type Query {
 
 extend type Mutation {
   addPerson(fields: PersonAddFields!): Person!
-  addNewPerson(input: AddNewPerson!): AddNewPersonPayload!
+  addNewPerson(input: NewPerson!): AddNewPersonPayload!
 }

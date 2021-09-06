@@ -1,69 +1,54 @@
 import { ObjectId } from "mongodb";
-import { EntryDbRecord } from "../../dataSources/accountingDb/types";
 
-import {
-  AddNewEntryPayload,
-  Entity,
-  MutationResolvers,
-} from "../../graphTypes";
-import { NodeValue } from "../../types";
-import { Rational } from "../../utils/mongoRational";
-import { paymentMethodInputToDbRecord } from "../paymentMethod";
-import { PaymentMethodDBRecord } from "../paymentMethod/paymentMethodResolvers";
-import {
-  DocHistory,
-  ExtractHistoricalFields,
-  NewHistoricalDoc,
-} from "../utils/DocHistory";
-import { validatePayMethodAndCategory } from "./entryValidators";
+import { EntryDbRecord } from "../../dataSources/accountingDb/types";
+import { MutationResolvers } from "../../graphTypes";
+import { fractionToRational } from "../../utils/mongoRational";
+import { upsertPaymentMethodToDbRecord } from "../paymentMethod";
+import { DocHistory, NewHistoricalDoc } from "../utils/DocHistory";
+import { validateEntry } from "./entryValidators";
 import { upsertEntrySourceToEntityDbRecord } from "./upsertEntrySource";
 
-export const addNewEntry: MutationResolvers["addNewEntry"] = async (
+export const addNewEntry: MutationResolvers["addNewEntry"] = (
   _,
   { input },
   { reqDateTime, user, dataSources: { accountingDb } }
-) => {
-  const {
-    date,
-    dateOfRecord,
-    department: departmentInput,
-    category: categoryInput,
-    paymentMethod: paymentMethodInput,
-    description,
-    total: totalInput,
-    source: sourceInput,
-    reconciled = true,
-  } = input;
-
-  const category = new ObjectId(categoryInput);
-  const department = new ObjectId(departmentInput);
-  const total: Rational = {
-    s: totalInput.s as 1 | -1,
-    n: totalInput.n,
-    d: totalInput.d,
-  };
-
-  const newEntry = await accountingDb.withTransaction(async () => {
-    const docHistory = new DocHistory({ by: user.id, date: reqDateTime });
-
-    // convert and validate
-    const paymentMethod = await paymentMethodInputToDbRecord({
-      paymentMethodInput,
-      validate: accountingDb,
+) =>
+  accountingDb.withTransaction(async () => {
+    // validate NewEntry input
+    await validateEntry.newEntry({
+      newEntry: input,
+      reqDateTime,
+      accountingDb,
     });
 
-    // Validate payment method and category compatibility
-    await validatePayMethodAndCategory({
-      category,
-      paymentMethod,
-      accountingDb,
-      isRefund: false,
+    const {
+      date,
+      dateOfRecord,
+      department: departmentInput,
+      category: categoryInput,
+      paymentMethod: paymentMethodInput,
+      description: descriptionInput,
+      total: totalInput,
+      source: sourceInput,
+      reconciled = false,
+    } = input;
+
+    const category = new ObjectId(categoryInput);
+    const department = new ObjectId(departmentInput);
+    const description = descriptionInput?.trim();
+    const total = fractionToRational(totalInput);
+
+    // convert
+    const paymentMethod = upsertPaymentMethodToDbRecord({
+      upsertPaymentMethod: paymentMethodInput,
     });
 
     const source = await upsertEntrySourceToEntityDbRecord({
       upsertEntrySourceInput: sourceInput,
       accountingDb,
     });
+
+    const docHistory = new DocHistory({ by: user.id, date: reqDateTime });
 
     const newDocBuilder = new NewHistoricalDoc<EntryDbRecord>({
       docHistory,
@@ -97,20 +82,15 @@ export const addNewEntry: MutationResolvers["addNewEntry"] = async (
       newDocBuilder.addFieldValued("dateOfRecord", dateOfRecordDoc);
     }
 
-    const doc = newDocBuilder.valueOf();
-
     const { insertedId } = await accountingDb.insertOne({
       collection: "entries",
-      doc,
+      doc: newDocBuilder.valueOf(),
     });
 
     return {
-      newEntry: {
-        _id: insertedId,
-        ...doc,
-      },
+      newEntry: await accountingDb.findOne({
+        collection: "entries",
+        filter: { _id: insertedId },
+      }),
     };
   });
-
-  return newEntry as unknown as AddNewEntryPayload;
-};

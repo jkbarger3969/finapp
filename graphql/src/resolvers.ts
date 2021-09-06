@@ -22,24 +22,21 @@ import {
   DepartmentAncestor,
 } from "./resolvers/department";
 import { Entity, entities } from "./resolvers/entity";
-// import { entryDelete } from "./resolvers/entry";
 import {
+  addNewEntry,
+  addNewEntryRefund,
   entry,
   entries,
   entryRefunds,
+  deleteEntry,
+  deleteEntryRefund,
   Entry,
   EntryItem,
   EntryRefund,
+  updateEntry,
+  updateEntryRefund,
 } from "./resolvers/entry/index";
-import entryAdd from "./resolvers/entry/entryAdd";
-import entryUpdate from "./resolvers/entry/entryUpdate";
 import entryRefund from "./resolvers/entry/entryRefund";
-import entryAddRefund from "./resolvers/entry/entryAddRefund";
-import entryUpdateRefund from "./resolvers/entry/entryUpdateRefund";
-import entryDeleteRefund from "./resolvers/entry/entryDeleteRefund";
-import entryAddItem from "./resolvers/entry/entryAddItem";
-import entryUpdateItem from "./resolvers/entry/entryUpdateItem";
-import entryDeleteItem from "./resolvers/entry/entryDeleteItem";
 import entryItem from "./resolvers/entry/entryItem";
 // import entryUpserted from "./resolvers/entry/entryUpserted";
 import {
@@ -113,17 +110,14 @@ const resolvers: Resolvers = {
     fiscalYears,
   },
   Mutation: {
-    // entryAdd,
-    entryUpdate,
-    // entryDelete,
-    entryAddRefund,
-    entryUpdateRefund,
-    entryDeleteRefund,
-    entryAddItem,
-    entryUpdateItem,
-    entryDeleteItem,
-    addPerson,
     addBusiness,
+    addNewEntry,
+    addNewEntryRefund,
+    addPerson,
+    deleteEntry,
+    deleteEntryRefund,
+    updateEntry,
+    updateEntryRefund,
   },
   Subscription: {
     // entryUpserted,

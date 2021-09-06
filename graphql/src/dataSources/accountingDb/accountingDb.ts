@@ -5,10 +5,14 @@ import {
   ClientSession,
   FilterQuery,
   OptionalId,
+  UpdateQuery,
 } from "mongodb";
 
 import { Context } from "../../types";
 import { FindOneOptions, CollectionSchemaMap } from "./types";
+
+export type UpdateOne<TCollection extends keyof CollectionSchemaMap> =
+  UpdateQuery<CollectionSchemaMap[TCollection]>;
 
 export class AccountingDb extends DataSource<Context> {
   readonly #client: MongoClient;
@@ -82,6 +86,28 @@ export class AccountingDb extends DataSource<Context> {
       );
   }
 
+  updateOne<TCollection extends keyof CollectionSchemaMap>({
+    collection,
+    filter,
+    update,
+  }: {
+    collection: TCollection;
+    filter: FilterQuery<CollectionSchemaMap[TCollection]>;
+    update: UpdateOne<TCollection>;
+  }) {
+    return this.#db
+      .collection<CollectionSchemaMap[TCollection]>(collection)
+      .updateOne(
+        filter,
+        update,
+        this.#session && this.#session.inTransaction()
+          ? {
+              session: this.#session,
+            }
+          : undefined
+      );
+  }
+
   findOne<TCollection extends keyof CollectionSchemaMap>({
     collection,
     filter,
@@ -90,6 +116,7 @@ export class AccountingDb extends DataSource<Context> {
     collection: TCollection;
     filter: FilterQuery<CollectionSchemaMap[TCollection]>;
     options?: FindOneOptions<TCollection>;
+    skipCache?: boolean;
   }) {
     return this.#db
       .collection<CollectionSchemaMap[TCollection]>(collection)

@@ -5,14 +5,20 @@
     "./src/graphTypes.ts": {
       "plugins": ["typescript", "typescript-resolvers"],
       "config": {
-        "useImplementingTypes": true,
         "allowParentTypeOverride": true,
         "contextType": "./types#Context",
+        "mappers": {
+          "Entry": "./dataSources/accountingDb/types#EntryDbRecord",
+          "EntryRefund": "./dataSources/accountingDb/types#EntryRefundDbRecord",
+          "NewEntryRefund": "./dataSources/accountingDb/types#EntryRefundDbRecord"
+        },
         "noSchemaStitching": true,
+        "optionalResolveType": true,
         "scalars": {
           "Date": "Date",
           "Rational": "fraction.js#default as Fraction"
-        }
+        },
+        "useImplementingTypes": true
       }
     },
     "./public/fragmentTypes.json": {

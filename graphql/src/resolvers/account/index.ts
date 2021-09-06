@@ -17,3 +17,4 @@ export type {
   AccountCardDbRecord,
   AccountCheckDbRecord,
 } from "./accountResolvers";
+export { validateAccount } from "./accountValidators";

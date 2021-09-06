@@ -3,19 +3,17 @@ Enforces mutual exclusion of fields.
 """
 directive @mutexFields(
   """
-  Groups of mutually exclusive fields. Default: All Fields
+  Sets of mutually exclusive fields. Default: All Fields
   """
-  fields: [[String!]!]
+  fieldGroups: [[String!]!]
 ) on INPUT_OBJECT
 
 """
-Requires at least one field.
+Requires at least one field.  Input Object Required Fields are ignored.
 """
 directive @requireOneField(
   """
-  Requires at least one field from each set.
-  Add a "!" to field set to require one field NOT in the set. `["!",...]`
-  Default: One of All fields
+  Sets of fields in which one is required. Default: One of All fields
   """
-  fields: [[String!]!]
+  fieldGroups: [[String!]!]
 ) on INPUT_OBJECT

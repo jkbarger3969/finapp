@@ -23,21 +23,8 @@ export type EntryTypeDbRecord = PascalCase<EntryType>;
 export type EntryItemDbRecord = HistoricalDoc<
   true,
   {
-    date: Date;
-    deleted: boolean;
-    description?: string;
-    paymentMethod: PaymentMethodDBRecord;
-    reconciled: boolean;
-    total: Rational;
-  },
-  {},
-  false
->;
-
-export type EntryRefundDbRecord = HistoricalDoc<
-  true,
-  {
     category?: ObjectId;
+    date: Date;
     deleted: boolean;
     department?: ObjectId;
     description?: string;
@@ -48,7 +35,23 @@ export type EntryRefundDbRecord = HistoricalDoc<
   false
 >;
 
-export type EntityDbRecord = NodeDbRecord<PascalCase<EntityType>>;
+export type EntryRefundDbRecord = HistoricalDoc<
+  true,
+  {
+    date: Date;
+    deleted: boolean;
+    description?: string;
+    paymentMethod: PaymentMethodDBRecord;
+    reconciled: boolean;
+    total: Rational;
+  },
+  { id: ObjectId },
+  false
+>;
+
+export type EntityTypeDbRecord = PascalCase<EntityType>;
+
+export type EntityDbRecord = NodeDbRecord<EntityTypeDbRecord>;
 
 export type EntryDbRecord = HistoricalDoc<
   true,

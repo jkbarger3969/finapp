@@ -5,4 +5,5 @@ export {
   PaymentMethodCard,
 } from "./paymentMethodResolvers";
 export type { PaymentCardTypeDbRecord } from "./paymentMethodResolvers";
-export { paymentMethodInputToDbRecord } from "./paymentMethodInput";
+export { upsertPaymentMethodToDbRecord } from "./upsertPaymentMethod";
+export { validatePaymentMethod } from "./paymentMethodValidators";

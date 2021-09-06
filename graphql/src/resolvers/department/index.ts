@@ -5,3 +5,4 @@ export {
   DepartmentAncestor,
   DepartmentDbRecord,
 } from "./departmentResolvers";
+export { validateDepartment } from "./departmentValidators";
