@@ -20,7 +20,7 @@ export interface AliasDbRecord {
 export const AliasTarget: AliasTargetResolvers = {
   // __typename added with addTypename
   __resolveType: ({ __typename }) => __typename,
-};
+} as any;
 
 const AliasResolver: AliasResolvers<Context, AliasDbRecord> = {
   id: ({ _id }) => _id.toString(),
@@ -41,4 +41,4 @@ const AliasResolver: AliasResolvers<Context, AliasDbRecord> = {
   type: ({ type }) => snakeCase(type).toUpperCase() as AliasType,
 };
 
-export const Alias = (AliasResolver as unknown) as AliasResolvers;
+export const Alias = AliasResolver as unknown as AliasResolvers;

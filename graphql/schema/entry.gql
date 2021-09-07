@@ -37,7 +37,7 @@ input EntriesWhereSource {
 }
 
 input EntriesWhereDateOfRecord {
-  date: WhereDateBeta
+  date: WhereDate
   overrideFiscalYear: Boolean
 }
 
@@ -47,7 +47,7 @@ input EntriesWhere {
   refunds: EntryRefundsWhere
   items: EntryItemsWhere
   type: EntryType
-  date: WhereDateBeta
+  date: WhereDate
   dateOfRecord: EntriesWhereDateOfRecord
   department: DepartmentsWhere
   fiscalYear: FiscalYearsWhere
@@ -57,7 +57,7 @@ input EntriesWhere {
   total: WhereRational
   source: EntriesWhereSource
   reconciled: Boolean
-  lastUpdate: WhereDateBeta
+  lastUpdate: WhereDate
   deleted: Boolean
 
   # Logic
@@ -154,12 +154,12 @@ input UpdateEntryRefund {
 input EntryRefundsWhere {
   # Fields
   id: WhereId
-  date: WhereDateBeta
+  date: WhereDate
   entry: EntriesWhere
   # paymentMethod: PaymentMethodsWhere
   total: WhereRational
   reconciled: Boolean
-  lastUpdate: WhereDateBeta
+  lastUpdate: WhereDate
   deleted: Boolean
 
   # Logic
@@ -187,7 +187,7 @@ input EntryItemsWhere {
   category: CategoriesWhere
   units: WhereInt
   total: WhereRational
-  lastUpdate: WhereDateBeta
+  lastUpdate: WhereDate
   deleted: Boolean
 
   # Logic
@@ -196,38 +196,12 @@ input EntryItemsWhere {
   nor: [EntryItemsWhere!]
 }
 
-input EntryAddItemFields {
-  department: ID
-  category: ID
-  description: String
-  units: Int!
-  total: Rational!
-}
-
-input EntryUpdateItemFields {
-  department: ID
-  category: ID
-  description: String
-  units: Int
-  total: Rational
-}
-
-type EntryItemUpsertResult {
-  entryItem: EntryItem!
-  entry: Entry!
-}
-
 type Query {
   entries(where: EntriesWhere): [Entry!]!
   entry(id: ID!): Entry
   entryRefund(id: ID!): EntryRefund
   entryRefunds(where: EntryRefundsWhere): [EntryRefund!]!
   entryItem(id: ID!): EntryItem
-}
-
-input EntryUpdatePaymentMethod {
-  id: ID!
-  # fields: PaymentMethodUpdateFields!
 }
 
 type AddNewEntryPayload {

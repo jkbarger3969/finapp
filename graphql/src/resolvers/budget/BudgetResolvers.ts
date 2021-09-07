@@ -47,7 +47,7 @@ const fiscalYear: BudgetResolvers<Context, BudgetDbRecord>["fiscalYear"] = (
 export const BudgetOwner: BudgetOwnerResolvers = {
   // __typename added with addTypename
   __resolveType: ({ __typename }) => __typename,
-};
+} as any;
 
 const BudgetResolver: BudgetResolvers<Context, BudgetDbRecord> = {
   id: ({ _id }) => _id.toString(),
@@ -56,4 +56,4 @@ const BudgetResolver: BudgetResolvers<Context, BudgetDbRecord> = {
   fiscalYear,
 } as const;
 
-export const Budget = (BudgetResolver as unknown) as BudgetResolvers;
+export const Budget = BudgetResolver as unknown as BudgetResolvers;

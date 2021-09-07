@@ -12,14 +12,6 @@ type Alias {
   name: String!
   type: AliasType!
 }
-
-input AliasWhereTarget {
-  eq: NodeInput
-  ne: NodeInput
-  in: [NodeInput!]
-  nin: [NodeInput!]
-}
-
 input AliasesWhere {
   # Fields
   id: WhereId

@@ -15,23 +15,8 @@ type Business {
   vendor: Vendor
 }
 
-input BusinessAddFields {
-  name: String!
-}
-
 input NewBusiness {
   name: String!
-}
-
-input BusinessesWhereInput {
-  eq: ID
-  ne: ID
-  in: [ID!]
-  nin: [ID!]
-  name: WhereRegexInput
-  and: [BusinessesWhereInput!]
-  or: [BusinessesWhereInput!]
-  nor: [BusinessesWhereInput!]
 }
 
 input BusinessesWhere {
@@ -51,5 +36,5 @@ extend type Query {
 }
 
 extend type Mutation {
-  addBusiness(fields: BusinessAddFields!): Business!
+  addNewBusiness(input: NewBusiness!): Business!
 }

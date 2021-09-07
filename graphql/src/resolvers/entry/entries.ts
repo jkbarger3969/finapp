@@ -16,10 +16,9 @@ import {
 } from "../utils/queryUtils";
 import { whereDepartments } from "../department/departments";
 import { whereCategories } from "../category";
-import { whereBusiness } from "../business/index";
+import { whereBusiness } from "../business";
 import { wherePeople } from "../person/people";
 import { whereFiscalYear, FiscalYearDbRecord } from "../fiscalYear";
-import { projection } from "./entry";
 
 export const whereEntryRefunds = (
   entryRefundsWhere: EntryRefundsWhere,
@@ -758,9 +757,9 @@ export const entries: QueryResolvers["entries"] = (_, { where }, { db }) => {
 
   if (query instanceof Promise) {
     return query.then((query) =>
-      db.collection("entries").find(query, { projection }).toArray()
+      db.collection("entries").find(query).toArray()
     );
   }
 
-  return db.collection("entries").find(query, { projection }).toArray();
+  return db.collection("entries").find(query).toArray();
 };

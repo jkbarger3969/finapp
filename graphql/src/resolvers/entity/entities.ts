@@ -2,9 +2,9 @@ import { UserInputError } from "apollo-server-errors";
 import { QueryResolvers } from "../../graphTypes";
 
 import { iterateOwnKeys } from "../../utils/iterableFns";
-import { whereBusiness } from "../business/index";
+import { whereBusiness } from "../business";
 import { whereDepartments } from "../department";
-import { wherePeople } from "../person/index";
+import { wherePeople } from "../person";
 import { addTypename } from "../utils/queryUtils";
 
 export const entities: QueryResolvers["entities"] = async (

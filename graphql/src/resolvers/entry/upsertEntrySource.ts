@@ -2,8 +2,9 @@ import { ObjectId } from "mongodb";
 import { AccountingDb } from "../../dataSources/accountingDb/accountingDb";
 import { EntityDbRecord } from "../../dataSources/accountingDb/types";
 import { EntityType, UpsertEntrySource } from "../../graphTypes";
+import { addNewBusinessRecord, validateBusiness } from "../business";
 import { addNewPersonRecord } from "../person/addNewPerson";
-import { validatePerson } from "../person/index";
+import { validatePerson } from "../person";
 
 /**
  * Parses {@link UpsertEntrySource} and creates records.
@@ -33,6 +34,24 @@ export const upsertEntrySourceToEntityDbRecord = async ({
 
         return {
           type: "Person",
+          id: insertedId,
+        };
+      }
+
+      case "business": {
+        const newBusiness = upsertEntrySourceInput[name];
+
+        validateBusiness.newBusiness({
+          newBusiness,
+        });
+
+        const { insertedId } = await addNewBusinessRecord({
+          newBusiness,
+          accountingDb,
+        });
+
+        return {
+          type: "Business",
           id: insertedId,
         };
       }

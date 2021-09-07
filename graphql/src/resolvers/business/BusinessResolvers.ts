@@ -1,27 +1,7 @@
-import { ObjectId } from "mongodb";
-import { BusinessResolvers, Department } from "../../graphTypes";
-import { Context } from "../../types";
+import { DepartmentDbRecord } from "../../dataSources/accountingDb/types";
+import { BusinessResolvers } from "../../graphTypes";
 
-import { DepartmentDbRecord } from "../department";
-
-export interface BusinessDbRecord {
-  _id: ObjectId;
-  name: string;
-  vendor?: {
-    approved: boolean;
-    vendorId: string | ObjectId;
-  };
-  budget?: {
-    id: ObjectId;
-    node: ObjectId;
-  };
-}
-
-const budgets: BusinessResolvers<Context, BusinessDbRecord>["budgets"] = (
-  { _id },
-  _,
-  { db }
-) => {
+const budgets: BusinessResolvers["budgets"] = ({ _id }, _, { db }) => {
   return db
     .collection("budgets")
     .find({
@@ -31,45 +11,46 @@ const budgets: BusinessResolvers<Context, BusinessDbRecord>["budgets"] = (
     .toArray();
 };
 
-const departments: BusinessResolvers<Context, BusinessDbRecord>["departments"] =
-  async ({ _id }, { root }, { db }) => {
-    const results: DepartmentDbRecord[] = [];
+const departments: BusinessResolvers["departments"] = async (
+  { _id },
+  { root },
+  { db }
+) => {
+  const results: DepartmentDbRecord[] = [];
 
-    const query = await db
-      .collection<DepartmentDbRecord>("departments")
-      .find({
-        "parent.type": "Business",
-        "parent.id": _id,
-      })
-      .toArray();
+  const query = await db
+    .collection<DepartmentDbRecord>("departments")
+    .find({
+      "parent.type": "Business",
+      "parent.id": _id,
+    })
+    .toArray();
 
-    if (root) {
+  if (root) {
+    results.push(...query);
+  } else {
+    while (query.length) {
       results.push(...query);
-    } else {
-      while (query.length) {
-        results.push(...query);
 
-        query.push(
-          ...(await db
-            .collection<DepartmentDbRecord>("departments")
-            .find({
-              "parent.type": "Department",
-              "parent.id": {
-                $in: query.splice(0).map(({ _id }) => _id),
-              },
-            })
-            .toArray())
-        );
-      }
+      query.push(
+        ...(await db
+          .collection<DepartmentDbRecord>("departments")
+          .find({
+            "parent.type": "Department",
+            "parent.id": {
+              $in: query.splice(0).map(({ _id }) => _id),
+            },
+          })
+          .toArray())
+      );
     }
+  }
 
-    return results as unknown[] as Department[];
-  };
+  return results;
+};
 
-const BusinessResolver: BusinessResolvers<Context, BusinessDbRecord> = {
+export const Business: BusinessResolvers = {
   id: ({ _id }) => _id.toString(),
   budgets,
   departments,
 } as const;
-
-export const Business = BusinessResolver as unknown as BusinessResolvers;

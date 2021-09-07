@@ -8,13 +8,7 @@ input PersonNameInput {
   last: String!
 }
 
-input PersonAddFields @requireOneField(fieldGroups: [["email", "phone"]]) {
-  name: PersonNameInput!
-  email: String
-  phone: String
-}
-
-input NewPerson @requireOneField(fieldGroups: [["email", "phone"]]) {
+input NewPerson {
   name: PersonNameInput!
   email: String
   phone: String
@@ -27,18 +21,6 @@ type AddNewPersonPayload {
 type Person {
   id: ID!
   name: PersonName!
-}
-
-input PeopleWhereInput {
-  lastName: WhereRegexInput
-  firstName: WhereRegexInput
-  eq: ID
-  ne: ID
-  in: [ID!]
-  nin: [ID!]
-  and: [PeopleWhereInput!]
-  or: [PeopleWhereInput!]
-  nor: [PeopleWhereInput!]
 }
 
 input PeopleNameWhere {
@@ -63,6 +45,5 @@ extend type Query {
 }
 
 extend type Mutation {
-  addPerson(fields: PersonAddFields!): Person!
   addNewPerson(input: NewPerson!): AddNewPersonPayload!
 }

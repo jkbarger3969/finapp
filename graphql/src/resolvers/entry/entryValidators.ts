@@ -14,8 +14,8 @@ import {
   UpdateEntryRefund,
   UpsertEntrySource,
 } from "../../graphTypes";
-import { validatePerson } from "../person/index";
-import { validateBusiness } from "../business/index";
+import { validatePerson } from "../person";
+import { validateBusiness } from "../business";
 import { validateDepartment } from "../department";
 import { startOfDay } from "date-fns";
 import { validateCategory } from "../category";

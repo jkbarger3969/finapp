@@ -21,39 +21,6 @@ type Department {
   aliases: [Alias!]!
 }
 
-enum DepartmentAncestorType {
-  BUSINESS
-  DEPARTMENT
-}
-
-input DepartmentAncestorInput {
-  id: ID!
-  type: DepartmentAncestorType!
-}
-
-input DepartmentsWhereAncestor {
-  eq: DepartmentAncestorInput
-  ne: DepartmentAncestorInput
-  in: [DepartmentAncestorInput!]
-  nin: [DepartmentAncestorInput!]
-}
-
-input DepartmentsWhereInput {
-  eq: ID
-  ne: ID
-  in: [ID!]
-  nin: [ID!]
-  name: WhereRegexInput
-  parent: DepartmentsWhereAncestor
-  and: [DepartmentsWhereInput!]
-  or: [DepartmentsWhereInput!]
-  nor: [DepartmentsWhereInput!]
-}
-
-input DepartmentAddFields {
-  name: String!
-}
-
 input DepartmentsWhere {
   # Felids
   id: WhereTreeId

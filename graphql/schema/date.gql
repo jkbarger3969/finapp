@@ -2,23 +2,3 @@
 ISO 8601
 """
 scalar Date
-
-enum DateTimeUnit {
-  YEAR
-  MONTH
-  WEEK
-  DAY
-  HOUR
-  MINUTE
-  SECOND
-  MILLISECOND
-}
-
-"""
-Date Constraints
-"""
-directive @dateConstraint(
-  allowFuture: Boolean = true
-  allowPast: Boolean = true
-  precision: DateTimeUnit = MILLISECOND
-) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION

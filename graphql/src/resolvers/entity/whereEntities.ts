@@ -2,9 +2,9 @@ import { Db, FilterQuery, ObjectId } from "mongodb";
 
 import { EntitiesWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";
-import { whereBusiness } from "../business/index";
+import { whereBusiness } from "../business";
 import { whereDepartments } from "../department";
-import { wherePeople } from "../person/index";
+import { wherePeople } from "../person";
 
 export interface WhereEntitiesResults {
   businesses?: ObjectId[];

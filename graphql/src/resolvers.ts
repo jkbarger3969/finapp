@@ -13,8 +13,7 @@ import {
   AccountCreditCard,
 } from "./resolvers/account";
 import { budget, budgets, Budget, BudgetOwner } from "./resolvers/budget";
-import { addBusiness } from "./resolvers/business";
-import { business, businesses, Business } from "./resolvers/business/index";
+import { business, businesses, Business } from "./resolvers/business";
 import {
   department,
   departments,
@@ -27,6 +26,7 @@ import {
   addNewEntryRefund,
   entry,
   entries,
+  entryRefund,
   entryRefunds,
   deleteEntry,
   deleteEntryRefund,
@@ -35,10 +35,7 @@ import {
   EntryRefund,
   updateEntry,
   updateEntryRefund,
-} from "./resolvers/entry/index";
-import entryRefund from "./resolvers/entry/entryRefund";
-import entryItem from "./resolvers/entry/entryItem";
-// import entryUpserted from "./resolvers/entry/entryUpserted";
+} from "./resolvers/entry";
 import {
   PaymentCardInterface,
   PaymentCheckInterface,
@@ -47,8 +44,7 @@ import {
 } from "./resolvers/paymentMethod";
 import { sources } from "./resolvers/entrySource";
 import { Category, category, categories } from "./resolvers/category/index";
-import { addPerson } from "./resolvers/person";
-import { people, person, Person } from "./resolvers/person/index";
+import { people, person, Person } from "./resolvers/person";
 import { fiscalYear, fiscalYears, FiscalYear } from "./resolvers/fiscalYear";
 import { User } from "./resolvers/user";
 
@@ -96,7 +92,6 @@ const resolvers: Resolvers = {
     entities,
     entry,
     entryRefund,
-    entryItem,
     entries,
     entryRefunds,
     sources,
@@ -110,10 +105,8 @@ const resolvers: Resolvers = {
     fiscalYears,
   },
   Mutation: {
-    addBusiness,
     addNewEntry,
     addNewEntryRefund,
-    addPerson,
     deleteEntry,
     deleteEntryRefund,
     updateEntry,

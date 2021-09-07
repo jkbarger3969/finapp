@@ -1,61 +1,3 @@
-interface TypeNode {
-  id: ID!
-  name: String!
-  parent: TypeNode
-  children: [TypeNode!]!
-}
-
-enum NodeChildrenType {
-  ALL
-  BRANCH
-  LEAF
-  NONE
-}
-
-enum SortDirection {
-  ASC
-  DESC
-}
-
-enum FilterType {
-  INCLUDE
-  EXCLUDE
-}
-
-input PaginateInput {
-  skip: Int!
-  limit: Int!
-}
-
-input ByIdFilter {
-  eq: ID
-}
-
-enum RegexOptions {
-  CaseInsensitive
-  Multiline
-  Extended
-  DotAll
-  I
-  M
-  X
-  S
-}
-
-"""
-https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#advanced_searching_with_flags
-"""
-enum RegexFlags {
-  "Global search."
-  G
-  "Case-insensitive search."
-  I
-  "Multi-line search."
-  M
-  "Allows . to match newline characters."
-  S
-}
-
 input WhereId {
   eq: ID
   ne: ID
@@ -89,28 +31,18 @@ input WhereNode {
   nin: [NodeInput!]
 }
 
-input WhereTreeNode {
-  eq: NodeInput
-  ne: NodeInput
-  in: [NodeInput!]
-  nin: [NodeInput!]
-  """
-  Range operators will match descendants and ancestors in the tree.
-  """
-  gt: NodeInput
-  gte: NodeInput
-  lt: NodeInput
-  lte: NodeInput
-}
-
-input WhereTreeNodeInput {
-  id: ID!
-  matchDescendants: Boolean
-}
-
-input WhereRegexInput {
-  pattern: String!
-  options: [RegexOptions!]
+"""
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#advanced_searching_with_flags
+"""
+enum RegexFlags {
+  "Global search."
+  G
+  "Case-insensitive search."
+  I
+  "Multi-line search."
+  M
+  "Allows . to match newline characters."
+  S
 }
 
 input WhereRegex {
@@ -122,14 +54,6 @@ input WhereRegex {
   flags: [RegexFlags!]
 }
 
-input WhereDateTime {
-  """
-  ISO 8601
-  """
-  date: Date!
-  ignoreTime: Boolean
-}
-
 input WhereInt {
   eq: Int
   ne: Int
@@ -139,20 +63,11 @@ input WhereInt {
   lte: Int
 }
 
-input WhereDateBeta {
+input WhereDate {
   eq: Date
   ne: Date
   gt: Date
   gte: Date
   lt: Date
   lte: Date
-}
-
-input WhereDate {
-  eq: WhereDateTime
-  ne: WhereDateTime
-  gt: WhereDateTime
-  gte: WhereDateTime
-  lt: WhereDateTime
-  lte: WhereDateTime
 }

@@ -1,12 +1,6 @@
-import { Db, ObjectID, ObjectId } from "mongodb";
 import { snakeCase } from "change-case";
 
-import {
-  Category as CategoryType,
-  CategoryResolvers,
-  EntryType,
-} from "../../graphTypes";
-import { Context } from "../../types";
+import { CategoryResolvers, EntryType } from "../../graphTypes";
 import {
   CategoryDbRecord,
   EntryTypeDbRecord,
@@ -62,7 +56,7 @@ export const categoryAncestorPath = async function* ({
   }
 };
 
-const CategoryResolver: CategoryResolvers<Context, CategoryDbRecord> = {
+export const Category: CategoryResolvers = {
   id: ({ _id }) => _id.toString(),
   parent: async ({ parent }, _, { db }) =>
     (await db.collection("categories").findOne({ _id: parent })) || null,
@@ -77,17 +71,15 @@ const CategoryResolver: CategoryResolvers<Context, CategoryDbRecord> = {
   children: ({ _id }, _, { db }) =>
     db.collection("categories").find({ parent: _id }).toArray(),
   ancestors: async ({ parent }, _, { dataSources: { accountingDb } }) => {
-    const ancestors: CategoryType[] = [];
+    const ancestors: CategoryDbRecord[] = [];
 
     for await (const ancestor of categoryAncestorPath({
       accountingDb,
       fromCategory: parent,
     })) {
-      ancestors.push(ancestor as unknown as CategoryType);
+      ancestors.push(ancestor);
     }
 
     return ancestors;
   },
 };
-
-export const Category = CategoryResolver as unknown as CategoryResolvers;

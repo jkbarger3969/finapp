@@ -1,8 +1,8 @@
 import { AccountingDb } from "../../dataSources/accountingDb/accountingDb";
 import { EntityDbRecord } from "../../dataSources/accountingDb/types";
-import { validateBusiness } from "../business/index";
+import { validateBusiness } from "../business";
 import { validateDepartment } from "../department";
-import { validatePerson } from "../person/index";
+import { validatePerson } from "../person";
 
 export const validateEntity = {
   exists: async ({

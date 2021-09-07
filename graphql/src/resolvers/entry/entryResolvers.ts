@@ -1,63 +1,12 @@
-import { Db, ObjectId } from "mongodb";
-
 import {
   EntryResolvers,
   Scalars,
   EntryItemResolvers,
   EntryRefundResolvers,
 } from "../../graphTypes";
-import { HistoryObject, HistoricalRoot } from "../utils/DocHistory";
-import { Context } from "../../types";
-import { Rational } from "../../utils/mongoRational";
-import { NodeDbRecord, addTypename } from "../utils/queryUtils";
-import { PaymentMethodDBRecord } from "../paymentMethod/paymentMethodResolvers";
+import { addTypename } from "../utils/queryUtils";
 
-export interface EntryItemDbRecord extends HistoricalRoot {
-  id: ObjectId;
-  category?: HistoryObject<ObjectId>[];
-  deleted: HistoryObject<boolean>[];
-  department?: HistoryObject<ObjectId>[];
-  description?: HistoryObject<string>[];
-  total: HistoryObject<Rational>[];
-  units: HistoryObject<number>[];
-}
-
-export interface EntryRefundDbRecord extends HistoricalRoot {
-  id: ObjectId;
-  date: HistoryObject<Date>[];
-  deleted: HistoryObject<boolean>[];
-  description?: HistoryObject<string>[];
-  paymentMethod: HistoryObject<PaymentMethodDBRecord>[];
-  reconciled: HistoryObject<boolean>[];
-  total: HistoryObject<Rational>[];
-}
-
-export interface EntryDbRecord extends HistoricalRoot {
-  _id: ObjectId;
-  category: HistoryObject<ObjectId>[];
-  date: HistoryObject<Date>[];
-  dateOfRecord?: {
-    date: HistoryObject<Date>[];
-    overrideFiscalYear: HistoryObject<boolean>[];
-  };
-  deleted: HistoryObject<boolean>[];
-  department: HistoryObject<ObjectId>[];
-  description?: HistoryObject<string>[];
-  items?: EntryItemDbRecord[];
-  paymentMethod: HistoryObject<PaymentMethodDBRecord>[];
-  reconciled: HistoryObject<boolean>[];
-  refunds?: EntryRefundDbRecord[];
-  source: HistoryObject<NodeDbRecord<"Business" | "Department" | "Person">>[];
-  total: HistoryObject<Rational>[];
-  type: HistoryObject<"Credit" | "Debit">[];
-}
-
-// export const EntrySource: EntrySourceResolvers = {
-//   // __typename added with addTypename
-//   __resolveType: ({ __typename }) => __typename,
-// };
-
-const EntryItemResolver: EntryItemResolvers<Context, EntryItemDbRecord> = {
+export const EntryItem: EntryItemResolvers = {
   id: ({ id }) => id.toString(),
   category: ({ category }, _, { db }) =>
     category
@@ -74,27 +23,20 @@ const EntryItemResolver: EntryItemResolvers<Context, EntryItemDbRecord> = {
   units: ({ units }) => units[0].value,
 };
 
-export const EntryItem = EntryItemResolver as unknown as EntryItemResolvers;
+export const EntryRefund: EntryRefundResolvers = {
+  id: ({ id }) => id.toString(),
+  date: ({ date }) => date[0].value,
+  deleted: ({ deleted }) => deleted[0].value,
+  description: ({ description }) => (description ? description[0].value : null),
+  entry: ({ id }, _, { db }) =>
+    db.collection("entries").findOne({ "refunds.id": id }),
+  // lastUpdate: Default works
+  paymentMethod: ({ paymentMethod }) => paymentMethod[0].value,
+  reconciled: ({ reconciled }) => reconciled[0].value,
+  total: ({ total }) => total[0].value as Scalars["Rational"],
+};
 
-const EntryRefundResolver: EntryRefundResolvers<Context, EntryRefundDbRecord> =
-  {
-    id: ({ id }) => id.toString(),
-    date: ({ date }) => date[0].value,
-    deleted: ({ deleted }) => deleted[0].value,
-    description: ({ description }) =>
-      description ? description[0].value : null,
-    entry: ({ id }, _, { db }) =>
-      db.collection("entries").findOne({ "refunds.id": id }),
-    // lastUpdate: Default works
-    paymentMethod: ({ paymentMethod }) => paymentMethod[0].value,
-    reconciled: ({ reconciled }) => reconciled[0].value,
-    total: ({ total }) => total[0].value as Scalars["Rational"],
-  };
-
-export const EntryRefund =
-  EntryRefundResolver as unknown as EntryRefundResolvers;
-
-const EntryResolver: EntryResolvers<Context, EntryDbRecord> = {
+export const Entry: EntryResolvers = {
   id: ({ _id }) => _id.toString(),
   category: ({ category }, _, { db }) =>
     db.collection("categories").findOne({ _id: category[0].value }),
@@ -150,5 +92,3 @@ const EntryResolver: EntryResolvers<Context, EntryDbRecord> = {
   },
   total: ({ total }) => total[0].value as Scalars["Rational"],
 };
-
-export const Entry = EntryResolver as unknown as EntryResolvers;

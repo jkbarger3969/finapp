@@ -4,7 +4,7 @@ import {
   WhereRegex,
   RegexFlags,
   Resolvers,
-  WhereDateBeta,
+  WhereDate,
   WhereRational,
   WhereId,
   WhereTreeId,
@@ -211,7 +211,7 @@ export const addTypename = async <T extends keyof Resolvers, U>(
   }
 };
 
-export const whereDate = (dateWhere: WhereDateBeta): QuerySelector<unknown> => {
+export const whereDate = (dateWhere: WhereDate): QuerySelector<unknown> => {
   const querySelector: QuerySelector<unknown> = {};
 
   for (const [whereKey, date] of iterateOwnKeyValues(dateWhere)) {
