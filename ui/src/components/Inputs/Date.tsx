@@ -6,7 +6,7 @@ import {
 } from "@material-ui/pickers";
 import DateFnsUtils from "@date-io/date-fns";
 import { MarkOptional } from "ts-essentials";
-import { isValid } from "date-fns";
+import { isEqual, isValid } from "date-fns";
 
 import {
   useField,
@@ -57,6 +57,7 @@ export const DateInput = forwardRef(
     } = useField<Date>({
       name: nameProp,
       defaultValue,
+      isEqual: isEqual,
       validator: validDate,
       form,
     });

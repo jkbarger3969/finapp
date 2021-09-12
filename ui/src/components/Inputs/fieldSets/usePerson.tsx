@@ -36,9 +36,11 @@ export type PersonProps = {
 > &
   Pick<UseFieldOptions, "form">;
 
-export const PERSON_NAME_PREFIX = "person";
+export type PersonFieldDef = {
+  person: NameFieldDef & EmailFieldDef & PhoneFieldDef;
+};
 
-export type PersonFieldDef = NameFieldDef & EmailFieldDef & PhoneFieldDef;
+export const PERSON_NAME_PREFIX: keyof PersonFieldDef = "person";
 
 export const usePerson = (
   props: PersonProps

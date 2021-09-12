@@ -10,6 +10,8 @@ import {
   FieldValue,
   useNamePrefix,
   prefixName,
+  useIsEqual,
+  IsEqualFn,
 } from "../../../useKISSForm/form";
 
 export type NameInputProps = {
@@ -43,6 +45,8 @@ const validName: Validator<string | undefined> = (_, { form, name }) => {
     return RangeError("Too Short");
   }
 };
+
+const nameIsEqual: IsEqualFn<string> = (a, b) => a?.trim() === b?.trim();
 
 export type NameFieldDef = {
   name: {
@@ -79,6 +83,18 @@ export const useName = (
     () => (required ? [requiredValidator, validName] : validName),
     [required]
   );
+
+  useIsEqual<NameFieldDef>({
+    isEqual: useMemo(
+      () => ({
+        [prefixName("first", name)]: nameIsEqual,
+        [prefixName("last", name)]: nameIsEqual,
+      }),
+      [name]
+    ),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    form: props.form as any,
+  });
 
   return {
     firstNameInput: (

@@ -25,7 +25,7 @@ export const addNewEntryRefund: MutationResolvers["addNewEntryRefund"] = (
       paymentMethod: paymentMethodInput,
       description: descriptionInput,
       total: totalInput,
-      reconciled = false,
+      reconciled,
     } = input;
 
     const entryId = new ObjectId(entry);
@@ -53,7 +53,7 @@ export const addNewEntryRefund: MutationResolvers["addNewEntryRefund"] = (
       .addHistoricalField("deleted", false)
       .addHistoricalField("paymentMethod", paymentMethod)
       .addHistoricalField("total", total)
-      .addHistoricalField("reconciled", reconciled);
+      .addHistoricalField("reconciled", reconciled ?? false);
 
     if (description) {
       newDocBuilder.addHistoricalField("description", description);

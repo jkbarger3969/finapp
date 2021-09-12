@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { TreeSelectValue } from "mui-tree-select";
 import { gql, useQuery } from "@apollo/client";
-import { isFuture } from "date-fns";
+import { isFuture, startOfDay, isEqual } from "date-fns";
 
 import { DateInput, DateInputProps, DateFieldDef } from "../Date";
 import {
@@ -60,6 +60,9 @@ import {
   FieldValue,
   useLoading,
   Validator,
+  IForm,
+  UseDefaultValuesOptions,
+  useIsEqual,
 } from "../../../useKISSForm/form";
 import {
   requiredValidator,
@@ -165,11 +168,13 @@ export type EntryFieldDef = {
     DescriptionFieldDef<typeof DESCRIPTION_NAME> &
     EntityFieldDef<typeof SOURCE_NAME, false, true> &
     CategoryFieldDef<false, false> &
-    PaymentMethodFieldDef<false, false> &
+    PaymentMethodFieldDef<false> &
     RationalFieldDef<typeof TOTAL_NAME> &
     BoolFieldDef<typeof RECONCILED_NAME>;
 };
 export const ENTRY_NAME: keyof EntryFieldDef = "entry";
+
+const dateIsEqual = (a: Date, b: Date) => isEqual(startOfDay(a), startOfDay(b));
 
 export type EntryFieldNames =
   | typeof DATE_NAME
@@ -193,8 +198,8 @@ export const useEntry = <
   } => {
   const {
     updateEntryId,
-    form,
     required,
+    form,
     showLabels,
     insertNamePrefix,
     date: dateProps,
@@ -262,23 +267,42 @@ export const useEntry = <
     }, [form, required])
   );
 
-  // Handle conditions where date of record should take the value of
-  // date.
-  const { value: dateValue } = useWatcher<Date>({
-    name: prefixName(DATE_NAME, ENTRY_NAME),
-    form,
-  });
-  useDefaultValues(
+  useIsEqual<EntryFieldDef>(
     useMemo(
       () => ({
-        defaultValues: {
-          [prefixName(DATE_OF_RECORD_NAME, ENTRY_NAME)]: new FieldValue(
-            dateValue
-          ),
+        isEqual: {
+          "entry.date": dateIsEqual,
+          "entry.dateOfRecord": dateIsEqual,
         },
         form,
       }),
-      [dateValue, form]
+      [form]
+    )
+  );
+
+  // Handle conditions where date of record should take the value of
+  // date.
+  const { value: dateValue, defaultValue: defaultDateValue } = useWatcher<Date>(
+    {
+      name: prefixName(DATE_NAME, ENTRY_NAME),
+      form,
+    }
+  );
+
+  useDefaultValues(
+    useMemo<UseDefaultValuesOptions<EntryFieldDef>>(
+      () => ({
+        defaultValues:
+          dateValue || defaultDateValue
+            ? {
+                [prefixName(DATE_OF_RECORD_NAME, ENTRY_NAME)]: new FieldValue(
+                  (dateValue || defaultDateValue) as Date
+                ),
+              }
+            : {},
+        form,
+      }),
+      [dateValue, defaultDateValue, form]
     )
   );
 
@@ -539,7 +563,7 @@ export const useEntry = <
         <NamePrefixProvider namePrefix={entryName}>
           <BoolInput
             label={showLabels && "Reconciled"}
-            defaultValue={!data?.entry?.reconciled}
+            defaultValue={data?.entry?.reconciled ?? undefined}
             {...reconciledProps}
             disabled={loading || reconciledProps?.disabled}
             name={RECONCILED_NAME}

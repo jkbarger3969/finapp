@@ -69,7 +69,7 @@ export const RECONCILED_NAME = "reconciled";
 export type RefundFieldDef = {
   refund: DateFieldDef<typeof DATE_NAME> &
     DescriptionFieldDef<typeof DESCRIPTION_NAME> &
-    PaymentMethodFieldDef<false, false> &
+    PaymentMethodFieldDef<false> &
     RationalFieldDef<typeof TOTAL_NAME> &
     BoolFieldDef<typeof RECONCILED_NAME>;
 };

@@ -300,10 +300,13 @@ export const validateEntry = new (class {
           switch (upsertEntrySource.source.type) {
             case EntityType.Business:
               await validateBusiness.exists({ business: id, accountingDb });
+              break;
             case EntityType.Department:
               await validateDepartment.exists({ department: id, accountingDb });
+              break;
             case EntityType.Person:
               await validatePerson.exists({ person: id, accountingDb });
+              break;
           }
         }
         break;

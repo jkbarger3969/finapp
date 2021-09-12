@@ -139,7 +139,7 @@ input NewEntryRefund {
   description: String
   paymentMethod: UpsertPaymentMethod!
   total: Rational!
-  reconciled: Boolean
+  reconciled: Boolean = false
 }
 
 input UpdateEntryRefund {

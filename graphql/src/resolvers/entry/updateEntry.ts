@@ -124,14 +124,14 @@ export const updateEntry: MutationResolvers["updateEntry"] = async (
 
     const update = {} as UpdateOne<"entries">;
 
-    if ("$set" in entryUpdate || "$set" in dateOfRecordUpdate) {
+    if (entryUpdate?.$set || dateOfRecordUpdate?.$set) {
       update.$set = {
         ...entryUpdate?.$set,
         ...dateOfRecordUpdate?.$set,
       };
     }
 
-    if ("$push" in entryUpdate || "$push" in dateOfRecordUpdate) {
+    if (entryUpdate?.$push || dateOfRecordUpdate?.$push) {
       update.$push = {
         ...entryUpdate?.$push,
         ...dateOfRecordUpdate?.$push,

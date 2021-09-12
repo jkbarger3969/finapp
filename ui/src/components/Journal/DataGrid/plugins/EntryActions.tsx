@@ -347,8 +347,11 @@ export const EntryAction = () => (
                     ...(upsertEntryProps as UpsertEntryProps).entryProps,
                     updateEntryId: id,
                   }}
-                  onClose={handleClose}
-                  open={isOpen && !isRefund && !isDelete}
+                  dialogProps={{
+                    ...(upsertEntryProps as UpsertEntryProps).dialogProps,
+                    onClose: handleClose,
+                    open: isOpen && !isRefund && !isDelete,
+                  }}
                 />
                 <UpsertRefund
                   {...(upsertRefundProps as UpsertRefundProps)}
@@ -358,8 +361,11 @@ export const EntryAction = () => (
                       ? { entryId: id as string }
                       : { updateRefundId: id as string }),
                   }}
-                  onClose={handleClose}
-                  open={isOpen && isRefund && !isDelete}
+                  dialogProps={{
+                    ...(upsertRefundProps as UpsertRefundProps).dialogProps,
+                    onClose: handleClose,
+                    open: isOpen && isRefund && !isDelete,
+                  }}
                 />
                 <DeleteEntry
                   {...(deleteEntryProps as DeleteEntryProps)}

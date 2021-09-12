@@ -7,6 +7,7 @@ import {
   UseFieldOptions,
   useFormContext,
   FieldValue,
+  IsEqualFn,
 } from "../../useKISSForm/form";
 
 const NULLISH = Symbol("NULLISH");
@@ -107,6 +108,8 @@ export const RationalInputBase = forwardRef(function RationalInputBase(
   );
 });
 
+const isRationalEqual: IsEqualFn<Fraction> = (a, b) => a.equals(b);
+
 export type RationalInputProps = Omit<
   RationalInputBaseProps,
   "value" | "name"
@@ -139,6 +142,7 @@ export const RationalInput = forwardRef(function RationalInput(
     setTouched,
   } = useField<Fraction>({
     name: nameProp,
+    isEqual: isRationalEqual,
     defaultValue: useMemo(() => {
       if (defaultValue !== undefined) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

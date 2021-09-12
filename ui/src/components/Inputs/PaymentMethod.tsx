@@ -23,11 +23,14 @@ import {
   AccountPayMethodInputOptsQuery as AccountInputOpts,
   AccountPayMethodInputOptsQueryVariables as AccountInputOptsVars,
   EntryType,
+  UpsertPaymentMethod,
+  Currency,
 } from "../../apollo/graphTypes";
 import { LoadingDefaultBlank } from "./shared";
 import { useControlled } from "@material-ui/core";
 import {
   FieldValue,
+  IsEqualFn,
   useField,
   UseFieldOptions,
   useFormContext,
@@ -42,10 +45,19 @@ export type PayMethodInputOpt =
   | PaymentMethodType.Online
   | PaymentMethodType.Unknown;
 
-export type PaymentMethodInputBranchOpt =
-  | Exclude<PaymentMethodType, PayMethodInputOpt>
+type OnlyCard = PaymentMethodType.Card;
+
+/**
+ * Parents of ValueNode or FreeSoloNodes (leaf nodes)
+ */
+export type PaymentMethodInputValueBranchOpt =
   | PaymentCardType
-  | AccountCheckingPayMethodInputOpt;
+  | AccountCheckingPayMethodInputOpt
+  | Exclude<PaymentMethodType, PayMethodInputOpt | OnlyCard>;
+
+export type PaymentMethodInputBranchOpt =
+  | PaymentMethodInputValueBranchOpt
+  | OnlyCard;
 
 const ACCOUNT_CARD_PAY_METHOD_INPUT_OPT = gql`
   fragment AccountCardPayMethodInputOpt on AccountCard {
@@ -247,6 +259,158 @@ export type PayMethodTreeSelectProps<
   DisableClearable,
   true | false
 >;
+
+export type PayMethodTreeSelectValue<
+  Multiple extends boolean | undefined = undefined,
+  DisableClearable extends boolean | undefined = undefined
+> = TreeSelectValue<
+  PayMethodInputOpt,
+  PaymentMethodInputBranchOpt,
+  Multiple,
+  DisableClearable,
+  true
+>;
+
+const payMethodIsEqual: IsEqualFn<
+  PayMethodTreeSelectValue<true | false, true | false>
+> = (a, b) => {
+  type TIsEqual = PayMethodTreeSelectValue<false, false>;
+
+  const isEqual = (a: TIsEqual, b: TIsEqual) => {
+    if (!a || !b) {
+      return a === b;
+    } else {
+      const aVal = a.valueOf();
+      const bVal = b.valueOf();
+      const aParent = a.parent?.valueOf();
+      const bParent = b.parent?.valueOf();
+
+      // Validate Parents Equal.
+      if (typeof aParent === "string" || typeof bParent === "string") {
+        if (aParent !== bParent) {
+          return false;
+        }
+      } else if (
+        aParent?.__typename !== bParent?.__typename ||
+        aParent?.id !== bParent?.id
+      ) {
+        return false;
+      }
+
+      if (typeof aVal === "string") {
+        return typeof bVal === "string" ? aVal.trim() === bVal.trim() : false;
+      } else if (typeof bVal === "string") {
+        return false;
+      } else if (aVal.__typename === bVal.__typename && aVal.id === bVal.id) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+  };
+
+  if (Array.isArray(a) || Array.isArray(b)) {
+    type TMulti = PayMethodTreeSelectValue<true, true | false>;
+
+    if ((a as TMulti).length !== (b as TMulti).length) {
+      return false;
+    } else {
+      return (a as TMulti).every((a, i) => isEqual(a, (b as TMulti)[i]));
+    }
+  } else {
+    return isEqual(a, b);
+  }
+};
+
+export const toUpsertPaymentMethod = ({
+  paymentMethodInput,
+}: {
+  paymentMethodInput: TreeSelectValue<
+    PayMethodInputOpt,
+    PaymentMethodInputValueBranchOpt,
+    false,
+    true,
+    true
+  >;
+}): UpsertPaymentMethod => {
+  const parent = paymentMethodInput.parent?.valueOf();
+  const payMethod = paymentMethodInput.valueOf();
+
+  if (typeof parent === "string") {
+    switch (parent) {
+      case PaymentMethodType.Check:
+        return {
+          check: {
+            currency: Currency.Usd,
+            check: {
+              checkNumber: payMethod as string,
+            },
+          },
+        };
+      case PaymentCardType.AmericanExpress:
+      case PaymentCardType.Discover:
+      case PaymentCardType.MasterCard:
+      case PaymentCardType.Visa:
+        if (typeof payMethod === "string") {
+          return {
+            card: {
+              currency: Currency.Usd,
+              card: {
+                type: parent,
+                trailingDigits: payMethod,
+              },
+            },
+          };
+        } else {
+          return {
+            accountCard: {
+              currency: Currency.Usd,
+              card: payMethod.id,
+            },
+          };
+        }
+    }
+  } else if (parent?.__typename === "AccountChecking") {
+    // Checking Account
+    return {
+      accountCheck: {
+        currency: Currency.Usd,
+        check: {
+          account: parent.id,
+          checkNumber: payMethod as string,
+        },
+      },
+    };
+  } else {
+    switch (payMethod as string) {
+      case PaymentMethodType.Cash:
+        return {
+          cash: {
+            currency: Currency.Usd,
+          },
+        };
+      case PaymentMethodType.Combination:
+        return {
+          combination: {
+            currency: Currency.Usd,
+          },
+        };
+      case PaymentMethodType.Online:
+        return {
+          online: {
+            currency: Currency.Usd,
+          },
+        };
+      case PaymentMethodType.Unknown:
+        return {
+          unknown: {
+            currency: Currency.Usd,
+          },
+        };
+    }
+  }
+  return null as unknown as UpsertPaymentMethod;
+};
 
 export const getOptionLabel: NonNullable<
   PayMethodTreeSelectProps<undefined, undefined>["getOptionLabel"]
@@ -668,7 +832,7 @@ export const PaymentMethodInputBase = forwardRef(
         getOptionSelected={getOptionSelected}
         {...rest}
         disabled={disabled || entryTypeIsUndefined}
-        autoSelect={!!autoSelect || freeSolo}
+        autoSelect={!!autoSelect && freeSolo}
         ref={ref}
         options={options}
         onBranchChange={onBranchChange}
@@ -692,7 +856,7 @@ export type PaymentMethodInputProps<
     PaymentMethodInputBranchOpt,
     Multiple,
     true,
-    false | true
+    true
   >;
 } & MarkOptional<
   Omit<
@@ -704,16 +868,15 @@ export type PaymentMethodInputProps<
   Pick<UseFieldOptions, "form">;
 
 export type PaymentMethodFieldDef<
-  Multiple extends boolean | undefined = undefined,
-  FreeSolo extends boolean | undefined = undefined
+  Multiple extends boolean | undefined = undefined
 > = {
   paymentMethod: FieldValue<
     TreeSelectValue<
       PayMethodInputOpt,
-      PaymentMethodInputBranchOpt,
+      PaymentMethodInputValueBranchOpt,
       Multiple,
       false,
-      FreeSolo
+      true
     >
   >;
 };
@@ -758,6 +921,7 @@ export const PaymentMethodInput = forwardRef(function PaymentMethodInput<
   >({
     name: PAYMENT_METHOD_NAME,
     form,
+    isEqual: payMethodIsEqual,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultValue: defaultValue as any,
   });

@@ -32,8 +32,6 @@ import {
   VirtualTable,
   SearchPanel,
   TableFilterRow,
-  TableEditColumn,
-  // TableInlineCellEditing
 } from "@devexpress/dx-react-grid-material-ui";
 import { green, red } from "@material-ui/core/colors";
 import { makeStyles } from "@material-ui/core/styles";
@@ -93,8 +91,6 @@ import {
   SourceFilterProps,
   sourceToStr,
   TypeFilter,
-  EditColumnCell,
-  EditColumnCommand,
 } from "./cells";
 import { DefaultEditor } from "./filters";
 import { DepartmentInputOpt } from "../../Inputs/Department";
@@ -378,132 +374,6 @@ const integratedFilteringColumnExtensions: IntegratedFiltering.ColumnExtension[]
     sourceFilterColumnExtension("source", sourceToStr),
   ];
 
-/* const PopupEditor: PopupComponent<GridEntry, Omit<UpsertEntryProps, "open">> = (
-  props
-) => {
-  const {
-    row,
-    open,
-    // processValueChange,
-    // onApplyChanges,
-    onCancelChanges,
-    popupEditorProps: { onClose, entryProps: _entryProps, ...upsertEntryProps },
-  } = props;
-
-  const entryProps = useMemo<UpsertEntryProps["entryProps"]>(() => {
-    if (row) {
-      const entryProps = {
-        ..._entryProps,
-        date: {
-          ..._entryProps?.date,
-          defaultValue: row.date,
-        },
-        department: {
-          ..._entryProps.department,
-          defaultValue: {
-            id: {
-              eq: row.department.id,
-            },
-          },
-        },
-        source: {
-          ..._entryProps.source,
-          defaultValue: (() => {
-            switch (row.source.__typename) {
-              case "Business":
-                return {
-                  businesses: {
-                    id: {
-                      eq: row.source.id,
-                    },
-                  },
-                } as EntitiesWhere;
-              case "Department":
-                return {
-                  departments: {
-                    id: {
-                      eq: row.source.id,
-                    },
-                  },
-                } as EntitiesWhere;
-              case "Person":
-                return {
-                  people: {
-                    id: {
-                      eq: row.source.id,
-                    },
-                  },
-                } as EntitiesWhere;
-            }
-          })() as EntitiesWhere,
-        },
-        category: {
-          ..._entryProps.category,
-          defaultValue: {
-            id: {
-              eq: row.category.id,
-            },
-          },
-        },
-        paymentMethod: {
-          ..._entryProps.paymentMethod,
-          defaultValue: row.paymentMethod,
-        },
-        total: {
-          ..._entryProps.total,
-          defaultValue: row.total,
-        },
-        reconciled: {
-          ..._entryProps.reconciled,
-          defaultValue: row.reconciled,
-        },
-      };
-
-      if (row.dateOfRecord?.date) {
-        entryProps.dateOfRecord = {
-          ..._entryProps?.dateOfRecord,
-          defaultValue: row.dateOfRecord?.date,
-        };
-      }
-
-      return entryProps;
-    } else {
-      return _entryProps;
-    }
-  }, [_entryProps, row]);
-
-  const onSuccess = useCallback<NonNullable<UpsertEntryProps["onSuccess"]>>(
-    ({ submitState }) => {
-      console.log("onSuccess", submitState);
-    },
-    []
-  );
-
-  const handleClose = useCallback<NonNullable<UpsertEntryProps["onClose"]>>(
-    (...args) => {
-      onCancelChanges();
-      if (onClose) {
-        onClose(...args);
-      }
-    },
-    [onCancelChanges, onClose]
-  );
-
-  return (
-    <UpsertEntry
-      maxWidth="lg"
-      fullWidth
-      {...upsertEntryProps}
-      type={row ? "update" : "add"}
-      keepMounted={false}
-      onClose={handleClose}
-      onSuccess={onSuccess}
-      entryProps={entryProps}
-      open={open}
-    />
-  );
-}; */
-
 export type Props = {
   where?: EntriesWhere;
   selectableDepts: DepartmentsWhere;
@@ -512,12 +382,6 @@ export type Props = {
 };
 const JournalGrid: React.FC<Props> = (props: Props) => {
   const classes = useStyles();
-
-  type ChangeSet = {
-    added?: Record<string, unknown>[];
-    changed?: Record<string, unknown>[];
-    deleted?: string[];
-  };
 
   const variables = useMemo<GridEntriesQueryVariables>(
     () => ({
@@ -768,20 +632,32 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
   >(
     () => [
       {
-        keepMounted: false,
-        maxWidth: "lg",
-        fullWidth: true,
+        dialogProps: {
+          keepMounted: false,
+          maxWidth: "lg",
+          fullWidth: true,
+        },
         entryProps: {
           paymentMethod: { accounts: props.selectableAccounts },
           department: {
             root: props.selectableDepts,
           },
         },
+        refetchQueries: {
+          onNewEntry: [
+            {
+              query: GRID_ENTRIES,
+              variables,
+            },
+          ],
+        },
       } as UpsertEntryProps,
       {
-        keepMounted: false,
-        maxWidth: "lg",
-        fullWidth: true,
+        dialogProps: {
+          keepMounted: false,
+          maxWidth: "lg",
+          fullWidth: true,
+        },
         refundProps: {
           paymentMethod: { accounts: props.selectableAccounts },
         },
@@ -792,7 +668,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
         fullWidth: true,
       } as DeleteEntryProps,
     ],
-    [props.selectableAccounts, props.selectableDepts]
+    [props.selectableAccounts, props.selectableDepts, variables]
   );
 
   if (error) {
@@ -856,13 +732,6 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
           />
           <DataCellProvider {...dataCellProviderProps} />
           <FilterCellProvider {...filterCellProviderProps} />
-          {/* <TableEditColumn
-            cellComponent={EditColumnCell}
-            commandComponent={EditColumnCommand}
-            showEditCommand
-            showAddCommand
-            showDeleteCommand
-          /> */}
           <EntryAction />
         </Grid>
       </Box>

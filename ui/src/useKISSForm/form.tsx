@@ -438,15 +438,15 @@ export type OnSubmit<FieldDef extends Record<string, unknown>> =
     };
 
 export class FieldValue<T = unknown> {
-  _value_: T;
-  constructor(v: T) {
-    this._value_ = v;
+  readonly #value: T;
+  constructor(value: T) {
+    this.#value = value;
   }
   valueOf(): T {
-    return this._value_;
+    return this.#value;
   }
   toString(): string {
-    return String(this._value_);
+    return String(this.#value);
   }
   static value<T = unknown>(value: T): FieldValue<T> {
     return new FieldValue(value);
@@ -457,6 +457,10 @@ export const fieldValue = FieldValue.value;
 const FIELDS = new WeakMap<Form<any>, Map<string, Field<any, string>>>();
 const VALUES = new WeakMap<Form<any>, Map<string, any>>();
 const DEFAULT_VALUES = new WeakMap<Form<any>, Map<symbol, Map<string, any>>>();
+const IS_EQUAL_FNS = new WeakMap<
+  Form<any>,
+  Map<symbol, Map<string, IsEqualFn<any>>>
+>();
 const LOADING = new WeakMap<Form<any>, Map<string, Set<symbol>>>();
 const FIELD_VALIDATORS = new WeakMap<
   Form<any>,
@@ -476,11 +480,14 @@ const RUN_FORM_STATE_TRACKER = new WeakMap<
   (updateId: symbol) => void
 >();
 
+const DEFAULT_VALUE_EQUALITY = (a: any, b: any) => a === b;
+
 class Form<FieldDef extends Record<string, unknown>> {
   readonly #fields = new Map<Names<FieldDef>, Field<any, Names<FieldDef>>>();
   readonly #values = new Map<string, any>();
   readonly #clearedValues = new Set<Names<FieldDef>>();
   readonly #defaultValues = new Map<symbol, Map<string, any>>();
+  readonly #isEqualFns = new Map<symbol, Map<string, IsEqualFn<any>>>();
   readonly #touchedFields = new WeakSet<Field<any, string, any>>();
   readonly #validatingFields = new Map<string, Promise<boolean>>();
   readonly #validateOn: ValidateOn;
@@ -528,6 +535,7 @@ class Form<FieldDef extends Record<string, unknown>> {
     FIELDS.set(this, this.#fields);
     VALUES.set(this, this.#values);
     DEFAULT_VALUES.set(this, this.#defaultValues);
+    IS_EQUAL_FNS.set(this, this.#isEqualFns);
     LOADING.set(this, this.#loading);
     FIELD_VALIDATORS.set(this, this.#fieldValidators);
     FIELD_WATCHERS.set(this, this.#fieldWatchers);
@@ -558,7 +566,7 @@ class Form<FieldDef extends Record<string, unknown>> {
   }
 
   get isDirty(): boolean {
-    return !!this.#values.size;
+    return !!this.#values.size || !!this.#clearedValues.size;
   }
   get isValid(): boolean {
     return !!this.errors().next().done;
@@ -589,13 +597,8 @@ class Form<FieldDef extends Record<string, unknown>> {
     !!this.getRegisteredField(name);
   readonly getRegisteredField = <Name extends Names<FieldDef>>(
     name: Name
-  ): Field<PathValue<FieldDef, Name>, Name> | undefined => {
-    for (const field of this.fields()) {
-      if (field.props.name === name) {
-        return field as any;
-      }
-    }
-  };
+  ): Field<PathValue<FieldDef, Name>, Name> | undefined =>
+    this.#fields.get(name) as Field<PathValue<FieldDef, Name>, Name>;
 
   readonly setFieldValue = <Name extends Names<FieldDef>>(
     name: Name,
@@ -605,7 +608,20 @@ class Form<FieldDef extends Record<string, unknown>> {
       this.#clearedValues.add(name);
       this.#values.delete(name);
     } else {
-      this.#values.set(name, value);
+      // Do NOT set equal values.  Include defaults.
+      const curValue = this.getFieldValue(name, true);
+      const defaultValue = this.getFieldDefaultValue(name);
+      const isEqual = this.getFieldIsEqual(name);
+      if (curValue !== undefined && isEqual(value, curValue)) {
+        return;
+      } else if (defaultValue !== undefined && isEqual(value, defaultValue)) {
+        // Allow default to fall through
+        this.#values.delete(name);
+      } else {
+        this.#values.set(name, value);
+      }
+
+      this.#clearedValues.delete(name);
     }
 
     switch (this.#validateOn) {
@@ -663,6 +679,16 @@ class Form<FieldDef extends Record<string, unknown>> {
       }
     }
   };
+  readonly getFieldIsEqual = <Name extends Names<FieldDef>>(
+    name: Name
+  ): IsEqualFn<PathValue<FieldDef, Name>> => {
+    for (const valueEquality of this.#isEqualFns.values()) {
+      if (valueEquality.has(name)) {
+        return valueEquality.get(name) as IsEqualFn<PathValue<FieldDef, Name>>;
+      }
+    }
+    return DEFAULT_VALUE_EQUALITY;
+  };
 
   readonly isFieldValid = (name: Names<FieldDef>): boolean =>
     !!this.getFieldErrors(name).next().done;
@@ -714,9 +740,11 @@ class Form<FieldDef extends Record<string, unknown>> {
   };
 
   readonly isFieldDirty = (name: Names<FieldDef>): boolean =>
-    this.#values.has(name);
+    this.#values.has(name) || this.#clearedValues.has(name);
   readonly isFieldLoading = (name: Names<FieldDef>): boolean =>
     this.#loading.has(name);
+  readonly isFieldCleared = (name: Names<FieldDef>): boolean =>
+    this.#clearedValues.has(name);
   readonly getFieldErrors = function* (
     this: Form<FieldDef>,
     name: Names<FieldDef>
@@ -869,7 +897,15 @@ class Form<FieldDef extends Record<string, unknown>> {
         values: this.getValuesObject(false),
         form: this,
       });
-    } catch (error) {
+    } catch (error: any) {
+      this.#submissionError = (() => {
+        if (error) {
+          return "message" in error ? error : new Error(String(error));
+        }
+
+        return new Error("Unknown Submission Error.");
+      })();
+
       this.#isSubmitting = false;
 
       this.#runFormStateTracker();
@@ -945,12 +981,15 @@ class Form<FieldDef extends Record<string, unknown>> {
         for (const [name, defaultValue] of defaultValues) {
           if (!yieldedKeys.has(name)) {
             yieldedKeys.add(name);
-            yield [name as Names<FieldDef>, defaultValue];
+            yield [name as Names<FieldDef>, defaultValue.valueOf()];
           }
         }
       }
     }
   }.bind(this);
+
+  readonly clearedFields = (): IterableIterator<Names<FieldDef>> =>
+    this.#clearedValues.values();
 
   readonly errors = function* (
     this: Form<FieldDef>
@@ -1086,13 +1125,16 @@ class Form<FieldDef extends Record<string, unknown>> {
         | "setFieldValue"
         | "getFieldValue"
         | "getFieldDefaultValue"
+        | "getFieldIsEqual"
         | "isFieldValid"
         | "isFieldValidating"
         | "isFieldTouched"
         | "setFieldTouched"
         | "isFieldDirty"
         | "isFieldLoading"
+        | "isFieldCleared"
         | "getFieldErrors"
+        | "clearedFields"
         | "validateField"
         | "validateAll"
         | "submit"
@@ -1191,6 +1233,25 @@ const parseValidatorDefs = function* <FieldDef extends Record<string, unknown>>(
         yield [name, value] as any;
       } else {
         yield* parseValidatorDefs(value as any, name) as any;
+      }
+    }
+  }
+};
+
+const parseIsEqualDef = function* <FieldDef extends Record<string, unknown>>(
+  isEqualDef: IsEqualDef<FieldDef>,
+  namePrefix?: string
+): IterableIterator<
+  [Names<FieldDef>, IsEqualFn<PathValue<FieldDef, Names<FieldDef>>>]
+> {
+  for (const key in isEqualDef) {
+    if (hasOwnProperty.call(isEqualDef, key)) {
+      const value = isEqualDef[key];
+      const name = namePrefix ? `${namePrefix}.${key}` : key;
+      if (typeof value === "function") {
+        yield [name as any, value];
+      } else {
+        yield* parseIsEqualDef(value as any, name);
       }
     }
   }
@@ -1302,7 +1363,26 @@ export type DefaultValuesDef<T extends Record<string, unknown>> = {
         : never
       : never
     : never;
-};
+} &
+  {
+    [K in Path<T, true>]?: FieldValue<PathValue<T, K>>;
+  };
+
+export type IsEqualFn<T = unknown> = (a: T, b: T) => boolean;
+export type IsEqualDef<T extends Record<string, unknown>> = {
+  [K in keyof T]?: T[K] extends infer G
+    ? K extends string
+      ? G extends FieldValue<infer U>
+        ? IsEqualFn<U>
+        : G extends Record<string, unknown>
+        ? IsEqualDef<G>
+        : never
+      : never
+    : never;
+} &
+  {
+    [K in Path<T, true>]?: IsEqualFn<PathValue<T, K>>;
+  };
 
 export type IForm<FieldDef extends Record<string, unknown> = any> =
   Form<FieldDef>;
@@ -1359,47 +1439,65 @@ export type UseFormOptions<FieldDef extends Record<string, unknown>> = {
   onSubmit: OnSubmit<FieldDef>;
   defaultValues?: FieldDef;
   validators?: ValidatorDefs<FieldDef>;
+  isEqual?: IsEqualDef<FieldDef>;
   validateOn?: ValidateOn;
 };
 export const useForm = <FieldDef extends Record<string, unknown>>({
   onSubmit,
   defaultValues,
   validators,
+  isEqual,
   validateOn = "submit",
 }: UseFormOptions<FieldDef>): Form<FieldDef> => {
   const [, watcher] = useState(Symbol());
 
-  const [state] = useState(() => {
-    const updateIds = {
-      mount: Symbol(),
-      unMount: Symbol(),
-    };
+  const [form] = useState(() => {
     const form = new Form<FieldDef>({ onSubmit, validateOn });
 
     (FORM_WATCHERS.get(form) as Set<(updateId: symbol) => void>).add(watcher);
 
-    return {
-      form,
-      useDefaultValuesOptions: {
-        defaultValues: defaultValues || {},
-        form,
-        shouldUnregister: false,
-        updateIds,
-      },
-      useValidatorsOptions: {
-        validators: validators || {},
-        form,
-        shouldUnregister: false,
-        updateIds,
-      },
-    };
+    return form;
   });
 
-  useDefaultValuesUtil(state.useDefaultValuesOptions);
+  useDefaultValuesUtil(
+    useMemo(
+      () => ({
+        defaultValues: defaultValues || {},
+        form,
+        updateIds: {
+          mount: Symbol(),
+          unMount: Symbol(),
+        },
+      }),
+      [defaultValues, form]
+    )
+  );
 
-  useValidatorsUtil(state.useValidatorsOptions);
+  useValidatorsUtil(
+    useMemo(
+      () => ({
+        validators: validators || {},
+        form,
+        updateIds: {
+          mount: Symbol(),
+          unMount: Symbol(),
+        },
+      }),
+      [form, validators]
+    )
+  );
 
-  return state.form;
+  useIsEqual(
+    useMemo(
+      () => ({
+        isEqual: isEqual || {},
+        form,
+      }),
+      [form, isEqual]
+    )
+  );
+
+  return form;
 };
 
 export const useFormContext = <
@@ -1519,10 +1617,7 @@ const useDefaultValuesUtil = (
     for (const [_name, defaultValue] of parseFieldDef(options.defaultValues)) {
       const name = namePrefix ? prefixName(_name, namePrefix) : _name;
       modifiedFields.add(name);
-      defaultValuesMap.set(
-        name,
-        defaultValue
-      );
+      defaultValuesMap.set(name, defaultValue);
     }
 
     return modifiedFields;
@@ -1682,6 +1777,52 @@ export const useValidators = <FieldDef extends Record<string, unknown>>(
   return useValidatorsUtil(options);
 };
 
+export type UseIsEqualOptions<FieldDef extends Record<string, unknown>> = {
+  isEqual: IsEqualDef<FieldDef>;
+  form?: Form<FieldDef>;
+};
+export const useIsEqual = <FieldDef extends Record<string, unknown>>(
+  options: UseIsEqualOptions<FieldDef>
+): void => {
+  const form = useFormContextUtil({
+    form: options.form,
+    hookName: "useIsEqual",
+  });
+
+  const [state] = useState(() => {
+    const id = Symbol();
+    const isEqualFnsMap = new Map<string, IsEqualFn<any>>();
+    (IS_EQUAL_FNS.get(form) as Map<symbol, Map<string, any>>).set(
+      id,
+      isEqualFnsMap
+    );
+
+    return { id, isEqualFnsMap };
+  });
+
+  const namePrefix = useNamePrefix();
+
+  useMemo(() => {
+    const { isEqualFnsMap } = state;
+
+    isEqualFnsMap.clear();
+
+    for (const [_name, isEqual] of parseIsEqualDef(options.isEqual)) {
+      const name = namePrefix ? prefixName(_name, namePrefix) : _name;
+      isEqualFnsMap.set(name, isEqual);
+    }
+  }, [namePrefix, options.isEqual, state]);
+
+  useEffect(
+    () => () => {
+      const { id } = state;
+
+      (IS_EQUAL_FNS.get(form) as Map<symbol, Map<string, any>>).delete(id);
+    },
+    [form, state]
+  );
+};
+
 export const useWatcher = function <
   T = unknown,
   FieldDef extends Record<string, unknown> = any
@@ -1757,6 +1898,7 @@ export type UseFieldOptions<
 > = {
   name: Name;
   defaultValue?: T;
+  isEqual?: IsEqualFn<T>;
   validator?: Validator<any> | Iterable<Validator<any>>;
   /**
    * @see UseValidatorOptions.shouldRunValidation
@@ -1851,6 +1993,19 @@ export const useField = function <
     [form, options.shouldRunValidation, validatorDef]
   );
 
+  const isEqualOpts = useMemo<UseIsEqualOptions<FieldDef>>(
+    () =>
+      ({
+        isEqual: options.isEqual
+          ? {
+              [options.name as string]: options.isEqual,
+            }
+          : {},
+        form,
+      } as any),
+    [form, options.isEqual, options.name]
+  );
+
   useEffect(() => {
     const fieldWatchersMap = FIELD_WATCHERS.get(form) as Map<
       string,
@@ -1894,9 +2049,11 @@ export const useField = function <
     };
   }, [field, form]); // NOTE if the form changes, the field changes.
 
-  useDefaultValuesUtil(defaultValuesOpts);
+  useDefaultValuesUtil(defaultValuesOpts as any);
 
   useValidatorsUtil(validatorOps);
+
+  useIsEqual(isEqualOpts);
 
   return field as Field<T, Name>;
 };

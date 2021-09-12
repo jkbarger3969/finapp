@@ -30,13 +30,14 @@ export const addNewEntry: MutationResolvers["addNewEntry"] = (
       description: descriptionInput,
       total: totalInput,
       source: sourceInput,
-      reconciled = false,
+      reconciled: reconciledInput,
     } = input;
 
     const category = new ObjectId(categoryInput);
     const department = new ObjectId(departmentInput);
     const description = descriptionInput?.trim();
     const total = fractionToRational(totalInput);
+    const reconciled = reconciledInput ?? false;
 
     // convert
     const paymentMethod = upsertPaymentMethodToDbRecord({

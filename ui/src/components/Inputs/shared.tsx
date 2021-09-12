@@ -193,14 +193,14 @@ export const sortBranchesToTop = (
 };
 
 export type TextFieldControlledProps<
-  T = unknown,
+  T = string,
   TName extends string = string,
   TFieldDef extends Record<string, unknown> = Record<string, unknown>
 > = UseFieldOptions<T, TName, TFieldDef> &
   Omit<TextFieldProps, keyof UseFieldOptions | "value"> & {
     setValueAs?: (
       ...args: Parameters<NonNullable<TextFieldProps["onChange"]>>
-    ) => T;
+    ) => T | undefined;
   };
 
 export const TextFieldControlled = forwardRef(function TextFieldControlled(

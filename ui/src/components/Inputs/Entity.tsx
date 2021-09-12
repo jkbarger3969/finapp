@@ -27,6 +27,7 @@ import {
 import { useControlled } from "@material-ui/core";
 import {
   FieldValue,
+  IsEqualFn,
   useField,
   UseFieldOptions,
   useFormContext,
@@ -69,6 +70,36 @@ export type EntityTreeSelectValue<
   DisableClearable,
   FreeSolo
 >;
+
+const entityIsEqual: IsEqualFn<
+  EntityTreeSelectValue<true | false, true | false, true | false>
+> = (a, b) => {
+  type TIsEqual = EntityTreeSelectValue<false, false, true>;
+
+  const isEqual = (a: TIsEqual, b: TIsEqual) => {
+    if (!a || !b) {
+      return a === b;
+    } else if (a instanceof FreeSoloNode || b instanceof FreeSoloNode) {
+      return a.valueOf() === b.valueOf();
+    } else {
+      const aVal = a.valueOf();
+      const bVal = b.valueOf();
+      return aVal.id === bVal.id && aVal.__typename === bVal.__typename;
+    }
+  };
+
+  if (Array.isArray(a) || Array.isArray(b)) {
+    type TMulti = EntityTreeSelectValue<true, true | false, true | false>;
+
+    if ((a as TMulti).length !== (b as TMulti).length) {
+      return false;
+    } else {
+      return (a as TMulti).every((a, i) => isEqual(a, (b as TMulti)[i]));
+    }
+  } else {
+    return isEqual(a, b);
+  }
+};
 
 export const ENTITY_INPUT_OPT_FRAGMENTS = gql`
   fragment EntityBusinessInputOpt on Business {
@@ -548,6 +579,7 @@ export const EntityInput = forwardRef(function EntityInput<
   >({
     name: nameProp,
     form,
+    isEqual: entityIsEqual,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultValue: defaultValue as any,
   });

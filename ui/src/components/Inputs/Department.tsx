@@ -27,6 +27,7 @@ import {
 import { LoadingDefaultBlank, sortBranchesToTop } from "./shared";
 import {
   FieldValue,
+  IsEqualFn,
   useField,
   UseFieldOptions,
   useFormContext,
@@ -116,6 +117,52 @@ export type DepartmentTreeSelectProps<
   DisableClearable,
   FreeSolo
 >;
+
+const deptIsEqual: IsEqualFn<
+  TreeSelectValue<
+    DepartmentInputOpt,
+    DepartmentInputOpt,
+    true | false,
+    true | false,
+    true | false
+  >
+> = (a, b) => {
+  type TIsEqual = TreeSelectValue<
+    DepartmentInputOpt,
+    DepartmentInputOpt,
+    false,
+    false,
+    true
+  >;
+
+  const isEqual = (a: TIsEqual, b: TIsEqual) => {
+    if (!a || !b) {
+      return a === b;
+    } else if (a instanceof FreeSoloNode || b instanceof FreeSoloNode) {
+      return a.valueOf() === b.valueOf();
+    } else {
+      return a.valueOf().id === b.valueOf().id;
+    }
+  };
+
+  if (Array.isArray(a) || Array.isArray(b)) {
+    type TMulti = TreeSelectValue<
+      DepartmentInputOpt,
+      DepartmentInputOpt,
+      true,
+      true | false,
+      true | false
+    >;
+
+    if ((a as TMulti).length !== (b as TMulti).length) {
+      return false;
+    } else {
+      return (a as TMulti).every((a, i) => isEqual(a, (b as TMulti)[i]));
+    }
+  } else {
+    return isEqual(a, b);
+  }
+};
 
 export const getOptionLabel: NonNullable<
   DepartmentTreeSelectProps<
@@ -382,6 +429,7 @@ export const DepartmentInput = forwardRef(function DepartmentInput<
   >({
     name: DEPARTMENT_NAME,
     form,
+    isEqual: deptIsEqual,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultValue: defaultValue as any,
   });

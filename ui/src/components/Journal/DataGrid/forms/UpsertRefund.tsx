@@ -1,7 +1,9 @@
 import React, {
   forwardRef,
+  MutableRefObject,
   Ref,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -16,14 +18,17 @@ import {
   DialogTitle,
   Grid,
   makeStyles,
+  Typography,
 } from "@material-ui/core";
 import { Add as AddIcon } from "@material-ui/icons";
-import { TransitionProps } from "@material-ui/core/transitions";
+import { gql } from "@apollo/client";
+import { MutationHookOptions, useMutation } from "@apollo/client/react";
+import Fraction from "fraction.js";
 
 import {
   FormProvider,
+  IForm,
   OnSubmitCb,
-  SubmitState,
   useForm,
 } from "../../../../useKISSForm/form";
 import {
@@ -34,6 +39,43 @@ import {
 import { inputGridItemProps, useSharedDialogInputProps } from "./shared";
 import { AsyncButton } from "../../../utils/AsyncButton";
 import OverlayLoading from "../../../utils/OverlayLoading";
+import { REFUND, ENTRY } from "../Grid.gql";
+import {
+  NewEntryRefund,
+  NewEntryRefundMutation,
+  NewEntryRefundMutationVariables as NewEntryRefundMutationVars,
+  UpdateEntryRefund,
+  UpdateEntryRefundMutation,
+  UpdateEntryRefundMutationVariables as UpdateEntryRefundMutationVars,
+} from "../../../../apollo/graphTypes";
+import { serializeDate, serializeRational } from "../../../../apollo/scalars";
+import { toUpsertPaymentMethod } from "../../../Inputs/PaymentMethod";
+
+export const NEW_ENTRY_REFUND = gql`
+  mutation NewEntryRefund($newEntryRefund: NewEntryRefund!) {
+    addNewEntryRefund(input: $newEntryRefund) {
+      newEntryRefund {
+        __typename
+        id
+        entry {
+          ...GridEntry
+        }
+      }
+    }
+  }
+  ${ENTRY}
+`;
+
+export const UPDATE_ENTRY_REFUND = gql`
+  mutation UpdateEntryRefund($updateEntryRefund: UpdateEntryRefund!) {
+    updateEntryRefund(input: $updateEntryRefund) {
+      updatedEntryRefund {
+        ...GridRefund
+      }
+    }
+  }
+  ${REFUND}
+`;
 
 const useStyles = makeStyles({
   dialogContent: {
@@ -43,66 +85,175 @@ const useStyles = makeStyles({
 
 export type UpsertRefundProps = {
   refundProps: RefundProps;
-  onSuccess?: (results: { submitState: SubmitState<RefundFieldDef> }) => void;
-} & Omit<DialogProps, "children" | "PaperProps" | "onClose"> & {
+  dialogProps: Omit<DialogProps, "children" | "PaperProps" | "onClose"> & {
     onClose?: (
-      event: Parameters<NonNullable<DialogProps["onClose"]>>[0],
-      reason: Parameters<NonNullable<DialogProps["onClose"]>>[1] | "cancel"
+      event: Parameters<NonNullable<DialogProps["onClose"]>>[0] | undefined,
+      reason:
+        | Parameters<NonNullable<DialogProps["onClose"]>>[1]
+        | "cancel"
+        | "success"
     ) => void;
   };
+  refetchQueries?: {
+    onUpdateEntry?: MutationHookOptions<
+      UpdateEntryRefundMutation,
+      UpdateEntryRefundMutationVars
+    >["refetchQueries"];
+    onNewEntry?: MutationHookOptions<
+      NewEntryRefundMutation,
+      NewEntryRefundMutationVars
+    >["refetchQueries"];
+  };
+};
 
-export const UpsertRefund = forwardRef(function UpsertRefund(
-  props: UpsertRefundProps,
-  ref: Ref<unknown>
-) {
+const InnerDialog = (
+  props: UpsertRefundProps & {
+    formRef: MutableRefObject<IForm<RefundFieldDef> | null>;
+  }
+): JSX.Element => {
   const {
     refundProps,
-    onClose,
-    onSuccess,
-    TransitionProps: _TransitionProps,
-    ...rest
+    formRef,
+    dialogProps: { onClose },
+    refetchQueries,
   } = props;
 
   const classes = useStyles();
+
+  const [entryId, updateRefundId] =
+    "updateRefundId" in refundProps
+      ? [undefined, refundProps.updateRefundId]
+      : [refundProps.entryId, undefined];
+
+  const isUpdate = useRef(!!updateRefundId).current;
 
   const addRef = useRef<HTMLButtonElement | null>(null);
   const [submitButton, setSubmitButton] = useState<HTMLButtonElement | null>(
     null
   );
+  const submitButtonRef = useRef<HTMLButtonElement | null>(null);
+  submitButtonRef.current = submitButton;
+
+  const [addNewEntryRefund] = useMutation<
+    NewEntryRefundMutation,
+    NewEntryRefundMutationVars
+  >(
+    NEW_ENTRY_REFUND,
+    useMemo(
+      () =>
+        refetchQueries?.onNewEntry
+          ? {
+              refetchQueries: refetchQueries?.onNewEntry,
+            }
+          : undefined,
+      [refetchQueries?.onNewEntry]
+    )
+  );
+
+  const [updateEntryRefund] = useMutation<
+    UpdateEntryRefundMutation,
+    UpdateEntryRefundMutationVars
+  >(
+    UPDATE_ENTRY_REFUND,
+    useMemo(
+      () =>
+        refetchQueries?.onUpdateEntry
+          ? {
+              refetchQueries: refetchQueries?.onUpdateEntry,
+            }
+          : undefined,
+      [refetchQueries?.onUpdateEntry]
+    )
+  );
 
   const form = useForm({
     onSubmit: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onSubmit: useCallback<OnSubmitCb<any>>(
+      onSubmit: useCallback<OnSubmitCb<RefundFieldDef>>(
         async (submitState) => {
-          console.log(submitState);
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-          if (onSuccess) {
-            onSuccess({ submitState });
+          const {
+            dirtyValues: { refund },
+          } = submitState;
+
+          // Nothing to update
+          if (!refund) {
+            return;
+          } else if (updateRefundId) {
+            // compose RefundUpdate
+            const entryRefundUpdate: UpdateEntryRefund = {
+              id: updateRefundId,
+              date: refund?.date ? serializeDate(refund.date) : null,
+              paymentMethod: refund?.paymentMethod
+                ? toUpsertPaymentMethod({
+                    paymentMethodInput: refund.paymentMethod,
+                  })
+                : null,
+              description: refund?.description?.trim() ?? null,
+              total: refund?.total ? serializeRational(refund.total) : null,
+              // source,
+              reconciled: refund?.reconciled ?? null,
+            };
+
+            const { errors } = await updateEntryRefund({
+              variables: {
+                updateEntryRefund: entryRefundUpdate,
+              },
+            });
+
+            if (errors?.length) {
+              throw new Error(errors.map(({ message }) => message).join(".\n"));
+            }
+          } else {
+            const newEntryRefund: NewEntryRefund = {
+              entry: entryId as string,
+              date: serializeDate(refund?.date as Date),
+
+              paymentMethod: toUpsertPaymentMethod({
+                paymentMethodInput: refund?.paymentMethod as Parameters<
+                  typeof toUpsertPaymentMethod
+                >[0]["paymentMethodInput"],
+              }),
+              description: refund?.description?.trim() || null,
+              total: serializeRational(refund?.total as Fraction),
+              reconciled: refund?.reconciled ?? null,
+            };
+
+            const { errors } = await addNewEntryRefund({
+              variables: {
+                newEntryRefund,
+              },
+            });
+
+            if (errors?.length) {
+              throw new Error(errors.map(({ message }) => message).join(".\n"));
+            }
           }
         },
-        [onSuccess]
+        [addNewEntryRefund, entryId, updateEntryRefund, updateRefundId]
+      ),
+      onSuccess: useCallback<OnSubmitCb<RefundFieldDef>>(
+        ({ event }) => {
+          if (addRef.current === submitButtonRef.current) {
+            if (onClose) {
+              onClose(event, "success");
+            }
+          } /* else if (addRef.current === addAndNewRef.current) {
+            form.reset();
+          } */
+        },
+        [onClose]
       ),
     },
     validateOn: "submit",
   });
 
-  const isUpdate = "updateRefundId" in refundProps;
-
-  const TransitionProps = useMemo<TransitionProps>(
-    () => ({
-      ..._TransitionProps,
-      onExited: (...args) => {
-        form.reset();
-        if (_TransitionProps?.onExited) {
-          _TransitionProps.onExited(...args);
-        }
-      },
-    }),
-    [_TransitionProps, form]
+  formRef.current = form;
+  useEffect(
+    () => () => {
+      formRef.current = null;
+    },
+    [formRef]
   );
-
-  const { handleSubmit } = form;
 
   const sharedInputProps = useSharedDialogInputProps();
 
@@ -144,7 +295,9 @@ export const UpsertRefund = forwardRef(function UpsertRefund(
     )
   );
 
-  const handleClose = useCallback<NonNullable<UpsertRefundProps["onClose"]>>(
+  const handleClose = useCallback<
+    NonNullable<UpsertRefundProps["dialogProps"]["onClose"]>
+  >(
     (...args) => {
       if (form.isSubmitting) {
         return;
@@ -157,38 +310,25 @@ export const UpsertRefund = forwardRef(function UpsertRefund(
     [form.isSubmitting, onClose]
   );
 
+  const submissionError = form.submissionError;
+
   return (
     <FormProvider form={form}>
-      <Dialog
-        {...rest}
-        TransitionProps={TransitionProps}
-        onClose={handleClose}
-        PaperProps={useMemo(
-          () =>
-            ({
-              component: "form",
-              onSubmit: (e: React.FormEvent<HTMLFormElement>) => {
-                e.preventDefault();
-                if (!form.isSubmitting) {
-                  handleSubmit(e);
-                }
-              },
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            } as any),
-          [form.isSubmitting, handleSubmit]
-        )}
-        disableEscapeKeyDown={form.isSubmitting}
-        ref={ref}
-      >
-        <DialogTitle>
-          {(() => {
-            if (isUpdate) {
-              return form.isSubmitting ? "Updating Refund..." : "Update Refund";
-            } else {
-              return form.isSubmitting ? "Adding Refund..." : "Add Refund";
-            }
-          })()}
-        </DialogTitle>
+      <DialogTitle>
+        {(() => {
+          if (isUpdate) {
+            return form.isSubmitting ? "Updating Refund..." : "Update Refund";
+          } else {
+            return form.isSubmitting ? "Adding Refund..." : "Add Refund";
+          }
+        })()}
+      </DialogTitle>
+      {submissionError ? (
+        <DialogContent dividers>
+          <Typography color="error">Submission Error:</Typography>
+          <Typography color="error">{submissionError.message}</Typography>
+        </DialogContent>
+      ) : (
         <DialogContent dividers className={classes.dialogContent}>
           {form.loading && <OverlayLoading zIndex="modal" />}
           <Grid spacing={3} container>
@@ -201,40 +341,88 @@ export const UpsertRefund = forwardRef(function UpsertRefund(
             <Grid {...inputGridItemProps}>{refundInputs.reconciledInput}</Grid>
           </Grid>
         </DialogContent>
-        <DialogActions>
-          <AsyncButton
-            color="primary"
-            showProgress={
-              form.isSubmitting &&
-              !!submitButton &&
-              submitButton === addRef.current
-            }
-            disabled={form.isSubmitting || form.loading}
-            type="submit"
-            variant="contained"
-            startIcon={<AddIcon />}
-            ref={addRef}
-            onClick={useCallback(() => {
-              setSubmitButton(addRef.current);
-            }, [])}
-          >
-            Add
-          </AsyncButton>
-          <Button
-            type="reset"
-            disabled={form.isSubmitting}
-            variant="text"
-            onClick={useCallback<NonNullable<ButtonProps["onClick"]>>(
-              (event) => {
-                handleClose(event, "cancel");
-              },
-              [handleClose]
-            )}
-          >
-            {form.submissionError ? "Ok" : "Cancel"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      )}
+      <DialogActions>
+        <AsyncButton
+          color="primary"
+          showProgress={
+            form.isSubmitting &&
+            !!submitButton &&
+            submitButton === addRef.current
+          }
+          disabled={form.isSubmitting || form.loading || !!submissionError}
+          type="submit"
+          variant="contained"
+          startIcon={<AddIcon />}
+          ref={addRef}
+          onClick={useCallback(() => {
+            setSubmitButton(addRef.current);
+          }, [])}
+        >
+          {isUpdate ? "Update" : "Add"}
+        </AsyncButton>
+        <Button
+          type="reset"
+          disabled={form.isSubmitting}
+          variant="text"
+          onClick={useCallback<NonNullable<ButtonProps["onClick"]>>(
+            (event) => {
+              handleClose(event, "cancel");
+            },
+            [handleClose]
+          )}
+        >
+          {form.submissionError ? "Ok" : "Cancel"}
+        </Button>
+      </DialogActions>
     </FormProvider>
+  );
+};
+
+export const UpsertRefund = forwardRef(function UpsertRefund(
+  props: UpsertRefundProps,
+  ref: Ref<unknown>
+) {
+  const formRef = useRef<IForm<RefundFieldDef> | null>(null);
+
+  const onClose = props.dialogProps.onClose;
+  const handleClose = useCallback<
+    NonNullable<UpsertRefundProps["dialogProps"]["onClose"]>
+  >(
+    (...args) => {
+      if (formRef.current?.isSubmitting) {
+        return;
+      }
+
+      if (onClose) {
+        onClose(...args);
+      }
+    },
+    [onClose]
+  );
+
+  return (
+    <Dialog
+      {...props.dialogProps}
+      onClose={handleClose}
+      PaperProps={useMemo(
+        () =>
+          ({
+            component: "form",
+            onSubmit: (e: React.FormEvent<HTMLFormElement>) => {
+              e.preventDefault();
+              if (!formRef.current?.isSubmitting) {
+                formRef.current?.handleSubmit(e);
+              }
+            },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any),
+        []
+      )}
+      disableEscapeKeyDown={formRef.current?.isSubmitting}
+      ref={ref}
+    >
+      <InnerDialog {...props} formRef={formRef} />
+    </Dialog>
   );
 });

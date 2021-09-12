@@ -19,7 +19,6 @@ export type Scalars = {
   Rational: string;
 };
 
-
 export type AccountInterface = {
   id: Scalars['ID'];
   active: Scalars['Boolean'];
@@ -280,13 +279,6 @@ export type Alias = {
   type: AliasType;
 };
 
-export type AliasWhereTarget = {
-  eq?: Maybe<NodeInput>;
-  ne?: Maybe<NodeInput>;
-  in?: Maybe<Array<NodeInput>>;
-  nin?: Maybe<Array<NodeInput>>;
-};
-
 export type AliasesWhere = {
   id?: Maybe<WhereId>;
   target?: Maybe<WhereNode>;
@@ -341,19 +333,8 @@ export type BusinessDepartmentsArgs = {
   root?: Maybe<Scalars['Boolean']>;
 };
 
-export type BusinessAddFields = {
+export type NewBusiness = {
   name: Scalars['String'];
-};
-
-export type BusinessesWhereInput = {
-  eq?: Maybe<Scalars['ID']>;
-  ne?: Maybe<Scalars['ID']>;
-  in?: Maybe<Array<Scalars['ID']>>;
-  nin?: Maybe<Array<Scalars['ID']>>;
-  name?: Maybe<WhereRegexInput>;
-  and?: Maybe<Array<BusinessesWhereInput>>;
-  or?: Maybe<Array<BusinessesWhereInput>>;
-  nor?: Maybe<Array<BusinessesWhereInput>>;
 };
 
 export type BusinessesWhere = {
@@ -366,83 +347,54 @@ export type BusinessesWhere = {
 
 export type Mutation = {
   __typename?: 'Mutation';
-  addBusiness: Business;
-  entryUpdate: Entry;
-  entryAdd: Entry;
-  entryDelete: Entry;
-  entryAddRefund: Entry;
-  entryUpdateRefund: Entry;
-  entryDeleteRefund: Entry;
-  entryAddItem: EntryItemUpsertResult;
-  entryUpdateItem: EntryItemUpsertResult;
-  entryDeleteItem: EntryItemUpsertResult;
-  addPerson: Person;
+  addNewBusiness: Business;
+  addNewEntry: AddNewEntryPayload;
+  updateEntry: UpdateEntryPayload;
+  deleteEntry: DeleteEntryPayload;
+  addNewEntryRefund: AddNewEntryRefundPayload;
+  updateEntryRefund: UpdateEntryRefundPayload;
+  deleteEntryRefund: DeleteEntryRefundPayload;
+  addNewPerson: AddNewPersonPayload;
 };
 
 
-export type MutationAddBusinessArgs = {
-  fields: BusinessAddFields;
+export type MutationAddNewBusinessArgs = {
+  input: NewBusiness;
 };
 
 
-export type MutationEntryUpdateArgs = {
-  id: Scalars['ID'];
-  fields: EntryUpdateFields;
-  paymentMethodUpdate?: Maybe<EntryUpdatePaymentMethod>;
-  personAdd?: Maybe<PersonAddFields>;
-  businessAdd?: Maybe<BusinessAddFields>;
+export type MutationAddNewEntryArgs = {
+  input: NewEntry;
 };
 
 
-export type MutationEntryAddArgs = {
-  fields: EntryAddFields;
-  personAdd?: Maybe<PersonAddFields>;
-  businessAdd?: Maybe<BusinessAddFields>;
+export type MutationUpdateEntryArgs = {
+  input: UpdateEntry;
 };
 
 
-export type MutationEntryDeleteArgs = {
+export type MutationDeleteEntryArgs = {
   id: Scalars['ID'];
 };
 
 
-export type MutationEntryAddRefundArgs = {
-  id: Scalars['ID'];
-  fields: EntryAddRefundFields;
+export type MutationAddNewEntryRefundArgs = {
+  input: NewEntryRefund;
 };
 
 
-export type MutationEntryUpdateRefundArgs = {
-  id: Scalars['ID'];
-  fields: EntryUpdateRefundFields;
-  paymentMethodUpdate?: Maybe<EntryUpdatePaymentMethod>;
+export type MutationUpdateEntryRefundArgs = {
+  input: UpdateEntryRefund;
 };
 
 
-export type MutationEntryDeleteRefundArgs = {
+export type MutationDeleteEntryRefundArgs = {
   id: Scalars['ID'];
 };
 
 
-export type MutationEntryAddItemArgs = {
-  id: Scalars['ID'];
-  fields: EntryAddItemFields;
-};
-
-
-export type MutationEntryUpdateItemArgs = {
-  id: Scalars['ID'];
-  fields: EntryUpdateItemFields;
-};
-
-
-export type MutationEntryDeleteItemArgs = {
-  id: Scalars['ID'];
-};
-
-
-export type MutationAddPersonArgs = {
-  fields: PersonAddFields;
+export type MutationAddNewPersonArgs = {
+  input: NewPerson;
 };
 
 export type Category = {
@@ -472,6 +424,7 @@ export enum Currency {
   Usd = 'USD'
 }
 
+
 export type DepartmentAncestor = Department | Business;
 
 export type Department = {
@@ -494,39 +447,6 @@ export type DepartmentAncestorsArgs = {
   root?: Maybe<DepartmentsWhere>;
 };
 
-export enum DepartmentAncestorType {
-  Business = 'BUSINESS',
-  Department = 'DEPARTMENT'
-}
-
-export type DepartmentAncestorInput = {
-  id: Scalars['ID'];
-  type: DepartmentAncestorType;
-};
-
-export type DepartmentsWhereAncestor = {
-  eq?: Maybe<DepartmentAncestorInput>;
-  ne?: Maybe<DepartmentAncestorInput>;
-  in?: Maybe<Array<DepartmentAncestorInput>>;
-  nin?: Maybe<Array<DepartmentAncestorInput>>;
-};
-
-export type DepartmentsWhereInput = {
-  eq?: Maybe<Scalars['ID']>;
-  ne?: Maybe<Scalars['ID']>;
-  in?: Maybe<Array<Scalars['ID']>>;
-  nin?: Maybe<Array<Scalars['ID']>>;
-  name?: Maybe<WhereRegexInput>;
-  parent?: Maybe<DepartmentsWhereAncestor>;
-  and?: Maybe<Array<DepartmentsWhereInput>>;
-  or?: Maybe<Array<DepartmentsWhereInput>>;
-  nor?: Maybe<Array<DepartmentsWhereInput>>;
-};
-
-export type DepartmentAddFields = {
-  name: Scalars['String'];
-};
-
 export type DepartmentsWhere = {
   id?: Maybe<WhereTreeId>;
   name?: Maybe<WhereRegex>;
@@ -541,6 +461,17 @@ export type DepartmentsWhere = {
 
 export type Entity = Person | Business | Department;
 
+export enum EntityType {
+  Person = 'PERSON',
+  Business = 'BUSINESS',
+  Department = 'DEPARTMENT'
+}
+
+export type EntityInput = {
+  type: EntityType;
+  id: Scalars['ID'];
+};
+
 export type EntitiesWhere = {
   businesses?: Maybe<BusinessesWhere>;
   departments?: Maybe<DepartmentsWhere>;
@@ -552,35 +483,17 @@ export enum EntryType {
   Debit = 'DEBIT'
 }
 
+/** `Entry.source` value. */
 export type EntryDateOfRecord = {
   __typename?: 'EntryDateOfRecord';
-  /** ISO 8601 */
   date: Scalars['Date'];
   overrideFiscalYear: Scalars['Boolean'];
-};
-
-export type EntryDateOfRecordAdd = {
-  /** ISO 8601 */
-  date: Scalars['Date'];
-  overrideFiscalYear: Scalars['Boolean'];
-};
-
-export type EntryDateOfRecordUpdate = {
-  /** ISO 8601 */
-  date?: Maybe<Scalars['Date']>;
-  overrideFiscalYear?: Maybe<Scalars['Boolean']>;
-  /**
-   * When "clear" field is true, the "date" and "overrideFiscalYear" are ignored.
-   * When "clear" field is false or null, it is ignored i.e. does nothing.
-   */
-  clear?: Maybe<Scalars['Boolean']>;
 };
 
 export type Entry = {
   __typename?: 'Entry';
   id: Scalars['ID'];
   category: Category;
-  /** ISO 8601 */
   date: Scalars['Date'];
   dateOfRecord?: Maybe<EntryDateOfRecord>;
   deleted: Scalars['Boolean'];
@@ -603,7 +516,7 @@ export type EntriesWhereSource = {
 };
 
 export type EntriesWhereDateOfRecord = {
-  date?: Maybe<WhereDateBeta>;
+  date?: Maybe<WhereDate>;
   overrideFiscalYear?: Maybe<Scalars['Boolean']>;
 };
 
@@ -611,7 +524,8 @@ export type EntriesWhere = {
   id?: Maybe<WhereId>;
   refunds?: Maybe<EntryRefundsWhere>;
   items?: Maybe<EntryItemsWhere>;
-  date?: Maybe<WhereDateBeta>;
+  type?: Maybe<EntryType>;
+  date?: Maybe<WhereDate>;
   dateOfRecord?: Maybe<EntriesWhereDateOfRecord>;
   department?: Maybe<DepartmentsWhere>;
   fiscalYear?: Maybe<FiscalYearsWhere>;
@@ -620,56 +534,62 @@ export type EntriesWhere = {
   total?: Maybe<WhereRational>;
   source?: Maybe<EntriesWhereSource>;
   reconciled?: Maybe<Scalars['Boolean']>;
-  lastUpdate?: Maybe<WhereDateBeta>;
+  lastUpdate?: Maybe<WhereDate>;
   deleted?: Maybe<Scalars['Boolean']>;
   and?: Maybe<Array<EntriesWhere>>;
   or?: Maybe<Array<EntriesWhere>>;
   nor?: Maybe<Array<EntriesWhere>>;
 };
 
-export enum SourceType {
-  Business = 'BUSINESS',
-  Department = 'DEPARTMENT',
-  Person = 'PERSON'
-}
-
-export type SourceInput = {
-  sourceType: SourceType;
-  id: Scalars['ID'];
+/** `NewEntry.source` and `UpdateEntry.source` input.  Choose ONE field only. */
+export type UpsertEntrySource = {
+  source?: Maybe<EntityInput>;
+  business?: Maybe<NewBusiness>;
+  person?: Maybe<NewPerson>;
 };
 
-export type EntryUpdateFields = {
-  /** ISO 8601 */
-  date?: Maybe<Scalars['Date']>;
-  dateOfRecord?: Maybe<EntryDateOfRecordUpdate>;
-  department?: Maybe<Scalars['ID']>;
-  type?: Maybe<EntryType>;
-  category?: Maybe<Scalars['ID']>;
-  paymentMethod?: Maybe<Scalars['ID']>;
+/** `NewEntry.dateOfRecord` input. */
+export type NewEntryDateOfRecord = {
+  date: Scalars['Date'];
+  overrideFiscalYear: Scalars['Boolean'];
+};
+
+export type NewEntry = {
+  date: Scalars['Date'];
+  dateOfRecord?: Maybe<NewEntryDateOfRecord>;
+  department: Scalars['ID'];
+  category: Scalars['ID'];
+  paymentMethod: UpsertPaymentMethod;
   description?: Maybe<Scalars['String']>;
-  total?: Maybe<Scalars['Rational']>;
-  source?: Maybe<SourceInput>;
+  total: Scalars['Rational'];
+  source: UpsertEntrySource;
   reconciled?: Maybe<Scalars['Boolean']>;
 };
 
-export type EntryAddFields = {
-  /** ISO 8601 */
-  date: Scalars['Date'];
-  dateOfRecord?: Maybe<EntryDateOfRecordAdd>;
-  department: Scalars['ID'];
-  type: EntryType;
-  category: Scalars['ID'];
-  paymentMethod: Scalars['ID'];
+/** `UpdateEntry.dateOfRecord` input.  Fields "date" and "overrideFiscalYear" are mutually exclusive to field "clear".  Requires at least ONE optional field. */
+export type UpdateEntryDateOfRecord = {
+  date?: Maybe<Scalars['Date']>;
+  overrideFiscalYear?: Maybe<Scalars['Boolean']>;
+  clear?: Maybe<Scalars['Boolean']>;
+};
+
+/** Requirers at least ONE optional field. */
+export type UpdateEntry = {
+  id: Scalars['ID'];
+  date?: Maybe<Scalars['Date']>;
+  dateOfRecord?: Maybe<UpdateEntryDateOfRecord>;
+  department?: Maybe<Scalars['ID']>;
+  category?: Maybe<Scalars['ID']>;
+  paymentMethod?: Maybe<UpsertPaymentMethod>;
   description?: Maybe<Scalars['String']>;
-  total: Scalars['Rational'];
-  source: SourceInput;
+  total?: Maybe<Scalars['Rational']>;
+  source?: Maybe<UpsertEntrySource>;
   reconciled?: Maybe<Scalars['Boolean']>;
 };
 
 export type EntryRefund = {
   __typename?: 'EntryRefund';
   id: Scalars['ID'];
-  /** ISO 8601 */
   date: Scalars['Date'];
   deleted: Scalars['Boolean'];
   description?: Maybe<Scalars['String']>;
@@ -680,35 +600,35 @@ export type EntryRefund = {
   total: Scalars['Rational'];
 };
 
-export type EntryRefundsWhere = {
-  id?: Maybe<WhereId>;
-  date?: Maybe<WhereDateBeta>;
-  entry?: Maybe<EntriesWhere>;
-  total?: Maybe<WhereRational>;
-  reconciled?: Maybe<Scalars['Boolean']>;
-  lastUpdate?: Maybe<WhereDateBeta>;
-  deleted?: Maybe<Scalars['Boolean']>;
-  and?: Maybe<Array<EntryRefundsWhere>>;
-  or?: Maybe<Array<EntryRefundsWhere>>;
-  nor?: Maybe<Array<EntryRefundsWhere>>;
-};
-
-export type EntryAddRefundFields = {
-  /** ISO 8601 */
+export type NewEntryRefund = {
+  entry: Scalars['ID'];
   date: Scalars['Date'];
   description?: Maybe<Scalars['String']>;
-  paymentMethod: Scalars['ID'];
+  paymentMethod: UpsertPaymentMethod;
   total: Scalars['Rational'];
   reconciled?: Maybe<Scalars['Boolean']>;
 };
 
-export type EntryUpdateRefundFields = {
-  /** ISO 8601 */
+export type UpdateEntryRefund = {
+  id: Scalars['ID'];
   date?: Maybe<Scalars['Date']>;
   description?: Maybe<Scalars['String']>;
-  paymentMethod?: Maybe<Scalars['ID']>;
+  paymentMethod?: Maybe<UpsertPaymentMethod>;
   total?: Maybe<Scalars['Rational']>;
   reconciled?: Maybe<Scalars['Boolean']>;
+};
+
+export type EntryRefundsWhere = {
+  id?: Maybe<WhereId>;
+  date?: Maybe<WhereDate>;
+  entry?: Maybe<EntriesWhere>;
+  total?: Maybe<WhereRational>;
+  reconciled?: Maybe<Scalars['Boolean']>;
+  lastUpdate?: Maybe<WhereDate>;
+  deleted?: Maybe<Scalars['Boolean']>;
+  and?: Maybe<Array<EntryRefundsWhere>>;
+  or?: Maybe<Array<EntryRefundsWhere>>;
+  nor?: Maybe<Array<EntryRefundsWhere>>;
 };
 
 export type EntryItem = {
@@ -729,37 +649,41 @@ export type EntryItemsWhere = {
   category?: Maybe<CategoriesWhere>;
   units?: Maybe<WhereInt>;
   total?: Maybe<WhereRational>;
-  lastUpdate?: Maybe<WhereDateBeta>;
+  lastUpdate?: Maybe<WhereDate>;
   deleted?: Maybe<Scalars['Boolean']>;
   and?: Maybe<Array<EntryItemsWhere>>;
   or?: Maybe<Array<EntryItemsWhere>>;
   nor?: Maybe<Array<EntryItemsWhere>>;
 };
 
-export type EntryAddItemFields = {
-  department?: Maybe<Scalars['ID']>;
-  category?: Maybe<Scalars['ID']>;
-  description?: Maybe<Scalars['String']>;
-  units: Scalars['Int'];
-  total: Scalars['Rational'];
+export type AddNewEntryPayload = {
+  __typename?: 'AddNewEntryPayload';
+  newEntry: Entry;
 };
 
-export type EntryUpdateItemFields = {
-  department?: Maybe<Scalars['ID']>;
-  category?: Maybe<Scalars['ID']>;
-  description?: Maybe<Scalars['String']>;
-  units?: Maybe<Scalars['Int']>;
-  total?: Maybe<Scalars['Rational']>;
+export type UpdateEntryPayload = {
+  __typename?: 'UpdateEntryPayload';
+  updatedEntry: Entry;
 };
 
-export type EntryItemUpsertResult = {
-  __typename?: 'EntryItemUpsertResult';
-  entryItem: EntryItem;
-  entry: Entry;
+export type DeleteEntryPayload = {
+  __typename?: 'DeleteEntryPayload';
+  deletedEntry: Entry;
 };
 
-export type EntryUpdatePaymentMethod = {
-  id: Scalars['ID'];
+export type AddNewEntryRefundPayload = {
+  __typename?: 'AddNewEntryRefundPayload';
+  newEntryRefund: EntryRefund;
+};
+
+export type UpdateEntryRefundPayload = {
+  __typename?: 'UpdateEntryRefundPayload';
+  updatedEntryRefund: EntryRefund;
+};
+
+export type DeleteEntryRefundPayload = {
+  __typename?: 'DeleteEntryRefundPayload';
+  deletedEntryRefund: EntryRefund;
 };
 
 export type Subscription = {
@@ -777,26 +701,6 @@ export type FiscalYear = {
   end: Scalars['Date'];
 };
 
-export type FiscalYearWhereHasDate = {
-  eq?: Maybe<Scalars['Date']>;
-  ne?: Maybe<Scalars['Date']>;
-  in?: Maybe<Array<Scalars['Date']>>;
-  nin?: Maybe<Array<Scalars['Date']>>;
-};
-
-export type FiscalYearWhereInput = {
-  eq?: Maybe<Scalars['ID']>;
-  ne?: Maybe<Scalars['ID']>;
-  in?: Maybe<Array<Scalars['ID']>>;
-  nin?: Maybe<Array<Scalars['ID']>>;
-  name?: Maybe<WhereRegexInput>;
-  /** A FiscalYear is the set of all dates in the interval [begin, end). */
-  hasDate?: Maybe<FiscalYearWhereHasDate>;
-  and?: Maybe<Array<FiscalYearWhereInput>>;
-  or?: Maybe<Array<FiscalYearWhereInput>>;
-  nor?: Maybe<Array<FiscalYearWhereInput>>;
-};
-
 export type FiscalYearsWhere = {
   id?: Maybe<WhereId>;
   name?: Maybe<WhereRegex>;
@@ -809,7 +713,7 @@ export type FiscalYearsWhere = {
    *   lt: Any fiscal year that ends on or before the date.
    *   lte: Any fiscal year that contains the date or ends on or before the date.
    */
-  date?: Maybe<WhereDateBeta>;
+  date?: Maybe<WhereDate>;
   and?: Maybe<Array<FiscalYearsWhere>>;
   or?: Maybe<Array<FiscalYearsWhere>>;
   nor?: Maybe<Array<FiscalYearsWhere>>;
@@ -933,7 +837,8 @@ export enum PaymentMethodType {
   Unknown = 'UNKNOWN'
 }
 
-export type PaymentMethodInput = {
+/** One field is required and fields are mutually exclusive.. */
+export type UpsertPaymentMethod = {
   card?: Maybe<PaymentMethodCardInput>;
   accountCard?: Maybe<PaymentMethodAccountCardInput>;
   check?: Maybe<PaymentMethodCheckInput>;
@@ -955,26 +860,21 @@ export type PersonNameInput = {
   last: Scalars['String'];
 };
 
-export type PersonAddFields = {
+export type NewPerson = {
   name: PersonNameInput;
+  email?: Maybe<Scalars['String']>;
+  phone?: Maybe<Scalars['String']>;
+};
+
+export type AddNewPersonPayload = {
+  __typename?: 'AddNewPersonPayload';
+  newPerson: Person;
 };
 
 export type Person = {
   __typename?: 'Person';
   id: Scalars['ID'];
   name: PersonName;
-};
-
-export type PeopleWhereInput = {
-  lastName?: Maybe<WhereRegexInput>;
-  firstName?: Maybe<WhereRegexInput>;
-  eq?: Maybe<Scalars['ID']>;
-  ne?: Maybe<Scalars['ID']>;
-  in?: Maybe<Array<Scalars['ID']>>;
-  nin?: Maybe<Array<Scalars['ID']>>;
-  and?: Maybe<Array<PeopleWhereInput>>;
-  or?: Maybe<Array<PeopleWhereInput>>;
-  nor?: Maybe<Array<PeopleWhereInput>>;
 };
 
 export type PeopleNameWhere = {
@@ -990,6 +890,7 @@ export type PeopleWhere = {
   nor?: Maybe<Array<PeopleWhere>>;
 };
 
+
 export type WhereRational = {
   eq?: Maybe<Scalars['Rational']>;
   ne?: Maybe<Scalars['Rational']>;
@@ -1000,64 +901,6 @@ export type WhereRational = {
   gte?: Maybe<Scalars['Rational']>;
   lte?: Maybe<Scalars['Rational']>;
 };
-
-
-
-export type TypeNode = {
-  id: Scalars['ID'];
-  name: Scalars['String'];
-  parent?: Maybe<TypeNode>;
-  children: Array<TypeNode>;
-};
-
-export enum NodeChildrenType {
-  All = 'ALL',
-  Branch = 'BRANCH',
-  Leaf = 'LEAF',
-  None = 'NONE'
-}
-
-export enum SortDirection {
-  Asc = 'ASC',
-  Desc = 'DESC'
-}
-
-export enum FilterType {
-  Include = 'INCLUDE',
-  Exclude = 'EXCLUDE'
-}
-
-export type PaginateInput = {
-  skip: Scalars['Int'];
-  limit: Scalars['Int'];
-};
-
-export type ByIdFilter = {
-  eq?: Maybe<Scalars['ID']>;
-};
-
-export enum RegexOptions {
-  CaseInsensitive = 'CaseInsensitive',
-  Multiline = 'Multiline',
-  Extended = 'Extended',
-  DotAll = 'DotAll',
-  I = 'I',
-  M = 'M',
-  X = 'X',
-  S = 'S'
-}
-
-/** https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#advanced_searching_with_flags */
-export enum RegexFlags {
-  /** Global search. */
-  G = 'G',
-  /** Case-insensitive search. */
-  I = 'I',
-  /** Multi-line search. */
-  M = 'M',
-  /** Allows . to match newline characters. */
-  S = 'S'
-}
 
 export type WhereId = {
   eq?: Maybe<Scalars['ID']>;
@@ -1090,27 +933,17 @@ export type WhereNode = {
   nin?: Maybe<Array<NodeInput>>;
 };
 
-export type WhereTreeNode = {
-  eq?: Maybe<NodeInput>;
-  ne?: Maybe<NodeInput>;
-  in?: Maybe<Array<NodeInput>>;
-  nin?: Maybe<Array<NodeInput>>;
-  /** Range operators will match descendants and ancestors in the tree. */
-  gt?: Maybe<NodeInput>;
-  gte?: Maybe<NodeInput>;
-  lt?: Maybe<NodeInput>;
-  lte?: Maybe<NodeInput>;
-};
-
-export type WhereTreeNodeInput = {
-  id: Scalars['ID'];
-  matchDescendants?: Maybe<Scalars['Boolean']>;
-};
-
-export type WhereRegexInput = {
-  pattern: Scalars['String'];
-  options?: Maybe<Array<RegexOptions>>;
-};
+/** https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#advanced_searching_with_flags */
+export enum RegexFlags {
+  /** Global search. */
+  G = 'G',
+  /** Case-insensitive search. */
+  I = 'I',
+  /** Multi-line search. */
+  M = 'M',
+  /** Allows . to match newline characters. */
+  S = 'S'
+}
 
 export type WhereRegex = {
   /**
@@ -1119,12 +952,6 @@ export type WhereRegex = {
    */
   pattern: Scalars['String'];
   flags?: Maybe<Array<RegexFlags>>;
-};
-
-export type WhereDateTime = {
-  /** ISO 8601 */
-  date: Scalars['Date'];
-  ignoreTime?: Maybe<Scalars['Boolean']>;
 };
 
 export type WhereInt = {
@@ -1136,22 +963,13 @@ export type WhereInt = {
   lte?: Maybe<Scalars['Int']>;
 };
 
-export type WhereDateBeta = {
+export type WhereDate = {
   eq?: Maybe<Scalars['Date']>;
   ne?: Maybe<Scalars['Date']>;
   gt?: Maybe<Scalars['Date']>;
   gte?: Maybe<Scalars['Date']>;
   lt?: Maybe<Scalars['Date']>;
   lte?: Maybe<Scalars['Date']>;
-};
-
-export type WhereDate = {
-  eq?: Maybe<WhereDateTime>;
-  ne?: Maybe<WhereDateTime>;
-  gt?: Maybe<WhereDateTime>;
-  gte?: Maybe<WhereDateTime>;
-  lt?: Maybe<WhereDateTime>;
-  lte?: Maybe<WhereDateTime>;
 };
 
 export type Source = Person | Business | Department;
@@ -1161,23 +979,6 @@ export type User = {
   id: Scalars['ID'];
   user: Person;
 };
-
-export type DepartmentName_1QueryVariables = Exact<{
-  id: Scalars['ID'];
-}>;
-
-
-export type DepartmentName_1Query = { __typename?: 'Query', department: { __typename: 'Department', id: string, name: string } };
-
-export type DeptForUpsertAddQueryVariables = Exact<{
-  id: Scalars['ID'];
-}>;
-
-
-export type DeptForUpsertAddQuery = { __typename?: 'Query', department: (
-    { __typename?: 'Department' }
-    & DeptEntryOptFragment
-  ) };
 
 export type OnEntryUpsert_2SubscriptionVariables = Exact<{ [key: string]: never; }>;
 
@@ -1661,368 +1462,45 @@ export type DeleteRefundStateQueryVariables = Exact<{
 
 export type DeleteRefundStateQuery = { __typename?: 'Query', entryRefund?: Maybe<{ __typename: 'EntryRefund', id: string, total: string }> };
 
-export type EntryPayMethod_1Fragment_PaymentMethodCard_ = { __typename: 'PaymentMethodCard' };
-
-export type EntryPayMethod_1Fragment_PaymentMethodCheck_ = { __typename: 'PaymentMethodCheck' };
-
-export type EntryPayMethod_1Fragment_PaymentMethodCash_ = { __typename: 'PaymentMethodCash' };
-
-export type EntryPayMethod_1Fragment_PaymentMethodOnline_ = { __typename: 'PaymentMethodOnline' };
-
-export type EntryPayMethod_1Fragment_PaymentMethodCombination_ = { __typename: 'PaymentMethodCombination' };
-
-export type EntryPayMethod_1Fragment_PaymentMethodUnknown_ = { __typename: 'PaymentMethodUnknown' };
-
-export type EntryPayMethod_1Fragment = EntryPayMethod_1Fragment_PaymentMethodCard_ | EntryPayMethod_1Fragment_PaymentMethodCheck_ | EntryPayMethod_1Fragment_PaymentMethodCash_ | EntryPayMethod_1Fragment_PaymentMethodOnline_ | EntryPayMethod_1Fragment_PaymentMethodCombination_ | EntryPayMethod_1Fragment_PaymentMethodUnknown_;
-
-export type Category_1Fragment = { __typename: 'Category', id: string, type: EntryType, name: string };
-
-export type EntryDept_1Fragment = { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Department', id: string, deptName: string } | { __typename: 'Business', id: string, bizName: string }> };
-
-export type EntryRefund_1Fragment = { __typename: 'EntryRefund', id: string, date: string, description?: Maybe<string>, total: string, reconciled: boolean, lastUpdate: string, deleted: boolean, paymentMethod: { __typename: 'PaymentMethodCard' } | { __typename: 'PaymentMethodCheck' } | { __typename: 'PaymentMethodCash' } | { __typename: 'PaymentMethodOnline' } | { __typename: 'PaymentMethodCombination' } | { __typename: 'PaymentMethodUnknown' } };
-
-export type EntryItem_1Fragment = { __typename: 'EntryItem', id: string, total: string, units: number, description?: Maybe<string>, lastUpdate: string, deleted: boolean, category?: Maybe<(
-    { __typename?: 'Category' }
-    & Category_1Fragment
-  )>, department?: Maybe<(
-    { __typename?: 'Department' }
-    & EntryDept_1Fragment
-  )> };
-
-export type Entry_1Fragment = { __typename: 'Entry', id: string, date: string, description?: Maybe<string>, total: string, deleted: boolean, lastUpdate: string, reconciled: boolean, dateOfRecord?: Maybe<{ __typename?: 'EntryDateOfRecord', date: string, overrideFiscalYear: boolean }>, department: (
-    { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Department', id: string, deptName: string } | { __typename: 'Business', id: string, bizName: string }> }
-    & EntryDept_1Fragment
-  ), category: (
-    { __typename?: 'Category' }
-    & Category_1Fragment
-  ), paymentMethod: (
-    { __typename?: 'PaymentMethodCard' }
-    & EntryPayMethod_1Fragment_PaymentMethodCard_
-  ) | (
-    { __typename?: 'PaymentMethodCheck' }
-    & EntryPayMethod_1Fragment_PaymentMethodCheck_
-  ) | (
-    { __typename?: 'PaymentMethodCash' }
-    & EntryPayMethod_1Fragment_PaymentMethodCash_
-  ) | (
-    { __typename?: 'PaymentMethodOnline' }
-    & EntryPayMethod_1Fragment_PaymentMethodOnline_
-  ) | (
-    { __typename?: 'PaymentMethodCombination' }
-    & EntryPayMethod_1Fragment_PaymentMethodCombination_
-  ) | (
-    { __typename?: 'PaymentMethodUnknown' }
-    & EntryPayMethod_1Fragment_PaymentMethodUnknown_
-  ), source: { __typename: 'Person', id: string, name: { __typename?: 'PersonName', first: string, last: string } } | { __typename: 'Business', id: string, bizName: string } | { __typename: 'Department', id: string, deptName: string }, refunds: Array<(
-    { __typename?: 'EntryRefund' }
-    & EntryRefund_1Fragment
-  )>, items: Array<(
-    { __typename?: 'EntryItem' }
-    & EntryItem_1Fragment
-  )> };
-
-export type Entries_1QueryVariables = Exact<{
-  where: EntriesWhere;
+export type NewEntryMutationVariables = Exact<{
+  newEntry: NewEntry;
 }>;
 
 
-export type Entries_1Query = { __typename?: 'Query', entries: Array<(
-    { __typename?: 'Entry' }
-    & Entry_1Fragment
-  )>, fiscalYears: Array<{ __typename: 'FiscalYear', id: string, name: string, begin: string, end: string }> };
-
-export type EntryAdded_1SubscriptionVariables = Exact<{ [key: string]: never; }>;
-
-
-export type EntryAdded_1Subscription = { __typename?: 'Subscription', entryAdded: (
-    { __typename?: 'Entry' }
-    & Entry_1Fragment
-  ) };
-
-export type EntryUpdated_1SubscriptionVariables = Exact<{ [key: string]: never; }>;
-
-
-export type EntryUpdated_1Subscription = { __typename?: 'Subscription', entryUpdated: (
-    { __typename?: 'Entry' }
-    & Entry_1Fragment
-  ) };
-
-export type OnEntryUpsert_1SubscriptionVariables = Exact<{ [key: string]: never; }>;
-
-
-export type OnEntryUpsert_1Subscription = { __typename?: 'Subscription', entryUpserted: (
-    { __typename?: 'Entry', department: { __typename?: 'Department', ancestors: Array<{ __typename: 'Department', id: string } | { __typename?: 'Business' }> } }
-    & Entry_1Fragment
-  ) };
-
-export type ReconcileEntryMutationVariables = Exact<{
-  id: Scalars['ID'];
-}>;
-
-
-export type ReconcileEntryMutation = { __typename?: 'Mutation', entryUpdate: (
-    { __typename?: 'Entry' }
-    & Entry_1Fragment
-  ) };
-
-export type ReconcileRefundMutationVariables = Exact<{
-  id: Scalars['ID'];
-}>;
-
-
-export type ReconcileRefundMutation = { __typename?: 'Mutation', entryUpdateRefund: (
-    { __typename?: 'Entry' }
-    & Entry_1Fragment
-  ) };
-
-export type DeptIniValueForAddEntryQueryVariables = Exact<{
-  id: Scalars['ID'];
-}>;
-
-
-export type DeptIniValueForAddEntryQuery = { __typename?: 'Query', department: (
-    { __typename?: 'Department' }
-    & DeptEntryOptFragment
-  ) };
-
-export type DeleteEntryMutationVariables = Exact<{
-  id: Scalars['ID'];
-}>;
-
-
-export type DeleteEntryMutation = { __typename?: 'Mutation', entryDelete: (
-    { __typename?: 'Entry' }
-    & Entry_1Fragment
-  ) };
-
-export type UpdateEntryIniStateQueryVariables = Exact<{
-  id: Scalars['ID'];
-}>;
-
-
-export type UpdateEntryIniStateQuery = { __typename?: 'Query', entry?: Maybe<{ __typename: 'Entry', id: string, date: string, description?: Maybe<string>, total: string, reconciled: boolean, dateOfRecord?: Maybe<{ __typename?: 'EntryDateOfRecord', date: string, overrideFiscalYear: boolean }>, department: (
-      { __typename?: 'Department' }
-      & DeptEntryOptFragment
-    ), category: (
-      { __typename?: 'Category' }
-      & CatEntryOptFragment
-    ), source: (
-      { __typename?: 'Person' }
-      & SrcEntryPersonOptFragment
-    ) | (
-      { __typename?: 'Business' }
-      & SrcEntryBizOptFragment
-    ) | (
-      { __typename?: 'Department', ancestors: Array<(
-        { __typename?: 'Department' }
-        & SrcEntryDeptOptFragment
-      ) | (
-        { __typename?: 'Business' }
-        & SrcEntryBizOptFragment
-      )> }
-      & SrcEntryDeptOptFragment
-    ), paymentMethod: { __typename: 'PaymentMethodCard' } | { __typename: 'PaymentMethodCheck' } | { __typename: 'PaymentMethodCash' } | { __typename: 'PaymentMethodOnline' } | { __typename: 'PaymentMethodCombination' } | { __typename: 'PaymentMethodUnknown' }, refunds: Array<{ __typename: 'EntryRefund', id: string, deleted: boolean, date: string, total: string }> }> };
-
-export type AddEntryMutationVariables = Exact<{
-  fields: EntryAddFields;
-  personAdd?: Maybe<PersonAddFields>;
-  businessAdd?: Maybe<BusinessAddFields>;
-}>;
-
-
-export type AddEntryMutation = { __typename?: 'Mutation', entryAdd: (
-    { __typename?: 'Entry' }
-    & Entry_1Fragment
-  ) };
+export type NewEntryMutation = { __typename?: 'Mutation', addNewEntry: { __typename?: 'AddNewEntryPayload', newEntry: (
+      { __typename?: 'Entry' }
+      & GridEntryFragment
+    ) } };
 
 export type UpdateEntryMutationVariables = Exact<{
-  id: Scalars['ID'];
-  fields: EntryUpdateFields;
-  paymentMethodUpdate?: Maybe<EntryUpdatePaymentMethod>;
-  personAdd?: Maybe<PersonAddFields>;
-  businessAdd?: Maybe<BusinessAddFields>;
+  updateEntry: UpdateEntry;
 }>;
 
 
-export type UpdateEntryMutation = { __typename?: 'Mutation', entryUpdate: (
-    { __typename?: 'Entry' }
-    & Entry_1Fragment
-  ) };
-
-export type CatEntryOptsQueryVariables = Exact<{
-  where: CategoriesWhere;
-}>;
-
-
-export type CatEntryOptsQuery = { __typename?: 'Query', catOpts: Array<(
-    { __typename?: 'Category' }
-    & CatEntryOptFragment
-  )> };
-
-export type DeptEntryOptsQueryVariables = Exact<{
-  bizId: Scalars['ID'];
-}>;
-
-
-export type DeptEntryOptsQuery = { __typename?: 'Query', deptOpts: { __typename: 'Business', id: string, departments: Array<(
-      { __typename?: 'Department' }
-      & DeptEntryOptFragment
-    )> } };
-
-export type PayMethodEntryOptsQueryVariables = Exact<{
-  where: AccountsWhere;
-}>;
-
-
-export type PayMethodEntryOptsQuery = { __typename?: 'Query', accounts: Array<{ __typename: 'AccountChecking' } | { __typename: 'AccountCreditCard' }> };
-
-export type SrcEntryOptsQueryVariables = Exact<{
-  name: Scalars['String'];
-  isBiz: Scalars['Boolean'];
-}>;
-
-
-export type SrcEntryOptsQuery = { __typename?: 'Query', businesses?: Maybe<(
-    { __typename?: 'Business' }
-    & SrcEntryBizOptFragment
-  )>, people?: Maybe<(
-    { __typename?: 'Person' }
-    & SrcEntryPersonOptFragment
-  )> };
-
-export type GetEntryItemState_1QueryVariables = Exact<{
-  id: Scalars['ID'];
-}>;
-
-
-export type GetEntryItemState_1Query = { __typename?: 'Query', entry?: Maybe<(
-    { __typename?: 'Entry' }
-    & Entry_3Fragment
-  )> };
-
-export type DeleteItemMutationVariables = Exact<{
-  id: Scalars['ID'];
-}>;
-
-
-export type DeleteItemMutation = { __typename?: 'Mutation', entryDeleteItem: { __typename?: 'EntryItemUpsertResult', entryItem: { __typename: 'EntryItem', id: string, deleted: boolean } } };
-
-export type UpdateItemIniStateQueryVariables = Exact<{
-  entryId: Scalars['ID'];
-  itemId: Scalars['ID'];
-}>;
-
-
-export type UpdateItemIniStateQuery = { __typename?: 'Query', entry?: Maybe<(
-    { __typename?: 'Entry' }
-    & Entry_3Fragment
-  )>, entryItem?: Maybe<{ __typename: 'EntryItem', id: string, description?: Maybe<string>, units: number, total: string, department?: Maybe<(
-      { __typename?: 'Department' }
-      & DeptEntryOptFragment
-    )>, category?: Maybe<(
-      { __typename?: 'Category' }
-      & CatEntryOptFragment
-    )> }> };
-
-export type Entry_3Fragment = { __typename: 'Entry', id: string, total: string, date: string, items: Array<{ __typename: 'EntryItem', id: string, deleted: boolean, total: string }>, category: { __typename: 'Category', id: string, type: EntryType } };
-
-export type AddEntryItemMutationVariables = Exact<{
-  id: Scalars['ID'];
-  fields: EntryAddItemFields;
-}>;
-
-
-export type AddEntryItemMutation = { __typename?: 'Mutation', entryAddItem: { __typename?: 'EntryItemUpsertResult', entry: (
+export type UpdateEntryMutation = { __typename?: 'Mutation', updateEntry: { __typename?: 'UpdateEntryPayload', updatedEntry: (
       { __typename?: 'Entry' }
-      & Entry_1Fragment
+      & GridEntryFragment
     ) } };
 
-export type UpdateEntryItemMutationVariables = Exact<{
-  id: Scalars['ID'];
-  fields: EntryUpdateItemFields;
+export type NewEntryRefundMutationVariables = Exact<{
+  newEntryRefund: NewEntryRefund;
 }>;
 
 
-export type UpdateEntryItemMutation = { __typename?: 'Mutation', entryUpdateItem: { __typename?: 'EntryItemUpsertResult', entryItem: (
-      { __typename?: 'EntryItem' }
-      & EntryItem_1Fragment
+export type NewEntryRefundMutation = { __typename?: 'Mutation', addNewEntryRefund: { __typename?: 'AddNewEntryRefundPayload', newEntryRefund: { __typename: 'EntryRefund', id: string, entry: (
+        { __typename?: 'Entry' }
+        & GridEntryFragment
+      ) } } };
+
+export type UpdateEntryRefundMutationVariables = Exact<{
+  updateEntryRefund: UpdateEntryRefund;
+}>;
+
+
+export type UpdateEntryRefundMutation = { __typename?: 'Mutation', updateEntryRefund: { __typename?: 'UpdateEntryRefundPayload', updatedEntryRefund: (
+      { __typename?: 'EntryRefund' }
+      & GridRefundFragment
     ) } };
-
-export type GetEntryRefundInfo_1QueryVariables = Exact<{
-  id: Scalars['ID'];
-}>;
-
-
-export type GetEntryRefundInfo_1Query = { __typename?: 'Query', entry?: Maybe<(
-    { __typename?: 'Entry' }
-    & Entry_2Fragment
-  )> };
-
-export type DeleteRefundMutationVariables = Exact<{
-  id: Scalars['ID'];
-}>;
-
-
-export type DeleteRefundMutation = { __typename?: 'Mutation', entryDeleteRefund: (
-    { __typename?: 'Entry' }
-    & Entry_1Fragment
-  ) };
-
-export type UpdateRefundIniStateQueryVariables = Exact<{
-  entryId: Scalars['ID'];
-  refundId: Scalars['ID'];
-}>;
-
-
-export type UpdateRefundIniStateQuery = { __typename?: 'Query', entry?: Maybe<(
-    { __typename?: 'Entry' }
-    & Entry_2Fragment
-  )>, entryRefund?: Maybe<{ __typename: 'EntryRefund', id: string, date: string, description?: Maybe<string>, total: string, reconciled: boolean, paymentMethod: { __typename: 'PaymentMethodCard' } | { __typename: 'PaymentMethodCheck' } | { __typename: 'PaymentMethodCash' } | { __typename: 'PaymentMethodOnline' } | { __typename: 'PaymentMethodCombination' } | { __typename: 'PaymentMethodUnknown' } }> };
-
-export type Entry_2Fragment = { __typename: 'Entry', id: string, date: string, total: string, refunds: Array<{ __typename: 'EntryRefund', id: string, deleted: boolean, total: string }>, category: { __typename: 'Category', id: string, type: EntryType } };
-
-export type AddEntryRefundMutationVariables = Exact<{
-  id: Scalars['ID'];
-  fields: EntryAddRefundFields;
-}>;
-
-
-export type AddEntryRefundMutation = { __typename?: 'Mutation', entryAddRefund: { __typename: 'Entry', id: string, refunds: Array<(
-      { __typename?: 'EntryRefund' }
-      & EntryRefund_1Fragment
-    )> } };
-
-export type UpdateRefundMutationVariables = Exact<{
-  id: Scalars['ID'];
-  fields: EntryUpdateRefundFields;
-  paymentMethodUpdate?: Maybe<EntryUpdatePaymentMethod>;
-}>;
-
-
-export type UpdateRefundMutation = { __typename?: 'Mutation', entryUpdateRefund: { __typename: 'Entry', id: string, refunds: Array<(
-      { __typename?: 'EntryRefund' }
-      & EntryRefund_1Fragment
-    )> } };
-
-export type FiscalYearQueryVariables = Exact<{
-  date?: Maybe<Scalars['Date']>;
-}>;
-
-
-export type FiscalYearQuery = { __typename?: 'Query', fiscalYears: Array<{ __typename: 'FiscalYear', id: string }> };
-
-export type DeptEntryOptFragment = { __typename: 'Department', id: string, name: string, budgets: Array<{ __typename: 'Budget', id: string, fiscalYear: { __typename: 'FiscalYear', id: string } }>, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
-
-export type CatEntryOptFragment = { __typename: 'Category', id: string, name: string, type: EntryType, parent?: Maybe<{ __typename: 'Category', id: string }> };
-
-export type SrcEntryPersonOptFragment = { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } };
-
-export type SrcEntryDeptOptFragment = { __typename: 'Department', id: string, name: string, parent: { __typename: 'Department', id: string } | { __typename: 'Business', id: string } };
-
-export type SrcEntryBizOptFragment = { __typename: 'Business', id: string, name: string, vendor?: Maybe<{ __typename?: 'Vendor', approved: boolean, vendorId?: Maybe<string> }>, departments: Array<(
-    { __typename?: 'Department' }
-    & SrcEntryDeptOptFragment
-  )> };
 
 export type DeptsForNav_1QueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -2111,57 +1589,52 @@ export type ResolversTypes = {
   AliasTarget: ResolversTypes['Category'] | ResolversTypes['Department'];
   AliasType: AliasType;
   Alias: ResolverTypeWrapper<Omit<Alias, 'target'> & { target: ResolversTypes['AliasTarget'] }>;
-  AliasWhereTarget: AliasWhereTarget;
   AliasesWhere: AliasesWhere;
   BudgetOwner: ResolversTypes['Department'] | ResolversTypes['Business'];
   Budget: ResolverTypeWrapper<Omit<Budget, 'owner'> & { owner: ResolversTypes['BudgetOwner'] }>;
   BudgetsWhere: BudgetsWhere;
   Vendor: ResolverTypeWrapper<Vendor>;
   Business: ResolverTypeWrapper<Business>;
-  BusinessAddFields: BusinessAddFields;
-  BusinessesWhereInput: BusinessesWhereInput;
+  NewBusiness: NewBusiness;
   BusinessesWhere: BusinessesWhere;
   Mutation: ResolverTypeWrapper<{}>;
   Category: ResolverTypeWrapper<Category>;
   CategoriesWhere: CategoriesWhere;
   Currency: Currency;
+  Date: ResolverTypeWrapper<Scalars['Date']>;
   DepartmentAncestor: ResolversTypes['Department'] | ResolversTypes['Business'];
   Department: ResolverTypeWrapper<Omit<Department, 'parent' | 'ancestors'> & { parent: ResolversTypes['DepartmentAncestor'], ancestors: Array<ResolversTypes['DepartmentAncestor']> }>;
-  DepartmentAncestorType: DepartmentAncestorType;
-  DepartmentAncestorInput: DepartmentAncestorInput;
-  DepartmentsWhereAncestor: DepartmentsWhereAncestor;
-  DepartmentsWhereInput: DepartmentsWhereInput;
-  DepartmentAddFields: DepartmentAddFields;
   DepartmentsWhere: DepartmentsWhere;
   Entity: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'];
+  EntityType: EntityType;
+  EntityInput: EntityInput;
   EntitiesWhere: EntitiesWhere;
   EntryType: EntryType;
   EntryDateOfRecord: ResolverTypeWrapper<EntryDateOfRecord>;
-  EntryDateOfRecordAdd: EntryDateOfRecordAdd;
-  EntryDateOfRecordUpdate: EntryDateOfRecordUpdate;
   Entry: ResolverTypeWrapper<Omit<Entry, 'source'> & { source: ResolversTypes['Entity'] }>;
   EntriesWhereSource: EntriesWhereSource;
   EntriesWhereDateOfRecord: EntriesWhereDateOfRecord;
   EntriesWhere: EntriesWhere;
-  SourceType: SourceType;
-  SourceInput: SourceInput;
-  EntryUpdateFields: EntryUpdateFields;
-  EntryAddFields: EntryAddFields;
+  UpsertEntrySource: UpsertEntrySource;
+  NewEntryDateOfRecord: NewEntryDateOfRecord;
+  NewEntry: NewEntry;
+  UpdateEntryDateOfRecord: UpdateEntryDateOfRecord;
+  UpdateEntry: UpdateEntry;
   EntryRefund: ResolverTypeWrapper<EntryRefund>;
+  NewEntryRefund: NewEntryRefund;
+  UpdateEntryRefund: UpdateEntryRefund;
   EntryRefundsWhere: EntryRefundsWhere;
-  EntryAddRefundFields: EntryAddRefundFields;
-  EntryUpdateRefundFields: EntryUpdateRefundFields;
   EntryItem: ResolverTypeWrapper<EntryItem>;
   Int: ResolverTypeWrapper<Scalars['Int']>;
   EntryItemsWhere: EntryItemsWhere;
-  EntryAddItemFields: EntryAddItemFields;
-  EntryUpdateItemFields: EntryUpdateItemFields;
-  EntryItemUpsertResult: ResolverTypeWrapper<EntryItemUpsertResult>;
-  EntryUpdatePaymentMethod: EntryUpdatePaymentMethod;
+  AddNewEntryPayload: ResolverTypeWrapper<AddNewEntryPayload>;
+  UpdateEntryPayload: ResolverTypeWrapper<UpdateEntryPayload>;
+  DeleteEntryPayload: ResolverTypeWrapper<DeleteEntryPayload>;
+  AddNewEntryRefundPayload: ResolverTypeWrapper<AddNewEntryRefundPayload>;
+  UpdateEntryRefundPayload: ResolverTypeWrapper<UpdateEntryRefundPayload>;
+  DeleteEntryRefundPayload: ResolverTypeWrapper<DeleteEntryRefundPayload>;
   Subscription: ResolverTypeWrapper<{}>;
   FiscalYear: ResolverTypeWrapper<FiscalYear>;
-  FiscalYearWhereHasDate: FiscalYearWhereHasDate;
-  FiscalYearWhereInput: FiscalYearWhereInput;
   FiscalYearsWhere: FiscalYearsWhere;
   PaymentCardType: PaymentCardType;
   PaymentCardInterface: ResolversTypes['AccountCard'] | ResolversTypes['PaymentCard'];
@@ -2186,36 +1659,23 @@ export type ResolversTypes = {
   PaymentMethodUnknown: ResolverTypeWrapper<PaymentMethodUnknown>;
   PaymentMethodUnknownInput: PaymentMethodUnknownInput;
   PaymentMethodType: PaymentMethodType;
-  PaymentMethodInput: PaymentMethodInput;
+  UpsertPaymentMethod: UpsertPaymentMethod;
   PersonName: ResolverTypeWrapper<PersonName>;
   PersonNameInput: PersonNameInput;
-  PersonAddFields: PersonAddFields;
+  NewPerson: NewPerson;
+  AddNewPersonPayload: ResolverTypeWrapper<AddNewPersonPayload>;
   Person: ResolverTypeWrapper<Person>;
-  PeopleWhereInput: PeopleWhereInput;
   PeopleNameWhere: PeopleNameWhere;
   PeopleWhere: PeopleWhere;
-  WhereRational: WhereRational;
-  Date: ResolverTypeWrapper<Scalars['Date']>;
   Rational: ResolverTypeWrapper<Scalars['Rational']>;
-  TypeNode: never;
-  NodeChildrenType: NodeChildrenType;
-  SortDirection: SortDirection;
-  FilterType: FilterType;
-  PaginateInput: PaginateInput;
-  ByIdFilter: ByIdFilter;
-  RegexOptions: RegexOptions;
-  RegexFlags: RegexFlags;
+  WhereRational: WhereRational;
   WhereId: WhereId;
   WhereTreeId: WhereTreeId;
   NodeInput: NodeInput;
   WhereNode: WhereNode;
-  WhereTreeNode: WhereTreeNode;
-  WhereTreeNodeInput: WhereTreeNodeInput;
-  WhereRegexInput: WhereRegexInput;
+  RegexFlags: RegexFlags;
   WhereRegex: WhereRegex;
-  WhereDateTime: WhereDateTime;
   WhereInt: WhereInt;
-  WhereDateBeta: WhereDateBeta;
   WhereDate: WhereDate;
   Source: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'];
   User: ResolverTypeWrapper<User>;
@@ -2238,53 +1698,49 @@ export type ResolversParentTypes = {
   Query: {};
   AliasTarget: ResolversParentTypes['Category'] | ResolversParentTypes['Department'];
   Alias: Omit<Alias, 'target'> & { target: ResolversParentTypes['AliasTarget'] };
-  AliasWhereTarget: AliasWhereTarget;
   AliasesWhere: AliasesWhere;
   BudgetOwner: ResolversParentTypes['Department'] | ResolversParentTypes['Business'];
   Budget: Omit<Budget, 'owner'> & { owner: ResolversParentTypes['BudgetOwner'] };
   BudgetsWhere: BudgetsWhere;
   Vendor: Vendor;
   Business: Business;
-  BusinessAddFields: BusinessAddFields;
-  BusinessesWhereInput: BusinessesWhereInput;
+  NewBusiness: NewBusiness;
   BusinessesWhere: BusinessesWhere;
   Mutation: {};
   Category: Category;
   CategoriesWhere: CategoriesWhere;
+  Date: Scalars['Date'];
   DepartmentAncestor: ResolversParentTypes['Department'] | ResolversParentTypes['Business'];
   Department: Omit<Department, 'parent' | 'ancestors'> & { parent: ResolversParentTypes['DepartmentAncestor'], ancestors: Array<ResolversParentTypes['DepartmentAncestor']> };
-  DepartmentAncestorInput: DepartmentAncestorInput;
-  DepartmentsWhereAncestor: DepartmentsWhereAncestor;
-  DepartmentsWhereInput: DepartmentsWhereInput;
-  DepartmentAddFields: DepartmentAddFields;
   DepartmentsWhere: DepartmentsWhere;
   Entity: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'];
+  EntityInput: EntityInput;
   EntitiesWhere: EntitiesWhere;
   EntryDateOfRecord: EntryDateOfRecord;
-  EntryDateOfRecordAdd: EntryDateOfRecordAdd;
-  EntryDateOfRecordUpdate: EntryDateOfRecordUpdate;
   Entry: Omit<Entry, 'source'> & { source: ResolversParentTypes['Entity'] };
   EntriesWhereSource: EntriesWhereSource;
   EntriesWhereDateOfRecord: EntriesWhereDateOfRecord;
   EntriesWhere: EntriesWhere;
-  SourceInput: SourceInput;
-  EntryUpdateFields: EntryUpdateFields;
-  EntryAddFields: EntryAddFields;
+  UpsertEntrySource: UpsertEntrySource;
+  NewEntryDateOfRecord: NewEntryDateOfRecord;
+  NewEntry: NewEntry;
+  UpdateEntryDateOfRecord: UpdateEntryDateOfRecord;
+  UpdateEntry: UpdateEntry;
   EntryRefund: EntryRefund;
+  NewEntryRefund: NewEntryRefund;
+  UpdateEntryRefund: UpdateEntryRefund;
   EntryRefundsWhere: EntryRefundsWhere;
-  EntryAddRefundFields: EntryAddRefundFields;
-  EntryUpdateRefundFields: EntryUpdateRefundFields;
   EntryItem: EntryItem;
   Int: Scalars['Int'];
   EntryItemsWhere: EntryItemsWhere;
-  EntryAddItemFields: EntryAddItemFields;
-  EntryUpdateItemFields: EntryUpdateItemFields;
-  EntryItemUpsertResult: EntryItemUpsertResult;
-  EntryUpdatePaymentMethod: EntryUpdatePaymentMethod;
+  AddNewEntryPayload: AddNewEntryPayload;
+  UpdateEntryPayload: UpdateEntryPayload;
+  DeleteEntryPayload: DeleteEntryPayload;
+  AddNewEntryRefundPayload: AddNewEntryRefundPayload;
+  UpdateEntryRefundPayload: UpdateEntryRefundPayload;
+  DeleteEntryRefundPayload: DeleteEntryRefundPayload;
   Subscription: {};
   FiscalYear: FiscalYear;
-  FiscalYearWhereHasDate: FiscalYearWhereHasDate;
-  FiscalYearWhereInput: FiscalYearWhereInput;
   FiscalYearsWhere: FiscalYearsWhere;
   PaymentCardInterface: ResolversParentTypes['AccountCard'] | ResolversParentTypes['PaymentCard'];
   PaymentCard: PaymentCard;
@@ -2307,39 +1763,26 @@ export type ResolversParentTypes = {
   PaymentMethodCombinationInput: PaymentMethodCombinationInput;
   PaymentMethodUnknown: PaymentMethodUnknown;
   PaymentMethodUnknownInput: PaymentMethodUnknownInput;
-  PaymentMethodInput: PaymentMethodInput;
+  UpsertPaymentMethod: UpsertPaymentMethod;
   PersonName: PersonName;
   PersonNameInput: PersonNameInput;
-  PersonAddFields: PersonAddFields;
+  NewPerson: NewPerson;
+  AddNewPersonPayload: AddNewPersonPayload;
   Person: Person;
-  PeopleWhereInput: PeopleWhereInput;
   PeopleNameWhere: PeopleNameWhere;
   PeopleWhere: PeopleWhere;
-  WhereRational: WhereRational;
-  Date: Scalars['Date'];
   Rational: Scalars['Rational'];
-  TypeNode: never;
-  PaginateInput: PaginateInput;
-  ByIdFilter: ByIdFilter;
+  WhereRational: WhereRational;
   WhereId: WhereId;
   WhereTreeId: WhereTreeId;
   NodeInput: NodeInput;
   WhereNode: WhereNode;
-  WhereTreeNode: WhereTreeNode;
-  WhereTreeNodeInput: WhereTreeNodeInput;
-  WhereRegexInput: WhereRegexInput;
   WhereRegex: WhereRegex;
-  WhereDateTime: WhereDateTime;
   WhereInt: WhereInt;
-  WhereDateBeta: WhereDateBeta;
   WhereDate: WhereDate;
   Source: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'];
   User: User;
 };
-
-export type MutexFieldsDirectiveArgs = {   fields?: Maybe<Array<Array<Scalars['String']>>>; };
-
-export type MutexFieldsDirectiveResolver<Result, Parent, ContextType = Context, Args = MutexFieldsDirectiveArgs> = DirectiveResolverFn<Result, Parent, ContextType, Args>;
 
 export type AccountInterfaceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AccountInterface'] = ResolversParentTypes['AccountInterface']> = {
   __resolveType: TypeResolveFn<'AccountChecking' | 'AccountCreditCard', ParentType, ContextType>;
@@ -2465,17 +1908,14 @@ export type BusinessResolvers<ContextType = Context, ParentType extends Resolver
 };
 
 export type MutationResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
-  addBusiness?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<MutationAddBusinessArgs, 'fields'>>;
-  entryUpdate?: Resolver<ResolversTypes['Entry'], ParentType, ContextType, RequireFields<MutationEntryUpdateArgs, 'id' | 'fields'>>;
-  entryAdd?: Resolver<ResolversTypes['Entry'], ParentType, ContextType, RequireFields<MutationEntryAddArgs, 'fields'>>;
-  entryDelete?: Resolver<ResolversTypes['Entry'], ParentType, ContextType, RequireFields<MutationEntryDeleteArgs, 'id'>>;
-  entryAddRefund?: Resolver<ResolversTypes['Entry'], ParentType, ContextType, RequireFields<MutationEntryAddRefundArgs, 'id' | 'fields'>>;
-  entryUpdateRefund?: Resolver<ResolversTypes['Entry'], ParentType, ContextType, RequireFields<MutationEntryUpdateRefundArgs, 'id' | 'fields'>>;
-  entryDeleteRefund?: Resolver<ResolversTypes['Entry'], ParentType, ContextType, RequireFields<MutationEntryDeleteRefundArgs, 'id'>>;
-  entryAddItem?: Resolver<ResolversTypes['EntryItemUpsertResult'], ParentType, ContextType, RequireFields<MutationEntryAddItemArgs, 'id' | 'fields'>>;
-  entryUpdateItem?: Resolver<ResolversTypes['EntryItemUpsertResult'], ParentType, ContextType, RequireFields<MutationEntryUpdateItemArgs, 'id' | 'fields'>>;
-  entryDeleteItem?: Resolver<ResolversTypes['EntryItemUpsertResult'], ParentType, ContextType, RequireFields<MutationEntryDeleteItemArgs, 'id'>>;
-  addPerson?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<MutationAddPersonArgs, 'fields'>>;
+  addNewBusiness?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<MutationAddNewBusinessArgs, 'input'>>;
+  addNewEntry?: Resolver<ResolversTypes['AddNewEntryPayload'], ParentType, ContextType, RequireFields<MutationAddNewEntryArgs, 'input'>>;
+  updateEntry?: Resolver<ResolversTypes['UpdateEntryPayload'], ParentType, ContextType, RequireFields<MutationUpdateEntryArgs, 'input'>>;
+  deleteEntry?: Resolver<ResolversTypes['DeleteEntryPayload'], ParentType, ContextType, RequireFields<MutationDeleteEntryArgs, 'id'>>;
+  addNewEntryRefund?: Resolver<ResolversTypes['AddNewEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationAddNewEntryRefundArgs, 'input'>>;
+  updateEntryRefund?: Resolver<ResolversTypes['UpdateEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationUpdateEntryRefundArgs, 'input'>>;
+  deleteEntryRefund?: Resolver<ResolversTypes['DeleteEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationDeleteEntryRefundArgs, 'id'>>;
+  addNewPerson?: Resolver<ResolversTypes['AddNewPersonPayload'], ParentType, ContextType, RequireFields<MutationAddNewPersonArgs, 'input'>>;
 };
 
 export type CategoryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Category'] = ResolversParentTypes['Category']> = {
@@ -2488,6 +1928,10 @@ export type CategoryResolvers<ContextType = Context, ParentType extends Resolver
   aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
+
+export interface DateScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['Date'], any> {
+  name: 'Date';
+}
 
 export type DepartmentAncestorResolvers<ContextType = Context, ParentType extends ResolversParentTypes['DepartmentAncestor'] = ResolversParentTypes['DepartmentAncestor']> = {
   __resolveType: TypeResolveFn<'Department' | 'Business', ParentType, ContextType>;
@@ -2562,9 +2006,33 @@ export type EntryItemResolvers<ContextType = Context, ParentType extends Resolve
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type EntryItemUpsertResultResolvers<ContextType = Context, ParentType extends ResolversParentTypes['EntryItemUpsertResult'] = ResolversParentTypes['EntryItemUpsertResult']> = {
-  entryItem?: Resolver<ResolversTypes['EntryItem'], ParentType, ContextType>;
-  entry?: Resolver<ResolversTypes['Entry'], ParentType, ContextType>;
+export type AddNewEntryPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AddNewEntryPayload'] = ResolversParentTypes['AddNewEntryPayload']> = {
+  newEntry?: Resolver<ResolversTypes['Entry'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type UpdateEntryPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['UpdateEntryPayload'] = ResolversParentTypes['UpdateEntryPayload']> = {
+  updatedEntry?: Resolver<ResolversTypes['Entry'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type DeleteEntryPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['DeleteEntryPayload'] = ResolversParentTypes['DeleteEntryPayload']> = {
+  deletedEntry?: Resolver<ResolversTypes['Entry'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type AddNewEntryRefundPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AddNewEntryRefundPayload'] = ResolversParentTypes['AddNewEntryRefundPayload']> = {
+  newEntryRefund?: Resolver<ResolversTypes['EntryRefund'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type UpdateEntryRefundPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['UpdateEntryRefundPayload'] = ResolversParentTypes['UpdateEntryRefundPayload']> = {
+  updatedEntryRefund?: Resolver<ResolversTypes['EntryRefund'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type DeleteEntryRefundPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['DeleteEntryRefundPayload'] = ResolversParentTypes['DeleteEntryRefundPayload']> = {
+  deletedEntryRefund?: Resolver<ResolversTypes['EntryRefund'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -2647,27 +2115,20 @@ export type PersonNameResolvers<ContextType = Context, ParentType extends Resolv
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type AddNewPersonPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['AddNewPersonPayload'] = ResolversParentTypes['AddNewPersonPayload']> = {
+  newPerson?: Resolver<ResolversTypes['Person'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type PersonResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Person'] = ResolversParentTypes['Person']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['PersonName'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export interface DateScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['Date'], any> {
-  name: 'Date';
-}
-
 export interface RationalScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['Rational'], any> {
   name: 'Rational';
 }
-
-export type TypeNodeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['TypeNode'] = ResolversParentTypes['TypeNode']> = {
-  __resolveType: TypeResolveFn<null, ParentType, ContextType>;
-  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  parent?: Resolver<Maybe<ResolversTypes['TypeNode']>, ParentType, ContextType>;
-  children?: Resolver<Array<ResolversTypes['TypeNode']>, ParentType, ContextType>;
-};
 
 export type SourceResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Source'] = ResolversParentTypes['Source']> = {
   __resolveType: TypeResolveFn<'Person' | 'Business' | 'Department', ParentType, ContextType>;
@@ -2695,6 +2156,7 @@ export type Resolvers<ContextType = Context> = {
   Business?: BusinessResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   Category?: CategoryResolvers<ContextType>;
+  Date?: GraphQLScalarType;
   DepartmentAncestor?: DepartmentAncestorResolvers<ContextType>;
   Department?: DepartmentResolvers<ContextType>;
   Entity?: EntityResolvers<ContextType>;
@@ -2702,7 +2164,12 @@ export type Resolvers<ContextType = Context> = {
   Entry?: EntryResolvers<ContextType>;
   EntryRefund?: EntryRefundResolvers<ContextType>;
   EntryItem?: EntryItemResolvers<ContextType>;
-  EntryItemUpsertResult?: EntryItemUpsertResultResolvers<ContextType>;
+  AddNewEntryPayload?: AddNewEntryPayloadResolvers<ContextType>;
+  UpdateEntryPayload?: UpdateEntryPayloadResolvers<ContextType>;
+  DeleteEntryPayload?: DeleteEntryPayloadResolvers<ContextType>;
+  AddNewEntryRefundPayload?: AddNewEntryRefundPayloadResolvers<ContextType>;
+  UpdateEntryRefundPayload?: UpdateEntryRefundPayloadResolvers<ContextType>;
+  DeleteEntryRefundPayload?: DeleteEntryRefundPayloadResolvers<ContextType>;
   Subscription?: SubscriptionResolvers<ContextType>;
   FiscalYear?: FiscalYearResolvers<ContextType>;
   PaymentCardInterface?: PaymentCardInterfaceResolvers<ContextType>;
@@ -2717,10 +2184,9 @@ export type Resolvers<ContextType = Context> = {
   PaymentMethodCombination?: PaymentMethodCombinationResolvers<ContextType>;
   PaymentMethodUnknown?: PaymentMethodUnknownResolvers<ContextType>;
   PersonName?: PersonNameResolvers<ContextType>;
+  AddNewPersonPayload?: AddNewPersonPayloadResolvers<ContextType>;
   Person?: PersonResolvers<ContextType>;
-  Date?: GraphQLScalarType;
   Rational?: GraphQLScalarType;
-  TypeNode?: TypeNodeResolvers<ContextType>;
   Source?: SourceResolvers<ContextType>;
   User?: UserResolvers<ContextType>;
 };
@@ -2731,13 +2197,3 @@ export type Resolvers<ContextType = Context> = {
  * Use "Resolvers" root object instead. If you wish to get "IResolvers", add "typesPrefix: I" to your config.
  */
 export type IResolvers<ContextType = Context> = Resolvers<ContextType>;
-export type DirectiveResolvers<ContextType = Context> = {
-  mutexFields?: MutexFieldsDirectiveResolver<any, any, ContextType>;
-};
-
-
-/**
- * @deprecated
- * Use "DirectiveResolvers" root object instead. If you wish to get "IDirectiveResolvers", add "typesPrefix: I" to your config.
- */
-export type IDirectiveResolvers<ContextType = Context> = DirectiveResolvers<ContextType>;

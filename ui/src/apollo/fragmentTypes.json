@@ -41,7 +41,6 @@
       "PaymentMethodCombination",
       "PaymentMethodUnknown"
     ],
-    "TypeNode": [],
     "Source": [
       "Person",
       "Business",
