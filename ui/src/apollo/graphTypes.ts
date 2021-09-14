@@ -1462,6 +1462,26 @@ export type DeleteRefundStateQueryVariables = Exact<{
 
 export type DeleteRefundStateQuery = { __typename?: 'Query', entryRefund?: Maybe<{ __typename: 'EntryRefund', id: string, total: string }> };
 
+export type DeleteEntryMutationVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type DeleteEntryMutation = { __typename?: 'Mutation', deleteEntry: { __typename?: 'DeleteEntryPayload', deletedEntry: (
+      { __typename?: 'Entry' }
+      & GridEntryFragment
+    ) } };
+
+export type DeleteEntryRefundMutationVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type DeleteEntryRefundMutation = { __typename?: 'Mutation', deleteEntryRefund: { __typename?: 'DeleteEntryRefundPayload', deletedEntryRefund: (
+      { __typename?: 'EntryRefund' }
+      & GridRefundFragment
+    ) } };
+
 export type NewEntryMutationVariables = Exact<{
   newEntry: NewEntry;
 }>;

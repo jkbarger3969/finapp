@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { MutableRefObject, useCallback, useMemo, useRef } from "react";
 import {
   Button,
   ButtonProps,
@@ -8,9 +8,10 @@ import {
   DialogProps,
   DialogTitle,
   makeStyles,
+  Typography,
 } from "@material-ui/core";
 import { Delete as DeleteIcon } from "@material-ui/icons";
-import { gql, useQuery } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 
 import { AsyncButton } from "../../../utils/AsyncButton";
 import {
@@ -18,9 +19,15 @@ import {
   DeleteEntryStateQueryVariables as DeleteEntryStateVars,
   DeleteRefundStateQuery as DeleteRefundState,
   DeleteRefundStateQueryVariables as DeleteRefundStateVars,
+  DeleteEntryMutation,
+  DeleteEntryMutationVariables as DeleteEntryMutationVars,
+  DeleteEntryRefundMutation,
+  DeleteEntryRefundMutationVariables as DeleteEntryRefundMutationVars,
 } from "../../../../apollo/graphTypes";
 import OverlayLoading from "../../../utils/OverlayLoading";
 import { deserializeRational } from "../../../../apollo/scalars";
+import { ENTRY, REFUND } from "../Grid.gql";
+import { GraphQLError } from "graphql";
 
 const DELETE_ENTRY_STATE = gql`
   query DeleteEntryState($id: ID!) {
@@ -42,6 +49,28 @@ const DELETE_REFUND_STATE = gql`
   }
 `;
 
+const DELETE_ENTRY = gql`
+  mutation DeleteEntry($id: ID!) {
+    deleteEntry(id: $id) {
+      deletedEntry {
+        ...GridEntry
+      }
+    }
+  }
+  ${ENTRY}
+`;
+
+const DELETE_ENTRY_REFUND = gql`
+  mutation DeleteEntryRefund($id: ID!) {
+    deleteEntryRefund(id: $id) {
+      deletedEntryRefund {
+        ...GridRefund
+      }
+    }
+  }
+  ${REFUND}
+`;
+
 const useStyles = makeStyles({
   dialogContent: {
     position: "relative",
@@ -55,27 +84,28 @@ export type DeleteEntryProps = (
   | {
       deleteRefundId?: string;
     }
-) & {
-  onSuccess?: () => void;
-} & Omit<DialogProps, "children" | "PaperProps" | "onClose"> & {
+) &
+  Omit<DialogProps, "children" | "PaperProps" | "onClose"> & {
     onClose?: (
-      event: Parameters<NonNullable<DialogProps["onClose"]>>[0],
-      reason: Parameters<NonNullable<DialogProps["onClose"]>>[1] | "cancel"
+      event: Parameters<NonNullable<DialogProps["onClose"]>>[0] | undefined,
+      reason:
+        | Parameters<NonNullable<DialogProps["onClose"]>>[1]
+        | "cancel"
+        | "success"
     ) => void;
   };
 
-export const DeleteEntry = (props: DeleteEntryProps) => {
+const InnerDialog = (
+  props: DeleteEntryProps & {
+    handleCloseRef: MutableRefObject<DeleteEntryProps["onClose"]>;
+  }
+): JSX.Element => {
   const classes = useStyles();
 
   const [deleteEntryId, deleteRefundId, dialogProps] = ((): [
     deleteEntryId: string | undefined,
     deleteRefundId: string | undefined,
-    dialogProps: Omit<DialogProps, "children" | "PaperProps" | "onClose"> & {
-      onClose?: (
-        event: Parameters<NonNullable<DialogProps["onClose"]>>[0],
-        reason: Parameters<NonNullable<DialogProps["onClose"]>>[1] | "cancel"
-      ) => void;
-    }
+    dialogProps: DeleteEntryProps
   ] => {
     if ("deleteEntryId" in props) {
       const { deleteEntryId, ...rest } = props;
@@ -88,7 +118,7 @@ export const DeleteEntry = (props: DeleteEntryProps) => {
     }
   })();
 
-  const deleteEntryResults = useQuery<DeleteEntryState, DeleteEntryStateVars>(
+  const deleteEntryState = useQuery<DeleteEntryState, DeleteEntryStateVars>(
     DELETE_ENTRY_STATE,
     useMemo(
       () => ({
@@ -101,10 +131,7 @@ export const DeleteEntry = (props: DeleteEntryProps) => {
     )
   );
 
-  const deleteRefundResults = useQuery<
-    DeleteRefundState,
-    DeleteRefundStateVars
-  >(
+  const deleteRefundState = useQuery<DeleteRefundState, DeleteRefundStateVars>(
     DELETE_REFUND_STATE,
     useMemo(
       () => ({
@@ -117,25 +144,56 @@ export const DeleteEntry = (props: DeleteEntryProps) => {
     )
   );
 
-  const serverError = deleteEntryResults.error || deleteRefundResults.error;
+  const [deleteEntry, deleteEntryResult] = useMutation<
+    DeleteEntryMutation,
+    DeleteEntryMutationVars
+  >(DELETE_ENTRY);
 
-  const { onClose: onCloseProp, ...rest } = dialogProps;
+  const [deleteEntryRefund, deleteEntryRefundResult] = useMutation<
+    DeleteEntryRefundMutation,
+    DeleteEntryRefundMutationVars
+  >(DELETE_ENTRY_REFUND);
+
+  const loading =
+    deleteEntryState.loading ||
+    deleteRefundState.loading ||
+    deleteEntryResult.loading ||
+    deleteEntryRefundResult.loading;
+  const error =
+    deleteEntryState.error ||
+    deleteRefundState.error ||
+    deleteEntryResult.error ||
+    deleteEntryRefundResult.error;
+
+  const { onClose: onCloseProp } = dialogProps;
 
   const handleClose = useCallback<NonNullable<DeleteEntryProps["onClose"]>>(
     (...args) => {
+      if (loading && args[1] !== "success") {
+        return;
+      }
+
       if (onCloseProp) {
         onCloseProp(...args);
       }
     },
-    [onCloseProp]
+    [loading, onCloseProp]
   );
+
+  props.handleCloseRef.current = handleClose;
 
   const deleteRef = useRef<HTMLButtonElement | null>(null);
 
   return (
-    <Dialog {...rest} onClose={handleClose}>
+    <>
       <DialogTitle>
-        {deleteRefundId ? "Delete refund" : "Delete entry"}
+        {(() => {
+          if (deleteEntryResult.loading || deleteEntryRefundResult.loading) {
+            return deleteRefundId ? "Deleting refund..." : "Deleting entry...";
+          } else {
+            return deleteRefundId ? "Delete refund" : "Delete entry";
+          }
+        })()}
       </DialogTitle>
       <DialogContent className={classes.dialogContent}>
         {useMemo(() => {
@@ -145,13 +203,13 @@ export const DeleteEntry = (props: DeleteEntryProps) => {
           });
 
           const total =
-            deleteEntryResults?.data?.entry?.total ||
-            deleteRefundResults?.data?.entryRefund?.total;
+            deleteEntryState?.data?.entry?.total ||
+            deleteRefundState?.data?.entryRefund?.total;
 
           const msg = `Delete ${deleteRefundId ? "Refund" : "Entry"}`;
 
-          if (serverError) {
-            return serverError.message;
+          if (error) {
+            return <Typography color="error">{error.message}</Typography>;
           } else if (total) {
             return `${msg} in the amount of ${currencyFormat.format(
               deserializeRational(total).valueOf()
@@ -160,33 +218,60 @@ export const DeleteEntry = (props: DeleteEntryProps) => {
             return msg;
           }
         }, [
-          deleteEntryResults?.data?.entry?.total,
+          deleteEntryState?.data?.entry?.total,
           deleteRefundId,
-          deleteRefundResults?.data?.entryRefund?.total,
-          serverError,
+          deleteRefundState?.data?.entryRefund?.total,
+          error,
         ])}
-        {(deleteEntryResults.loading || deleteRefundResults.loading) && (
+        {(deleteEntryState.loading || deleteRefundState.loading || loading) && (
           <OverlayLoading zIndex="modal" />
         )}
       </DialogContent>
       <DialogActions>
         <AsyncButton
           color="primary"
-          // showProgress={}
-          disabled={(!deleteEntryId && !deleteRefundId) || !!serverError}
+          showProgress={loading}
+          disabled={(!deleteEntryId && !deleteRefundId) || loading || !!error}
           type="submit"
           variant="contained"
           startIcon={<DeleteIcon />}
           ref={deleteRef}
-          // onClick={useCallback(() => {
-          //   setSubmitButton(addRef.current);
-          // }, [])}
+          onClick={useCallback(
+            async (e) => {
+              let errors: ReadonlyArray<GraphQLError> | undefined;
+
+              if (deleteEntryId) {
+                ({ errors } = await deleteEntry({
+                  variables: {
+                    id: deleteEntryId,
+                  },
+                }));
+              } else if (deleteRefundId) {
+                ({ errors } = await deleteEntryRefund({
+                  variables: {
+                    id: deleteRefundId,
+                  },
+                }));
+              }
+
+              if (!errors?.length) {
+                handleClose(e, "success");
+              }
+            },
+            [
+              deleteEntry,
+              deleteEntryId,
+              deleteEntryRefund,
+              deleteRefundId,
+              handleClose,
+            ]
+          )}
         >
           Delete
         </AsyncButton>
         <Button
           type="reset"
-          // disabled={form.isSubmitting}
+          disabled={loading}
           variant="text"
           onClick={useCallback<NonNullable<ButtonProps["onClick"]>>(
             (event) => {
@@ -195,9 +280,26 @@ export const DeleteEntry = (props: DeleteEntryProps) => {
             [handleClose]
           )}
         >
-          {serverError ? "Ok" : "Cancel"}
+          {error ? "Ok" : "Cancel"}
         </Button>
       </DialogActions>
+    </>
+  );
+};
+
+export const DeleteEntry = (props: DeleteEntryProps) => {
+  const handleCloseRef = useRef<DeleteEntryProps["onClose"]>();
+
+  return (
+    <Dialog
+      {...props}
+      onClose={useCallback<NonNullable<DialogProps["onClose"]>>((...args) => {
+        if (handleCloseRef.current) {
+          handleCloseRef.current(...args);
+        }
+      }, [])}
+    >
+      <InnerDialog {...props} handleCloseRef={handleCloseRef} />
     </Dialog>
   );
 };

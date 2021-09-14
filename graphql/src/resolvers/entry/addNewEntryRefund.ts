@@ -27,7 +27,6 @@ export const addNewEntryRefund: MutationResolvers["addNewEntryRefund"] = (
       total: totalInput,
       reconciled,
     } = input;
-
     const entryId = new ObjectId(entry);
 
     // convert

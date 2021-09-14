@@ -39,7 +39,6 @@ const GiveRefund = (props: SvgIconProps): JSX.Element => {
 export const EditColumnCell = (
   props: TableEditColumn.CellProps
 ): JSX.Element => {
-  console.log(props);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 

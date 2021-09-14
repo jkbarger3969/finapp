@@ -26,7 +26,6 @@ import { FreeSoloNode } from "mui-tree-select";
 import { parseName } from "humanparser";
 import { Add as AddIcon, Queue as QueueIcon } from "@material-ui/icons";
 import { gql, MutationHookOptions, useMutation } from "@apollo/client";
-import { isEqual, startOfDay } from "date-fns";
 
 import {
   EntryProps,
@@ -35,11 +34,7 @@ import {
 } from "../../../Inputs/fieldSets/useEntry";
 import { inputGridItemProps, useSharedDialogInputProps } from "./shared";
 import { usePerson, PersonFieldDef } from "../../../Inputs/fieldSets/usePerson";
-import {
-  EntityFieldDef,
-  EntityInputOpt,
-  EntityTreeSelectValue,
-} from "../../../Inputs/Entity";
+import { EntityInputOpt, EntityTreeSelectValue } from "../../../Inputs/Entity";
 import {
   FieldValue,
   FormProvider,
@@ -47,7 +42,6 @@ import {
   useDefaultValues,
   useForm,
   OnSubmitCb,
-  SubmitState,
   useWatcher,
   UseDefaultValuesOptions,
 } from "../../../../useKISSForm/form";
@@ -60,20 +54,12 @@ import {
   UpdateEntryMutation,
   UpdateEntryMutationVariables as UpdateEntryMutationVars,
   UpdateEntry,
-  PaymentMethodType,
-  PaymentCardType,
-  UpsertPaymentMethod,
-  Currency,
-  AccountCardPayMethodInputOptFragment,
   UpsertEntrySource,
   EntityType,
   NewEntry,
 } from "../../../../apollo/graphTypes";
 import { serializeDate, serializeRational } from "../../../../apollo/scalars";
-import {
-  PaymentMethodInputBranchOpt,
-  toUpsertPaymentMethod,
-} from "../../../Inputs/PaymentMethod";
+import { toUpsertPaymentMethod } from "../../../Inputs/PaymentMethod";
 import Fraction from "fraction.js";
 
 export const NEW_ENTRY = gql`
@@ -362,6 +348,8 @@ const InnerDialog = (
               reconciled: entry?.reconciled ?? null,
             };
 
+            console.log(source, entry?.source?.valueOf(), entry, newEntry);
+
             const { errors } = await addNewEntry({
               variables: {
                 newEntry,
@@ -381,8 +369,8 @@ const InnerDialog = (
             if (onClose) {
               onClose(event, "success");
             }
-          } else if (addRef.current === addAndNewRef.current) {
-            form.reset();
+          } else if (addAndNewRef.current === submitButtonRef.current) {
+            form.reset({ exclude: { submitCount: true, submitted: true } });
           }
         },
         [onClose]
@@ -493,7 +481,15 @@ const InnerDialog = (
           if (isUpdate) {
             return form.isSubmitting ? "Updating Entry..." : "Update Entry";
           } else {
-            return form.isSubmitting ? "Adding Entry..." : "Add Entry";
+            return (() => {
+              if (form.isSubmitting) {
+                return "Adding Entry...";
+              } else {
+                return form.submitCount > 0 && form.submit
+                  ? "Add Another Entry"
+                  : "Add Entry";
+              }
+            })();
           }
         })()}
       </DialogTitle>

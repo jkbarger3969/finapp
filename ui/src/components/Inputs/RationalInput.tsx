@@ -1,4 +1,11 @@
-import React, { useCallback, forwardRef, Ref, useMemo } from "react";
+import React, {
+  useCallback,
+  forwardRef,
+  Ref,
+  useMemo,
+  useState,
+  useEffect,
+} from "react";
 import { TextField, TextFieldProps, useControlled } from "@material-ui/core";
 import Fraction from "fraction.js";
 
@@ -10,21 +17,38 @@ import {
   IsEqualFn,
 } from "../../useKISSForm/form";
 
-const NULLISH = Symbol("NULLISH");
-
 export type RationalInputBaseProps = Omit<
   TextFieldProps,
   "value" | "onChange" | "defaultValue" | "type"
 > & {
   decimals?: number;
+  showDecimalZeros?: boolean;
   onChange?: (
     event: Parameters<NonNullable<TextFieldProps["onChange"]>>[0],
     rational: Fraction | null,
     value: string
   ) => void;
-  defaultValue?: string | number | Fraction;
-  value?: string | number | Fraction | null;
+  defaultValue?: Fraction;
+  value?: Fraction | null;
 };
+
+const formatDecimals = (input: string, decimals?: number) => {
+  input = input.trim();
+  if (input && decimals !== undefined) {
+    const [whole, decimal = ""] = input.split(".");
+    if (decimals === 0) {
+      return whole;
+    } else if (decimal.length > decimals) {
+      return `${whole}.${decimal.slice(0, decimals)}`;
+    }
+  }
+  return input;
+};
+
+const rationalToFixed = (rational: Fraction, decimals?: number): string =>
+  decimals === undefined
+    ? rational.valueOf().toString()
+    : rational.valueOf().toFixed(decimals);
 
 export const RationalInputBase = forwardRef(function RationalInputBase(
   props: RationalInputBaseProps,
@@ -34,6 +58,8 @@ export const RationalInputBase = forwardRef(function RationalInputBase(
     defaultValue,
     onChange: onChangeProp,
     decimals,
+    showDecimalZeros = true,
+    onBlur: onBlurProp,
     value: valueProp,
     ...rest
   } = props;
@@ -45,65 +71,66 @@ export const RationalInputBase = forwardRef(function RationalInputBase(
     state: "value",
   });
 
-  const onChange = useCallback<NonNullable<TextFieldProps["onChange"]>>(
-    (event) => {
-      const value = (() => {
-        const value = event.target.value.trim() ?? "";
-        if (value && decimals !== undefined) {
-          const [whole, decimal = ""] = value.split(".");
-          if (decimals === 0) {
-            return whole;
-          } else if (decimal.length > decimals) {
-            return `${whole}.${decimal.slice(0, decimals)}`;
-          }
-        }
+  const [inputValue, setInputValue] = useState(() =>
+    valueUnformatted ? rationalToFixed(valueUnformatted, decimals) : ""
+  );
 
-        return value;
+  // Insure value and inputValue stay synced.
+  useEffect(() => {
+    if (valueUnformatted) {
+      if (!inputValue || !valueUnformatted.equals(inputValue)) {
+        setInputValue(rationalToFixed(valueUnformatted, decimals));
+      }
+    } else if (inputValue) {
+      setInputValue("");
+    }
+  }, [decimals, inputValue, valueUnformatted]);
+
+  const handleChange = useCallback<NonNullable<TextFieldProps["onChange"]>>(
+    (event) => {
+      const value = formatDecimals(event.target.value ?? "", decimals);
+
+      const rational = (() => {
+        try {
+          return value ? new Fraction(value) : null;
+        } catch {
+          return null;
+        }
       })();
 
-      setValue(value);
+      setInputValue(value);
+      setValue(rational);
 
       if (onChangeProp) {
-        onChangeProp(
-          event,
-          (() => {
-            try {
-              return value ? new Fraction(value) : null;
-            } catch {
-              return null;
-            }
-          })(),
-          value
-        );
+        onChangeProp(event, rational, value);
       }
     },
     [decimals, onChangeProp, setValue]
   );
 
-  const value = useMemo<string>(() => {
-    if ((valueUnformatted ?? NULLISH) === NULLISH) {
-      return "";
-    } else if (valueUnformatted instanceof Fraction) {
-      return valueUnformatted.toString();
-    } else {
-      switch (typeof valueUnformatted) {
-        case "string":
-          return valueUnformatted;
-        case "number":
-          return valueUnformatted.toString();
-        default:
-          return "";
+  const handleBlur = useCallback<NonNullable<TextFieldProps["onBlur"]>>(
+    (...args) => {
+      if (decimals !== undefined && showDecimalZeros) {
+        if (valueUnformatted) {
+          setInputValue(rationalToFixed(valueUnformatted, decimals));
+        }
       }
-    }
-  }, [valueUnformatted]);
+
+      if (onBlurProp) {
+        onBlurProp(...args);
+      }
+    },
+    [decimals, onBlurProp, showDecimalZeros, valueUnformatted]
+  );
 
   return (
     <TextField
       {...rest}
       ref={ref}
-      onChange={onChange}
+      onChange={handleChange}
+      onBlur={handleBlur}
       type="number"
-      value={value}
+      value={inputValue}
     />
   );
 });

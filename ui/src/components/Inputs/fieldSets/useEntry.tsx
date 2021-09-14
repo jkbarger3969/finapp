@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { TreeSelectValue } from "mui-tree-select";
 import { gql, useQuery } from "@apollo/client";
 import { isFuture, startOfDay, isEqual } from "date-fns";
+import { makeStyles } from "@material-ui/styles";
 
 import { DateInput, DateInputProps, DateFieldDef } from "../Date";
 import {
@@ -60,7 +61,6 @@ import {
   FieldValue,
   useLoading,
   Validator,
-  IForm,
   UseDefaultValuesOptions,
   useIsEqual,
 } from "../../../useKISSForm/form";
@@ -75,6 +75,12 @@ import {
   UpdateEntryDefaultValuesQueryVariables as UpdateEntryDefaultValuesVars,
 } from "../../../apollo/graphTypes";
 import { deserializeDate, deserializeRational } from "../../../apollo/scalars";
+
+const useStyles = makeStyles({
+  adornedStart: {
+    alignItems: "baseline",
+  },
+});
 
 const notFutureError = new RangeError(
   "Transaction cannot be recorded in the future."
@@ -213,6 +219,8 @@ export const useEntry = <
     reconciled: reconciledProps,
   } = props;
 
+  const classes = useStyles();
+
   const { loading, error, data } = useQuery<
     UpdateEntryDefaultValues,
     UpdateEntryDefaultValuesVars
@@ -293,7 +301,7 @@ export const useEntry = <
     useMemo<UseDefaultValuesOptions<EntryFieldDef>>(
       () => ({
         defaultValues:
-          dateValue || defaultDateValue
+          !data?.entry?.dateOfRecord?.date && (dateValue || defaultDateValue)
             ? {
                 [prefixName(DATE_OF_RECORD_NAME, ENTRY_NAME)]: new FieldValue(
                   (dateValue || defaultDateValue) as Date
@@ -302,7 +310,7 @@ export const useEntry = <
             : {},
         form,
       }),
-      [dateValue, defaultDateValue, form]
+      [data?.entry?.dateOfRecord?.date, dateValue, defaultDateValue, form]
     )
   );
 
@@ -549,13 +557,28 @@ export const useEntry = <
             decimals={2}
             defaultValue={totalDefaultValue}
             {...totalProps}
+            InputProps={{
+              startAdornment: "$",
+              classes: {
+                adornedStart: classes.adornedStart,
+              },
+              ...totalProps?.InputProps,
+            }}
             disabled={loading || totalProps?.disabled}
             name={TOTAL_NAME}
             form={form}
           />
         </NamePrefixProvider>
       ),
-      [entryName, form, loading, showLabels, totalDefaultValue, totalProps]
+      [
+        classes.adornedStart,
+        entryName,
+        form,
+        loading,
+        showLabels,
+        totalDefaultValue,
+        totalProps,
+      ]
     ),
     totalInputName: prefixName(TOTAL_NAME, fullName),
     reconciledInput: useMemo(

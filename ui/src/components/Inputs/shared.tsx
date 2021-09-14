@@ -266,14 +266,14 @@ export const TextFieldControlled = forwardRef(function TextFieldControlled(
           if (setValueAs) {
             setValue(setValueAs(...args));
           } else {
-            setValue(args[0].target.value.trim() || undefined);
+            setValue(args[0].target.value || undefined);
           }
 
           if (onChangeProp) {
             onChangeProp(...args);
           }
         },
-        [setValue, onChangeProp, setValueAs]
+        [setValueAs, onChangeProp, setValue]
       )}
     >
       {children}

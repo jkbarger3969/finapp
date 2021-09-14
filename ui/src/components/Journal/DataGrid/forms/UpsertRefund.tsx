@@ -175,10 +175,16 @@ const InnerDialog = (
             dirtyValues: { refund },
           } = submitState;
 
-          // Nothing to update
-          if (!refund) {
-            return;
-          } else if (updateRefundId) {
+          if (updateRefundId) {
+            const {
+              dirtyValues: { refund },
+            } = submitState;
+
+            // Nothing to update
+            if (!refund) {
+              return;
+            }
+
             // compose RefundUpdate
             const entryRefundUpdate: UpdateEntryRefund = {
               id: updateRefundId,
@@ -204,6 +210,15 @@ const InnerDialog = (
               throw new Error(errors.map(({ message }) => message).join(".\n"));
             }
           } else {
+            const {
+              values: { refund },
+            } = submitState;
+
+            // Nothing to submit
+            if (!refund) {
+              return;
+            }
+
             const newEntryRefund: NewEntryRefund = {
               entry: entryId as string,
               date: serializeDate(refund?.date as Date),

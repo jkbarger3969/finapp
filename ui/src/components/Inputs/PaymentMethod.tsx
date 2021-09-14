@@ -832,7 +832,7 @@ export const PaymentMethodInputBase = forwardRef(
         getOptionSelected={getOptionSelected}
         {...rest}
         disabled={disabled || entryTypeIsUndefined}
-        autoSelect={!!autoSelect && freeSolo}
+        autoSelect={(autoSelect ?? false) || freeSolo}
         ref={ref}
         options={options}
         onBranchChange={onBranchChange}

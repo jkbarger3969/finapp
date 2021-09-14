@@ -981,7 +981,7 @@ class Form<FieldDef extends Record<string, unknown>> {
         for (const [name, defaultValue] of defaultValues) {
           if (!yieldedKeys.has(name)) {
             yieldedKeys.add(name);
-            yield [name as Names<FieldDef>, defaultValue.valueOf()];
+            yield [name as Names<FieldDef>, defaultValue];
           }
         }
       }
@@ -1089,7 +1089,14 @@ class Form<FieldDef extends Record<string, unknown>> {
    */
   readonly reset = ({
     updateId = Symbol(),
-  }: { updateId?: symbol } = {}): void => {
+    exclude,
+  }: {
+    updateId?: symbol;
+    exclude?: {
+      submitCount?: boolean;
+      submitted?: boolean;
+    };
+  } = {}): void => {
     const resetFields = new Set<string>();
 
     for (const {
@@ -1100,17 +1107,27 @@ class Form<FieldDef extends Record<string, unknown>> {
     }
 
     for (const name of this.#fieldValidators.keys()) {
-      this.resetField(name, { updateId });
+      if (!resetFields.add(name)) {
+        resetFields.add(name);
+        this.resetField(name, { updateId });
+      }
     }
 
     for (const name of this.#values.keys()) {
       if (!resetFields.has(name)) {
+        resetFields.add(name);
         this.resetField(name as Names<FieldDef>, { updateId });
       }
     }
 
-    this.resetSubmitCount({ updateId });
-    this.resetSubmitted({ updateId });
+    if (!exclude?.submitCount) {
+      this.resetSubmitCount({ updateId });
+    }
+
+    if (!exclude?.submitted) {
+      this.resetSubmitted({ updateId });
+    }
+
     this.resetSubmissionError({ updateId });
 
     this.#runFormStateTracker(updateId);

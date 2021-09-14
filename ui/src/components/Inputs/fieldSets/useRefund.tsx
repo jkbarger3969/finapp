@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { ApolloError, gql, useQuery } from "@apollo/client";
 import Fraction from "fraction.js";
 import { isBefore, isFuture } from "date-fns";
+import { makeStyles } from "@material-ui/core";
 
 import { BoolFieldDef, BoolInput, BoolInputProps } from "../BoolInput";
 import { DateFieldDef, DateInput, DateInputProps } from "../Date";
@@ -48,6 +49,12 @@ import {
 } from "../../../apollo/graphTypes";
 import { deserializeDate, deserializeRational } from "../../../apollo/scalars";
 import { startOfDay } from "date-fns/esm";
+
+const useStyles = makeStyles({
+  adornedStart: {
+    alignItems: "baseline",
+  },
+});
 
 export type RefundInputProps = {
   date?: Omit<DateInputProps, "name" | "form">;
@@ -148,6 +155,8 @@ export const useRefund = (
     total: totalProps = {},
     reconciled: reconciledProps = {},
   } = props;
+
+  const classes = useStyles();
 
   const [entryId, updateRefundId] =
     "entryId" in props ? [props.entryId, null] : [null, props.updateRefundId];
@@ -386,12 +395,27 @@ export const useRefund = (
             helperText={`Max $${maxRefund.toString(2)}`}
             defaultValue={totalDefaultValue}
             {...totalProps}
+            InputProps={{
+              startAdornment: "$",
+              classes: {
+                adornedStart: classes.adornedStart,
+              },
+              ...totalProps?.InputProps,
+            }}
             name={TOTAL_NAME}
             form={form}
           />
         </NamePrefixProvider>
       ),
-      [form, maxRefund, refundName, showLabels, totalDefaultValue, totalProps]
+      [
+        classes.adornedStart,
+        form,
+        maxRefund,
+        refundName,
+        showLabels,
+        totalDefaultValue,
+        totalProps,
+      ]
     ),
     totalInputName: prefixName(TOTAL_NAME, fullName),
     reconciledInput: useMemo(

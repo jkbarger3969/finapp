@@ -496,7 +496,9 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
       onInputChange={onInputChange}
       options={options}
       freeSolo={freeSolo}
-      autoSelect={!!autoSelect || (freeSolo && !props.value)}
+      // !props.value condition keeps the inputValue being taken as a
+      // FreeSoloNode onBlur when a value is selected from the options.
+      autoSelect={(autoSelect ?? false) || (freeSolo && !props.value)}
     />
   );
 });

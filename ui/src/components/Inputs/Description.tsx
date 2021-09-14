@@ -10,7 +10,7 @@ export type DescriptionInputProps = Partial<
   >
 >;
 
-const descriptionIsEqual: IsEqualFn<string> = (a, b) => a?.trim() === b?.trim();
+const descriptionIsEqual: IsEqualFn<string> = (a, b) => a === b;
 
 export const DESCRIPTION_NAME = "description";
 export type DescriptionFieldDef<
