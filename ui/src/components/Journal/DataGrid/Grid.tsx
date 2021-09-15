@@ -49,13 +49,14 @@ import {
   EntryType,
   DepartmentsWhere,
   AccountsWhere,
+  GridPaymentMethodFragment,
 } from "../../../apollo/graphTypes";
 import { deserializeDate, deserializeRational } from "../../../apollo/scalars";
 import { GRID_ENTRIES } from "./Grid.gql";
 import OverlayLoading from "../../utils/OverlayLoading";
 import useLocalStorage from "../../utils/useLocalStorage";
 import {
-  FilterColumnsState,
+  FilteringState,
   Filters,
   DataCell,
   FilterCell,
@@ -81,6 +82,9 @@ import {
   deptFilterColumnExtension,
   DeptFilterProps,
   PayMethodCell,
+  PayMethodFilter,
+  PayMethodFilterProps,
+  payMethodFilterColumnExtension,
   RationalCell,
   RationalFilter,
   rationalFilterColumnExtension,
@@ -90,7 +94,6 @@ import {
   sourceFilterColumnExtension,
   SourceFilterProps,
   sourceToStr,
-  TypeFilter,
 } from "./cells";
 import { DefaultEditor } from "./filters";
 import { DepartmentInputOpt } from "../../Inputs/Department";
@@ -366,6 +369,7 @@ const integratedFilteringColumnExtensions: IntegratedFiltering.ColumnExtension[]
       getCategoryOptionLabel(new ValueNode(value))
     ),
     deptFilterColumnExtension("department", (value) => value.name),
+    payMethodFilterColumnExtension("paymentMethod"),
     rationalFilterColumnExtension(
       "total",
       (value) =>
@@ -455,15 +459,18 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     CellProviderProps<ColumnsNames>
   >(() => {
     const deptFilterOpts = new Map<string, DepartmentInputOpt>();
+    const payMethodFilterOpts: GridPaymentMethodFragment[] = [];
     const categoryFilterOpts = new Map<string, CategoryInputOpt>();
     const srcFilterOpts = new Map<string, EntityInputOpt>();
 
     for (const row of rows) {
-      const { department, category, source } = row;
+      const { department, category, source, paymentMethod } = row;
 
       if (!deptFilterOpts.has(department.id)) {
         deptFilterOpts.set(department.id, department as DepartmentInputOpt);
       }
+
+      payMethodFilterOpts.push(paymentMethod);
 
       if (!categoryFilterOpts.has(category.id)) {
         categoryFilterOpts.set(category.id, category as CategoryInputOpt);
@@ -494,7 +501,12 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
           deptFilterOpts: [...deptFilterOpts.values()],
         } as DeptFilterProps,
       },
-
+      paymentMethod: {
+        cell: PayMethodFilter,
+        props: {
+          payMethodFilterOpts,
+        } as PayMethodFilterProps,
+      },
       reconciled: {
         cell: BoolFilter,
         props: {
@@ -519,9 +531,6 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
             },
           },
         } as RationalFilterProps,
-      },
-      type: {
-        cell: TypeFilter,
       },
     };
   }, [rows]);
@@ -690,7 +699,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
           />
           <SearchState />
           {/* <DevExplorer getters={devExplorerGetters} /> */}
-          <FilterColumnsState filters={filters} onFiltersChange={setFilters} />
+          <FilteringState filters={filters} onFiltersChange={setFilters} />
 
           <SortingState sorting={sorting} onSortingChange={setSorting} />
           <SummaryState totalItems={totalItems as unknown as SummaryItem[]} />

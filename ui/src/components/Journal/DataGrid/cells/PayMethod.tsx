@@ -1,43 +1,21 @@
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  Table,
-  TableEditRow,
-  TableFilterRow,
-} from "@devexpress/dx-react-grid-material-ui";
-import { TextField, TextFieldProps } from "@material-ui/core";
-import Autocomplete, { AutocompleteProps } from "@material-ui/lab/Autocomplete";
-import { FreeSoloNode, ValueNode } from "mui-tree-select";
+import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
 import { capitalCase } from "capital-case";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
+import TreeSelect, { BranchNode, TreeSelectProps } from "mui-tree-select";
 
 import {
-  EntryType,
   GridPaymentMethodFragment,
-  GridPaymentMethod_PaymentMethodCard_Fragment,
-  AccountCard,
-  PaymentCard,
-  GridPaymentMethod_PaymentMethodCheck_Fragment,
-  AccountCheck,
-  PaymentCheck,
   PaymentCardType,
 } from "../../../../apollo/graphTypes";
 import { OnFilter } from "../plugins";
 import { Filter, LogicFilter } from "../plugins";
 import {
-  PaymentMethodInput,
-  PayMethodInputOpt,
-  PaymentMethodInputBranchOpt,
-  PayMethodTreeSelectProps,
-  PaymentMethodInputProps,
-} from "../../../Inputs/PaymentMethod";
-import {
   inlineAutoCompleteProps,
-  inlineInputProps,
   inlinePadding,
-  RowChangesProp,
+  renderFilterInput,
 } from "./shared";
-import { CategoryRowChanges } from "./Category";
-import { GridEntry } from "../Grid";
+import { getCardTypeAbbreviation } from "../../../Inputs/PaymentMethod";
 
 export const payMethodToStr = (
   payMethod: GridPaymentMethodFragment
@@ -46,13 +24,12 @@ export const payMethodToStr = (
     case "PaymentMethodCard":
       switch (payMethod.card.type) {
         case PaymentCardType.Visa:
-          return `VISA-${payMethod.card.trailingDigits}`;
-        case PaymentCardType.MasterCard:
-          return `MC-${payMethod.card.trailingDigits}`;
         case PaymentCardType.AmericanExpress:
-          return `AMEX-${payMethod.card.trailingDigits}`;
+        case PaymentCardType.MasterCard:
         case PaymentCardType.Discover:
-          return `DS-${payMethod.card.trailingDigits}`;
+          return `${getCardTypeAbbreviation(payMethod.card.type)}-${
+            payMethod.card.trailingDigits
+          }`;
         default:
           return payMethod.card.trailingDigits;
       }
@@ -83,58 +60,236 @@ export type PayMethodFilterProps = Omit<
   payMethodFilterOpts?: GridPaymentMethodFragment[];
 };
 
-const renderInput: AutocompleteProps<
-  GridPaymentMethodFragment,
-  true,
-  false,
-  false
->["renderInput"] = (params) => {
-  const props = {
-    ...params,
-    InputProps: {
-      ...inlineInputProps,
-      ...params.InputProps,
-    },
-  } as TextFieldProps;
-
-  return <TextField {...props} />;
-};
-
-const getOptionLabelFilter: NonNullable<
-  AutocompleteProps<
-    GridPaymentMethodFragment,
-    true,
-    false,
-    false
-  >["getOptionLabel"]
-> = (value): string => {
-  switch (value.__typename) {
+const payMethodFilterEquals = (
+  a: GridPaymentMethodFragment,
+  b: GridPaymentMethodFragment
+): boolean => {
+  switch (a.__typename) {
+    case "PaymentMethodCash":
+    case "PaymentMethodCombination":
+    case "PaymentMethodOnline":
+    case "PaymentMethodUnknown":
+      return a.__typename === b.__typename;
     case "PaymentMethodCard":
-      return `${capitalCase(value.card.type)}-${capitalCase(
-        value.card.trailingDigits
-      )}`;
+      return (
+        a.__typename === b.__typename &&
+        a.card.__typename === b.card.__typename &&
+        a.card.type === b.card.type &&
+        a.card.trailingDigits === b.card.trailingDigits
+      );
     case "PaymentMethodCheck":
-      return `CK-${value.check.checkNumber}`;
-    default:
-      return capitalCase(value.__typename.replace(/^PaymentMethod/i, ""));
+      if (a.__typename === b.__typename) {
+        if (
+          a.check.__typename === "AccountCheck" &&
+          b.check.__typename === "AccountCheck"
+        ) {
+          return (
+            a.check.checkNumber === b.check.checkNumber &&
+            a.check.account.id === b.check.account.id
+          );
+        } else {
+          return (
+            a.check.__typename === b.check.__typename &&
+            a.check.checkNumber === b.check.checkNumber
+          );
+        }
+      }
+      return false;
   }
 };
 
 export const PayMethodFilter = (props: PayMethodFilterProps): JSX.Element => {
+  type RootLeafOpts = Exclude<
+    GridPaymentMethodFragment["__typename"],
+    "PaymentMethodCard" | "PaymentMethodCheck"
+  >;
+
+  type PayMethodBranch =
+    | Exclude<GridPaymentMethodFragment["__typename"], RootLeafOpts>
+    | PaymentCardType
+    | { checkingAccountId: string; accountNumber: string }
+    | "Internal"
+    | "External";
+
+  type PayMethodTreeProps = TreeSelectProps<
+    GridPaymentMethodFragment,
+    PayMethodBranch,
+    true,
+    false,
+    false
+  >;
+
   const { payMethodFilterOpts, ...rest } = props;
 
-  const options = useMemo(
-    () => payMethodFilterOpts || [],
-    [payMethodFilterOpts]
-  );
+  const [branch, setBranch] = useState<PayMethodTreeProps["branch"]>(null);
+
+  const options = useMemo<PayMethodTreeProps["options"]>(() => {
+    const paymentMethods = payMethodFilterOpts || [];
+
+    if (branch) {
+      const branchVal = branch.valueOf();
+      switch (branchVal) {
+        case "External":
+          return [
+            ...paymentMethods
+              .reduce((options, payMethod) => {
+                if (
+                  payMethod.__typename === "PaymentMethodCard" &&
+                  payMethod.card.__typename === "PaymentCard" &&
+                  !options.has(payMethod.card.type)
+                ) {
+                  options.set(
+                    payMethod.card.type,
+                    new BranchNode<PayMethodBranch>(payMethod.card.type, branch)
+                  );
+                }
+
+                return options;
+              }, new Map<string, BranchNode<PayMethodBranch>>())
+              .values(),
+          ];
+        case "Internal":
+          return [
+            ...paymentMethods
+              .reduce((options, payMethod) => {
+                if (
+                  payMethod.__typename === "PaymentMethodCard" &&
+                  payMethod.card.__typename === "AccountCard" &&
+                  !options.has(payMethod.card.type)
+                ) {
+                  options.set(
+                    payMethod.card.type,
+                    new BranchNode<PayMethodBranch>(payMethod.card.type, branch)
+                  );
+                }
+
+                return options;
+              }, new Map<string, BranchNode<PayMethodBranch>>())
+              .values(),
+          ];
+        case "PaymentMethodCard":
+          return [
+            new BranchNode<PayMethodBranch>("Internal", branch),
+            new BranchNode<PayMethodBranch>("External", branch),
+          ];
+        case "PaymentMethodCheck": {
+          return paymentMethods
+            .reduce(
+              ([checks], payMethod) => {
+                if (payMethod.__typename === "PaymentMethodCheck") {
+                  if (payMethod.check.__typename === "AccountCheck") {
+                    if (!checks.accounts.has(payMethod.check.account.id)) {
+                      checks.accounts.set(
+                        payMethod.check.account.id,
+                        new BranchNode<PayMethodBranch>(
+                          {
+                            checkingAccountId: payMethod.check.account.id,
+                            accountNumber:
+                              payMethod.check.account.accountNumber,
+                          },
+                          branch
+                        )
+                      );
+                    }
+                  } else {
+                    checks.externalChecks.set(
+                      payMethod.check.checkNumber,
+                      payMethod
+                    );
+                  }
+                }
+
+                return [checks];
+              },
+              [
+                {
+                  accounts: new Map<string, BranchNode<PayMethodBranch>>(),
+                  externalChecks: new Map<string, GridPaymentMethodFragment>(),
+                },
+              ]
+            )
+            .map(({ accounts, externalChecks }) => [
+              ...accounts.values(),
+              ...externalChecks.values(),
+            ])[0];
+        }
+        case PaymentCardType.AmericanExpress:
+        case PaymentCardType.Discover:
+        case PaymentCardType.MasterCard:
+        case PaymentCardType.Visa: {
+          const cardTypename =
+            branch.parent?.valueOf() === "External"
+              ? "PaymentCard"
+              : "AccountCard";
+
+          return [
+            ...paymentMethods
+              .reduce((options, payMethod) => {
+                if (
+                  payMethod.__typename === "PaymentMethodCard" &&
+                  payMethod.card.type === branchVal &&
+                  payMethod.card.__typename === cardTypename &&
+                  !options.has(payMethod.card.trailingDigits)
+                ) {
+                  options.set(payMethod.card.trailingDigits, payMethod);
+                }
+                return options;
+              }, new Map<string, GridPaymentMethodFragment>())
+              .values(),
+          ];
+        }
+        default: {
+          const { checkingAccountId: id } = branchVal;
+
+          return [
+            ...paymentMethods
+              .reduce((options, payMethod) => {
+                if (
+                  payMethod.__typename === "PaymentMethodCheck" &&
+                  payMethod.check.__typename === "AccountCheck" &&
+                  payMethod.check.account.id === id &&
+                  !options.has(payMethod.check.checkNumber)
+                ) {
+                  options.set(payMethod.check.checkNumber, payMethod);
+                }
+
+                return options;
+              }, new Map<string, GridPaymentMethodFragment>())
+              .values(),
+          ];
+        }
+      }
+    } else {
+      return [
+        ...paymentMethods
+          .reduce((options, payMethod) => {
+            switch (payMethod.__typename) {
+              case "PaymentMethodCard":
+              case "PaymentMethodCheck":
+                if (!options.has(payMethod.__typename)) {
+                  options.set(
+                    payMethod.__typename,
+                    new BranchNode<PayMethodBranch>(payMethod.__typename)
+                  );
+                }
+                break;
+              default:
+                if (!options.has(payMethod.__typename)) {
+                  options.set(payMethod.__typename, payMethod);
+                }
+            }
+            return options;
+          }, new Map<GridPaymentMethodFragment["__typename"], BranchNode<PayMethodBranch> | GridPaymentMethodFragment>())
+          .values(),
+      ];
+    }
+  }, [branch, payMethodFilterOpts]);
 
   const columnName = props.column.name;
 
-  type Props = AutocompleteProps<GridPaymentMethodFragment, true, false, false>;
-
   const { onFilter } = props;
 
-  const onChange = useCallback<NonNullable<Props["onChange"]>>(
+  const onChange = useCallback<NonNullable<PayMethodTreeProps["onChange"]>>(
     (_, value) => {
       if (value.length) {
         const logicFilter: LogicFilter<GridPaymentMethodFragment, "equal"> = {
@@ -145,7 +300,7 @@ export const PayMethodFilter = (props: PayMethodFilterProps): JSX.Element => {
         for (const option of value) {
           logicFilter.filters.push({
             operation: "equal",
-            value: option,
+            value: option.valueOf(),
           });
         }
 
@@ -160,71 +315,88 @@ export const PayMethodFilter = (props: PayMethodFilterProps): JSX.Element => {
     [columnName, onFilter]
   );
 
+  const onBranchChange = useCallback<
+    NonNullable<PayMethodTreeProps["onBranchChange"]>
+  >((_, branch) => setBranch(branch), []);
+
+  const getOptionLabel = useCallback<
+    NonNullable<PayMethodTreeProps["getOptionLabel"]>
+  >((option) => {
+    if (option instanceof BranchNode) {
+      const opt = option.valueOf();
+
+      if (typeof opt === "string") {
+        switch (opt) {
+          case "PaymentMethodCheck":
+            return "Check";
+          case "PaymentMethodCard":
+            return "Card";
+          case "External":
+          case "Internal":
+            return opt;
+          default:
+            return capitalCase(opt);
+        }
+      } else {
+        return `Acct# ...${opt.accountNumber?.slice(-4)}`;
+      }
+    } else {
+      const opt = option.valueOf();
+      switch (opt.__typename) {
+        case "PaymentMethodCard":
+          return `${getCardTypeAbbreviation(opt.card.type)}-${
+            opt.card.trailingDigits
+          }`;
+        case "PaymentMethodCheck":
+          return `CK-${opt.check.checkNumber}`;
+        case "PaymentMethodCash":
+          return "Cash";
+        case "PaymentMethodCombination":
+          return "Combination";
+        case "PaymentMethodOnline":
+          return "Online";
+        case "PaymentMethodUnknown":
+          return "Unknown";
+      }
+    }
+  }, []);
+
+  const getOptionSelected = useCallback<
+    NonNullable<PayMethodTreeProps["getOptionSelected"]>
+  >(
+    (option, value) => payMethodFilterEquals(option.valueOf(), value.valueOf()),
+    []
+  );
+
   return (
     <TableFilterRow.Cell
       {...(rest as TableFilterRow.CellProps)}
       style={inlinePadding}
     >
-      <Autocomplete
-        getOptionLabel={getOptionLabelFilter}
-        multiple
-        renderInput={renderInput}
+      <TreeSelect<
+        GridPaymentMethodFragment,
+        PayMethodBranch,
+        true,
+        false,
+        false
+      >
+        onBranchChange={onBranchChange}
+        branch={branch}
         onChange={onChange}
         options={options}
+        multiple
+        getOptionLabel={getOptionLabel}
+        getOptionSelected={getOptionSelected}
+        renderInput={renderFilterInput}
         {...inlineAutoCompleteProps}
       />
     </TableFilterRow.Cell>
   );
 };
 
-const payMethodFilterEquals = (
-  a: GridPaymentMethodFragment,
-  b: GridPaymentMethodFragment
-): boolean => {
-  if (a.__typename !== b.__typename) {
-    return false;
-  }
-
-  switch (a.__typename) {
-    case "PaymentMethodCard": {
-      const bCard = b as GridPaymentMethod_PaymentMethodCard_Fragment;
-      if (a.card.__typename !== bCard.card.__typename) {
-        return false;
-      } else if (a.card.__typename === "AccountCard") {
-        return (
-          a.card.account.id === (bCard.card as AccountCard).account.id &&
-          a.card.id === (bCard.card as AccountCard).id
-        );
-      } else {
-        return (
-          a.card.type === (bCard.card as PaymentCard).type &&
-          a.card.trailingDigits === (bCard.card as PaymentCard).trailingDigits
-        );
-      }
-    }
-    case "PaymentMethodCheck": {
-      const bCard = b as GridPaymentMethod_PaymentMethodCheck_Fragment;
-      if (a.check.__typename !== bCard.check.__typename) {
-        return false;
-      } else if (a.check.__typename === "AccountCheck") {
-        return (
-          a.check.account.id === (bCard.check as AccountCheck).account.id &&
-          a.check.checkNumber === (bCard.check as AccountCheck).checkNumber
-        );
-      } else {
-        return (
-          a.check.checkNumber === (bCard.check as PaymentCheck).checkNumber
-        );
-      }
-    }
-    default:
-      return true;
-  }
-};
-
 export const payMethodFilterColumnExtension = (
   columnName: string,
-  toString: (value: GridPaymentMethodFragment) => string
+  toString: (value: GridPaymentMethodFragment) => string = payMethodToStr
 ): IntegratedFiltering.ColumnExtension => ({
   columnName,
   predicate: (value, filter, row): boolean => {
@@ -248,12 +420,3 @@ export const payMethodFilterColumnExtension = (
     }
   },
 });
-
-// Editor Cell
-
-export type PayMethodRowChanges = {
-  paymentMethod:
-    | ValueNode<PayMethodInputOpt, PaymentMethodInputBranchOpt>
-    | FreeSoloNode<PaymentMethodInputBranchOpt>
-    | null;
-} & CategoryRowChanges;

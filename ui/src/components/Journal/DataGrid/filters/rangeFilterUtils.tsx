@@ -2,7 +2,7 @@ import React from "react";
 import { TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
 import AddCircleIcon from "@material-ui/icons/AddCircle";
 
-import { DefaultFilterOperations } from "../plugins/FilterColumnsState";
+import { DefaultFilterOperations } from "../plugins/FilteringState";
 
 export type AvailableFilterOperations = Extract<
   DefaultFilterOperations,
@@ -14,14 +14,15 @@ export type AvailableFilterOperations = Extract<
   | "lessThanOrEqual"
 >;
 
-export const availableFilterOperations: ReadonlyArray<AvailableFilterOperations> = [
-  "equal",
-  "notEqual",
-  "greaterThan",
-  "greaterThanOrEqual",
-  "lessThan",
-  "lessThanOrEqual",
-];
+export const availableFilterOperations: ReadonlyArray<AvailableFilterOperations> =
+  [
+    "equal",
+    "notEqual",
+    "greaterThan",
+    "greaterThanOrEqual",
+    "lessThan",
+    "lessThanOrEqual",
+  ];
 
 export type AvailableRangeFilterOperations = Extract<
   AvailableFilterOperations,

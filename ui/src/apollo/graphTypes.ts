@@ -1364,7 +1364,7 @@ export type GridEntrySrcDeptFragment = { __typename: 'Department', id: string, n
 
 export type GridPaymentMethodCardFragment = { __typename: 'PaymentMethodCard', card: { __typename: 'AccountCard', id: string, active: boolean, trailingDigits: string, type: PaymentCardType, account: { __typename: 'AccountChecking', id: string, name: string } | { __typename: 'AccountCreditCard', id: string, name: string } } | { __typename: 'PaymentCard', trailingDigits: string, type: PaymentCardType } };
 
-export type GridPaymentMethodCheckFragment = { __typename: 'PaymentMethodCheck', check: { __typename: 'AccountCheck', checkNumber: string, account: { __typename: 'AccountChecking', id: string, name: string } } | { __typename: 'PaymentCheck', checkNumber: string } };
+export type GridPaymentMethodCheckFragment = { __typename: 'PaymentMethodCheck', check: { __typename: 'AccountCheck', checkNumber: string, account: { __typename: 'AccountChecking', id: string, name: string, accountNumber: string } } | { __typename: 'PaymentCheck', checkNumber: string } };
 
 export type GridPaymentMethod_PaymentMethodCard_Fragment = (
   { __typename: 'PaymentMethodCard', currency: Currency }

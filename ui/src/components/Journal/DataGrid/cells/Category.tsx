@@ -21,6 +21,7 @@ import {
   inlineAutoCompleteProps,
   inlineInputProps,
   inlinePadding,
+  renderFilterInput,
 } from "./shared";
 
 export const CategoryCell = (props: Table.DataCellProps): JSX.Element => {
@@ -90,16 +91,16 @@ const getFilterOptionSelected: NonNullable<
   }
 };
 
-const renderFilterInput: NonNullable<CategoryFilterSelect["renderInput"]> = (
-  params
-) =>
-  defaultInput({
-    ...params,
-    InputProps: {
-      ...(params.InputProps || {}),
-      ...inlineInputProps,
-    },
-  });
+// const renderFilterInput: NonNullable<CategoryFilterSelect["renderInput"]> = (
+//   params
+// ) =>
+//   defaultInput({
+//     ...params,
+//     InputProps: {
+//       ...(params.InputProps || {}),
+//       ...inlineInputProps,
+//     },
+//   });
 
 export const CategoryFilter = (props: CategoryFilterProps): JSX.Element => {
   const { categoryFilterOpts, ...rest } = props;
@@ -237,7 +238,7 @@ export const categoryFilterColumnExtension = (
 ): IntegratedFiltering.ColumnExtension => ({
   columnName,
   predicate: (value, filter, row): boolean => {
-    const filterValue = ((filter as unknown) as Filter<CategoryFilterInputOpt>)
+    const filterValue = (filter as unknown as Filter<CategoryFilterInputOpt>)
       .value;
     switch (filter.operation) {
       case "equal":

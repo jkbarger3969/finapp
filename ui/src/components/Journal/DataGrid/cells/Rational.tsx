@@ -1,9 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  Table,
-  TableFilterRow,
-  TableEditRow,
-} from "@devexpress/dx-react-grid-material-ui";
+import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
 import Fraction from "fraction.js";
 import { Box } from "@material-ui/core";
 
@@ -18,13 +14,9 @@ import {
   RationalInputBase,
   RationalInputBaseProps,
 } from "../../../Inputs/RationalInput";
-import { LogicFilter } from "../plugins/FilterColumnsState";
+import { LogicFilter } from "../plugins/FilteringState";
 import { DefaultFilterOperations, Filter, OnFilter } from "../plugins";
-import {
-  inlineInputProps,
-  inlinePaddingWithSelector,
-  RowChangesProp,
-} from "./shared";
+import { inlineInputProps, inlinePaddingWithSelector } from "./shared";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
 
 // Data Cell
@@ -335,13 +327,15 @@ export const RationalFilter = (props: RationalFilterProps): JSX.Element => {
         // Reset bounded total if new interval is Invalid
         setState((state) => ({
           ...state,
-          rangeSelectorValue: rangeSelectorValue as AvailableRangeFilterOperations,
+          rangeSelectorValue:
+            rangeSelectorValue as AvailableRangeFilterOperations,
           boundTotal: null,
         }));
       } else {
         setState((state) => ({
           ...state,
-          rangeSelectorValue: rangeSelectorValue as AvailableRangeFilterOperations,
+          rangeSelectorValue:
+            rangeSelectorValue as AvailableRangeFilterOperations,
         }));
       }
 
@@ -443,7 +437,7 @@ export const rationalFilterColumnExtension = (
 ): IntegratedFiltering.ColumnExtension => ({
   columnName,
   predicate: (value, filter, row): boolean => {
-    const filterTotal = ((filter as unknown) as Filter<Fraction>).value;
+    const filterTotal = (filter as unknown as Filter<Fraction>).value;
 
     switch (filter.operation as DefaultFilterOperations) {
       case "equal":
@@ -467,42 +461,3 @@ export const rationalFilterColumnExtension = (
     }
   },
 });
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type RationalEditorProps = TableEditRow.CellProps & {
-  rationalInputProps?: Pick<RationalInputBaseProps, "disabled" | "InputProps">;
-} & RowChangesProp;
-
-export const RationalEditor = (props: RationalEditorProps): JSX.Element => {
-  const {
-    rationalInputProps: rationalInputPropsProp,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    rowChanges,
-    ...rest
-  } = props;
-  const { editingEnabled, value, onValueChange } = props;
-
-  const onChange = useCallback<NonNullable<RationalInputBaseProps["onChange"]>>(
-    (event, rational) => {
-      onValueChange(rational);
-    },
-    [onValueChange]
-  );
-
-  const rationalInputProps = useMemo<RationalInputBaseProps>(() => {
-    return {
-      fullWidth: true,
-      size: "small",
-      ...(rationalInputPropsProp || {}),
-      disabled: !editingEnabled || !!rationalInputPropsProp?.disabled,
-      onChange,
-      value,
-    };
-  }, [editingEnabled, onChange, rationalInputPropsProp, value]);
-
-  return (
-    <TableEditRow.Cell {...rest}>
-      <RationalInputBase {...rationalInputProps} />
-    </TableEditRow.Cell>
-  );
-};

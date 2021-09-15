@@ -191,7 +191,9 @@ const InnerDialog = (
 
   const classes = useStyles();
 
-  const isUpdate = useRef(!!entryProps.updateEntryId).current;
+  const updateEntryId = useRef(entryProps.updateEntryId).current;
+
+  const isUpdate = !!updateEntryId;
 
   const addRef = useRef<HTMLButtonElement | null>(null);
   const addAndNewRef = useRef<HTMLButtonElement | null>(null);
@@ -396,6 +398,7 @@ const InnerDialog = (
         form: form,
         showLabels: true,
         ...entryProps,
+        updateEntryId: updateEntryId,
         required: true,
         date: {
           ...sharedInputProps.DateInputProps,
@@ -442,6 +445,7 @@ const InnerDialog = (
         sharedInputProps.DateInputProps,
         sharedInputProps.TextFieldProps,
         sharedInputProps.TreeSelectProps,
+        updateEntryId,
       ]
     )
   );

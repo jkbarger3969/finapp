@@ -32,7 +32,7 @@ export type FilterExpression<T = unknown, U = DefaultFilterOperations> = Omit<
   FilterExpressionDevEx,
   "filters"
 > & {
-  filters: Array<FilterExpression<T, U> | Filter<T, U>>;
+  filters: (FilterExpression<T, U> | Filter<T, U>)[];
 };
 
 export type ColumnFilterOperation<
@@ -70,7 +70,7 @@ export type Filters<T = unknown, U = DefaultFilterOperations> = (
   | ColumnFilter<T, U>
 )[];
 
-export type FilterColumnsStateProps = Omit<
+export type FilteringStateProps = Omit<
   FilteringStatePropsDevEx,
   "filters" | "defaultFilters" | "onFiltersChange"
 > & {
@@ -153,9 +153,7 @@ const filterExpressionComputed = ({
   }
 };
 
-export const FilterColumnsState = (
-  props: FilterColumnsStateProps
-): JSX.Element => {
+export const FilteringState = (props: FilteringStateProps): JSX.Element => {
   const {
     filters: filtersProp,
     defaultFilters: defaultFiltersProp,
@@ -220,20 +218,16 @@ export const FilterColumnsState = (
   );
 
   return (
-    <Plugin>
+    <Plugin name="FilteringState">
       <FilteringStateDevEx filters={filters as FilterDevEx[]} {...rest} />
-      <Plugin name="FilterColumnsState">
-        <Getter name="columnFilters" value={columnFilters} />
-        <Getter
-          name="filterExpression"
-          computed={filterExpressionComputed as unknown as ComputedFn}
-        />
-        <Action name="changeColumnFilter" action={changeColumnFilter} />
-        {/* Can test for changeColumnFilterState to identify FilterColumnsState override */}
-        <Action name="changeColumnFilterState" action={changeColumnFilter} />
-      </Plugin>
+      <Getter name="columnFilters" value={columnFilters} />
+      <Getter
+        name="filterExpression"
+        computed={filterExpressionComputed as unknown as ComputedFn}
+      />
+      <Action name="changeColumnFilter" action={changeColumnFilter} />
+      {/* Can test for changeColumnFilterState to identify FilteringState override */}
+      <Action name="changeColumnFilterState" action={changeColumnFilter} />
     </Plugin>
   );
 };
-
-export default FilterColumnsState;

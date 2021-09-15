@@ -1,5 +1,5 @@
-export { FilterColumnsState } from "./FilterColumnsState";
-export type { FilterColumnsStateProps, OnFilter } from "./FilterColumnsState";
+export { FilteringState } from "./FilteringState";
+export type { FilteringStateProps, OnFilter } from "./FilteringState";
 export type {
   Filter,
   LogicFilter,
@@ -9,7 +9,7 @@ export type {
   DefaultFilterOperations,
   IsColumnFilteringEnabled,
   Filters,
-} from "./FilterColumnsState";
+} from "./FilteringState";
 export {
   DataCellProvider,
   FilterCellProvider,

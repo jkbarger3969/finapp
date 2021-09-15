@@ -2,9 +2,20 @@ import React from "react";
 import { InputProps } from "@material-ui/core";
 import { AutocompleteProps } from "@material-ui/lab/Autocomplete";
 
+import { defaultInput } from "mui-tree-select";
+
 export const inlineInputProps: InputProps = {
   margin: "dense",
 };
+
+export const renderFilterInput: typeof defaultInput = (params) =>
+  defaultInput({
+    ...params,
+    InputProps: {
+      ...(params.InputProps || {}),
+      ...inlineInputProps,
+    },
+  });
 
 export const inlinePadding: React.CSSProperties = {
   paddingLeft: "8px",
@@ -22,9 +33,3 @@ export const inlineAutoCompleteProps: Pick<
   size: "small",
   fullWidth: true,
 };
-
-export interface RowChangesProp<
-  T extends Record<string, unknown> = Record<string, unknown>
-> {
-  rowChanges?: Partial<Record<string, Partial<T>>>;
-}

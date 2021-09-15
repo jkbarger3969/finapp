@@ -1,40 +1,26 @@
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  Table,
-  TableFilterRow,
-  TableEditRow,
-} from "@devexpress/dx-react-grid-material-ui";
+import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
 import TreeSelect, {
-  ValueNode,
   BranchNode,
   defaultInput,
   TreeSelectProps,
-  FreeSoloNode,
 } from "mui-tree-select";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
 
-import {
-  EntitiesWhere,
-  GridEntryFragment,
-} from "../../../../apollo/graphTypes";
+import { GridEntryFragment } from "../../../../apollo/graphTypes";
 import { OnFilter } from "../plugins";
 import {
-  EntityInput,
-  EntityTreeSelectProps,
   EntityDefaultInputOpt,
   EntityInputOpt,
   getOptionLabel as getOptionLabelUtil,
   getOptionSelected as getOptionSelectedUtil,
-  EntityInputProps,
 } from "../../../Inputs/Entity";
 import { Filter, LogicFilter } from "../plugins";
 import {
   inlineAutoCompleteProps,
   inlineInputProps,
   inlinePadding,
-  RowChangesProp,
 } from "./shared";
-import { GridEntry } from "../Grid";
 
 export const sourceToStr = (src: GridEntryFragment["source"]): string => {
   switch (src.__typename) {
@@ -262,8 +248,7 @@ export const sourceFilterColumnExtension = (
   predicate: (value, filter, row): boolean => {
     switch (filter.operation) {
       case "equal": {
-        const filterValue = ((filter as unknown) as Filter<EntityInputOpt>)
-          .value;
+        const filterValue = (filter as unknown as Filter<EntityInputOpt>).value;
 
         return (
           filterValue.__typename ===
@@ -272,8 +257,7 @@ export const sourceFilterColumnExtension = (
         );
       }
       case "notEqual": {
-        const filterValue = ((filter as unknown) as Filter<EntityInputOpt>)
-          .value;
+        const filterValue = (filter as unknown as Filter<EntityInputOpt>).value;
 
         return (
           filterValue.__typename !==

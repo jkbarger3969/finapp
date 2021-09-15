@@ -17,7 +17,7 @@ import {
   ColumnFilter,
   Filter,
   OnFilter,
-} from "./FilterColumnsState";
+} from "./FilteringState";
 
 export type CellProviderCellOptions = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -64,6 +64,7 @@ export const PAYMENT_METHOD = gql`
           __typename
           id
           name
+          accountNumber
         }
       }
       ... on PaymentCheck {

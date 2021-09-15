@@ -1,9 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  Table,
-  TableFilterRow,
-  TableEditRow,
-} from "@devexpress/dx-react-grid-material-ui";
+import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
 import { Box, makeStyles } from "@material-ui/core";
 import {
   KeyboardDatePicker,
@@ -28,7 +24,7 @@ import {
 } from "../filters/rangeFilterUtils";
 import { OnFilter } from "../plugins";
 import { LogicFilter } from "../plugins";
-import { inlinePaddingWithSelector, RowChangesProp } from "./shared";
+import { inlinePaddingWithSelector } from "./shared";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
 import { DefaultFilterOperations, Filter } from "../plugins";
 
@@ -358,13 +354,15 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
         // Reset bounded date if new interval is Invalid
         setState((state) => ({
           ...state,
-          rangeSelectorValue: rangeSelectorValue as AvailableRangeFilterOperations,
+          rangeSelectorValue:
+            rangeSelectorValue as AvailableRangeFilterOperations,
           boundDate: null,
         }));
       } else {
         setState((state) => ({
           ...state,
-          rangeSelectorValue: rangeSelectorValue as AvailableRangeFilterOperations,
+          rangeSelectorValue:
+            rangeSelectorValue as AvailableRangeFilterOperations,
         }));
       }
 
@@ -489,7 +487,7 @@ export const dateFilterColumnExtension = (
   return {
     columnName,
     predicate: (value, filter, row): boolean => {
-      const filterDate = ((filter as unknown) as Filter<Date>).value;
+      const filterDate = (filter as unknown as Filter<Date>).value;
 
       switch (filter.operation as DefaultFilterOperations) {
         case "equal":
@@ -513,49 +511,4 @@ export const dateFilterColumnExtension = (
       }
     },
   };
-};
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type DateEditorProps = Partial<TableEditRow.CellProps> & {
-  keyboardDatePickerProps?: Partial<Pick<KeyboardDatePickerProps, "disabled">>;
-} & RowChangesProp;
-
-export const DateEditor = (props: DateEditorProps): JSX.Element => {
-  const {
-    keyboardDatePickerProps: keyboardDatePickerPropsProp,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    rowChanges,
-    ...rest
-  } = props as DateEditorProps & TableEditRow.CellProps;
-
-  const { onValueChange, value, editingEnabled } = props as DateEditorProps &
-    TableEditRow.CellProps;
-
-  const onChange = useCallback<
-    NonNullable<KeyboardDatePickerProps["onChange"]>
-  >(
-    (date) => {
-      onValueChange(date);
-    },
-    [onValueChange]
-  );
-
-  const keyboardDatePickerProps = useMemo<KeyboardDatePickerProps>(() => {
-    return {
-      ...defaultKeyboardDatePickerProps,
-      initialFocusedDate: value || new Date(),
-      ...(keyboardDatePickerPropsProp || {}),
-      disabled: !editingEnabled || !!keyboardDatePickerPropsProp?.disabled,
-      onChange,
-      value,
-    };
-  }, [editingEnabled, keyboardDatePickerPropsProp, onChange, value]);
-
-  return (
-    <TableEditRow.Cell {...rest}>
-      <MuiPickersUtilsProvider utils={DateFnsUtils}>
-        <KeyboardDatePicker {...keyboardDatePickerProps} />
-      </MuiPickersUtilsProvider>
-    </TableEditRow.Cell>
-  );
 };
