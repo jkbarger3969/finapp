@@ -105,6 +105,7 @@ import { EntityInputOpt } from "../../Inputs/Entity";
 import { UpsertEntryProps } from "./forms/UpsertEntry";
 import { UpsertRefundProps } from "./forms/UpsertRefund";
 import { DeleteEntryProps } from "./forms/DeleteEntry";
+import { dialogProps } from "./forms/shared";
 
 export type GridRefund = Omit<GridRefundFragment, "date" | "total"> & {
   date: Date;
@@ -641,11 +642,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
   >(
     () => [
       {
-        dialogProps: {
-          keepMounted: false,
-          maxWidth: "lg",
-          fullWidth: true,
-        },
+        dialogProps,
         entryProps: {
           paymentMethod: { accounts: props.selectableAccounts },
           department: {
@@ -662,11 +659,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
         },
       } as UpsertEntryProps,
       {
-        dialogProps: {
-          keepMounted: false,
-          maxWidth: "lg",
-          fullWidth: true,
-        },
+        dialogProps,
         refundProps: {
           paymentMethod: { accounts: props.selectableAccounts },
         },

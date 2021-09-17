@@ -9,6 +9,13 @@ import {
   FieldPath,
 } from "react-hook-form";
 import { OmitProperties } from "ts-essentials";
+import { UpsertEntryProps } from "./UpsertEntry";
+
+export const dialogProps: Partial<UpsertEntryProps["dialogProps"]> = {
+  keepMounted: false,
+  maxWidth: "lg",
+  fullWidth: true,
+};
 
 export const preventDefault = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

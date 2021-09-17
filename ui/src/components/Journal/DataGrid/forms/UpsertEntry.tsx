@@ -34,7 +34,7 @@ import {
 } from "../../../Inputs/fieldSets/useEntry";
 import { inputGridItemProps, useSharedDialogInputProps } from "./shared";
 import { usePerson, PersonFieldDef } from "../../../Inputs/fieldSets/usePerson";
-import { EntityInputOpt, EntityTreeSelectValue } from "../../../Inputs/Entity";
+import { EntityTreeSelectValue } from "../../../Inputs/Entity";
 import {
   FieldValue,
   FormProvider,
@@ -262,9 +262,18 @@ const InnerDialog = (
                         phone: person.phone || null,
                       },
                     };
-                  } else if (entry?.source) {
-                    // NOTE: string case handled by person or business
-                    const source = entry.source.valueOf() as EntityInputOpt;
+                  } else if (!entry?.source) {
+                    return null;
+                  } else if (entry.source instanceof FreeSoloNode) {
+                    return entry.source.parent?.valueOf() === "Business"
+                      ? ({
+                          business: {
+                            name: entry.source.valueOf(),
+                          },
+                        } as UpsertEntrySource)
+                      : null;
+                  } else {
+                    const source = entry.source.valueOf();
 
                     switch (source.__typename) {
                       case "Business":
@@ -289,8 +298,6 @@ const InnerDialog = (
                           },
                         } as UpsertEntrySource;
                     }
-                  } else {
-                    return null;
                   }
                 })()
               : null;
@@ -318,6 +325,8 @@ const InnerDialog = (
               source,
               reconciled: entry?.reconciled ?? null,
             };
+
+            console.log(entryUpdate);
 
             const { errors } = await updateEntry({
               variables: {
@@ -349,8 +358,6 @@ const InnerDialog = (
               source: source as UpsertEntrySource,
               reconciled: entry?.reconciled ?? null,
             };
-
-            console.log(source, entry?.source?.valueOf(), entry, newEntry);
 
             const { errors } = await addNewEntry({
               variables: {

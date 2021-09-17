@@ -1,10 +1,5 @@
 import React, { useMemo } from "react";
-import {
-  Route,
-  Switch,
-  useParams,
-  RouteComponentProps,
-} from "react-router-dom";
+import { Route, Switch, RouteComponentProps } from "react-router-dom";
 
 // import Journal from "./components/Journal/Table/Journal";
 import Grid from "./components/Journal/DataGrid/Grid";
@@ -16,10 +11,27 @@ import {
   EntriesWhere,
 } from "./apollo/graphTypes";
 
-const DashBoardRender = () => {
-  const { id } = useParams<{ id: string }>();
+const DashBoardRender = (props: RouteComponentProps<{ id: string }>) => {
+  const selectableDepts = useMemo<DepartmentsWhere>(
+    () => ({
+      id: {
+        eq: props.match.params.id,
+      },
+    }),
+    [props.match.params.id]
+  );
 
-  return id ? <Dashboard deptId={id} /> : <div>Error: No Dept ID!</div>;
+  const selectableAccounts = useMemo<AccountsWhere>(() => ({}), []);
+
+  return props.match.params.id ? (
+    <Dashboard
+      selectableDepts={selectableDepts}
+      selectableAccounts={selectableAccounts}
+      deptId={props.match.params.id}
+    />
+  ) : (
+    <div>Error: No Dept ID!</div>
+  );
 };
 
 const GridChild: React.FC<

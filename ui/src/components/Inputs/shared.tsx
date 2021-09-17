@@ -17,6 +17,7 @@ import {
 import { KeyboardDatePickerProps } from "@material-ui/pickers";
 
 import {
+  InvalidResponse,
   useField,
   UseFieldOptions,
   useFormContext,
@@ -282,6 +283,29 @@ export const TextFieldControlled = forwardRef(function TextFieldControlled(
 });
 
 const REQUIRED_ERROR = new Error("Required");
+export const useRequiredValidator = (
+  error?: string | InvalidResponse
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Validator<any> =>
+  useMemo(() => {
+    const requiredError = error
+      ? typeof error === "string"
+        ? new Error(error)
+        : error
+      : REQUIRED_ERROR;
+
+    return (_, { form, name }) => {
+      const value = form.getFieldValue(name, false);
+      if (
+        value === undefined ||
+        value === null ||
+        (typeof value === "string" && value.trim() === "")
+      ) {
+        return requiredError;
+      }
+    };
+  }, [error]);
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const requiredValidator: Validator<any> = (_, { form, name }) => {
   const value = form.getFieldValue(name, false);

@@ -6,7 +6,6 @@ import TreeSelect, {
   BranchNode,
   ValueNode,
   TreeSelectProps,
-  defaultInput,
 } from "mui-tree-select";
 
 import { EntryType, GridEntryFragment } from "../../../../apollo/graphTypes";
@@ -19,7 +18,6 @@ import {
 } from "../../../Inputs/Category";
 import {
   inlineAutoCompleteProps,
-  inlineInputProps,
   inlinePadding,
   renderFilterInput,
 } from "./shared";

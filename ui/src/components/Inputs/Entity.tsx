@@ -31,6 +31,7 @@ import {
   useField,
   UseFieldOptions,
   useFormContext,
+  Validator,
 } from "../../useKISSForm/form";
 
 export type EntityDefaultInputOpt =
@@ -290,9 +291,11 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
     state: "branch",
   });
 
+  const firstLetter = inputValue.trim().slice(0, 1);
   const queryResult = useQuery<EntityInputOpts, EntityInputOptsVars>(
     ENTITY_INPUT_OPTS,
     useMemo(() => {
+      const fetchPolicy = "cache-and-network";
       const curBranch = branch?.valueOf();
       if (!curBranch) {
         return {
@@ -302,8 +305,6 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
           },
         };
       } else if (curBranch === "Business") {
-        const firstLetter = inputValue.trim().slice(0, 1);
-
         return {
           skip: !firstLetter,
           variables: {
@@ -316,9 +317,9 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
               },
             },
           },
+          fetchPolicy,
         };
       } else if (curBranch === "Person") {
-        const firstLetter = inputValue.trim().slice(0, 1);
         return {
           skip: !firstLetter,
           variables: {
@@ -345,6 +346,7 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
               },
             },
           },
+          fetchPolicy,
         };
       } else if (curBranch.__typename === "Business") {
         return {
@@ -361,6 +363,7 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
               },
             },
           },
+          fetchPolicy,
         };
       } else if (curBranch.__typename === "Department") {
         return {
@@ -377,9 +380,10 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
               },
             },
           },
+          fetchPolicy,
         };
       }
-    }, [branch, inputValue])
+    }, [branch, firstLetter])
   );
 
   const onBranchChange = useCallback<
@@ -528,6 +532,21 @@ export type EntityInputProps<
 
 const BRANCH_NOT_SET = Symbol();
 
+const validNewEntity: Validator<
+  EntityTreeSelectValue<true | false, true | false | true | false>
+> = (value) => {
+  if (
+    value &&
+    (Array.isArray(value) ? value : [value]).some(
+      (val) =>
+        val instanceof FreeSoloNode &&
+        (val as FreeSoloNode).valueOf().length < 3
+    )
+  ) {
+    return RangeError("Too Short");
+  }
+};
+
 export type EntityFieldDef<
   Name extends string = typeof ENTITY_NAME,
   Multiple extends boolean | undefined = undefined,
@@ -582,6 +601,7 @@ export const EntityInput = forwardRef(function EntityInput<
     name: nameProp,
     form,
     isEqual: entityIsEqual,
+    validator: validNewEntity,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultValue: defaultValue as any,
   });

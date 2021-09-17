@@ -68,8 +68,8 @@ export const useName = (
     showLabels,
     insertNamePrefix,
     required,
-    firstName: firstNameProps = {},
-    lastName: lastNameProps = {},
+    firstName: firstNameProps,
+    lastName: lastNameProps,
     ...globalProps
   } = props;
 

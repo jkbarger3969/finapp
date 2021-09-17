@@ -63,9 +63,9 @@ export const usePerson = (
     insertNamePrefix,
     required,
     form,
-    name: nameProps = {},
-    email: emailProps = {},
-    phone: phoneProps = {},
+    name: nameProps,
+    email: emailProps,
+    phone: phoneProps,
     ...rest
   } = props;
 

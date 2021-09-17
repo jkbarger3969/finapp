@@ -9,7 +9,6 @@ import Typography from "@material-ui/core/Typography";
 import AddIcon from "@material-ui/icons/Add";
 import DoneAllIcon from "@material-ui/icons/DoneAll";
 import TableChartIcon from "@material-ui/icons/TableChart";
-import AssessmentIcon from "@material-ui/icons/Assessment";
 import Card from "@material-ui/core/Card";
 import CardHeader from "@material-ui/core/CardHeader";
 import CardContent from "@material-ui/core/CardContent";
@@ -28,12 +27,19 @@ import {
   OnEntryUpsert_2Subscription as OnEntryUpsert,
   GetReportDataDept_1Fragment as DepartmentFragment,
   FiscalYear,
+  DepartmentsWhere,
+  AccountsWhere,
 } from "../../apollo/graphTypes";
 import { deserializeRational } from "../../apollo/scalars";
 import {
   GET_REPORT_DATA,
   GET_REPORT_DATA_ENTRY_FRAGMENT,
 } from "./ReportData.gql";
+import {
+  UpsertEntry,
+  UpsertEntryProps,
+} from "../Journal/DataGrid/forms/UpsertEntry";
+import { dialogProps } from "../Journal/DataGrid/forms/shared";
 // import { DEPT_ENTRY_OPT_FRAGMENT } from "../Journal/Upsert/upsertEntry.gql";
 
 const colorMeter = (percentSpent: number, shade: keyof Color = 800) => {
@@ -88,14 +94,14 @@ const ON_ENTRY_UPSERT = gql`
   ${GET_REPORT_DATA_ENTRY_FRAGMENT}
 `;
 
-const Dashboard = (props: { deptId: string }): JSX.Element => {
-  const { deptId } = props;
+const Dashboard = (props: {
+  deptId: string;
+  selectableDepts: DepartmentsWhere;
+  selectableAccounts: AccountsWhere;
+}): JSX.Element => {
+  const { deptId, selectableAccounts, selectableDepts } = props;
 
   const [addEntryOpen, setAddEntryOpen] = useState<boolean>(false);
-  const addEntryOnClose = useCallback(
-    () => void setAddEntryOpen(false),
-    [setAddEntryOpen]
-  );
 
   const variables = useMemo(
     () => ({
@@ -292,7 +298,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
         deptReports,
         uBudget,
       };
-    }, [entries, department]);
+    }, [department, fiscalYear?.id, entries]);
 
   const subDeptCards = useMemo(() => {
     const subDeptCards: JSX.Element[] = [];
@@ -416,6 +422,31 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     );
   }, [data, setYear, fiscalYear]);
 
+  const upsertEntryProps: UpsertEntryProps = useMemo<UpsertEntryProps>(
+    () => ({
+      dialogProps: {
+        ...dialogProps,
+        open: addEntryOpen,
+        onClose: () => setAddEntryOpen(false),
+      },
+      entryProps: {
+        paymentMethod: { accounts: selectableAccounts },
+        department: {
+          root: selectableDepts,
+        },
+      },
+      refetchQueries: {
+        onNewEntry: [
+          {
+            query: GET_REPORT_DATA,
+            variables,
+          },
+        ],
+      },
+    }),
+    [addEntryOpen, selectableAccounts, selectableDepts, variables]
+  );
+
   if (isLoading) {
     return <p>Loading...</p>;
   } else if (error) {
@@ -447,11 +478,6 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
                 startIcon={<DoneAllIcon />}
               >
                 Reconcile
-              </Button>
-            </Grid>
-            <Grid item>
-              <Button variant="contained" startIcon={<AssessmentIcon />}>
-                Reports
               </Button>
             </Grid>
             <Grid item>
@@ -490,11 +516,8 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
             {subDeptCards}
           </Grid>
         </Box>
-        {/* <AddEntry
-          deptId={deptId}
-          open={addEntryOpen}
-          onClose={addEntryOnClose}
-        /> */}
+
+        <UpsertEntry {...upsertEntryProps} />
       </Container>
     </Box>
   );

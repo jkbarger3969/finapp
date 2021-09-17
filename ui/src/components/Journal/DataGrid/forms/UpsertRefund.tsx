@@ -171,10 +171,6 @@ const InnerDialog = (
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onSubmit: useCallback<OnSubmitCb<RefundFieldDef>>(
         async (submitState) => {
-          const {
-            dirtyValues: { refund },
-          } = submitState;
-
           if (updateRefundId) {
             const {
               dirtyValues: { refund },
