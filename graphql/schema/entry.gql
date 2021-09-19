@@ -126,6 +126,9 @@ type EntryRefund {
   date: Date!
   deleted: Boolean!
   description: String
+  """
+  `Entry` associated with `EntryRefund`
+  """
   entry: Entry!
   lastUpdate: Date!
   paymentMethod: PaymentMethodInterface!

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { useCallback, useMemo, useState } from "react";
-import { Box, Paper } from "@material-ui/core";
+import { Paper } from "@material-ui/core";
 import {
   SummaryState,
   SummaryItem,
@@ -13,6 +13,8 @@ import {
   SearchState,
   TableFilterRow as TableFilterRowNS,
   IntegratedFiltering,
+  SelectionState,
+  IntegratedSelection,
 } from "@devexpress/dx-react-grid";
 import {
   Grid,
@@ -28,10 +30,13 @@ import {
   TableColumnVisibility,
   TableColumnVisibilityProps,
   ColumnChooser,
-  Toolbar,
   VirtualTable,
   SearchPanel,
   TableFilterRow,
+  TableEditColumn,
+  TableFixedColumns,
+  Toolbar,
+  TableSelection,
 } from "@devexpress/dx-react-grid-material-ui";
 import { green, red } from "@material-ui/core/colors";
 import { makeStyles } from "@material-ui/core/styles";
@@ -106,6 +111,12 @@ import { UpsertEntryProps } from "./forms/UpsertEntry";
 import { UpsertRefundProps } from "./forms/UpsertRefund";
 import { DeleteEntryProps } from "./forms/DeleteEntry";
 import { dialogProps } from "./forms/shared";
+import { GridTitle } from "./plugins/GridTitle";
+import { GridMenu } from "./plugins/GridMenu";
+
+const GridRoot = (props: Grid.RootProps) => (
+  <Grid.Root {...props} style={{ height: "100%" }} />
+);
 
 export type GridRefund = Omit<GridRefundFragment, "date" | "total"> & {
   date: Date;
@@ -160,6 +171,9 @@ const useStyles = makeStyles({
   },
   debitCell: {
     color: red[900],
+  },
+  paper: {
+    height: "100vh",
   },
 });
 
@@ -233,19 +247,21 @@ const summaryCalculator: NonNullable<IntegratedSummaryProps["calculator"]> = (
   getValue
 ) => {
   if (type === "totalAggregate") {
-    return rows
-      .reduce((sum: Fraction, row: GridEntry) => {
-        if (row.__typename === "EntryRefund") {
-          return row.category.type === EntryType.Credit
-            ? sum.sub(getValue(row))
-            : sum.add(getValue(row));
-        } else {
-          return row.category.type === EntryType.Credit
-            ? sum.add(getValue(row))
-            : sum.sub(getValue(row));
-        }
-      }, new Fraction(0))
-      .valueOf();
+    return defaultCurrencyFormatter.format(
+      rows
+        .reduce((sum: Fraction, row: GridEntry) => {
+          if (row.__typename === "EntryRefund") {
+            return row.category.type === EntryType.Credit
+              ? sum.sub(getValue(row))
+              : sum.add(getValue(row));
+          } else {
+            return row.category.type === EntryType.Credit
+              ? sum.add(getValue(row))
+              : sum.sub(getValue(row));
+          }
+        }, new Fraction(0))
+        .valueOf()
+    );
   } else {
     return IntegratedSummary.defaultCalculator(type, rows, getValue);
   }
@@ -380,6 +396,9 @@ const integratedFilteringColumnExtensions: IntegratedFiltering.ColumnExtension[]
   ];
 
 export type Props = {
+  title?: string;
+  loading?: boolean;
+  reconcileMode?: boolean;
   where?: EntriesWhere;
   selectableDepts: DepartmentsWhere;
   selectableAccounts: AccountsWhere;
@@ -536,27 +555,50 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     };
   }, [rows]);
 
-  const [columnOrder, setColumnOrder] = useLocalStorage(
-    defaultColumnOrder,
-    `column_order_${cachePrefix}`
-  );
+  const [columnOrder, setColumnOrder] = useLocalStorage({
+    defaultValue: defaultColumnOrder,
+    cacheKey: `column_order_${cachePrefix}`,
+  });
 
-  const [columnWidths, setColumnWidths] = useLocalStorage(
-    defaultColumnWidths as TableColumnWidthInfo[],
-    `column_widths_${cachePrefix}`,
-    columnWidthUpdater
-  );
-  const [hiddenColumnNames, setHiddenColumnNames] = useLocalStorage(
-    [] as NonNullable<TableColumnVisibilityProps["hiddenColumnNames"]>,
-    `column_visibility_${cachePrefix}`
-  );
+  const [columnWidths, setColumnWidths] = useLocalStorage({
+    defaultValue: defaultColumnWidths as TableColumnWidthInfo[],
+    cacheKey: `column_widths_${cachePrefix}`,
+    cacheUpdater: columnWidthUpdater,
+  });
+  const [hiddenColumnNames, setHiddenColumnNames] = useLocalStorage({
+    defaultValue: props.reconcileMode
+      ? ["reconciled"]
+      : ([] as NonNullable<TableColumnVisibilityProps["hiddenColumnNames"]>),
+    cacheKey: `column_visibility_${cachePrefix}`,
+    cacheUpdater: (cachedValue, defaultValue) => {
+      if (props.reconcileMode) {
+        if (cachedValue.length) {
+          return [...new Set([...cachedValue, "reconciled"]).values()];
+        } else {
+          return defaultValue;
+        }
+      } else {
+        return cachedValue;
+      }
+    },
+  });
 
-  const [sorting, setSorting] = useLocalStorage(
-    defaultSorting,
-    `column_visibility_sorting${cachePrefix}`
-  );
+  const [sorting, setSorting] = useLocalStorage({
+    defaultValue: defaultSorting,
+    cacheKey: `column_visibility_sorting${cachePrefix}`,
+  });
 
-  const [filters, setFilters] = useState<Filters>([]);
+  const [filters, setFilters] = useState<Filters>(() =>
+    props.reconcileMode
+      ? [
+          {
+            columnName: "reconciled",
+            operation: "notEqual",
+            value: true,
+          },
+        ]
+      : []
+  );
 
   const dataCellColor = useCallback(
     ({
@@ -673,71 +715,141 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     [props.selectableAccounts, props.selectableDepts, variables]
   );
 
+  const [leftColumns, setLeftColumns] = useState(() =>
+    props.reconcileMode
+      ? [TableSelection.COLUMN_TYPE]
+      : [TableEditColumn.COLUMN_TYPE]
+  );
+
+  const [columnVisibilityExt, setColumnVisibilityExt] = useState(() =>
+    props.reconcileMode
+      ? [{ columnName: "reconciled", togglingEnabled: false }]
+      : undefined
+  );
+  const [reconcileMode, setReconciledMode] = useState(!!props.reconcileMode);
+
+  const handelReconciledMode = useCallback(
+    (reconcileMode: boolean) => {
+      setReconciledMode(reconcileMode);
+
+      if (reconcileMode) {
+        setColumnVisibilityExt([
+          { columnName: "reconciled", togglingEnabled: false },
+        ]);
+        setHiddenColumnNames((hidden) => {
+          return [...hidden, "reconciled"];
+        });
+        setLeftColumns([TableSelection.COLUMN_TYPE]);
+        setFilters([
+          {
+            columnName: "reconciled",
+            operation: "notEqual",
+            value: true,
+          },
+        ]);
+      } else {
+        setColumnVisibilityExt(undefined);
+        setHiddenColumnNames((hidden) => {
+          return [
+            ...hidden.filter((columnName) => columnName !== "reconciled"),
+          ];
+        });
+        setLeftColumns([TableEditColumn.COLUMN_TYPE]);
+        setFilters([]);
+      }
+    },
+    [setHiddenColumnNames]
+  );
+
+  const [selection, setSelection] = useState<(string | number)[]>([]);
+
   if (error) {
     return <div>{error.message}</div>;
   }
 
   return (
-    <Paper>
-      <Box height="100vh" display="flex">
-        <Grid columns={columns} rows={rows} getRowId={getRowId}>
-          {/* UI plugins */}
-          <DragDropProvider />
+    <Paper className={classes.paper}>
+      <Grid
+        columns={columns}
+        rows={rows}
+        getRowId={getRowId}
+        rootComponent={GridRoot}
+      >
+        {/* UI plugins */}
+        <DragDropProvider />
 
-          {/* State Plugins */}
-          <EntryActionState
-            upsertEntryProps={upsertEntryProps}
-            upsertRefundProps={upsertRefundProps}
-            deleteEntryProps={deleteEntryProps}
-          />
-          <SearchState />
-          {/* <DevExplorer getters={devExplorerGetters} /> */}
-          <FilteringState filters={filters} onFiltersChange={setFilters} />
+        {/* State Plugins */}
+        <EntryActionState
+          upsertEntryProps={upsertEntryProps}
+          upsertRefundProps={upsertRefundProps}
+          deleteEntryProps={deleteEntryProps}
+        />
+        <SelectionState
+          selection={selection}
+          onSelectionChange={setSelection}
+        />
+        <SearchState />
+        <FilteringState filters={filters} onFiltersChange={setFilters} />
 
-          <SortingState sorting={sorting} onSortingChange={setSorting} />
-          <SummaryState totalItems={totalItems as unknown as SummaryItem[]} />
+        <SortingState sorting={sorting} onSortingChange={setSorting} />
+        <SummaryState totalItems={totalItems as unknown as SummaryItem[]} />
 
-          {/* Data Processing Plugins */}
-          <IntegratedFiltering
-            columnExtensions={integratedFilteringColumnExtensions}
-          />
-          <IntegratedSummary calculator={summaryCalculator} />
-          <IntegratedSorting
-            columnExtensions={integratedSortingColumnExtensions}
-          />
+        {/* Data Processing Plugins */}
+        <IntegratedFiltering
+          columnExtensions={integratedFilteringColumnExtensions}
+        />
+        <IntegratedSummary calculator={summaryCalculator} />
+        <IntegratedSorting
+          columnExtensions={integratedSortingColumnExtensions}
+        />
+        <IntegratedSelection />
 
-          <VirtualTable cellComponent={DataCell} />
-          <TableColumnResizing
-            columnWidths={columnWidths}
-            onColumnWidthsChange={setColumnWidths}
-          />
-          <TableColumnReordering
-            order={columnOrder}
-            onOrderChange={setColumnOrder}
-          />
-          <TableHeaderRow showSortingControls />
+        <VirtualTable height="auto" cellComponent={DataCell} />
+        <TableColumnResizing
+          columnWidths={columnWidths}
+          onColumnWidthsChange={setColumnWidths}
+        />
+        <TableColumnReordering
+          order={columnOrder}
+          onOrderChange={setColumnOrder}
+        />
+        <TableHeaderRow showSortingControls />
+        <TableSelection
+          selectByRowClick={reconcileMode}
+          highlightRow={reconcileMode}
+          showSelectionColumn={reconcileMode}
+        />
+        <TableFilterRow
+          showFilterSelector
+          cellComponent={FilterCell}
+          editorComponent={DefaultEditor}
+        />
+        <TableColumnVisibility
+          hiddenColumnNames={hiddenColumnNames}
+          onHiddenColumnNamesChange={setHiddenColumnNames}
+          columnExtensions={columnVisibilityExt}
+        />
+        <Toolbar />
+        <GridTitle title={props.title} />
+        <SearchPanel />
+        <ColumnChooser />
+        <TableSummaryRow
+          messages={messages as unknown as TableSummaryRowProps["messages"]}
+        />
+        <DataCellProvider {...dataCellProviderProps} />
+        <FilterCellProvider {...filterCellProviderProps} />
+        <EntryAction
+          hideEditColumn={reconcileMode}
+          disableEditDoubleClick={reconcileMode}
+        />
 
-          <TableFilterRow
-            showFilterSelector
-            cellComponent={FilterCell}
-            editorComponent={DefaultEditor}
-          />
-          <TableColumnVisibility
-            hiddenColumnNames={hiddenColumnNames}
-            onHiddenColumnNamesChange={setHiddenColumnNames}
-          />
-          <Toolbar />
-          <SearchPanel />
-          <ColumnChooser />
-          <TableSummaryRow
-            messages={messages as unknown as TableSummaryRowProps["messages"]}
-          />
-          <DataCellProvider {...dataCellProviderProps} />
-          <FilterCellProvider {...filterCellProviderProps} />
-          <EntryAction />
-        </Grid>
-      </Box>
-      {loading && <OverlayLoading zIndex="modal" />}
+        <GridMenu
+          reconcileMode={reconcileMode}
+          onReconcileMode={handelReconciledMode}
+        />
+        <TableFixedColumns leftColumns={leftColumns} />
+      </Grid>
+      {(loading || !!props.loading) && <OverlayLoading zIndex="modal" />}
     </Paper>
   );
 };

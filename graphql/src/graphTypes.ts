@@ -376,6 +376,7 @@ export type EntryRefund = {
   date: Scalars['Date'];
   deleted: Scalars['Boolean'];
   description?: Maybe<Scalars['String']>;
+  /** `Entry` associated with `EntryRefund` */
   entry: Entry;
   lastUpdate: Scalars['Date'];
   paymentMethod: PaymentMethodCard | PaymentMethodCash | PaymentMethodCheck | PaymentMethodCombination | PaymentMethodOnline | PaymentMethodUnknown;

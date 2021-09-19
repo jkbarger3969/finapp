@@ -113,12 +113,12 @@ export const deptFilterColumnExtension = (
     switch (filter.operation) {
       case "equal":
         return (
-          ((filter as unknown) as Filter<DepartmentInputOpt>).value.id ===
+          (filter as unknown as Filter<DepartmentInputOpt>).value.id ===
           (value as DepartmentInputOpt).id
         );
       case "notEqual":
         return (
-          ((filter as unknown) as Filter<DepartmentInputOpt>).value.id !==
+          (filter as unknown as Filter<DepartmentInputOpt>).value.id !==
           (value as DepartmentInputOpt).id
         );
       default:

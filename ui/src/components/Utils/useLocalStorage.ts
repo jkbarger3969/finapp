@@ -1,15 +1,26 @@
-import { Dispatch, useCallback, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useState } from "react";
 
-const useLocalStorage = <T>(
-  defaultValue: T,
-  cacheKey: string,
-  cacheUpdater?: (cachedValue: T, defaultValue: T, lastUpdate: Date) => T
-): [T, Dispatch<T>] => {
+const useLocalStorage = <T>({
+  defaultValue,
+  cacheKey,
+  serializer,
+  cacheUpdater,
+}: {
+  defaultValue: T;
+  cacheKey: string;
+  serializer?: {
+    serialize: (item: T) => string;
+    deserialize: (item: string) => T;
+  };
+  cacheUpdater?: (cachedValue: T, defaultValue: T, lastUpdate: Date) => T;
+}): [T, Dispatch<SetStateAction<T>>] => {
   const [state, setState] = useState<T>(() => {
     if (window.localStorage) {
       const cachedItemStr = window.localStorage.getItem(cacheKey);
       if (cachedItemStr) {
-        const { item, date } = JSON.parse(cachedItemStr) as {
+        const { item, date } = (serializer?.deserialize || JSON.parse)(
+          cachedItemStr
+        ) as {
           item: T;
           date: string;
         };
@@ -19,7 +30,7 @@ const useLocalStorage = <T>(
 
           window.localStorage.setItem(
             cacheKey,
-            JSON.stringify({
+            (serializer?.serialize || JSON.stringify)({
               item: updateValue,
               date: new Date().toISOString(),
             })
@@ -38,20 +49,26 @@ const useLocalStorage = <T>(
 
   return [
     state,
-    useCallback<Dispatch<T>>(
-      (item: T) => {
-        if (window.localStorage) {
-          window.localStorage.setItem(
-            cacheKey,
-            JSON.stringify({
-              item,
-              date: new Date().toISOString(),
-            })
-          );
-        }
-        setState(item);
+    useCallback<Dispatch<SetStateAction<T>>>(
+      (item: SetStateAction<T>) => {
+        setState((prevState) => {
+          const nextState =
+            typeof item === "function"
+              ? (item as (prevState: T) => T)(prevState)
+              : item;
+          if (window.localStorage) {
+            window.localStorage.setItem(
+              cacheKey,
+              (serializer?.serialize || JSON.stringify)({
+                item: nextState,
+                date: new Date().toISOString(),
+              })
+            );
+          }
+          return nextState;
+        });
       },
-      [cacheKey, setState]
+      [cacheKey, serializer?.serialize]
     ),
   ];
 };

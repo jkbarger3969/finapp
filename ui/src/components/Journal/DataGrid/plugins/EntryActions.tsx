@@ -64,7 +64,7 @@ export const EntryActionState = ({
 }) => {
   return (
     <Plugin name="EntryActionState">
-      <EditingState onCommitChanges={onCommitChanges} />;
+      <EditingState onCommitChanges={onCommitChanges} />
       <Getter name="upsertEntryProps" value={upsertEntryProps} />
       <Getter name="upsertRefundProps" value={upsertRefundProps} />
       <Getter name="deleteEntryProps" value={deleteEntryProps} />
@@ -207,15 +207,23 @@ const isEditColumnHeaderCell = ({
   tableRow.type === TableHeaderRow.ROW_TYPE &&
   tableColumn.type === TableEditColumn.COLUMN_TYPE;
 
-export const EntryAction = () => (
+export const EntryAction = ({
+  hideEditColumn,
+  disableEditDoubleClick,
+}: {
+  hideEditColumn?: boolean;
+  disableEditDoubleClick?: boolean;
+}) => (
   <Plugin name="EntryActionDialog" dependencies={entryActionDeps}>
-    <TableEditColumn
-      cellComponent={EditColumnCell as any}
-      headerCellComponent={EditColumnHeaderCell as any}
-      showEditCommand
-      showAddCommand
-      showDeleteCommand
-    />
+    {!hideEditColumn && (
+      <TableEditColumn
+        cellComponent={EditColumnCell as any}
+        headerCellComponent={EditColumnHeaderCell as any}
+        showEditCommand
+        showAddCommand
+        showDeleteCommand
+      />
+    )}
     <Template
       name="tableRow"
       predicate={isTableBodyRow as TemplateProps["predicate"]}
@@ -229,16 +237,20 @@ export const EntryAction = () => (
                 <TemplatePlaceholder
                   params={{
                     ...params,
-                    onDoubleClick: () => {
-                      startEditRows({ rowIds: [row.id] });
-                    },
+                    ...(disableEditDoubleClick
+                      ? {}
+                      : {
+                          onDoubleClick: () => {
+                            startEditRows({ rowIds: [row.id] });
+                          },
+                        }),
                   }}
                 />
               );
             }}
           </TemplateConnector>
         ),
-        []
+        [disableEditDoubleClick]
       )}
     </Template>
     <Template

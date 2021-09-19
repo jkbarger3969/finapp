@@ -593,6 +593,7 @@ export type EntryRefund = {
   date: Scalars['Date'];
   deleted: Scalars['Boolean'];
   description?: Maybe<Scalars['String']>;
+  /** `Entry` associated with `EntryRefund` */
   entry: Entry;
   lastUpdate: Scalars['Date'];
   paymentMethod: PaymentMethodCard | PaymentMethodCheck | PaymentMethodCash | PaymentMethodOnline | PaymentMethodCombination | PaymentMethodUnknown;
@@ -979,6 +980,13 @@ export type User = {
   id: Scalars['ID'];
   user: Person;
 };
+
+export type DepartmentNameQueryVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type DepartmentNameQuery = { __typename?: 'Query', department: { __typename: 'Department', id: string, name: string } };
 
 export type OnEntryUpsert_2SubscriptionVariables = Exact<{ [key: string]: never; }>;
 
