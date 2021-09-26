@@ -1,9 +1,5 @@
 import React, { useCallback, useMemo } from "react";
-import {
-  Table,
-  TableEditRow,
-  TableFilterRow,
-} from "@devexpress/dx-react-grid-material-ui";
+import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
 import {
   Plugin,
   Template,
@@ -60,30 +56,15 @@ export const mergeTableCellProps = (
 const isDataCell = ({ tableRow, tableColumn }: Table.CellProps) =>
   tableRow.type === Table.ROW_TYPE && tableColumn.type === Table.COLUMN_TYPE;
 
-const isEditCell = (props: Table.CellProps) => {
-  const { tableRow, tableColumn } = props;
-
-  return (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ((tableRow as any).hasEditCell && (tableColumn as any).hasEditCell) ||
-    (tableRow.type === TableEditRow.EDIT_ROW_TYPE &&
-      tableColumn.type === Table.COLUMN_TYPE)
-  );
-};
-
-const isAddCell = ({ tableRow, tableColumn }: Table.CellProps) =>
-  tableRow.type === TableEditRow.ADDED_ROW_TYPE &&
-  tableColumn.type === Table.COLUMN_TYPE;
-
 const isFilterCell = ({ tableRow, tableColumn }: Table.CellProps) =>
   tableRow.type === TableFilterRow.ROW_TYPE &&
   tableColumn.type === Table.COLUMN_TYPE;
 
-export const DataCellProvider = <ColumnNames extends string = string>(
-  props: CellProviderProps<ColumnNames>
-): JSX.Element => {
+export const DataCellProvider = React.memo(function DataCellProvider<
+  ColumnNames extends string = string
+>(props: CellProviderProps<ColumnNames>): JSX.Element {
   return (
-    <Plugin>
+    <Plugin name="DataCellProvider">
       <Template
         name="tableCell"
         predicate={isDataCell as TemplateProps["predicate"]}
@@ -109,13 +90,13 @@ export const DataCellProvider = <ColumnNames extends string = string>(
       </Template>
     </Plugin>
   );
-};
+});
 
 export const FilterCellProvider = <ColumnNames extends string = string>(
   props: CellProviderProps<ColumnNames>
 ): JSX.Element => {
   return (
-    <Plugin>
+    <Plugin name="FilterCellProvider">
       <Template
         name="tableCell"
         predicate={isFilterCell as TemplateProps["predicate"]}
@@ -148,85 +129,9 @@ export const FilterCellProvider = <ColumnNames extends string = string>(
   );
 };
 
-export const EditCellProvider = <ColumnNames extends string = string>(
-  props: CellProviderProps<ColumnNames>
-): JSX.Element => {
-  return (
-    <Plugin>
-      <Template
-        name="tableCell"
-        predicate={isEditCell as TemplateProps["predicate"]}
-      >
-        {useCallback(
-          (params: Table.CellProps) => {
-            const columnName = (params.tableColumn.column?.name ||
-              "") as ColumnNames;
-
-            const cellProviderCellOptions = props[columnName];
-
-            return (
-              <TemplateConnector>
-                {({ rowChanges }) => {
-                  return (
-                    <TemplatePlaceholder
-                      params={{
-                        ...params,
-                        cellProviderCellOptions,
-                        rowChanges,
-                      }}
-                    />
-                  );
-                }}
-              </TemplateConnector>
-            );
-          },
-          [props]
-        )}
-      </Template>
-    </Plugin>
-  );
-};
-
-export const AddCellProvider = <ColumnNames extends string = string>(
-  props: CellProviderProps<ColumnNames>
-): JSX.Element => {
-  return (
-    <Plugin>
-      <Template
-        name="tableCell"
-        predicate={isAddCell as TemplateProps["predicate"]}
-      >
-        {useCallback(
-          (params: Table.CellProps) => {
-            const columnName = (params.tableColumn.column?.name ||
-              "") as ColumnNames;
-
-            const cellProviderCellOptions = props[columnName];
-
-            return (
-              <TemplateConnector>
-                {({ rowChanges }) => {
-                  return (
-                    <TemplatePlaceholder
-                      params={{
-                        ...params,
-                        cellProviderCellOptions,
-                        rowChanges,
-                      }}
-                    />
-                  );
-                }}
-              </TemplateConnector>
-            );
-          },
-          [props]
-        )}
-      </Template>
-    </Plugin>
-  );
-};
-
-export const DataCell = (props: Table.DataCellProps): JSX.Element => {
+export const DataCell = React.memo(function DataCell(
+  props: Table.DataCellProps
+): JSX.Element {
   const { dataCellProviderCellOptions, ...rest } =
     props as Table.DataCellProps & {
       dataCellProviderCellOptions?: CellProviderCellOptions;
@@ -241,9 +146,11 @@ export const DataCell = (props: Table.DataCellProps): JSX.Element => {
         : { ...rest, ...cellProps })}
     />
   );
-};
+});
 
-export const FilterCell = (props: TableFilterRow.CellProps): JSX.Element => {
+export const FilterCell = React.memo(function FilterCell(
+  props: TableFilterRow.CellProps
+): JSX.Element {
   const { cellProviderCellOptions, changeColumnFilterState, ...rest } =
     props as TableFilterRow.CellProps & {
       changeColumnFilterState?: ChangeColumnFilter;
@@ -294,34 +201,4 @@ export const FilterCell = (props: TableFilterRow.CellProps): JSX.Element => {
       onFilter={onFilter as TableFilterRow.CellProps["onFilter"]}
     />
   );
-};
-
-export const EditCell = (props: TableEditRow.CellProps): JSX.Element => {
-  const { cellProviderCellOptions, rowChanges, ...rest } =
-    props as TableEditRow.CellProps & {
-      cellProviderCellOptions: CellProviderCellOptions;
-      rowChanges: unknown;
-    };
-
-  const { cell: CellComponent, props: cellProps = {} } =
-    cellProviderCellOptions || {};
-
-  if (CellComponent) {
-    return (
-      <CellComponent
-        rowChanges={rowChanges}
-        {...(typeof cellProps === "function"
-          ? cellProps(rest)
-          : { ...rest, ...cellProps })}
-      />
-    );
-  } else {
-    return (
-      <TableEditRow.Cell
-        {...(typeof cellProps === "function"
-          ? cellProps(rest)
-          : { ...rest, ...cellProps })}
-      />
-    );
-  }
-};
+});

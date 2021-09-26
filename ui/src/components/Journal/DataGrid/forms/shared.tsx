@@ -1,4 +1,9 @@
-import { GridProps, TextField, TextFieldProps } from "@material-ui/core";
+import {
+  DialogProps,
+  GridProps,
+  TextField,
+  TextFieldProps,
+} from "@material-ui/core";
 import { KeyboardDatePickerProps } from "@material-ui/pickers";
 import { defaultInput, TreeSelectProps } from "mui-tree-select";
 import React, { useCallback, forwardRef, Ref, PropsWithChildren } from "react";
@@ -16,6 +21,14 @@ export const dialogProps: Partial<UpsertEntryProps["dialogProps"]> = {
   maxWidth: "lg",
   fullWidth: true,
 };
+
+export type DialogOnClose = (
+  event: Parameters<NonNullable<DialogProps["onClose"]>>[0] | undefined,
+  reason:
+    | Parameters<NonNullable<DialogProps["onClose"]>>[1]
+    | "cancel"
+    | "success"
+) => void;
 
 export const preventDefault = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

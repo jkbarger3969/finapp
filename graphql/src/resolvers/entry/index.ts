@@ -9,4 +9,5 @@ export { updateEntry } from "./updateEntry";
 export { updateEntryRefund } from "./updateEntryRefund";
 export { deleteEntry } from "./deleteEntry";
 export { deleteEntryRefund } from "./deleteEntryRefund";
+export { reconcileEntries } from "./reconcileEntries";
 export { validateEntry } from "./entryValidators";

@@ -13,8 +13,6 @@ import {
   SearchState,
   TableFilterRow as TableFilterRowNS,
   IntegratedFiltering,
-  SelectionState,
-  IntegratedSelection,
 } from "@devexpress/dx-react-grid";
 import {
   Grid,
@@ -33,10 +31,7 @@ import {
   VirtualTable,
   SearchPanel,
   TableFilterRow,
-  TableEditColumn,
-  TableFixedColumns,
   Toolbar,
-  TableSelection,
 } from "@devexpress/dx-react-grid-material-ui";
 import { green, red } from "@material-ui/core/colors";
 import { makeStyles } from "@material-ui/core/styles";
@@ -113,6 +108,7 @@ import { DeleteEntryProps } from "./forms/DeleteEntry";
 import { dialogProps } from "./forms/shared";
 import { GridTitle } from "./plugins/GridTitle";
 import { GridMenu } from "./plugins/GridMenu";
+import { ReconcileEntriesProps } from "./forms/ReconcileEntries";
 
 const GridRoot = (props: Grid.RootProps) => (
   <Grid.Root {...props} style={{ height: "100%" }} />
@@ -566,21 +562,10 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     cacheUpdater: columnWidthUpdater,
   });
   const [hiddenColumnNames, setHiddenColumnNames] = useLocalStorage({
-    defaultValue: props.reconcileMode
-      ? ["reconciled"]
-      : ([] as NonNullable<TableColumnVisibilityProps["hiddenColumnNames"]>),
+    defaultValue: [] as NonNullable<
+      TableColumnVisibilityProps["hiddenColumnNames"]
+    >,
     cacheKey: `column_visibility_${cachePrefix}`,
-    cacheUpdater: (cachedValue, defaultValue) => {
-      if (props.reconcileMode) {
-        if (cachedValue.length) {
-          return [...new Set([...cachedValue, "reconciled"]).values()];
-        } else {
-          return defaultValue;
-        }
-      } else {
-        return cachedValue;
-      }
-    },
   });
 
   const [sorting, setSorting] = useLocalStorage({
@@ -588,17 +573,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     cacheKey: `column_visibility_sorting${cachePrefix}`,
   });
 
-  const [filters, setFilters] = useState<Filters>(() =>
-    props.reconcileMode
-      ? [
-          {
-            columnName: "reconciled",
-            operation: "notEqual",
-            value: true,
-          },
-        ]
-      : []
-  );
+  const [filters, setFilters] = useState<Filters>([]);
 
   const dataCellColor = useCallback(
     ({
@@ -679,8 +654,18 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     };
   }, [dataCellColor]);
 
-  const [upsertEntryProps, upsertRefundProps, deleteEntryProps] = useMemo<
-    [UpsertEntryProps, UpsertRefundProps, DeleteEntryProps]
+  const [
+    upsertEntryProps,
+    upsertRefundProps,
+    deleteEntryProps,
+    reconcileEntriesProps,
+  ] = useMemo<
+    [
+      UpsertEntryProps,
+      UpsertRefundProps,
+      DeleteEntryProps,
+      ReconcileEntriesProps
+    ]
   >(
     () => [
       {
@@ -711,57 +696,16 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
         maxWidth: "sm",
         fullWidth: true,
       } as DeleteEntryProps,
+      {
+        dialogProps: {
+          keepMounted: false,
+          maxWidth: "sm",
+          fullWidth: true,
+        },
+      } as ReconcileEntriesProps,
     ],
     [props.selectableAccounts, props.selectableDepts, variables]
   );
-
-  const [leftColumns, setLeftColumns] = useState(() =>
-    props.reconcileMode
-      ? [TableSelection.COLUMN_TYPE]
-      : [TableEditColumn.COLUMN_TYPE]
-  );
-
-  const [columnVisibilityExt, setColumnVisibilityExt] = useState(() =>
-    props.reconcileMode
-      ? [{ columnName: "reconciled", togglingEnabled: false }]
-      : undefined
-  );
-  const [reconcileMode, setReconciledMode] = useState(!!props.reconcileMode);
-
-  const handelReconciledMode = useCallback(
-    (reconcileMode: boolean) => {
-      setReconciledMode(reconcileMode);
-
-      if (reconcileMode) {
-        setColumnVisibilityExt([
-          { columnName: "reconciled", togglingEnabled: false },
-        ]);
-        setHiddenColumnNames((hidden) => {
-          return [...hidden, "reconciled"];
-        });
-        setLeftColumns([TableSelection.COLUMN_TYPE]);
-        setFilters([
-          {
-            columnName: "reconciled",
-            operation: "notEqual",
-            value: true,
-          },
-        ]);
-      } else {
-        setColumnVisibilityExt(undefined);
-        setHiddenColumnNames((hidden) => {
-          return [
-            ...hidden.filter((columnName) => columnName !== "reconciled"),
-          ];
-        });
-        setLeftColumns([TableEditColumn.COLUMN_TYPE]);
-        setFilters([]);
-      }
-    },
-    [setHiddenColumnNames]
-  );
-
-  const [selection, setSelection] = useState<(string | number)[]>([]);
 
   if (error) {
     return <div>{error.message}</div>;
@@ -780,13 +724,11 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
 
         {/* State Plugins */}
         <EntryActionState
+          reconcileMode={props.reconcileMode}
           upsertEntryProps={upsertEntryProps}
           upsertRefundProps={upsertRefundProps}
           deleteEntryProps={deleteEntryProps}
-        />
-        <SelectionState
-          selection={selection}
-          onSelectionChange={setSelection}
+          reconcileEntriesProps={reconcileEntriesProps}
         />
         <SearchState />
         <FilteringState filters={filters} onFiltersChange={setFilters} />
@@ -802,7 +744,6 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
         <IntegratedSorting
           columnExtensions={integratedSortingColumnExtensions}
         />
-        <IntegratedSelection />
 
         <VirtualTable height="auto" cellComponent={DataCell} />
         <TableColumnResizing
@@ -814,20 +755,16 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
           onOrderChange={setColumnOrder}
         />
         <TableHeaderRow showSortingControls />
-        <TableSelection
-          selectByRowClick={reconcileMode}
-          highlightRow={reconcileMode}
-          showSelectionColumn={reconcileMode}
-        />
         <TableFilterRow
           showFilterSelector
           cellComponent={FilterCell}
           editorComponent={DefaultEditor}
         />
+        <DataCellProvider {...dataCellProviderProps} />
+        <FilterCellProvider {...filterCellProviderProps} />
         <TableColumnVisibility
           hiddenColumnNames={hiddenColumnNames}
           onHiddenColumnNamesChange={setHiddenColumnNames}
-          columnExtensions={columnVisibilityExt}
         />
         <Toolbar />
         <GridTitle title={props.title} />
@@ -836,18 +773,9 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
         <TableSummaryRow
           messages={messages as unknown as TableSummaryRowProps["messages"]}
         />
-        <DataCellProvider {...dataCellProviderProps} />
-        <FilterCellProvider {...filterCellProviderProps} />
-        <EntryAction
-          hideEditColumn={reconcileMode}
-          disableEditDoubleClick={reconcileMode}
-        />
-
-        <GridMenu
-          reconcileMode={reconcileMode}
-          onReconcileMode={handelReconciledMode}
-        />
-        <TableFixedColumns leftColumns={leftColumns} />
+        <EntryAction />
+        <GridMenu />
+        {/*         <TableFixedColumns leftColumns={leftColumns} /> */}
       </Grid>
       {(loading || !!props.loading) && <OverlayLoading zIndex="modal" />}
     </Paper>

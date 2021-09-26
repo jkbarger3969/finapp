@@ -35,6 +35,7 @@ import {
   EntryRefund,
   updateEntry,
   updateEntryRefund,
+  reconcileEntries,
 } from "./resolvers/entry";
 import {
   PaymentCardInterface,
@@ -111,6 +112,7 @@ const resolvers: Resolvers = {
     deleteEntryRefund,
     updateEntry,
     updateEntryRefund,
+    reconcileEntries,
   },
   Subscription: {
     // entryUpserted,

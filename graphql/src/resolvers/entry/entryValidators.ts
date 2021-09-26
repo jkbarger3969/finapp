@@ -9,6 +9,7 @@ import {
   EntryType,
   NewEntry,
   NewEntryRefund,
+  ReconcileEntries,
   UpdateEntry,
   UpdateEntryDateOfRecord,
   UpdateEntryRefund,
@@ -24,6 +25,7 @@ import {
   upsertPaymentMethodToDbRecord,
   validatePaymentMethod,
 } from "../paymentMethod";
+import { result } from "lodash";
 
 export const validateEntry = new (class {
   async exists({
@@ -663,6 +665,82 @@ export const validateEntry = new (class {
           )._id,
           accountingDb,
         }),
+    ]);
+  }
+
+  async reconcileEntries({
+    reconcileEntries,
+    accountingDb,
+  }: {
+    accountingDb: AccountingDb;
+    reconcileEntries: ReconcileEntries;
+  }) {
+    if (
+      !reconcileEntries.entries?.length &&
+      !reconcileEntries?.refunds?.length
+    ) {
+      throw new UserInputError("No entries or refunds to update.");
+    }
+
+    await Promise.all([
+      ...(reconcileEntries.entries || []).map((entry) =>
+        (async () => {
+          const id = new ObjectId(entry);
+
+          await this.exists({
+            entry: id,
+            accountingDb,
+          });
+
+          const {
+            reconciled: [{ value }],
+          } = await accountingDb.findOne({
+            collection: "entries",
+            filter: { _id: id },
+            options: {
+              projection: {
+                "reconciled.value": true,
+              },
+            },
+          });
+
+          if (value) {
+            throw new UserInputError(
+              `Entry id "${entry}" is already reconciled.`
+            );
+          }
+        })()
+      ),
+      ...(reconcileEntries.refunds || []).map((refund) =>
+        (async () => {
+          const id = new ObjectId(refund);
+
+          await this.refundExists({
+            refund: id,
+            accountingDb,
+          });
+
+          const { refunds } = await accountingDb.findOne({
+            collection: "entries",
+            filter: { "refunds.id": id },
+            options: {
+              projection: {
+                "refunds.id": true,
+                "refunds.reconciled": true,
+              },
+            },
+          });
+
+          if (
+            refunds.find(({ id: refundId }) => refundId.equals(id))
+              .reconciled[0].value
+          ) {
+            throw new UserInputError(
+              `Refund id "${refund}" is already reconciled.`
+            );
+          }
+        })()
+      ),
     ]);
   }
 })();

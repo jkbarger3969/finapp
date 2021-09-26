@@ -28,6 +28,7 @@ import OverlayLoading from "../../../utils/OverlayLoading";
 import { deserializeRational } from "../../../../apollo/scalars";
 import { ENTRY, REFUND } from "../Grid.gql";
 import { GraphQLError } from "graphql";
+import { DialogOnClose } from "./shared";
 
 const DELETE_ENTRY_STATE = gql`
   query DeleteEntryState($id: ID!) {
@@ -86,13 +87,7 @@ export type DeleteEntryProps = (
     }
 ) &
   Omit<DialogProps, "children" | "PaperProps" | "onClose"> & {
-    onClose?: (
-      event: Parameters<NonNullable<DialogProps["onClose"]>>[0] | undefined,
-      reason:
-        | Parameters<NonNullable<DialogProps["onClose"]>>[1]
-        | "cancel"
-        | "success"
-    ) => void;
+    onClose?: DialogOnClose;
   };
 
 const InnerDialog = (

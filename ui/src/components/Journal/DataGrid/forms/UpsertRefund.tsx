@@ -36,7 +36,11 @@ import {
   RefundProps,
   useRefund,
 } from "../../../Inputs/fieldSets/useRefund";
-import { inputGridItemProps, useSharedDialogInputProps } from "./shared";
+import {
+  DialogOnClose,
+  inputGridItemProps,
+  useSharedDialogInputProps,
+} from "./shared";
 import { AsyncButton } from "../../../utils/AsyncButton";
 import OverlayLoading from "../../../utils/OverlayLoading";
 import { REFUND, ENTRY } from "../Grid.gql";
@@ -86,13 +90,7 @@ const useStyles = makeStyles({
 export type UpsertRefundProps = {
   refundProps: RefundProps;
   dialogProps: Omit<DialogProps, "children" | "PaperProps" | "onClose"> & {
-    onClose?: (
-      event: Parameters<NonNullable<DialogProps["onClose"]>>[0] | undefined,
-      reason:
-        | Parameters<NonNullable<DialogProps["onClose"]>>[1]
-        | "cancel"
-        | "success"
-    ) => void;
+    onClose?: DialogOnClose;
   };
   refetchQueries?: {
     onUpdateEntry?: MutationHookOptions<

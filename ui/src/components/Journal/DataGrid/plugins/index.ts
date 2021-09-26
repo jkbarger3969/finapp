@@ -13,11 +13,8 @@ export type {
 export {
   DataCellProvider,
   FilterCellProvider,
-  EditCellProvider,
-  AddCellProvider,
   DataCell,
   FilterCell,
-  EditCell,
 } from "./TableCell";
 export type { CellProviderProps, CellProviderCellOptions } from "./TableCell";
 export { EntryActionState, EntryAction } from "./EntryActions";

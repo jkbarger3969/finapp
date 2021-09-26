@@ -32,7 +32,11 @@ import {
   useEntry,
   EntryFieldDef,
 } from "../../../Inputs/fieldSets/useEntry";
-import { inputGridItemProps, useSharedDialogInputProps } from "./shared";
+import {
+  DialogOnClose,
+  inputGridItemProps,
+  useSharedDialogInputProps,
+} from "./shared";
 import { usePerson, PersonFieldDef } from "../../../Inputs/fieldSets/usePerson";
 import { EntityTreeSelectValue } from "../../../Inputs/Entity";
 import {
@@ -157,13 +161,7 @@ export type UpsertEntryProps = {
     source?: Omit<EntryProps<true>["source"], "allowNewSource">;
   };
   dialogProps: Omit<DialogProps, "children" | "PaperProps" | "onClose"> & {
-    onClose?: (
-      event: Parameters<NonNullable<DialogProps["onClose"]>>[0] | undefined,
-      reason:
-        | Parameters<NonNullable<DialogProps["onClose"]>>[1]
-        | "cancel"
-        | "success"
-    ) => void;
+    onClose?: DialogOnClose;
   };
   refetchQueries?: {
     onUpdateEntry?: MutationHookOptions<

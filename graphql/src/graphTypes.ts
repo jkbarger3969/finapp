@@ -436,6 +436,7 @@ export type Mutation = {
   addNewPerson: AddNewPersonPayload;
   deleteEntry: DeleteEntryPayload;
   deleteEntryRefund: DeleteEntryRefundPayload;
+  reconcileEntries: ReconcileEntriesPayload;
   updateEntry: UpdateEntryPayload;
   updateEntryRefund: UpdateEntryRefundPayload;
 };
@@ -468,6 +469,11 @@ export type MutationDeleteEntryArgs = {
 
 export type MutationDeleteEntryRefundArgs = {
   id: Scalars['ID'];
+};
+
+
+export type MutationReconcileEntriesArgs = {
+  input?: Maybe<ReconcileEntries>;
 };
 
 
@@ -824,6 +830,17 @@ export type QuerySourcesArgs = {
   searchByName: Scalars['String'];
 };
 
+export type ReconcileEntries = {
+  entries?: Maybe<Array<Maybe<Scalars['ID']>>>;
+  refunds?: Maybe<Array<Maybe<Scalars['ID']>>>;
+};
+
+export type ReconcileEntriesPayload = {
+  __typename?: 'ReconcileEntriesPayload';
+  reconciledEntries: Array<Entry>;
+  reconciledRefunds: Array<EntryRefund>;
+};
+
 /** https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#advanced_searching_with_flags */
 export enum RegexFlags {
   /** Global search. */
@@ -1137,6 +1154,8 @@ export type ResolversTypes = {
   PersonNameInput: PersonNameInput;
   Query: ResolverTypeWrapper<{}>;
   Rational: ResolverTypeWrapper<Scalars['Rational']>;
+  ReconcileEntries: ReconcileEntries;
+  ReconcileEntriesPayload: ResolverTypeWrapper<Omit<ReconcileEntriesPayload, 'reconciledEntries' | 'reconciledRefunds'> & { reconciledEntries: Array<ResolversTypes['Entry']>, reconciledRefunds: Array<ResolversTypes['EntryRefund']> }>;
   RegexFlags: RegexFlags;
   Source: ResolversTypes['Person'] | ResolversTypes['Business'] | ResolversTypes['Department'];
   Subscription: ResolverTypeWrapper<{}>;
@@ -1241,6 +1260,8 @@ export type ResolversParentTypes = {
   PersonNameInput: PersonNameInput;
   Query: {};
   Rational: Scalars['Rational'];
+  ReconcileEntries: ReconcileEntries;
+  ReconcileEntriesPayload: Omit<ReconcileEntriesPayload, 'reconciledEntries' | 'reconciledRefunds'> & { reconciledEntries: Array<ResolversParentTypes['Entry']>, reconciledRefunds: Array<ResolversParentTypes['EntryRefund']> };
   Source: ResolversParentTypes['Person'] | ResolversParentTypes['Business'] | ResolversParentTypes['Department'];
   Subscription: {};
   UpdateEntry: UpdateEntry;
@@ -1478,6 +1499,7 @@ export type MutationResolvers<ContextType = Context, ParentType = ResolversParen
   addNewPerson?: Resolver<ResolversTypes['AddNewPersonPayload'], ParentType, ContextType, RequireFields<MutationAddNewPersonArgs, 'input'>>;
   deleteEntry?: Resolver<ResolversTypes['DeleteEntryPayload'], ParentType, ContextType, RequireFields<MutationDeleteEntryArgs, 'id'>>;
   deleteEntryRefund?: Resolver<ResolversTypes['DeleteEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationDeleteEntryRefundArgs, 'id'>>;
+  reconcileEntries?: Resolver<ResolversTypes['ReconcileEntriesPayload'], ParentType, ContextType, RequireFields<MutationReconcileEntriesArgs, never>>;
   updateEntry?: Resolver<ResolversTypes['UpdateEntryPayload'], ParentType, ContextType, RequireFields<MutationUpdateEntryArgs, 'input'>>;
   updateEntryRefund?: Resolver<ResolversTypes['UpdateEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationUpdateEntryRefundArgs, 'input'>>;
 };
@@ -1585,6 +1607,12 @@ export interface RationalScalarConfig extends GraphQLScalarTypeConfig<ResolversT
   name: 'Rational';
 }
 
+export type ReconcileEntriesPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['ReconcileEntriesPayload']> = {
+  reconciledEntries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType>;
+  reconciledRefunds?: Resolver<Array<ResolversTypes['EntryRefund']>, ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type SourceResolvers<ContextType = Context, ParentType = ResolversParentTypes['Source']> = {
   __resolveType?: TypeResolveFn<'Person' | 'Business' | 'Department', ParentType, ContextType>;
 };
@@ -1660,6 +1688,7 @@ export type Resolvers<ContextType = Context> = {
   PersonName?: PersonNameResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   Rational?: GraphQLScalarType;
+  ReconcileEntriesPayload?: ReconcileEntriesPayloadResolvers<ContextType>;
   Source?: SourceResolvers<ContextType>;
   Subscription?: SubscriptionResolvers<ContextType>;
   UpdateEntryPayload?: UpdateEntryPayloadResolvers<ContextType>;

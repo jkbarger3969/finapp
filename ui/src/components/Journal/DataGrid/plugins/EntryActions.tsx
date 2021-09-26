@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
+  Action,
   Getter,
   IDependency,
   Plugin,
@@ -9,11 +10,18 @@ import {
   TemplatePlaceholder,
   TemplateProps,
 } from "@devexpress/dx-react-core";
-import { EditingState } from "@devexpress/dx-react-grid";
+import {
+  EditingState,
+  IntegratedSelection,
+  SelectionState,
+  TableColumn,
+} from "@devexpress/dx-react-grid";
 import {
   Table,
   TableHeaderRow,
   TableEditColumn,
+  TableSelection,
+  TableFixedColumns,
 } from "@devexpress/dx-react-grid-material-ui";
 import {
   IconButton,
@@ -23,12 +31,14 @@ import {
   MenuItem,
   SvgIcon,
   SvgIconProps,
+  TableCell,
 } from "@material-ui/core";
 import {
   MoreVert as MoreVertIcon,
   AddCircle as AddCircleIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
+  DoneAll as ReconcileIcon,
 } from "@material-ui/icons";
 
 import { UpsertEntry, UpsertEntryProps } from "../forms/UpsertEntry";
@@ -36,6 +46,11 @@ import { UpsertRefund, UpsertRefundProps } from "../forms/UpsertRefund";
 import { DeleteEntry, DeleteEntryProps } from "../forms/DeleteEntry";
 import { GridEntry } from "../Grid";
 import { EntryType } from "../../../../apollo/graphTypes";
+import {
+  ReconcileEntries,
+  ReconcileEntriesProps,
+} from "../forms/ReconcileEntries";
+import { DialogOnClose } from "../forms/shared";
 
 const AddRefund = (props: SvgIconProps): JSX.Element => {
   return (
@@ -54,25 +69,115 @@ const GiveRefund = (props: SvgIconProps): JSX.Element => {
 
 const onCommitChanges = () => undefined;
 export const EntryActionState = ({
+  reconcileMode: reconcileModeProp,
   upsertEntryProps,
   upsertRefundProps,
   deleteEntryProps,
+  reconcileEntriesProps,
 }: {
   upsertEntryProps: UpsertEntryProps;
   upsertRefundProps: UpsertRefundProps;
   deleteEntryProps: DeleteEntryProps;
+  reconcileEntriesProps: ReconcileEntriesProps;
+  reconcileMode?: boolean;
 }) => {
+  const [reconcileMode, setReconcileMode] = useState(!!reconcileModeProp);
+  const [confirmReconcile, setConfirmReconcile] = useState(false);
+
   return (
     <Plugin name="EntryActionState">
+      <SelectionState />
+      <Getter name="reconcileMode" value={reconcileMode} />
+      <Getter name="confirmReconcile" value={confirmReconcile} />
+      <Action
+        name="toggleConfirmReconcile"
+        action={useCallback(
+          (showConfirmReconcile: boolean, { selection, reconcileMode }) => {
+            if (reconcileMode && showConfirmReconcile && !selection.length) {
+              return;
+            }
+            setConfirmReconcile(showConfirmReconcile);
+          },
+          []
+        )}
+      />
+      <Getter
+        name="selection"
+        computed={useCallback(
+          ({ selection, reconcileMode }) => (reconcileMode ? selection : []),
+          []
+        )}
+      />
+      <IntegratedSelection />
+      <Action
+        name="changeReconcileMode"
+        action={useCallback(
+          (reconcileMode, { selection }, { toggleSelectAll }) => {
+            setReconcileMode(reconcileMode);
+            if (selection.length) {
+              toggleSelectAll(false);
+            }
+          },
+          []
+        )}
+      />
+      <Getter
+        name="rows"
+        computed={useCallback(
+          ({ rows, reconcileMode }) =>
+            reconcileMode
+              ? (rows as GridEntry[]).filter(({ reconciled }) => !reconciled)
+              : rows,
+          []
+        )}
+      />
       <EditingState onCommitChanges={onCommitChanges} />
       <Getter name="upsertEntryProps" value={upsertEntryProps} />
       <Getter name="upsertRefundProps" value={upsertRefundProps} />
       <Getter name="deleteEntryProps" value={deleteEntryProps} />
+      <Getter name="reconcileEntriesProps" value={reconcileEntriesProps} />
     </Plugin>
   );
 };
 
-const EditColumnCell = (
+const SelectHeaderCell = React.memo(function SelectHeaderCell(
+  props: TableSelection.HeaderCellProps & {
+    toggleConfirmReconcile: (open: boolean) => void;
+  }
+): JSX.Element {
+  const {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    allSelected,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    tableColumn,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    tableRow,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    disabled,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    onToggle,
+    someSelected,
+    toggleConfirmReconcile,
+    ...rest
+  } = props;
+  return (
+    <TableCell {...rest} align="center" padding="checkbox" variant="head">
+      <IconButton
+        onClick={useCallback(
+          () => toggleConfirmReconcile(true),
+          [toggleConfirmReconcile]
+        )}
+        disabled={!someSelected}
+        size="small"
+        color="secondary"
+      >
+        <ReconcileIcon />
+      </IconButton>
+    </TableCell>
+  );
+});
+
+const EditColumnCell = React.memo(function EditColumnCell(
   props: TableEditColumn.CellProps & {
     addRow: () => void;
     addedRows: any[];
@@ -80,7 +185,7 @@ const EditColumnCell = (
     changeAddedRow: (arg: { rowId: number; change: any }) => void;
     deleteRows: (arg: { rowIds: string[] }) => void;
   }
-): JSX.Element => {
+): JSX.Element {
   const {
     addedRows,
     addRow,
@@ -163,13 +268,13 @@ const EditColumnCell = (
       </Menu>
     </TableEditColumn.Cell>
   );
-};
+});
 
-const EditColumnHeaderCell = (
+const EditColumnHeaderCell = React.memo(function EditColumnHeaderCell(
   props: TableEditColumn.HeaderCellProps & {
     addRow: () => void;
   }
-): JSX.Element => {
+): JSX.Element {
   const { addRow, ...rest } = props;
 
   const handelClick = useCallback(() => addRow(), [addRow]);
@@ -181,9 +286,9 @@ const EditColumnHeaderCell = (
       </IconButton>
     </TableEditColumn.HeaderCell>
   );
-};
+});
 
-const entryActionDeps: IDependency[] = [
+const deps: IDependency[] = [
   {
     name: "EntryActionState",
     optional: false,
@@ -206,24 +311,91 @@ const isEditColumnHeaderCell = ({
 }: Table.CellProps): boolean =>
   tableRow.type === TableHeaderRow.ROW_TYPE &&
   tableColumn.type === TableEditColumn.COLUMN_TYPE;
+const isSelectColumnHeaderCell = ({
+  tableRow,
+  tableColumn,
+}: Table.CellProps): boolean =>
+  tableRow.type === TableHeaderRow.ROW_TYPE &&
+  tableColumn.type === TableSelection.COLUMN_TYPE;
 
-export const EntryAction = ({
-  hideEditColumn,
-  disableEditDoubleClick,
-}: {
-  hideEditColumn?: boolean;
-  disableEditDoubleClick?: boolean;
-}) => (
-  <Plugin name="EntryActionDialog" dependencies={entryActionDeps}>
-    {!hideEditColumn && (
-      <TableEditColumn
-        cellComponent={EditColumnCell as any}
-        headerCellComponent={EditColumnHeaderCell as any}
-        showEditCommand
-        showAddCommand
-        showDeleteCommand
-      />
-    )}
+export const EntryAction = () => (
+  <Plugin name="EntryActionDialog" dependencies={deps}>
+    <TableSelection
+      showSelectAll
+      selectByRowClick
+      highlightRow
+      showSelectionColumn
+      headerCellComponent={SelectHeaderCell as any}
+    />
+    <TableEditColumn
+      cellComponent={EditColumnCell as any}
+      headerCellComponent={EditColumnHeaderCell as any}
+      showEditCommand
+      showAddCommand
+      showDeleteCommand
+    />
+    <TableFixedColumns
+      leftColumns={useMemo(() => [TableEditColumn.COLUMN_TYPE], [])}
+    />
+    {/* Handle "reconciled", "TableSelection", and "TableEditColumn" based on
+     "reconciledMode" */}
+    <Getter
+      name="tableColumns"
+      computed={useCallback(({ tableColumns, reconcileMode }) => {
+        return (tableColumns as TableColumn[]).reduce(
+          (tableColumns, tableColumn) => {
+            if (reconcileMode) {
+              if (
+                tableColumn.type !== TableEditColumn.COLUMN_TYPE &&
+                tableColumn.column?.name !== "reconciled"
+              ) {
+                tableColumns.push(
+                  tableColumn.type === TableSelection.COLUMN_TYPE
+                    ? { ...tableColumn, fixed: "left" }
+                    : tableColumn
+                );
+              }
+            } else if (tableColumn.type !== TableSelection.COLUMN_TYPE) {
+              tableColumns.push(
+                tableColumn.type === TableEditColumn.COLUMN_TYPE
+                  ? { ...tableColumn, fixed: "left" }
+                  : tableColumn
+              );
+            }
+
+            return tableColumns;
+          },
+          [] as TableColumn[]
+        );
+      }, [])}
+    />
+    <Getter
+      name="hiddenColumnNames"
+      computed={useCallback(
+        ({ hiddenColumnNames, reconcileMode }) =>
+          reconcileMode
+            ? [...new Set([...hiddenColumnNames, "reconciled"])]
+            : hiddenColumnNames,
+        []
+      )}
+    />
+    <Getter
+      name="isColumnTogglingEnabled"
+      computed={useCallback(
+        ({ isColumnTogglingEnabled, reconcileMode }) =>
+          reconcileMode
+            ? (columnName: string) => {
+                if (reconcileMode && columnName === "reconciled") {
+                  return false;
+                } else {
+                  return isColumnTogglingEnabled(columnName);
+                }
+              }
+            : isColumnTogglingEnabled,
+        []
+      )}
+    />
+    {/* Add doubleClick row to edit */}
     <Template
       name="tableRow"
       predicate={isTableBodyRow as TemplateProps["predicate"]}
@@ -231,13 +403,13 @@ export const EntryAction = ({
       {useCallback(
         (params) => (
           <TemplateConnector>
-            {(_, { startEditRows }) => {
+            {({ reconcileMode }, { startEditRows }) => {
               const row = (params as Table.RowProps).tableRow.row as GridEntry;
               return (
                 <TemplatePlaceholder
                   params={{
                     ...params,
-                    ...(disableEditDoubleClick
+                    ...(reconcileMode
                       ? {}
                       : {
                           onDoubleClick: () => {
@@ -250,9 +422,10 @@ export const EntryAction = ({
             }}
           </TemplateConnector>
         ),
-        [disableEditDoubleClick]
+        []
       )}
     </Template>
+    {/* Inject additional state into "EditColumnCell" */}
     <Template
       name="tableCell"
       predicate={isEditColumnBodyCell as TemplateProps["predicate"]}
@@ -280,6 +453,7 @@ export const EntryAction = ({
         []
       )}
     </Template>
+    {/* Inject additional state into "EditColumnHeaderCell" */}
     <Template
       name="tableCell"
       predicate={isEditColumnHeaderCell as TemplateProps["predicate"]}
@@ -300,6 +474,30 @@ export const EntryAction = ({
         []
       )}
     </Template>
+    {/* Inject additional state into SelectHeaderCell */}
+    <Template
+      name="tableCell"
+      predicate={isSelectColumnHeaderCell as TemplateProps["predicate"]}
+    >
+      {useCallback(
+        (params) => (
+          <TemplateConnector>
+            {(_, { toggleConfirmReconcile }) => (
+              <TemplatePlaceholder
+                params={{
+                  ...params,
+                  toggleConfirmReconcile,
+                }}
+              />
+            )}
+          </TemplateConnector>
+        ),
+        []
+      )}
+    </Template>
+    {/* Action Dialogs 
+      TODO:  Logic here is convoluted.  NEEDS WORK
+    */}
     <Template name="entryActionDialog">
       <TemplateConnector>
         {useCallback(
@@ -312,17 +510,26 @@ export const EntryAction = ({
               upsertEntryProps,
               upsertRefundProps,
               deleteEntryProps,
+              reconcileEntriesProps,
+              confirmReconcile,
+              selection,
             },
             {
               stopEditRows,
               cancelAddedRows,
               cancelChangedRows,
               cancelDeletedRows,
+              toggleConfirmReconcile,
+              toggleSelectAll,
             }
           ) => {
-            const isDelete = !!(deletedRowIds as string[]).length;
+            const isReconcile = confirmReconcile;
 
-            const isNew = !isDelete && !!(addedRows as string[]).length;
+            const isDelete =
+              !isReconcile && !!(deletedRowIds as string[]).length;
+
+            const isNew =
+              !isReconcile && !isDelete && !!(addedRows as string[]).length;
 
             // NOTE: on new refunds, the id is the entry id.
             const id = isNew
@@ -335,11 +542,16 @@ export const EntryAction = ({
               ? (addedRows as Partial<GridEntry>[])[0]
               : (rows as GridEntry[]).find((entry) => entry.id === id);
 
-            const isOpen = !!row;
+            const isOpen = !!row || isReconcile;
             const isRefund = row?.__typename === "EntryRefund";
 
-            const handleClose = () => {
-              if (isNew) {
+            const handleClose: DialogOnClose = (_, reason) => {
+              if (isReconcile) {
+                toggleConfirmReconcile(false);
+                if (reason === "success") {
+                  toggleSelectAll(false);
+                }
+              } else if (isNew) {
                 cancelAddedRows({
                   rowIds: (addedRows as unknown[]).map((_, i) => i),
                 });
@@ -350,6 +562,22 @@ export const EntryAction = ({
                 cancelChangedRows({ rowIds: editingRowIds });
               }
             };
+
+            const selectionSet = new Set(selection as string[]);
+            const reconcileEntries = (rows as GridEntry[]).reduce(
+              (reconcileEntries, { id, __typename }) => {
+                if (selectionSet.has(id)) {
+                  if (__typename === "Entry") {
+                    reconcileEntries[0].push(id);
+                  } else {
+                    reconcileEntries[1].push(id);
+                  }
+                }
+
+                return reconcileEntries;
+              },
+              [[], []] as [string[], string[]]
+            );
 
             return (
               <>
@@ -362,7 +590,7 @@ export const EntryAction = ({
                   dialogProps={{
                     ...(upsertEntryProps as UpsertEntryProps).dialogProps,
                     onClose: handleClose,
-                    open: isOpen && !isRefund && !isDelete,
+                    open: isOpen && !isRefund && !isDelete && !isReconcile,
                   }}
                 />
                 <UpsertRefund
@@ -387,6 +615,17 @@ export const EntryAction = ({
                   onClose={handleClose}
                   open={isOpen && isDelete}
                 />
+                <ReconcileEntries
+                  {...(reconcileEntriesProps as ReconcileEntriesProps)}
+                  entryIds={reconcileEntries[0]}
+                  refundIds={reconcileEntries[1]}
+                  dialogProps={{
+                    ...(reconcileEntriesProps as ReconcileEntriesProps)
+                      .dialogProps,
+                    onClose: handleClose,
+                    open: isOpen && isReconcile,
+                  }}
+                />
               </>
             );
           },
@@ -394,6 +633,7 @@ export const EntryAction = ({
         )}
       </TemplateConnector>
     </Template>
+    {/* Append Action Dialogs to root */}
     <Template name="root">
       <TemplatePlaceholder />
       <TemplatePlaceholder name="entryActionDialog" />

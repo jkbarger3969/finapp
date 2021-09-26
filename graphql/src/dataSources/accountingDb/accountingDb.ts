@@ -108,6 +108,30 @@ export class AccountingDb extends DataSource<Context> {
       );
   }
 
+  find<TCollection extends keyof CollectionSchemaMap>({
+    collection,
+    filter,
+    options,
+  }: {
+    collection: TCollection;
+    filter: FilterQuery<CollectionSchemaMap[TCollection]>;
+    options?: FindOneOptions<TCollection>;
+    skipCache?: boolean;
+  }) {
+    return this.#db
+      .collection<CollectionSchemaMap[TCollection]>(collection)
+      .find(
+        filter,
+        this.#session && this.#session.inTransaction()
+          ? {
+              session: this.#session,
+              ...options,
+            }
+          : options
+      )
+      .toArray();
+  }
+
   findOne<TCollection extends keyof CollectionSchemaMap>({
     collection,
     filter,

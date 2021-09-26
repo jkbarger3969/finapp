@@ -21,6 +21,7 @@ import {
   inlinePadding,
   renderFilterInput,
 } from "./shared";
+import { GridEntry } from "../Grid";
 
 export const CategoryCell = (props: Table.DataCellProps): JSX.Element => {
   const { value, ...rest } = props;
@@ -88,17 +89,6 @@ const getFilterOptionSelected: NonNullable<
     return false;
   }
 };
-
-// const renderFilterInput: NonNullable<CategoryFilterSelect["renderInput"]> = (
-//   params
-// ) =>
-//   defaultInput({
-//     ...params,
-//     InputProps: {
-//       ...(params.InputProps || {}),
-//       ...inlineInputProps,
-//     },
-//   });
 
 export const CategoryFilter = (props: CategoryFilterProps): JSX.Element => {
   const { categoryFilterOpts, ...rest } = props;
@@ -243,7 +233,8 @@ export const categoryFilterColumnExtension = (
         if (isEntryType(filterValue)) {
           return (
             (filterValue as EntryType) ===
-            (value as GridEntryFragment["category"]).type
+              (value as GridEntryFragment["category"]).type ||
+            (row as GridEntry).__typename === "EntryRefund"
           );
         } else {
           return getOptionSelected(
@@ -256,7 +247,8 @@ export const categoryFilterColumnExtension = (
         if (isEntryType(filterValue)) {
           return (
             (filterValue as EntryType) !==
-            (value as GridEntryFragment["category"]).type
+              (value as GridEntryFragment["category"]).type &&
+            (row as GridEntry).__typename === "Entry"
           );
         } else {
           return !getOptionSelected(

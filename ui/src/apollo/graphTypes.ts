@@ -354,6 +354,7 @@ export type Mutation = {
   addNewEntryRefund: AddNewEntryRefundPayload;
   updateEntryRefund: UpdateEntryRefundPayload;
   deleteEntryRefund: DeleteEntryRefundPayload;
+  reconcileEntries: ReconcileEntriesPayload;
   addNewPerson: AddNewPersonPayload;
 };
 
@@ -390,6 +391,11 @@ export type MutationUpdateEntryRefundArgs = {
 
 export type MutationDeleteEntryRefundArgs = {
   id: Scalars['ID'];
+};
+
+
+export type MutationReconcileEntriesArgs = {
+  input?: Maybe<ReconcileEntries>;
 };
 
 
@@ -657,6 +663,11 @@ export type EntryItemsWhere = {
   nor?: Maybe<Array<EntryItemsWhere>>;
 };
 
+export type ReconcileEntries = {
+  entries?: Maybe<Array<Maybe<Scalars['ID']>>>;
+  refunds?: Maybe<Array<Maybe<Scalars['ID']>>>;
+};
+
 export type AddNewEntryPayload = {
   __typename?: 'AddNewEntryPayload';
   newEntry: Entry;
@@ -685,6 +696,12 @@ export type UpdateEntryRefundPayload = {
 export type DeleteEntryRefundPayload = {
   __typename?: 'DeleteEntryRefundPayload';
   deletedEntryRefund: EntryRefund;
+};
+
+export type ReconcileEntriesPayload = {
+  __typename?: 'ReconcileEntriesPayload';
+  reconciledEntries: Array<Entry>;
+  reconciledRefunds: Array<EntryRefund>;
 };
 
 export type Subscription = {
@@ -1490,6 +1507,19 @@ export type DeleteEntryRefundMutation = { __typename?: 'Mutation', deleteEntryRe
       & GridRefundFragment
     ) } };
 
+export type ReconcileEntriesMutationVariables = Exact<{
+  input: ReconcileEntries;
+}>;
+
+
+export type ReconcileEntriesMutation = { __typename?: 'Mutation', reconcileEntries: { __typename?: 'ReconcileEntriesPayload', reconciledEntries: Array<(
+      { __typename?: 'Entry' }
+      & GridEntryFragment
+    )>, reconciledRefunds: Array<(
+      { __typename?: 'EntryRefund' }
+      & GridRefundFragment
+    )> } };
+
 export type NewEntryMutationVariables = Exact<{
   newEntry: NewEntry;
 }>;
@@ -1655,12 +1685,14 @@ export type ResolversTypes = {
   EntryItem: ResolverTypeWrapper<EntryItem>;
   Int: ResolverTypeWrapper<Scalars['Int']>;
   EntryItemsWhere: EntryItemsWhere;
+  ReconcileEntries: ReconcileEntries;
   AddNewEntryPayload: ResolverTypeWrapper<AddNewEntryPayload>;
   UpdateEntryPayload: ResolverTypeWrapper<UpdateEntryPayload>;
   DeleteEntryPayload: ResolverTypeWrapper<DeleteEntryPayload>;
   AddNewEntryRefundPayload: ResolverTypeWrapper<AddNewEntryRefundPayload>;
   UpdateEntryRefundPayload: ResolverTypeWrapper<UpdateEntryRefundPayload>;
   DeleteEntryRefundPayload: ResolverTypeWrapper<DeleteEntryRefundPayload>;
+  ReconcileEntriesPayload: ResolverTypeWrapper<ReconcileEntriesPayload>;
   Subscription: ResolverTypeWrapper<{}>;
   FiscalYear: ResolverTypeWrapper<FiscalYear>;
   FiscalYearsWhere: FiscalYearsWhere;
@@ -1761,12 +1793,14 @@ export type ResolversParentTypes = {
   EntryItem: EntryItem;
   Int: Scalars['Int'];
   EntryItemsWhere: EntryItemsWhere;
+  ReconcileEntries: ReconcileEntries;
   AddNewEntryPayload: AddNewEntryPayload;
   UpdateEntryPayload: UpdateEntryPayload;
   DeleteEntryPayload: DeleteEntryPayload;
   AddNewEntryRefundPayload: AddNewEntryRefundPayload;
   UpdateEntryRefundPayload: UpdateEntryRefundPayload;
   DeleteEntryRefundPayload: DeleteEntryRefundPayload;
+  ReconcileEntriesPayload: ReconcileEntriesPayload;
   Subscription: {};
   FiscalYear: FiscalYear;
   FiscalYearsWhere: FiscalYearsWhere;
@@ -1943,6 +1977,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   addNewEntryRefund?: Resolver<ResolversTypes['AddNewEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationAddNewEntryRefundArgs, 'input'>>;
   updateEntryRefund?: Resolver<ResolversTypes['UpdateEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationUpdateEntryRefundArgs, 'input'>>;
   deleteEntryRefund?: Resolver<ResolversTypes['DeleteEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationDeleteEntryRefundArgs, 'id'>>;
+  reconcileEntries?: Resolver<ResolversTypes['ReconcileEntriesPayload'], ParentType, ContextType, RequireFields<MutationReconcileEntriesArgs, never>>;
   addNewPerson?: Resolver<ResolversTypes['AddNewPersonPayload'], ParentType, ContextType, RequireFields<MutationAddNewPersonArgs, 'input'>>;
 };
 
@@ -2061,6 +2096,12 @@ export type UpdateEntryRefundPayloadResolvers<ContextType = Context, ParentType 
 
 export type DeleteEntryRefundPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['DeleteEntryRefundPayload'] = ResolversParentTypes['DeleteEntryRefundPayload']> = {
   deletedEntryRefund?: Resolver<ResolversTypes['EntryRefund'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type ReconcileEntriesPayloadResolvers<ContextType = Context, ParentType extends ResolversParentTypes['ReconcileEntriesPayload'] = ResolversParentTypes['ReconcileEntriesPayload']> = {
+  reconciledEntries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType>;
+  reconciledRefunds?: Resolver<Array<ResolversTypes['EntryRefund']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -2198,6 +2239,7 @@ export type Resolvers<ContextType = Context> = {
   AddNewEntryRefundPayload?: AddNewEntryRefundPayloadResolvers<ContextType>;
   UpdateEntryRefundPayload?: UpdateEntryRefundPayloadResolvers<ContextType>;
   DeleteEntryRefundPayload?: DeleteEntryRefundPayloadResolvers<ContextType>;
+  ReconcileEntriesPayload?: ReconcileEntriesPayloadResolvers<ContextType>;
   Subscription?: SubscriptionResolvers<ContextType>;
   FiscalYear?: FiscalYearResolvers<ContextType>;
   PaymentCardInterface?: PaymentCardInterfaceResolvers<ContextType>;
