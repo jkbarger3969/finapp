@@ -1,0 +1,5 @@
+union Source = Person | Business | Department
+
+extend type Query {
+  sources(searchByName: String!): [Source!]!
+}

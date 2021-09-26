@@ -1,56 +1,73 @@
-enum SortDirection {
-  ASC
-  DESC
-}
-
-enum FilterType {
-  INCLUDE
-  EXCLUDE
-}
-
-input PaginateInput {
-  skip: Int!
-  limit: Int!
-}
-
-input ByIdFilter {
+input WhereId {
   eq: ID
+  ne: ID
+  in: [ID!]
+  nin: [ID!]
 }
 
-enum RegexOptions {
-  CaseInsensitive
-  Multiline
-  Extended
-  DotAll
+input WhereTreeId {
+  eq: ID
+  ne: ID
+  in: [ID!]
+  nin: [ID!]
+  """
+  Range operators will match descendants and ancestors in the tree.
+  """
+  gt: ID
+  gte: ID
+  lt: ID
+  lte: ID
+}
+
+input NodeInput {
+  type: String!
+  id: ID!
+}
+
+input WhereNode {
+  eq: NodeInput
+  ne: NodeInput
+  in: [NodeInput!]
+  nin: [NodeInput!]
+}
+
+"""
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#advanced_searching_with_flags
+"""
+enum RegexFlags {
+  "Global search."
+  G
+  "Case-insensitive search."
   I
+  "Multi-line search."
   M
-  X
+  "Allows . to match newline characters."
   S
 }
 
-input WhereTreeNodeInput {
-  id: ID!
-  matchDescendants: Boolean
-}
-
-input WhereRegexInput {
+input WhereRegex {
+  """
+  "pattern" argument of the javascript RegExp constructor.
+  https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/RegExp#parameters
+  """
   pattern: String!
-  options: [RegexOptions!]
+  flags: [RegexFlags!]
 }
 
-input WhereDateTime {
-  """
-  ISO 8601
-  """
-  date: String!
-  ignoreTime: Boolean
+input WhereInt {
+  eq: Int
+  ne: Int
+  gt: Int
+  gte: Int
+  lt: Int
+  lte: Int
 }
 
 input WhereDate {
-  eq: WhereDateTime
-  ne: WhereDateTime
-  gt: WhereDateTime
-  gte: WhereDateTime
-  lt: WhereDateTime
-  lte: WhereDateTime
+  eq: Date
+  ne: Date
+  gt: Date
+  gte: Date
+  lt: Date
+  lte: Date
 }

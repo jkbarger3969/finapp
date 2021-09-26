@@ -1,5 +1,17 @@
 {
   "possibleTypes": {
+    "AccountInterface": [
+      "AccountChecking",
+      "AccountCreditCard"
+    ],
+    "AccountWithCardsInterface": [
+      "AccountChecking",
+      "AccountCreditCard"
+    ],
+    "AliasTarget": [
+      "Category",
+      "Department"
+    ],
     "BudgetOwner": [
       "Department",
       "Business"
@@ -8,12 +20,28 @@
       "Department",
       "Business"
     ],
-    "JournalEntrySource": [
+    "Entity": [
       "Person",
       "Business",
       "Department"
     ],
-    "PaymentMethodAuthorizedEntity": [
+    "PaymentCardInterface": [
+      "AccountCard",
+      "PaymentCard"
+    ],
+    "PaymentCheckInterface": [
+      "AccountCheck",
+      "PaymentCheck"
+    ],
+    "PaymentMethodInterface": [
+      "PaymentMethodCard",
+      "PaymentMethodCash",
+      "PaymentMethodCheck",
+      "PaymentMethodCombination",
+      "PaymentMethodOnline",
+      "PaymentMethodUnknown"
+    ],
+    "Source": [
       "Person",
       "Business",
       "Department"

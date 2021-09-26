@@ -3,6 +3,8 @@
     "Depts",
     "UPSERTS",
     "Upsert",
+    "Wrappable",
+    "devexpress",
     "refetch",
     "toolbelt",
     "upserted"

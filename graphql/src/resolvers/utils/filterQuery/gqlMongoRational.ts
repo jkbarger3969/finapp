@@ -1,9 +1,5 @@
-import { WhereRational, RationalInput } from "../../../graphTypes";
-import {
-  rationalComparison,
-  MongoRational,
-} from "../../../utils/mongoRational";
-import { rationalToFraction } from "../../../utils/rational";
+import { WhereRational } from "../../../graphTypes";
+import { rationalComparison, Rational } from "../../../utils/mongoRational";
 import { FieldAndCondition } from "./filter";
 import { iterateOwnKeyValues } from "../../../utils/iterableFns";
 import { comparisonOpsMapper } from "./operatorMapping/comparison";
@@ -22,9 +18,7 @@ const rationalFieldCondition = (
           rationalComparison(
             lhsRationalField,
             mongoOp as typeof mongoOp,
-            (value as RationalInput[]).map<MongoRational>(
-              (r) => rationalToFraction(r) as MongoRational
-            )
+            value as Rational[]
           )
         );
         break;
@@ -33,7 +27,7 @@ const rationalFieldCondition = (
           rationalComparison(
             lhsRationalField,
             mongoOp as typeof mongoOp,
-            rationalToFraction(value as RationalInput) as MongoRational
+            value as Rational
           )
         );
     }

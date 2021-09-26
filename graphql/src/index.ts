@@ -3,16 +3,18 @@ if (process.env.NODE_ENV === "development") {
 }
 
 import { ApolloServer } from "apollo-server-koa";
-import { PubSub } from "apollo-server";
+import { ApolloServerPluginDrainHttpServer } from "apollo-server-core";
 import * as Koa from "koa";
 import * as http from "http";
 
 import resolvers from "./resolvers";
-import { NodeInfo, Context } from "./types";
+import { Context, DataSources } from "./types";
 import secrets from "./secrets";
 import mongoDb from "./mongoDb";
 import typeDefs from "./schema";
 import { ObjectId } from "mongodb";
+import { AccountingDb } from "./dataSources/accountingDb/accountingDb";
+import { makeExecutableSchema } from "@graphql-tools/schema";
 
 const PORT = process.env.PORT || 4000;
 
@@ -29,53 +31,48 @@ const PORT = process.env.PORT || 4000;
       db: "accounting",
     });
 
-    const nodeMap = await db
-      .collection("nodes")
-      .aggregate([{ $addFields: { id: { $toString: "$_id" } } }])
-      .toArray()
-      .then((nodes) => {
-        const nodeTypesIdMap = new Map<string, NodeInfo>();
-        const nodeTypesTypeMap = new Map<string, NodeInfo>();
-
-        for (const node of nodes) {
-          nodeTypesIdMap.set(node.id, node);
-          nodeTypesTypeMap.set(node.typename, node);
-        }
-
-        return { id: nodeTypesIdMap, typename: nodeTypesTypeMap };
-      });
-
-    const context: Context = {
+    const context: Omit<Context<undefined>, "reqDateTime"> = {
       client,
       db,
-      nodeMap,
       user: {
         id: new ObjectId("5de16db089c4360df927a3db"),
       },
-      pubSub: new PubSub(),
     };
 
-    const gqlServer = new ApolloServer({
+    const httpServer = http.createServer();
+
+    const schema = makeExecutableSchema({
       typeDefs,
       resolvers,
-      context,
     });
 
-    const gqlApp = new Koa();
-    gqlServer.applyMiddleware({ app: gqlApp });
-
-    const httpGQLServer = http.createServer(gqlApp.callback());
-
-    gqlServer.installSubscriptionHandlers(httpGQLServer);
-
-    httpGQLServer.listen(PORT, () => {
-      console.log(
-        `Graphql server ready at http://localhost:${PORT}${gqlServer.graphqlPath}`
-      );
-      console.log(
-        `Subscriptions ready at ws://localhost:${PORT}${gqlServer.graphqlPath}`
-      );
+    const server = new ApolloServer({
+      schema,
+      context: () => ({
+        ...context,
+        reqDateTime: new Date(),
+      }),
+      dataSources: (): DataSources => ({
+        accountingDb: new AccountingDb({ client }),
+      }),
+      plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
     });
+
+    await server.start();
+
+    const app = new Koa();
+
+    server.applyMiddleware({ app });
+
+    httpServer.on("request", app.callback());
+
+    await new Promise((resolve) =>
+      httpServer.listen({ port: PORT }, resolve as () => void)
+    );
+
+    console.log(
+      `Graphql server ready at http://localhost:${PORT}${server.graphqlPath}`
+    );
   } catch (e) {
     console.error(e);
   }

@@ -1,51 +1,56 @@
-import {
-  BusinessResolvers as TBusinessResolvers,
-  BudgetOwnerType,
-  DepartmentAncestorType,
-} from "../../graphTypes";
+import { DepartmentDbRecord } from "../../dataSources/accountingDb/types";
+import { BusinessResolvers } from "../../graphTypes";
 
-import budgetsQuery from "../budget/budgets";
-import { getDeptDescendants } from "../department/DepartmentResolvers";
-
-const budgets: TBusinessResolvers["budgets"] = async (
-  doc,
-  args,
-  context,
-  info
-) => {
-  return budgetsQuery(
-    {},
-    {
-      where: {
-        owner: {
-          eq: {
-            id: doc.id,
-            type: BudgetOwnerType.Business,
-          },
-        },
-      },
-    },
-    context,
-    info
-  );
+const budgets: BusinessResolvers["budgets"] = ({ _id }, _, { db }) => {
+  return db
+    .collection("budgets")
+    .find({
+      "owner.type": "Business",
+      "owner.id": _id,
+    })
+    .toArray();
 };
 
-const departments: TBusinessResolvers["departments"] = (
-  doc,
-  args,
-  context,
-  info
+const departments: BusinessResolvers["departments"] = async (
+  { _id },
+  { root },
+  { db }
 ) => {
-  return getDeptDescendants(
-    { id: doc.id, type: DepartmentAncestorType.Business },
-    context,
-    info
-  );
+  const results: DepartmentDbRecord[] = [];
+
+  const query = await db
+    .collection<DepartmentDbRecord>("departments")
+    .find({
+      "parent.type": "Business",
+      "parent.id": _id,
+    })
+    .toArray();
+
+  if (root) {
+    results.push(...query);
+  } else {
+    while (query.length) {
+      results.push(...query);
+
+      query.push(
+        ...(await db
+          .collection<DepartmentDbRecord>("departments")
+          .find({
+            "parent.type": "Department",
+            "parent.id": {
+              $in: query.splice(0).map(({ _id }) => _id),
+            },
+          })
+          .toArray())
+      );
+    }
+  }
+
+  return results;
 };
 
-const BusinessResolvers: TBusinessResolvers = {
+export const Business: BusinessResolvers = {
+  id: ({ _id }) => _id.toString(),
   budgets,
   departments,
 } as const;
-
-export default BusinessResolvers;

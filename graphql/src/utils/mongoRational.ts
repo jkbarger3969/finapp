@@ -1,46 +1,61 @@
-import { QuerySelector } from "mongodb";
+import Fraction from "fraction.js";
 
-export interface MongoRational {
+export interface Rational {
   s: 1 | -1;
   n: number;
   d: number;
 }
 
+/**
+ * Utility method to convert {@link Fraction} to {@link Rational}.
+ */
+export const fractionToRational = (fraction: Fraction): Rational => ({
+  s: fraction.s as 1 | -1,
+  n: fraction.n,
+  d: fraction.d,
+});
+
 // https://docs.mongodb.com/manual/reference/operator/query-comparison/index.html
-export type MongoDbEqualityAndRangeOps = Extract<
-  keyof QuerySelector<unknown>,
-  "$eq" | "$gt" | "$gte" | "$lt" | "$lte" | "$ne"
->;
-export type MongoDbSetOps = Extract<
-  keyof QuerySelector<unknown>,
-  "$in" | "$nin"
->;
+export type ComparisonOps = "$eq" | "$gt" | "$gte" | "$lt" | "$lte" | "$ne";
+export type SetOps = "$in" | "$nin";
+export type RationalOp = ComparisonOps | SetOps;
 
-export type RationalArg = MongoRational | string | [string, number];
+/**
+ * - Rational number object.
+ * - Path to a rational number object.
+ * - Tuple of path to a rational number object and an $arrayElemAt idx.
+ * */
+export type RationalValue = Rational | string | [path: string, index: number];
 
-const parseRationalArg = (
-  rationalArg: RationalArg,
-  asVar: string
+const parseRationalValue = (
+  rationalValue: RationalValue,
+  letVar: string
 ): Readonly<
-  [string | 1 | -1, string | number, string | number, string, number]
+  [
+    s: string | 1 | -1,
+    n: string | number,
+    d: string | number,
+    path: string,
+    elemIndex: number
+  ]
 > => {
-  if (typeof rationalArg === "string") {
+  if (typeof rationalValue === "string") {
     return [
-      `$${rationalArg}.s`,
-      `$${rationalArg}.n`,
-      `$${rationalArg}.d`,
+      `$${rationalValue}.s`,
+      `$${rationalValue}.n`,
+      `$${rationalValue}.d`,
       "",
       -1,
     ] as const;
-  } else if (Array.isArray(rationalArg)) {
-    return [`$${asVar}.s`, `$${asVar}.n`, `$${asVar}.d`, ...rationalArg];
+  } else if (Array.isArray(rationalValue)) {
+    return [`$${letVar}.s`, `$${letVar}.n`, `$${letVar}.d`, ...rationalValue];
   } else {
-    return [rationalArg.s, rationalArg.n, rationalArg.d, "", -1] as const;
+    return [rationalValue.s, rationalValue.n, rationalValue.d, "", -1] as const;
   }
 };
 
-const createVarsAtIndexExpr = <T>(
-  addVars: Iterable<{ path: string; index: number; asVar: string }>,
+const createLetVarsAtIndexExpr = <T>(
+  addVars: Iterable<{ path: string; index: number; letVar: string }>,
   expression: T
 ) => {
   const vars = {} as Record<
@@ -50,8 +65,8 @@ const createVarsAtIndexExpr = <T>(
     }
   >;
 
-  for (const { asVar, path, index } of addVars) {
-    vars[asVar] = {
+  for (const { path, index, letVar } of addVars) {
+    vars[letVar] = {
       $arrayElemAt: [`$${path}`, index],
     };
   }
@@ -69,16 +84,22 @@ const createVarsAtIndexExpr = <T>(
  *
  */
 const compareRationalEqualityAndRanges = (
-  lhs: RationalArg,
-  equalityOrRangeOp: MongoDbEqualityAndRangeOps,
-  rhs: RationalArg
+  lhs: RationalValue,
+  comparisonOp: ComparisonOps,
+  rhs: RationalValue
 ) => {
-  const [sLhs, nLhs, dLhs, pathLhs, indexLhs] = parseRationalArg(lhs, "lhs");
+  const [sLhs, nLhs, dLhs, pathLhs, elemIndexLhs] = parseRationalValue(
+    lhs,
+    "lhs"
+  );
 
-  const [sRhs, nRhs, dRhs, pathRhs, indexRhs] = parseRationalArg(rhs, "rhs");
+  const [sRhs, nRhs, dRhs, pathRhs, elemIndexRhs] = parseRationalValue(
+    rhs,
+    "rhs"
+  );
 
   const expression = {
-    [equalityOrRangeOp]: [
+    [comparisonOp]: [
       {
         $subtract: [
           {
@@ -91,22 +112,22 @@ const compareRationalEqualityAndRanges = (
     ],
   } as const;
 
-  if (indexLhs > -1 || indexRhs > -1) {
-    return createVarsAtIndexExpr(
+  if (elemIndexLhs > -1 || elemIndexRhs > -1) {
+    return createLetVarsAtIndexExpr(
       (function* () {
-        if (indexLhs > -1) {
+        if (elemIndexLhs > -1) {
           yield {
             path: pathLhs,
-            index: indexLhs,
-            asVar: "lhs",
+            index: elemIndexLhs,
+            letVar: "lhs",
           };
         }
 
-        if (indexRhs > -1) {
+        if (elemIndexRhs > -1) {
           yield {
             path: pathRhs,
-            index: indexRhs,
-            asVar: "rhs",
+            index: elemIndexRhs,
+            letVar: "rhs",
           };
         }
       })(),
@@ -122,9 +143,9 @@ const compareRationalEqualityAndRanges = (
  *
  */
 const compareRationalSet = (
-  lhs: RationalArg,
-  setOp: MongoDbSetOps,
-  rationalSet: Iterable<RationalArg>
+  lhs: RationalValue,
+  setOp: SetOps,
+  rationalSet: Iterable<RationalValue>
 ) => {
   const anyElementTrueExpr: ReturnType<
     typeof compareRationalEqualityAndRanges
@@ -144,39 +165,30 @@ const compareRationalSet = (
 
 /**
  * @returns a mongodb [$expr](https://docs.mongodb.com/manual/reference/operator/query/expr/) value.
- * @param lhs when field is at array element, [field, index]
  */
 export function rationalComparison(
-  lhs: RationalArg,
-  equalityOrRangeOp: MongoDbEqualityAndRangeOps,
-  rhs: RationalArg
+  lhs: RationalValue,
+  op: RationalOp,
+  rhs: RationalValue
 ): ReturnType<typeof compareRationalEqualityAndRanges>;
 export function rationalComparison(
-  lhs: RationalArg,
-  setOp: MongoDbSetOps,
-  rationalSet: Iterable<RationalArg>
+  lhs: RationalValue,
+  op: RationalOp,
+  rhs: Iterable<RationalValue>
 ): ReturnType<typeof compareRationalSet>;
 export function rationalComparison(
-  lhs: RationalArg,
-  comparisonOp: MongoDbEqualityAndRangeOps | MongoDbSetOps,
-  compareToFractions: RationalArg | Iterable<RationalArg>
+  lhs: RationalValue,
+  op: RationalOp,
+  rhs: RationalValue | Iterable<RationalValue>
 ):
   | ReturnType<typeof compareRationalEqualityAndRanges>
   | ReturnType<typeof compareRationalSet> {
-  switch (comparisonOp) {
+  switch (op) {
     case "$in":
     case "$nin":
-      return compareRationalSet(
-        lhs,
-        comparisonOp,
-        compareToFractions as Iterable<RationalArg>
-      );
+      return compareRationalSet(lhs, op, rhs as Iterable<RationalValue>);
     default:
-      return compareRationalEqualityAndRanges(
-        lhs,
-        comparisonOp,
-        compareToFractions as RationalArg
-      );
+      return compareRationalEqualityAndRanges(lhs, op, rhs as RationalValue);
   }
 }
 
@@ -201,12 +213,12 @@ const gcd = function (n: number, d: number) {
 };
 
 const addOrSubtractRational = (
-  a: RationalArg,
-  b: RationalArg,
+  a: RationalValue,
+  b: RationalValue,
   type: "ADD" | "SUBTRACT"
 ) => {
-  const [sA, nA, dA, pathA, indexA] = parseRationalArg(a, "rA");
-  const [sB, nB, dB, pathB, indexB] = parseRationalArg(b, "rB");
+  const [sA, nA, dA, pathA, indexA] = parseRationalValue(a, "rA");
+  const [sB, nB, dB, pathB, indexB] = parseRationalValue(b, "rB");
 
   const op = type === "ADD" ? "$add" : "$subtract";
 
@@ -217,15 +229,15 @@ const addOrSubtractRational = (
     d: { $multiply: [dA, dB] },
   } as const;
 
-  const resultExpr =
+  const expr =
     indexA > -1 || indexB > -1
-      ? createVarsAtIndexExpr(
+      ? createLetVarsAtIndexExpr(
           (function* () {
             if (indexA > -1) {
               yield {
                 path: pathA,
                 index: indexA,
-                asVar: "rA",
+                letVar: "rA",
               };
             }
 
@@ -233,7 +245,7 @@ const addOrSubtractRational = (
               yield {
                 path: pathB,
                 index: indexB,
-                asVar: "rB",
+                letVar: "rB",
               };
             }
           })(),
@@ -243,14 +255,17 @@ const addOrSubtractRational = (
 
   return {
     $let: {
-      vars: { addResult: resultExpr },
+      vars: { arithmeticResult: expr },
       in: {
         $let: {
           vars: {
             gcd: {
               $function: {
                 body: gcd.toString(),
-                args: [{ $abs: "$$addResult.n" }, "$$addResult.d"],
+                args: [
+                  { $abs: "$$arithmeticResult.n" },
+                  "$$arithmeticResult.d",
+                ],
                 lang: "js",
               },
             },
@@ -258,13 +273,13 @@ const addOrSubtractRational = (
           in: {
             s: {
               $cond: {
-                if: { $gte: ["$$addResult.n", 0] },
+                if: { $gte: ["$$arithmeticResult.n", 0] },
                 then: 1,
                 else: -1,
               },
             },
-            n: { $divide: [{ $abs: "$$addResult.n" }, "$$gcd"] },
-            d: { $divide: ["$$addResult.d", "$$gcd"] },
+            n: { $divide: [{ $abs: "$$arithmeticResult.n" }, "$$gcd"] },
+            d: { $divide: ["$$arithmeticResult.d", "$$gcd"] },
           },
         },
       },
@@ -272,10 +287,10 @@ const addOrSubtractRational = (
   };
 };
 
-export const addRational = (a: RationalArg, b: RationalArg) => {
+export const addRational = (a: RationalValue, b: RationalValue) => {
   return addOrSubtractRational(a, b, "ADD");
 };
 
-export const subtractRational = (a: RationalArg, b: RationalArg) => {
+export const subtractRational = (a: RationalValue, b: RationalValue) => {
   return addOrSubtractRational(a, b, "SUBTRACT");
 };

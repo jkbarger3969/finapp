@@ -1,0 +1,264 @@
+enum EntryType {
+  CREDIT
+  DEBIT
+}
+
+"""
+`Entry.source` value.
+"""
+type EntryDateOfRecord {
+  date: Date!
+  overrideFiscalYear: Boolean!
+}
+
+type Entry {
+  id: ID!
+  category: Category!
+  date: Date!
+  dateOfRecord: EntryDateOfRecord
+  deleted: Boolean!
+  department: Department!
+  description: String
+  fiscalYear: FiscalYear!
+  items: [EntryItem!]!
+  lastUpdate: Date!
+  paymentMethod: PaymentMethodInterface!
+  reconciled: Boolean!
+  refunds: [EntryRefund!]!
+  source: Entity!
+  total: Rational!
+}
+
+# Entry Queries
+input EntriesWhereSource {
+  businesses: BusinessesWhere
+  departments: DepartmentsWhere
+  people: PeopleWhere
+}
+
+input EntriesWhereDateOfRecord {
+  date: WhereDate
+  overrideFiscalYear: Boolean
+}
+
+input EntriesWhere {
+  # Fields
+  id: WhereId
+  refunds: EntryRefundsWhere
+  items: EntryItemsWhere
+  type: EntryType
+  date: WhereDate
+  dateOfRecord: EntriesWhereDateOfRecord
+  department: DepartmentsWhere
+  fiscalYear: FiscalYearsWhere
+  category: CategoriesWhere
+  # paymentMethod: PaymentMethodsWhere
+  description: WhereRegex
+  total: WhereRational
+  source: EntriesWhereSource
+  reconciled: Boolean
+  lastUpdate: WhereDate
+  deleted: Boolean
+
+  # Logic
+  and: [EntriesWhere!]
+  or: [EntriesWhere!]
+  nor: [EntriesWhere!]
+}
+
+"""
+`NewEntry.source` and `UpdateEntry.source` input.  Choose ONE field only.
+"""
+input UpsertEntrySource {
+  source: EntityInput
+  business: NewBusiness
+  person: NewPerson
+}
+
+"""
+`NewEntry.dateOfRecord` input.
+"""
+input NewEntryDateOfRecord {
+  date: Date!
+  overrideFiscalYear: Boolean!
+}
+
+input NewEntry {
+  date: Date!
+  dateOfRecord: NewEntryDateOfRecord
+  department: ID!
+  category: ID!
+  paymentMethod: UpsertPaymentMethod!
+  description: String
+  total: Rational!
+  source: UpsertEntrySource!
+  reconciled: Boolean
+}
+
+"""
+`UpdateEntry.dateOfRecord` input.  Fields "date" and "overrideFiscalYear" are mutually exclusive to field "clear".  Requires at least ONE optional field.
+"""
+input UpdateEntryDateOfRecord {
+  date: Date
+  overrideFiscalYear: Boolean
+  clear: Boolean
+}
+
+"""
+Requirers at least ONE optional field.
+"""
+input UpdateEntry {
+  id: ID!
+  date: Date
+  dateOfRecord: UpdateEntryDateOfRecord
+  department: ID
+  category: ID
+  paymentMethod: UpsertPaymentMethod
+  description: String
+  total: Rational
+  source: UpsertEntrySource
+  reconciled: Boolean
+}
+
+# Refunds
+type EntryRefund {
+  id: ID!
+  date: Date!
+  deleted: Boolean!
+  description: String
+  """
+  `Entry` associated with `EntryRefund`
+  """
+  entry: Entry!
+  lastUpdate: Date!
+  paymentMethod: PaymentMethodInterface!
+  reconciled: Boolean!
+  total: Rational!
+}
+
+input NewEntryRefund {
+  entry: ID!
+  date: Date!
+  description: String
+  paymentMethod: UpsertPaymentMethod!
+  total: Rational!
+  reconciled: Boolean = false
+}
+
+input UpdateEntryRefund {
+  id: ID!
+  date: Date
+  description: String
+  paymentMethod: UpsertPaymentMethod
+  total: Rational
+  reconciled: Boolean
+}
+
+input EntryRefundsWhere {
+  # Fields
+  id: WhereId
+  date: WhereDate
+  entry: EntriesWhere
+  # paymentMethod: PaymentMethodsWhere
+  total: WhereRational
+  reconciled: Boolean
+  lastUpdate: WhereDate
+  deleted: Boolean
+
+  # Logic
+  and: [EntryRefundsWhere!]
+  or: [EntryRefundsWhere!]
+  nor: [EntryRefundsWhere!]
+}
+
+# Items
+type EntryItem {
+  id: ID!
+  category: Category
+  deleted: Boolean!
+  department: Department
+  description: String
+  lastUpdate: Date!
+  total: Rational!
+  units: Int!
+}
+
+input EntryItemsWhere {
+  # Fields
+  id: WhereId
+  department: DepartmentsWhere
+  category: CategoriesWhere
+  units: WhereInt
+  total: WhereRational
+  lastUpdate: WhereDate
+  deleted: Boolean
+
+  # Logic
+  and: [EntryItemsWhere!]
+  or: [EntryItemsWhere!]
+  nor: [EntryItemsWhere!]
+}
+
+# Reconcile
+input ReconcileEntries {
+  entries: [ID]
+  refunds: [ID]
+}
+
+type Query {
+  entries(where: EntriesWhere): [Entry!]!
+  entry(id: ID!): Entry
+  entryRefund(id: ID!): EntryRefund
+  entryRefunds(where: EntryRefundsWhere): [EntryRefund!]!
+  entryItem(id: ID!): EntryItem
+}
+
+type AddNewEntryPayload {
+  newEntry: Entry!
+}
+
+type UpdateEntryPayload {
+  updatedEntry: Entry!
+}
+
+type DeleteEntryPayload {
+  deletedEntry: Entry!
+}
+
+type AddNewEntryRefundPayload {
+  newEntryRefund: EntryRefund!
+}
+
+type UpdateEntryRefundPayload {
+  updatedEntryRefund: EntryRefund!
+}
+
+type DeleteEntryRefundPayload {
+  deletedEntryRefund: EntryRefund!
+}
+
+type ReconcileEntriesPayload {
+  reconciledEntries: [Entry!]!
+  reconciledRefunds: [EntryRefund!]!
+}
+
+type Mutation {
+  # entries
+  addNewEntry(input: NewEntry!): AddNewEntryPayload!
+  updateEntry(input: UpdateEntry!): UpdateEntryPayload!
+  deleteEntry(id: ID!): DeleteEntryPayload!
+
+  # entry refunds
+  addNewEntryRefund(input: NewEntryRefund!): AddNewEntryRefundPayload!
+  updateEntryRefund(input: UpdateEntryRefund!): UpdateEntryRefundPayload!
+  deleteEntryRefund(id: ID!): DeleteEntryRefundPayload!
+
+  #reconcile
+  reconcileEntries(input: ReconcileEntries): ReconcileEntriesPayload!
+}
+
+type Subscription {
+  entryAdded: Entry!
+  entryUpdated: Entry!
+  entryUpserted: Entry!
+}

@@ -1,0 +1,22 @@
+union Entity = Person | Business | Department
+
+enum EntityType {
+  PERSON
+  BUSINESS
+  DEPARTMENT
+}
+
+input EntityInput {
+  type: EntityType!
+  id: ID!
+}
+
+input EntitiesWhere {
+  businesses: BusinessesWhere
+  departments: DepartmentsWhere
+  people: PeopleWhere
+}
+
+type Query {
+  entities(where: EntitiesWhere!): [Entity!]!
+}

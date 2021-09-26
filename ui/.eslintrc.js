@@ -1,9 +1,10 @@
 module.exports = {
   env: { es2020: true, browser: true },
   parser: "@typescript-eslint/parser",
-  plugins: ["@typescript-eslint"],
+  plugins: ["@typescript-eslint", "react-hooks"],
   extends: [
     "eslint:recommended",
+    "plugin:react-hooks/recommended",
     "plugin:react/recommended",
     "plugin:@typescript-eslint/recommended",
     "prettier",
@@ -22,6 +23,9 @@ module.exports = {
     react: {
       version: "detect",
     },
+  },
+  rules: {
+    "@typescript-eslint/explicit-module-boundary-types": "off",
   },
   ignorePatterns: [
     "/node_modules/**/*",

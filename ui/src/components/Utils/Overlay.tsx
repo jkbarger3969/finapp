@@ -31,7 +31,6 @@ const Overlay = (
 
   return (
     <Box
-      {...boxProps}
       overflow="auto"
       position="absolute"
       display="flex"
@@ -41,6 +40,7 @@ const Overlay = (
       top="0px"
       bottom="0px"
       bgcolor={fade(theme.palette.background.paper, opacity)}
+      {...boxProps}
     />
   );
 };

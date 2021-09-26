@@ -8,8 +8,14 @@ input PersonNameInput {
   last: String!
 }
 
-input PersonAddFields {
+input NewPerson {
   name: PersonNameInput!
+  email: String
+  phone: String
+}
+
+type AddNewPersonPayload {
+  newPerson: Person!
 }
 
 type Person {
@@ -17,23 +23,27 @@ type Person {
   name: PersonName!
 }
 
-input PeopleWhereInput {
-  lastName: WhereRegexInput
-  firstName: WhereRegexInput
-  eq: ID
-  ne: ID
-  in: [ID!]
-  nin: [ID!]
-  and: [PeopleWhereInput!]
-  or: [PeopleWhereInput!]
-  nor: [PeopleWhereInput!]
+input PeopleNameWhere {
+  first: WhereRegex
+  last: WhereRegex
+}
+
+input PeopleWhere {
+  # Fields
+  id: WhereId
+  name: PeopleNameWhere
+
+  # Logical
+  and: [PeopleWhere!]
+  or: [PeopleWhere!]
+  nor: [PeopleWhere!]
 }
 
 extend type Query {
-  people(where: PeopleWhereInput): [Person!]!
+  people(where: PeopleWhere): [Person!]!
   person(id: ID!): Person!
 }
 
 extend type Mutation {
-  addPerson(fields: PersonAddFields!): Person!
+  addNewPerson(input: NewPerson!): AddNewPersonPayload!
 }

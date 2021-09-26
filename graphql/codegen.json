@@ -5,9 +5,24 @@
     "./src/graphTypes.ts": {
       "plugins": ["typescript", "typescript-resolvers"],
       "config": {
-        "noSchemaStitching": true,
+        "allowParentTypeOverride": true,
         "contextType": "./types#Context",
-        "allowParentTypeOverride": true
+        "mappers": {
+          "Business": "./dataSources/accountingDb/types#BusinessDbRecord",
+          "Category": "./dataSources/accountingDb/types#CategoryDbRecord",
+          "Department": "./dataSources/accountingDb/types#DepartmentDbRecord",
+          "Entry": "./dataSources/accountingDb/types#EntryDbRecord",
+          "EntryRefund": "./dataSources/accountingDb/types#EntryRefundDbRecord",
+          "EntryItem": "./dataSources/accountingDb/types#EntryItemDbRecord",
+          "NewEntryRefund": "./dataSources/accountingDb/types#EntryRefundDbRecord"
+        },
+        "noSchemaStitching": true,
+        "optionalResolveType": true,
+        "scalars": {
+          "Date": "Date",
+          "Rational": "fraction.js#default as Fraction"
+        },
+        "useImplementingTypes": true
       }
     },
     "./public/fragmentTypes.json": {

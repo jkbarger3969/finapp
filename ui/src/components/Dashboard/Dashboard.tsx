@@ -9,7 +9,6 @@ import Typography from "@material-ui/core/Typography";
 import AddIcon from "@material-ui/icons/Add";
 import DoneAllIcon from "@material-ui/icons/DoneAll";
 import TableChartIcon from "@material-ui/icons/TableChart";
-import AssessmentIcon from "@material-ui/icons/Assessment";
 import Card from "@material-ui/core/Card";
 import CardHeader from "@material-ui/core/CardHeader";
 import CardContent from "@material-ui/core/CardContent";
@@ -24,18 +23,24 @@ import { MenuItem } from "@material-ui/core";
 import {
   GetReportDataQuery,
   GetReportDataQueryVariables,
-  JournalEntryType,
+  EntryType,
   OnEntryUpsert_2Subscription as OnEntryUpsert,
   GetReportDataDept_1Fragment as DepartmentFragment,
   FiscalYear,
+  DepartmentsWhere,
+  AccountsWhere,
 } from "../../apollo/graphTypes";
+import { deserializeRational } from "../../apollo/scalars";
 import {
   GET_REPORT_DATA,
   GET_REPORT_DATA_ENTRY_FRAGMENT,
 } from "./ReportData.gql";
-import { DEPT_ENTRY_OPT_FRAGMENT } from "../Journal/Upsert/upsertEntry.gql";
-import AddEntry from "../Journal/Upsert/Entries/AddEntry";
-import { rationalToFraction } from "../../utils/rational";
+import {
+  UpsertEntry,
+  UpsertEntryProps,
+} from "../Journal/DataGrid/forms/UpsertEntry";
+import { dialogProps } from "../Journal/DataGrid/forms/shared";
+// import { DEPT_ENTRY_OPT_FRAGMENT } from "../Journal/Upsert/upsertEntry.gql";
 
 const colorMeter = (percentSpent: number, shade: keyof Color = 800) => {
   if (percentSpent < 0.75) {
@@ -72,18 +77,9 @@ interface DeptReport {
   budget: Fraction | null;
 }
 
-export const DEPT_FOR_UPSERT_ADD = gql`
-  query DeptForUpsertAdd($id: ID!) {
-    department(id: $id) {
-      ...DeptEntryOptFragment
-    }
-  }
-  ${DEPT_ENTRY_OPT_FRAGMENT}
-`;
-
 const ON_ENTRY_UPSERT = gql`
   subscription OnEntryUpsert_2 {
-    journalEntryUpserted {
+    entryUpserted {
       ...GetReportDataEntry_1Fragment
       department {
         ancestors {
@@ -98,19 +94,24 @@ const ON_ENTRY_UPSERT = gql`
   ${GET_REPORT_DATA_ENTRY_FRAGMENT}
 `;
 
-const Dashboard = (props: { deptId: string }): JSX.Element => {
-  const { deptId } = props;
+const Dashboard = (props: {
+  deptId: string;
+  selectableDepts: DepartmentsWhere;
+  selectableAccounts: AccountsWhere;
+}): JSX.Element => {
+  const { deptId, selectableAccounts, selectableDepts } = props;
 
   const [addEntryOpen, setAddEntryOpen] = useState<boolean>(false);
-  const addEntryOnClose = useCallback(() => void setAddEntryOpen(false), [
-    setAddEntryOpen,
-  ]);
 
   const variables = useMemo(
     () => ({
       deptId,
       where: {
-        department: { eq: { id: deptId, matchDescendants: true } },
+        department: {
+          id: {
+            lte: deptId,
+          },
+        },
         deleted: false,
       },
     }),
@@ -125,7 +126,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     fetchPolicy: "cache-and-network",
   });
 
-  const isLoading = loading && !data?.journalEntries;
+  const isLoading = loading && !data?.entries;
 
   // Subscribe to updates
   useEffect(() => {
@@ -136,7 +137,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
           return prev;
         }
 
-        const upsertEntry = subscriptionData.data.journalEntryUpserted;
+        const upsertEntry = subscriptionData.data.entryUpserted;
 
         const ancestors = upsertEntry.department.ancestors;
 
@@ -148,26 +149,26 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
           )
         ) {
           // Filter entry out of query results if department changes.
-          const journalEntriesFiltered = prev.journalEntries.filter(
+          const entriesFiltered = prev.entries.filter(
             (entry) => entry.id !== upsertEntry.id
           );
 
-          if (journalEntriesFiltered.length === prev.journalEntries.length) {
+          if (entriesFiltered.length === prev.entries.length) {
             return prev;
           }
 
           return Object.assign({}, prev, {
-            journalEntries: journalEntriesFiltered,
+            entries: entriesFiltered,
           });
         }
 
         // Apollo will take care of updating if entry already exists in cache.
-        if (prev.journalEntries.some((entry) => entry.id === upsertEntry.id)) {
+        if (prev.entries.some((entry) => entry.id === upsertEntry.id)) {
           return prev;
         }
 
         return Object.assign({}, prev, {
-          journalEntries: [upsertEntry, ...prev.journalEntries],
+          entries: [upsertEntry, ...prev.entries],
         });
       },
     });
@@ -188,7 +189,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
   }, [year, data]);
 
   const entries = useMemo(() => {
-    return (data?.journalEntries || []).filter(
+    return (data?.entries || []).filter(
       (entry) => !entry.deleted && fiscalYear?.id === entry.fiscalYear.id
     );
   }, [data, fiscalYear]);
@@ -200,106 +201,104 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
 
   const department = data?.department || null;
 
-  const {
-    totalRemaining,
-    budget,
-    spentToBudgetRatio,
-    deptReports,
-    uBudget,
-  } = useMemo<{
-    totalRemaining: string;
-    budget: string;
-    spentToBudgetRatio: number;
-    deptReports: Map<string, DeptReport>;
-    uBudget: Fraction;
-  }>(() => {
-    // Generate department report objects
-    const deptReports = new Map<string, DeptReport>();
+  const { totalRemaining, budget, spentToBudgetRatio, deptReports, uBudget } =
+    useMemo<{
+      totalRemaining: string;
+      budget: string;
+      spentToBudgetRatio: number;
+      deptReports: Map<string, DeptReport>;
+      uBudget: Fraction;
+    }>(() => {
+      // Generate department report objects
+      const deptReports = new Map<string, DeptReport>();
 
-    let uBudget = new Fraction(0);
-    let uSpent = new Fraction(0);
+      let uBudget = new Fraction(0);
+      let uSpent = new Fraction(0);
 
-    const depts: (GetReportDataQuery["department"] | DepartmentFragment)[] = [];
+      const depts: (GetReportDataQuery["department"] | DepartmentFragment)[] =
+        [];
 
-    if (department) {
-      const budgetsAccountedFor = new Set<string>();
-      depts.push(department, ...department.descendants);
-      for (const dept of depts) {
-        const budgetFound =
-          dept.budgets.find(
-            (b) =>
-              b.fiscalYear.id === fiscalYear?.id &&
-              !budgetsAccountedFor.has(b.id)
-          ) ?? null;
-
-        let budget: null | Fraction = null;
-        if (budgetFound) {
-          const amount = budgetFound.amount;
-          budgetsAccountedFor.add(budgetFound.id);
-          budget = rationalToFraction(amount);
-          uBudget = uBudget.add(budget);
-        }
-
-        deptReports.set(dept.id, {
-          name: dept.name,
-          spent: new Fraction(0),
-          budget,
-        });
-      }
-    }
-
-    // Calculating aggregate depts and credits
-    for (const entry of entries) {
-      if (entry.deleted) {
-        continue;
-      }
-      const deptReport = deptReports.get(entry.department.id) as DeptReport;
-
-      let entryTotal = rationalToFraction(entry.total);
-
-      // BUG Story ID: CH58
-
-      // Aggregate Refunds
-      for (const refund of entry.refunds) {
-        if (refund.deleted) {
-          continue;
-        }
-        entryTotal = entryTotal.sub(rationalToFraction(refund.total));
-      }
-
-      // Itemization Adjustments
       if (department) {
-        for (const item of entry.items) {
-          if (
-            item.deleted ||
-            !item.department ||
-            depts.some(({ id }) => id === item.department?.id)
-          ) {
-            continue;
+        const budgetsAccountedFor = new Set<string>();
+        depts.push(department, ...department.descendants);
+        for (const dept of depts) {
+          const budgetFound =
+            dept.budgets.find(
+              (b) =>
+                b.fiscalYear.id === fiscalYear?.id &&
+                !budgetsAccountedFor.has(b.id)
+            ) ?? null;
+
+          let budget: null | Fraction = null;
+          if (budgetFound) {
+            const amount = budgetFound.amount;
+            budgetsAccountedFor.add(budgetFound.id);
+            budget = deserializeRational(amount);
+            uBudget = uBudget.add(budget);
           }
 
-          // Item has been applied  to another department budget.
-          entryTotal = entryTotal.sub(rationalToFraction(item.total));
+          deptReports.set(dept.id, {
+            name: dept.name,
+            spent: new Fraction(0),
+            budget,
+          });
         }
       }
 
-      if (entry.type === JournalEntryType.Credit) {
-        uSpent = uSpent.sub(entryTotal);
-        deptReport.spent = deptReport.spent.sub(entryTotal);
-      } else {
-        uSpent = uSpent.add(entryTotal);
-        deptReport.spent = deptReport.spent.add(entryTotal);
-      }
-    }
+      // Calculating aggregate depts and credits
+      for (const entry of entries) {
+        if (entry.deleted) {
+          continue;
+        }
+        const deptReport = deptReports.get(entry.department.id) as DeptReport;
 
-    return {
-      totalRemaining: numeral(uBudget.sub(uSpent).valueOf()).format("$0,0.00"),
-      budget: numeral(uBudget.valueOf()).format("$0,0.00"),
-      spentToBudgetRatio: uBudget.n === 0 ? 1 : uSpent.div(uBudget).valueOf(),
-      deptReports,
-      uBudget,
-    };
-  }, [entries, department]);
+        let entryTotal = deserializeRational(entry.total);
+
+        // BUG Story ID: CH58
+
+        // Aggregate Refunds
+        for (const refund of entry.refunds) {
+          if (refund.deleted) {
+            continue;
+          }
+          entryTotal = entryTotal.sub(deserializeRational(refund.total));
+        }
+
+        // Itemization Adjustments
+        if (department) {
+          for (const item of entry.items) {
+            if (
+              item.deleted ||
+              !item.department ||
+              depts.some(({ id }) => id === item.department?.id)
+            ) {
+              continue;
+            }
+
+            // Item has been applied  to another department budget.
+            entryTotal = entryTotal.sub(deserializeRational(item.total));
+          }
+        }
+
+        if (entry.category.type === EntryType.Credit) {
+          uSpent = uSpent.sub(entryTotal);
+          deptReport.spent = deptReport.spent.sub(entryTotal);
+        } else {
+          uSpent = uSpent.add(entryTotal);
+          deptReport.spent = deptReport.spent.add(entryTotal);
+        }
+      }
+
+      return {
+        totalRemaining: numeral(uBudget.sub(uSpent).valueOf()).format(
+          "$0,0.00"
+        ),
+        budget: numeral(uBudget.valueOf()).format("$0,0.00"),
+        spentToBudgetRatio: uBudget.n === 0 ? 1 : uSpent.div(uBudget).valueOf(),
+        deptReports,
+        uBudget,
+      };
+    }, [department, fiscalYear?.id, entries]);
 
   const subDeptCards = useMemo(() => {
     const subDeptCards: JSX.Element[] = [];
@@ -372,9 +371,10 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
     return subDeptCards;
   }, [deptReports, department, uBudget]);
 
-  const onClickAddEntry = useCallback(() => setAddEntryOpen(true), [
-    setAddEntryOpen,
-  ]);
+  const onClickAddEntry = useCallback(
+    () => setAddEntryOpen(true),
+    [setAddEntryOpen]
+  );
 
   const fiscalYearSelect = useMemo<JSX.Element>(() => {
     const onChange: SelectProps["onChange"] = (event) => {
@@ -393,7 +393,7 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
         }
       }
     };
-    console.log("data?.fiscalYears", data?.fiscalYears);
+
     return (
       <Box minWidth={120} clone>
         <FormControl variant="outlined">
@@ -421,6 +421,31 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
       </Box>
     );
   }, [data, setYear, fiscalYear]);
+
+  const upsertEntryProps: UpsertEntryProps = useMemo<UpsertEntryProps>(
+    () => ({
+      dialogProps: {
+        ...dialogProps,
+        open: addEntryOpen,
+        onClose: () => setAddEntryOpen(false),
+      },
+      entryProps: {
+        paymentMethod: { accounts: selectableAccounts },
+        department: {
+          root: selectableDepts,
+        },
+      },
+      refetchQueries: {
+        onNewEntry: [
+          {
+            query: GET_REPORT_DATA,
+            variables,
+          },
+        ],
+      },
+    }),
+    [addEntryOpen, selectableAccounts, selectableDepts, variables]
+  );
 
   if (isLoading) {
     return <p>Loading...</p>;
@@ -453,11 +478,6 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
                 startIcon={<DoneAllIcon />}
               >
                 Reconcile
-              </Button>
-            </Grid>
-            <Grid item>
-              <Button variant="contained" startIcon={<AssessmentIcon />}>
-                Reports
               </Button>
             </Grid>
             <Grid item>
@@ -496,11 +516,8 @@ const Dashboard = (props: { deptId: string }): JSX.Element => {
             {subDeptCards}
           </Grid>
         </Box>
-        <AddEntry
-          deptId={deptId}
-          open={addEntryOpen}
-          onClose={addEntryOnClose}
-        />
+
+        <UpsertEntry {...upsertEntryProps} />
       </Container>
     </Box>
   );

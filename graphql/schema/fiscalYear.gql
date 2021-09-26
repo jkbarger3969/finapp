@@ -1,33 +1,32 @@
 type FiscalYear {
   id: ID!
   name: String!
-  begin: String!
-  end: String!
+  begin: Date!
+  end: Date!
 }
 
-input FiscalYearWhereHasDate {
-  eq: String
-  ne: String
-  in: [String!]
-  nin: [String!]
-}
-
-input FiscalYearWhereInput {
-  eq: ID
-  ne: ID
-  in: [ID!]
-  nin: [ID!]
-  name: WhereRegexInput
+input FiscalYearsWhere {
+  # Fields
+  id: WhereId
+  name: WhereRegex
   """
   A FiscalYear is the set of all dates in the interval [begin, end).
+    eq: A fiscal year that contains the date.
+    ne: Any fiscal year that does NOT contain the date.
+    gt: Any fiscal year that begins after the date.
+    gte: Any fiscal year that contains the date or begins after the date.
+    lt: Any fiscal year that ends on or before the date.
+    lte: Any fiscal year that contains the date or ends on or before the date.
   """
-  hasDate: FiscalYearWhereHasDate
-  and: [FiscalYearWhereInput!]
-  or: [FiscalYearWhereInput!]
-  nor: [FiscalYearWhereInput!]
+  date: WhereDate
+
+  # Logic
+  and: [FiscalYearsWhere!]
+  or: [FiscalYearsWhere!]
+  nor: [FiscalYearsWhere!]
 }
 
 extend type Query {
-  fiscalYears(where: FiscalYearWhereInput): [FiscalYear!]!
+  fiscalYears(where: FiscalYearsWhere): [FiscalYear!]!
   fiscalYear(id: ID!): FiscalYear!
 }

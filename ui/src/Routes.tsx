@@ -1,78 +1,132 @@
-import React from "react";
-import { Route, Switch, useParams } from "react-router-dom";
+import React, { useMemo } from "react";
+import { Route, Switch, RouteComponentProps } from "react-router-dom";
+import { useQuery, gql } from "@apollo/client";
 
 // import Journal from "./components/Journal/Table/Journal";
-import Journal from "./components/Journal/Table/Journal";
-import { JournalMode } from "./components/Journal/Table/Journal";
+import Grid from "./components/Journal/DataGrid/Grid";
 import Dashboard from "./components/Dashboard/Dashboard";
 import TopNav from "./components/TopNav";
-import { useQuery } from "@apollo/client";
-import { DepartmentName_1Query as DepartmentName } from "./apollo/graphTypes";
-import gql from "graphql-tag";
+import {
+  AccountsWhere,
+  DepartmentsWhere,
+  EntriesWhere,
+  DepartmentNameQuery,
+  DepartmentNameQueryVariables as DepartmentNameQueryVars,
+} from "./apollo/graphTypes";
+import { Typography } from "@material-ui/core";
 
-const DashBoardRender = () => {
-  const { id } = useParams<{ id: string }>();
+const DashBoardRender = (props: RouteComponentProps<{ id: string }>) => {
+  const selectableDepts = useMemo<DepartmentsWhere>(
+    () => ({
+      id: {
+        eq: props.match.params.id,
+      },
+    }),
+    [props.match.params.id]
+  );
 
-  return id ? <Dashboard deptId={id} /> : <div>Error: No Dept ID!</div>;
+  const selectableAccounts = useMemo<AccountsWhere>(() => ({}), []);
+
+  return props.match.params.id ? (
+    <Dashboard
+      selectableDepts={selectableDepts}
+      selectableAccounts={selectableAccounts}
+      deptId={props.match.params.id}
+    />
+  ) : (
+    <div>Error: No Dept ID!</div>
+  );
 };
 
-const DEPARTMENT_NAME = gql`
-  query DepartmentName_1($id: ID!) {
+const DEPT_NAME = gql`
+  query DepartmentName($id: ID!) {
     department(id: $id) {
-      id
       __typename
+      id
       name
     }
   }
 `;
 
-const JournalViewRender = () => {
-  const { id, year } = useParams<{ id: string; year: string }>();
-  const { data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
-    variables: { id },
-  });
-  const journalTitle = data?.department?.name
-    ? data.department.name
-    : undefined;
+const GridParent = (
+  props: RouteComponentProps<{ id: string; fiscalYear: string }> & {
+    reconcileMode?: boolean;
+  }
+): JSX.Element => {
+  const where = useMemo<EntriesWhere>(
+    () => ({
+      department: {
+        id: {
+          lte: props.match.params.id,
+        },
+      },
+      fiscalYear: {
+        id: {
+          eq: props.match.params.fiscalYear,
+        },
+      },
+      deleted: false,
+    }),
+    [props.match.params.id, props.match.params.fiscalYear]
+  );
+
+  const selectableDepts = useMemo<DepartmentsWhere>(
+    () => ({
+      id: {
+        eq: props.match.params.id,
+      },
+    }),
+    [props.match.params.id]
+  );
+
+  const selectableAccounts = useMemo<AccountsWhere>(() => ({}), []);
+
+  const { loading, error, data } = useQuery<
+    DepartmentNameQuery,
+    DepartmentNameQueryVars
+  >(
+    DEPT_NAME,
+    useMemo(
+      () => ({
+        skip: !props.match.params.id,
+        variables: {
+          id: props.match.params.id,
+        },
+      }),
+      [props.match.params.id]
+    )
+  );
+
+  if (error) {
+    return <Typography color="error">{error.message}</Typography>;
+  }
+
   return (
-    <Journal
-      mode={JournalMode.View}
-      deptId={id}
-      fiscalYearId={year}
-      journalTitle={journalTitle}
+    <Grid
+      title={data?.department?.name}
+      reconcileMode={props.reconcileMode}
+      loading={loading}
+      where={where}
+      selectableDepts={selectableDepts}
+      selectableAccounts={selectableAccounts}
     />
   );
 };
 
-const JournalReconcileRender = () => {
-  const { id, year } = useParams<{ id: string; year: string }>();
-  const { data } = useQuery<DepartmentName>(DEPARTMENT_NAME, {
-    variables: { id },
-  });
-  const journalTitle = data?.department?.name
-    ? `Reconcile ${data.department.name}`
-    : "Reconcile";
-  return (
-    <Journal
-      mode={JournalMode.Reconcile}
-      deptId={id}
-      fiscalYearId={year}
-      journalTitle={journalTitle}
-    />
-  );
-};
+const GridReconcileMode = (
+  props: RouteComponentProps<{ id: string; fiscalYear: string }>
+): JSX.Element => <GridParent {...props} reconcileMode />;
 
 const Routes = (): JSX.Element => {
   return (
     <Switch>
       <Route exact path="/" component={TopNav} />
       <Route exact path="/department/:id" component={DashBoardRender} />
-      <Route exact path="/journal" component={Journal} />
-      <Route exact path="/journal/:id/:year" component={JournalViewRender} />
+      <Route exact path="/journal/:id/:fiscalYear/" component={GridParent} />
       <Route
         exact
-        path="/journal/:id/:year/reconcile"
-        component={JournalReconcileRender}
+        path="/journal/:id/:fiscalYear/reconcile"
+        component={GridReconcileMode}
       />
     </Switch>
   );

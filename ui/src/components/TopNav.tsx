@@ -39,7 +39,7 @@ const TopNav = (props: Record<string, unknown>): JSX.Element => {
 
   const [value, setValue] = useState<string>("");
 
-  const depts = data?.departments || [];
+  const depts = useMemo(() => data?.departments || [], [data?.departments]);
 
   type Department = typeof depts[0];
 

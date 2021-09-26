@@ -1,0 +1,363 @@
+import React, {
+  useCallback,
+  forwardRef,
+  Ref,
+  PropsWithChildren,
+  useMemo,
+} from "react";
+import { QueryHookOptions as QueryHookOptionsApollo } from "@apollo/client";
+import { CircularProgress, TextField, TextFieldProps } from "@material-ui/core";
+import { Autocomplete, AutocompleteProps } from "@material-ui/lab";
+import {
+  TreeSelectProps,
+  mergeInputEndAdornment,
+  defaultInput,
+  BranchNode,
+} from "mui-tree-select";
+import { KeyboardDatePickerProps } from "@material-ui/pickers";
+
+import {
+  InvalidResponse,
+  useField,
+  UseFieldOptions,
+  useFormContext,
+  Validator,
+} from "../../useKISSForm/form";
+import Fraction from "fraction.js";
+import { RationalInputProps } from "./RationalInput";
+import { BoolInputProps } from "./BoolInput";
+
+export type QueryHookOptions = Omit<QueryHookOptionsApollo, "variables">;
+
+const BLANK_OPTIONS: unknown[] = [];
+export const LoadingDefaultBlank = forwardRef(function LoadingDefaultBlank(
+  {
+    // grab all props effecting appearance and discard rest.
+    renderInput = defaultInput,
+    classes,
+    closeIcon,
+    forcePopupIcon,
+    fullWidth,
+    popupIcon,
+    size,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ...discard
+  }:
+    | // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Partial<AutocompleteProps<any, true | false, true | false, true | false>>
+    | Partial<
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        TreeSelectProps<any, any, true | false, true | false, true | false>
+      >,
+  ref: Ref<unknown>
+): JSX.Element {
+  return (
+    <Autocomplete
+      ref={ref}
+      classes={classes}
+      closeIcon={closeIcon}
+      forcePopupIcon={forcePopupIcon}
+      fullWidth={fullWidth}
+      popupIcon={popupIcon}
+      size={size}
+      defaultValue={undefined}
+      value={null}
+      inputValue=""
+      disabled
+      options={BLANK_OPTIONS}
+      renderInput={useCallback<
+        AutocompleteProps<
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          any,
+          undefined,
+          undefined,
+          undefined
+        >["renderInput"]
+      >(
+        (params) =>
+          renderInput({
+            ...params,
+            InputProps: mergeInputEndAdornment(
+              "append",
+              <CircularProgress size={20} color="inherit" />,
+              params.InputProps
+            ),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any),
+        [renderInput]
+      )}
+    />
+  );
+});
+
+export const LoadingTextFieldBlank = forwardRef(function LoadingTextFieldBlank(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  props:
+    | TextFieldProps
+    | Partial<KeyboardDatePickerProps>
+    | Partial<RationalInputProps>
+    | Partial<BoolInputProps<"switch" | "checkbox">>,
+  ref: Ref<HTMLDivElement>
+) {
+  const {
+    classes,
+    color,
+    error,
+    FormHelperTextProps,
+    fullWidth,
+    helperText,
+    id,
+    InputLabelProps,
+    inputProps,
+    InputProps,
+    inputRef,
+    label,
+    margin,
+    maxRows,
+    minRows,
+    multiline,
+    name,
+    placeholder,
+    size,
+
+    // FormControl
+    hiddenLabel,
+  } = props as TextFieldProps;
+
+  const variant = (() => {
+    switch (props.variant) {
+      case "dialog":
+      case "inline":
+      case "static":
+        return (props as KeyboardDatePickerProps).inputVariant;
+      default:
+        return props.variant || (props as KeyboardDatePickerProps).inputVariant;
+    }
+  })();
+
+  return (
+    <TextField
+      classes={classes}
+      color={color}
+      error={error}
+      FormHelperTextProps={FormHelperTextProps}
+      fullWidth={fullWidth}
+      helperText={helperText}
+      id={id}
+      InputLabelProps={InputLabelProps}
+      inputProps={inputProps}
+      inputRef={inputRef}
+      label={label}
+      margin={margin}
+      maxRows={maxRows}
+      minRows={minRows}
+      multiline={multiline}
+      name={name}
+      placeholder={placeholder}
+      size={size}
+      variant={variant}
+      hiddenLabel={hiddenLabel}
+      ref={ref}
+      disabled
+      InputProps={useMemo(
+        () =>
+          mergeInputEndAdornment(
+            "append",
+            <CircularProgress size={20} color="inherit" />,
+            InputProps
+          ),
+        [InputProps]
+      )}
+    />
+  );
+});
+
+export const sortBranchesToTop = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  a: any | BranchNode<any>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  b: any | BranchNode<any>
+): number => {
+  // Put branches at top of options to encourage, more detailed
+  // labeling for users.
+
+  const aIsBranch = a instanceof BranchNode;
+  const bIsBranch = b instanceof BranchNode;
+
+  if (aIsBranch) {
+    return bIsBranch ? 0 : -1;
+  } else if (bIsBranch) {
+    return aIsBranch ? 0 : 1;
+  } else {
+    return 0;
+  }
+};
+
+export type TextFieldControlledProps<
+  T = string,
+  TName extends string = string,
+  TFieldDef extends Record<string, unknown> = Record<string, unknown>
+> = UseFieldOptions<T, TName, TFieldDef> &
+  Omit<TextFieldProps, keyof UseFieldOptions | "value"> & {
+    setValueAs?: (
+      ...args: Parameters<NonNullable<TextFieldProps["onChange"]>>
+    ) => T | undefined;
+  };
+
+export const TextFieldControlled = forwardRef(function TextFieldControlled(
+  props: PropsWithChildren<TextFieldControlledProps>,
+  ref: Ref<HTMLDivElement>
+) {
+  const {
+    name: nameProp,
+    defaultValue,
+    validator,
+    shouldRunValidation,
+    shouldUnregister,
+    form,
+    onBlur: onBlurProp,
+    onChange: onChangeProp,
+    disabled,
+    children,
+    setValueAs,
+    ...rest
+  } = props;
+
+  const isSubmitting = useFormContext(form)?.isSubmitting ?? false;
+
+  const {
+    props: { value, name },
+    state: { isTouched, errors },
+    setValue,
+    setTouched,
+  } = useField({
+    name: nameProp,
+    defaultValue,
+    validator,
+    shouldRunValidation,
+    shouldUnregister,
+    form,
+  });
+
+  return (
+    <TextField
+      {...rest}
+      name={name}
+      value={value ?? ""}
+      ref={ref}
+      disabled={disabled || isSubmitting}
+      {...(isTouched && errors.length
+        ? {
+            error: true,
+            helperText: errors[0].message,
+          }
+        : {})}
+      onBlur={useCallback<NonNullable<TextFieldProps["onBlur"]>>(
+        (...args) => {
+          setTouched(true);
+
+          if (onBlurProp) {
+            onBlurProp(...args);
+          }
+        },
+        [setTouched, onBlurProp]
+      )}
+      onChange={useCallback<NonNullable<TextFieldProps["onChange"]>>(
+        (...args) => {
+          if (setValueAs) {
+            setValue(setValueAs(...args));
+          } else {
+            setValue(args[0].target.value || undefined);
+          }
+
+          if (onChangeProp) {
+            onChangeProp(...args);
+          }
+        },
+        [setValueAs, onChangeProp, setValue]
+      )}
+    >
+      {children}
+    </TextField>
+  );
+});
+
+const REQUIRED_ERROR = new Error("Required");
+export const useRequiredValidator = (
+  error?: string | InvalidResponse
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Validator<any> =>
+  useMemo(() => {
+    const requiredError = error
+      ? typeof error === "string"
+        ? new Error(error)
+        : error
+      : REQUIRED_ERROR;
+
+    return (_, { form, name }) => {
+      const value = form.getFieldValue(name, false);
+      if (
+        value === undefined ||
+        value === null ||
+        (typeof value === "string" && value.trim() === "")
+      ) {
+        return requiredError;
+      }
+    };
+  }, [error]);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const requiredValidator: Validator<any> = (_, { form, name }) => {
+  const value = form.getFieldValue(name, false);
+  if (
+    value === undefined ||
+    value === null ||
+    (typeof value === "string" && value.trim() === "")
+  ) {
+    return REQUIRED_ERROR;
+  }
+};
+
+const GT_ZERO_ERROR = new RangeError("Must be greater than zero.");
+export const gtZero: Validator<Fraction> = (value) => {
+  if (value && value.compare(0) <= 0) {
+    return GT_ZERO_ERROR;
+  }
+};
+
+export const useRenderInputWithError = (
+  error?: Error | string | undefined,
+  renderInput = defaultInput
+) =>
+  useCallback<
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    NonNullable<TreeSelectProps<any, any, any, any, any>["renderInput"]>
+  >(
+    (params) =>
+      renderInput({
+        ...params,
+        ...(error
+          ? {
+              error: true,
+              helperText: typeof error === "string" ? error : error.message,
+            }
+          : {}),
+      }),
+    [error, renderInput]
+  );
+
+export const useRenderInputWithLabel = (
+  label?: string,
+  renderInput = defaultInput
+) =>
+  useCallback<
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    NonNullable<TreeSelectProps<any, any, any, any, any>["renderInput"]>
+  >(
+    (params) =>
+      renderInput({
+        label,
+        ...params,
+      }),
+    [label, renderInput]
+  );

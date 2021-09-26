@@ -152,9 +152,8 @@ export const iterableToAsyncIterable = function <
   return _iterableToAsyncIterable_(iterable as IterableFns<T, TReturn, TNext>);
 };
 
-export type IterateOwnKeyValuesIterableIterator<
-  TObj extends object
-> = IterableIterator<[keyof TObj, TObj[keyof TObj]]>;
+export type IterateOwnKeyValuesIterableIterator<TObj extends object> =
+  IterableIterator<[keyof TObj, TObj[keyof TObj]]>;
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 
@@ -246,9 +245,8 @@ export const asyncGeneratorChain = async function* <
   const returnResults: Promise<TReturn>[] = [];
 
   const asyncIterableIterator = (() => {
-    let [asyncIterableIterator, returnPromise] = resolveWithAsyncReturn(
-      srcIterable
-    );
+    let [asyncIterableIterator, returnPromise] =
+      resolveWithAsyncReturn(srcIterable);
 
     returnResults.push(returnPromise);
 

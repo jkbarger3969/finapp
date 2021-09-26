@@ -1,75 +1,128 @@
-union PaymentMethodAuthorizedEntity = Person | Business | Department
-
-type PaymentMethodAuthorization {
-  owner: Boolean!
-  entity: PaymentMethodAuthorizedEntity
+# Cards
+enum PaymentCardType {
+  VISA
+  MASTER_CARD
+  AMERICAN_EXPRESS
+  DISCOVER
 }
 
-type PaymentMethod {
-  id: ID!
-  active: Boolean!
-  refId: String
-  name: String!
-  parent: PaymentMethod
-  ancestors: [PaymentMethod!]!
-  children: [PaymentMethod!]!
-  allowChildren: Boolean!
-  authorization: [PaymentMethodAuthorization!]!
+interface PaymentCardInterface {
+  trailingDigits: String!
+  type: PaymentCardType!
 }
 
-input PaymentMethodWhereParentInput {
-  eq: ID
-  ne: ID
-  in: [ID]
-  nin: [ID]
+type PaymentCard implements PaymentCardInterface {
+  trailingDigits: String!
+  type: PaymentCardType!
 }
 
-input PaymentMethodWhereRefIdInput {
-  eq: String
-  ne: String
-  in: [String]
-  nin: [String]
+input PaymentCardInput {
+  trailingDigits: String!
+  type: PaymentCardType!
 }
 
-input PaymentMethodWhereNameInput {
-  eq: String
-  ne: String
-  in: [String]
-  nin: [String]
+# Checks
+interface PaymentCheckInterface {
+  checkNumber: String!
 }
 
-input PaymentMethodWhereInput {
-  active: Boolean
-  refId: PaymentMethodWhereRefIdInput
-  name: PaymentMethodWhereNameInput
-  hasParent: Boolean
-  parent: PaymentMethodWhereParentInput
-  or: [PaymentMethodWhereInput]
-  and: [PaymentMethodWhereInput]
+type PaymentCheck implements PaymentCheckInterface {
+  checkNumber: String!
 }
 
-input PaymentMethodAddFields {
-  active: Boolean!
-  refId: String
-  name: String!
-  parent: ID! #Do NOT allow root level payment methods
+input PaymentCheckInput {
+  checkNumber: String!
 }
 
-input PaymentMethodUpdateFields {
-  active: Boolean
-  refId: String
-  name: String
+# Base Payment Method
+interface PaymentMethodInterface {
+  currency: Currency!
 }
 
-extend type Query {
-  paymentMethods(where: PaymentMethodWhereInput): [PaymentMethod!]!
-  paymentMethod(id: ID!): PaymentMethod
+type PaymentMethodCard implements PaymentMethodInterface {
+  card: PaymentCardInterface!
+  currency: Currency!
 }
 
-extend type Mutation {
-  paymentMethodUpdate(
-    id: ID!
-    fields: PaymentMethodUpdateFields!
-  ): PaymentMethod!
-  paymentMethodAdd(fields: PaymentMethodAddFields!): PaymentMethod!
+input PaymentMethodCardInput {
+  card: PaymentCardInput!
+  currency: Currency!
+}
+
+input PaymentMethodAccountCardInput {
+  """
+  id from AccountCard
+  """
+  card: ID!
+  currency: Currency!
+}
+
+type PaymentMethodCheck implements PaymentMethodInterface {
+  currency: Currency!
+  check: PaymentCheckInterface!
+}
+
+input PaymentMethodCheckInput {
+  currency: Currency!
+  check: PaymentCheckInput!
+}
+
+input PaymentMethodAccountCheckInput {
+  currency: Currency!
+  check: AccountCheckInput!
+}
+
+type PaymentMethodCash implements PaymentMethodInterface {
+  currency: Currency!
+}
+
+input PaymentMethodCashInput {
+  currency: Currency!
+}
+
+type PaymentMethodOnline implements PaymentMethodInterface {
+  currency: Currency!
+}
+
+input PaymentMethodOnlineInput {
+  currency: Currency!
+}
+
+type PaymentMethodCombination implements PaymentMethodInterface {
+  currency: Currency!
+}
+
+input PaymentMethodCombinationInput {
+  currency: Currency!
+}
+
+type PaymentMethodUnknown implements PaymentMethodInterface {
+  currency: Currency!
+}
+
+input PaymentMethodUnknownInput {
+  currency: Currency!
+}
+
+enum PaymentMethodType {
+  CARD
+  CHECK
+  CASH
+  ONLINE
+  COMBINATION
+  UNKNOWN
+}
+
+"""
+One field is required and fields are mutually exclusive..
+"""
+input UpsertPaymentMethod {
+  card: PaymentMethodCardInput
+  accountCard: PaymentMethodAccountCardInput
+  check: PaymentMethodCheckInput
+  accountCheck: PaymentMethodAccountCheckInput
+  cash: PaymentMethodCashInput
+  online: PaymentMethodOnlineInput
+  combination: PaymentMethodCombinationInput
+  unknown: PaymentMethodUnknownInput
 }

@@ -7,30 +7,34 @@ type Business {
   id: ID!
   name: String!
   budgets: [Budget!]!
-  departments: [Department!]!
+  """
+  When root is `true`, only departments who's direct parent is the the Business
+  are returned.
+  """
+  departments(root: Boolean = false): [Department!]!
   vendor: Vendor
 }
 
-input BusinessAddFields {
+input NewBusiness {
   name: String!
 }
 
-input BusinessesWhereInput {
-  eq: ID
-  ne: ID
-  in: [ID!]
-  nin: [ID!]
-  name: WhereRegexInput
-  and: [BusinessesWhereInput!]
-  or: [BusinessesWhereInput!]
-  nor: [BusinessesWhereInput!]
+input BusinessesWhere {
+  # Fields
+  id: WhereId
+  name: WhereRegex
+
+  # Logic
+  and: [BusinessesWhere!]
+  or: [BusinessesWhere!]
+  nor: [BusinessesWhere!]
 }
 
 extend type Query {
-  businesses(where: BusinessesWhereInput): [Business!]!
+  businesses(where: BusinessesWhere): [Business!]!
   business(id: ID!): Business!
 }
 
 extend type Mutation {
-  addBusiness(fields: BusinessAddFields!): Business!
+  addNewBusiness(input: NewBusiness!): Business!
 }

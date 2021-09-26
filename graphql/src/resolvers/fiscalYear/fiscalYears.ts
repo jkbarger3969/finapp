@@ -1,203 +1,97 @@
-import { ObjectId } from "mongodb";
+import { FilterQuery } from "mongodb";
 
-import {
-  QueryResolvers,
-  FiscalYearWhereInput as Where,
-  FiscalYearWhereHasDate,
-} from "../../graphTypes";
-import { addId } from "../utils/mongoUtils";
-import { transmutationStage } from "./utils";
-import filterQueryCreator, {
-  FieldAndConditionGenerator,
-  FieldAndCondition,
-} from "../utils/filterQuery/filter";
-import { Context } from "vm";
-import { OpsParser } from "../utils/filterQuery/querySelectors/types";
-import parseComparisonOps from "../utils/filterQuery/querySelectors/parseComparisonOps";
-import {
-  resolveWithAsyncReturn,
-  iterateOwnKeyValues,
-} from "../../utils/iterableFns";
-import parseOps from "../utils/filterQuery/querySelectors/parseOps";
-import parseGQLMongoRegex from "../utils/filterQuery/gqlMongoRegex";
-import { json } from "express";
+import { QueryResolvers, FiscalYearsWhere } from "../../graphTypes";
+import { iterateOwnKeyValues, iterateOwnKeys } from "../../utils/iterableFns";
 
-const parseWhereFiscalYearHasDate = function* (
-  opValueIter: Iterable<
-    [
-      keyof FiscalYearWhereHasDate,
-      FiscalYearWhereHasDate[keyof FiscalYearWhereHasDate]
-    ]
-  >
-): IterableIterator<FieldAndCondition> {
-  for (const [op, opValue] of opValueIter) {
-    switch (op) {
-      case "eq":
-        if (opValue) {
-          yield {
-            field: "$and",
-            condition: [
-              {
-                begin: {
-                  $lte: new Date(opValue as FiscalYearWhereHasDate[typeof op]),
-                },
-                end: {
-                  $gt: new Date(opValue as FiscalYearWhereHasDate[typeof op]),
-                },
-              },
-            ],
-          };
-        }
+import { whereRegex, whereId } from "../utils/queryUtils";
+
+export const whereFiscalYear = (
+  fiscalYearWhere: FiscalYearsWhere
+): FilterQuery<unknown> => {
+  const filterQuery: FilterQuery<unknown> = {};
+
+  for (const whereKey of iterateOwnKeys(fiscalYearWhere)) {
+    switch (whereKey) {
+      case "id":
+        filterQuery["_id"] = whereId(fiscalYearWhere[whereKey]);
         break;
-      case "ne":
-        if (opValue) {
-          yield {
-            field: "$and",
-            condition: [
-              {
-                $not: {
-                  begin: {
-                    $lte: new Date(
-                      opValue as FiscalYearWhereHasDate[typeof op]
-                    ),
-                  },
-                  end: {
-                    $gt: new Date(opValue as FiscalYearWhereHasDate[typeof op]),
-                  },
-                },
-              },
-            ],
-          };
-        }
-        break;
-      case "in":
-        if (opValue) {
-          const $or: unknown[] = [];
-          for (const { field, condition } of parseWhereFiscalYearHasDate(
-            (function* () {
-              for (const opV of opValue as FiscalYearWhereHasDate[typeof op]) {
-                yield ["eq", opV] as [
-                  keyof FiscalYearWhereHasDate,
-                  FiscalYearWhereHasDate[keyof FiscalYearWhereHasDate]
-                ];
-              }
-            })()
-          )) {
-            $or.push({ [field]: condition });
-          }
-
-          yield {
-            field: "$and",
-            condition: [{ $or }],
-          };
-        }
-        break;
-      case "nin":
-        if (opValue) {
-          const $and: unknown[] = [];
-          for (const { field, condition } of parseWhereFiscalYearHasDate(
-            (function* () {
-              for (const opV of opValue as FiscalYearWhereHasDate[typeof op]) {
-                yield ["ne", opV] as [
-                  keyof FiscalYearWhereHasDate,
-                  FiscalYearWhereHasDate[keyof FiscalYearWhereHasDate]
-                ];
-              }
-            })()
-          )) {
-            $and.push({ [field]: condition });
-          }
-
-          yield {
-            field: "$and",
-            condition: $and,
-          };
-        }
-        break;
-    }
-  }
-};
-
-const parseWhereFiscalYearId: Readonly<OpsParser<Where, Context>[]> = [
-  parseComparisonOps<Where, Context>((opVal, op) => {
-    switch (op) {
-      case "eq":
-      case "ne":
-        return new ObjectId(opVal as Where[typeof op]);
-      case "in":
-      case "nin":
-        return (opVal as Where[typeof op]).map((id) => new ObjectId(id));
-      default:
-        return opVal;
-    }
-  }),
-] as const;
-
-export const fieldAndCondGen: FieldAndConditionGenerator<
-  Where,
-  Context
-> = async function* (keyValueIter, opts) {
-  const [asyncIterator, asyncReturn] = resolveWithAsyncReturn(
-    parseOps(true, keyValueIter, parseWhereFiscalYearId, opts)
-  );
-
-  for await (const [key, value] of asyncIterator) {
-    switch (key) {
       case "name":
-        if (value) {
-          yield {
-            field: "name",
-            condition: parseGQLMongoRegex(value as Where[typeof key]),
-          };
+        filterQuery["name"] = whereRegex(fiscalYearWhere[whereKey]);
+        break;
+      case "date":
+        if (!("$and" in fiscalYears)) {
+          filterQuery.$and = [];
+        }
+
+        for (const [dateKey, date] of iterateOwnKeyValues(
+          fiscalYearWhere[whereKey]
+        )) {
+          switch (dateKey) {
+            case "eq":
+              filterQuery.$and.push({
+                begin: { $lte: date },
+                end: { $gt: date },
+              });
+              break;
+            case "ne":
+              filterQuery.$and.push({
+                $or: [{ begin: { $gt: date } }, { end: { $lte: date } }],
+              });
+              break;
+            case "gt":
+              filterQuery.$and.push({
+                begin: { $gt: date },
+              });
+              break;
+            case "gte":
+              filterQuery.$and.push({
+                end: { $gt: date },
+              });
+              break;
+            case "lt":
+              filterQuery.$and.push({
+                end: { $lte: date },
+              });
+              break;
+            case "lte":
+              filterQuery.$and.push({
+                begin: { $lte: date },
+              });
+              break;
+          }
         }
         break;
-      case "hasDate":
-        if (value) {
-          yield* parseWhereFiscalYearHasDate(
-            iterateOwnKeyValues(value as Where[typeof key])
-          );
+      case "and":
+        if (!("$and" in fiscalYears)) {
+          filterQuery.$and = [];
         }
+
+        filterQuery.$and.push(
+          ...fiscalYearWhere[whereKey].map((where) => whereFiscalYear(where))
+        );
+        break;
+      case "or":
+        filterQuery.$or = fiscalYearWhere[whereKey].map((where) =>
+          whereFiscalYear(where)
+        );
+        break;
+      case "nor":
+        filterQuery.$nor = fiscalYearWhere[whereKey].map((where) =>
+          whereFiscalYear(where)
+        );
         break;
     }
   }
 
-  const condition = await asyncReturn;
-
-  // Check that operators have been set on condition.
-  if (Object.keys(condition).length > 0) {
-    yield {
-      field: "_id",
-      condition,
-    };
-  }
+  return filterQuery;
 };
 
-const fiscalYears: QueryResolvers["fiscalYears"] = async (
-  parent,
-  args,
-  context,
-  info
+export const fiscalYears: QueryResolvers["fiscalYears"] = (
+  _,
+  { where },
+  { db }
 ) => {
-  const pipeline: Record<string, unknown>[] = [];
+  const query = where ? whereFiscalYear(where) : {};
 
-  await Promise.all([
-    (async () => {
-      if (!args.where) {
-        return;
-      }
-
-      const $match = await filterQueryCreator(
-        args.where,
-        fieldAndCondGen,
-        context
-      );
-      pipeline.push({ $match });
-    })(),
-  ]);
-
-  pipeline.push(addId, transmutationStage);
-
-  return context.db.collection("fiscalYears").aggregate(pipeline).toArray();
+  return db.collection("fiscalYears").find(query).toArray();
 };
-
-export default fiscalYears;

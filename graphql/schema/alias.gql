@@ -1,0 +1,31 @@
+union AliasTarget = Category | Department
+
+enum AliasType {
+  ALIAS
+  PREFIX_DESCENDANTS
+  POSTFIX_DESCENDANTS
+}
+
+type Alias {
+  id: ID!
+  target: AliasTarget!
+  name: String!
+  type: AliasType!
+}
+input AliasesWhere {
+  # Fields
+  id: WhereId
+  target: WhereNode
+  name: WhereRegex
+  type: AliasType
+
+  # Logic
+  and: [AliasesWhere!]
+  or: [AliasesWhere!]
+  nor: [AliasesWhere!]
+}
+
+extend type Query {
+  alias(id: ID!): Alias
+  aliases(where: AliasesWhere): [Alias!]!
+}

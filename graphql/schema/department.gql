@@ -4,52 +4,39 @@ type Department {
   id: ID!
   name: String!
   code: String
-  """
-  Budgets are the FIRST Budget per FiscalYear assigned to
-  the Department or an ancestor of the Department.
-  """
   budgets: [Budget!]!
   business: Business!
   parent: DepartmentAncestor!
-  ancestors: [DepartmentAncestor!]!
+  children: [Department!]!
+  ancestors(
+    """
+    Set an alterative root for the `ancestor` path.
+    Default: `Business`.
+    Behavior: ancestors <= the shortest path to an ancestor matched by `DepartmentsWhere`.  If no ancestors are matched in the path, no ancestors are returned i.e. the `Department` is outside of the new root's tree.
+    """
+    root: DepartmentsWhere
+  ): [DepartmentAncestor!]!
   descendants: [Department!]!
   virtualRoot: Boolean
+  aliases: [Alias!]!
 }
 
-enum DepartmentAncestorType {
-  BUSINESS
-  DEPARTMENT
-}
+input DepartmentsWhere {
+  # Felids
+  id: WhereTreeId
+  name: WhereRegex
+  code: String
+  parent: WhereNode
+  "Matches all departments that are a decedents of the business."
+  business: ID
 
-input DepartmentAncestorInput {
-  id: ID!
-  type: DepartmentAncestorType!
-}
-
-input DepartmentsWhereAncestor {
-  eq: DepartmentAncestorInput
-  ne: DepartmentAncestorInput
-  in: [DepartmentAncestorInput!]
-  nin: [DepartmentAncestorInput!]
-}
-
-input DepartmentsWhereInput {
-  eq: ID
-  ne: ID
-  in: [ID!]
-  nin: [ID!]
-  name: WhereRegexInput
-  parent: DepartmentsWhereAncestor
-  and: [DepartmentsWhereInput!]
-  or: [DepartmentsWhereInput!]
-  nor: [DepartmentsWhereInput!]
-}
-
-input DepartmentAddFields {
-  name: String!
+  # Logic Operators
+  and: [DepartmentsWhere!]
+  or: [DepartmentsWhere!]
+  nor: [DepartmentsWhere!]
 }
 
 type Query {
-  departments(where: DepartmentsWhereInput): [Department!]!
+  departments(where: DepartmentsWhere): [Department!]!
   department(id: ID!): Department!
 }

@@ -1,8 +1,9 @@
 import { MongoClient, Db, ObjectId, ClientSession } from "mongodb";
-import { PubSub } from "apollo-server";
 
-export interface NodeValue {
-  node: ObjectId;
+import { AccountingDb } from "./dataSources/accountingDb/accountingDb";
+
+export interface NodeValue<Type extends string = string> {
+  type: Type;
   id: ObjectId;
 }
 
@@ -13,19 +14,26 @@ export interface NodeInfo {
   collection: string;
 }
 
-export interface Context {
+export type DataSources = {
+  accountingDb: AccountingDb;
+};
+
+interface ContextBase {
   client: MongoClient;
   db: Db;
-  nodeMap: {
-    id: Map<string, NodeInfo>;
-    typename: Map<string, NodeInfo>;
-  };
   user?: {
     id: ObjectId;
   };
-  pubSub: PubSub;
+  reqDateTime: Date;
+  // pubSub: PubSub;
   ephemeral?: {
     docHistoryDate?: Date;
     session?: ClientSession;
   };
 }
+
+export type Context<TDataSources = DataSources> = TDataSources extends
+  | undefined
+  | null
+  ? ContextBase
+  : { dataSources: TDataSources } & ContextBase;
