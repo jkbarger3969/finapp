@@ -11,7 +11,6 @@ app.use(
   "^/graphql",
   createProxyMiddleware({
     target: "http://localhost:4000",
-    ws: true,
   })
 );
 
