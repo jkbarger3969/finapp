@@ -11,7 +11,6 @@ app.use(
   "^/graphql",
   proxy({
     target: "http://localhost:4000",
-    ws: true,
   })
 );
 

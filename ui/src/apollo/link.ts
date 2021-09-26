@@ -1,19 +1,15 @@
 import { BatchHttpLink } from "@apollo/client/link/batch-http";
-import { WebSocketLink } from "@apollo/client/link/ws";
 import { onError } from "@apollo/client/link/error";
 import { getMainDefinition } from "@apollo/client/utilities";
-import { ApolloLink } from "@apollo/client";
+import { ApolloLink, HttpLink } from "@apollo/client";
 
 const batchHttpLink = new BatchHttpLink({
   uri: "/graphql",
   credentials: "same-origin",
 });
 
-const wsLink = new WebSocketLink({
+const httpLink = new HttpLink({
   uri: `ws://${window.location.host}/graphql`,
-  options: {
-    reconnect: true,
-  },
 });
 
 const link = ApolloLink.from([
@@ -33,7 +29,7 @@ const link = ApolloLink.from([
         def.kind === "OperationDefinition" && def.operation === "subscription"
       );
     },
-    wsLink,
+    httpLink,
     batchHttpLink
   ),
 ]);
