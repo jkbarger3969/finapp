@@ -1,5 +1,4 @@
-import { QueryResolvers } from "../../graphTypes";
-import { Returns as BudgetReturns } from "./budget";
-export declare type Returns = BudgetReturns[];
-declare const budgets: QueryResolvers["budgets"];
-export default budgets;
+import { Db, FilterQuery } from "mongodb";
+import { QueryResolvers, BudgetsWhere } from "../../graphTypes";
+export declare const whereBudgets: (budgetWhere: BudgetsWhere, db: Db) => FilterQuery<unknown> | Promise<FilterQuery<unknown>>;
+export declare const budgets: QueryResolvers["budgets"];

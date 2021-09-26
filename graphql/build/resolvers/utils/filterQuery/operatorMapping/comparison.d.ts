@@ -22,5 +22,5 @@ declare const comparisonQueryGenerator: <TOpValue, TReturn>(opValueTransmutator?
     lte: "$lte";
     ne: "$ne";
     nin: "$nin";
-}>, "eq" | "gt" | "gte" | "in" | "lt" | "lte" | "ne" | "nin">) => QuerySelectorGenerator<string, TOpValue, TReturn>;
+}>, "gt" | "gte" | "lt" | "lte" | "eq" | "ne" | "in" | "nin">) => QuerySelectorGenerator<string, TOpValue, TReturn>;
 export default comparisonQueryGenerator;

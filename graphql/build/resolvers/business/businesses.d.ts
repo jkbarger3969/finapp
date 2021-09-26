@@ -1,5 +1,6 @@
-import { QueryResolvers } from "../../graphTypes";
+import { FilterQuery } from "mongodb";
+import { QueryResolvers, BusinessesWhere } from "../../graphTypes";
 import { Returns as BusinessReturns } from "./business";
 export declare type Returns = BusinessReturns[];
-declare const businesses: QueryResolvers["businesses"];
-export default businesses;
+export declare const whereBusiness: (businessWhere: BusinessesWhere) => FilterQuery<unknown>;
+export declare const businesses: QueryResolvers["businesses"];

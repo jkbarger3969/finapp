@@ -1,6 +1,8 @@
-import { Department, DepartmentResolvers as TDepartmentResolvers, DepartmentAncestorInput } from "../../graphTypes";
-import { Context } from "../../types";
-import { GraphQLResolveInfo } from "graphql/type";
-export declare const getDeptDescendants: (fromParent: DepartmentAncestorInput, context: Context, info: GraphQLResolveInfo) => Promise<Department[]>;
-declare const DepartmentResolvers: TDepartmentResolvers;
-export default DepartmentResolvers;
+import { BusinessDbRecord, DepartmentDbRecord } from "../../dataSources/accountingDb/types";
+import { DepartmentResolvers, DepartmentAncestorResolvers } from "../../graphTypes";
+export declare const DepartmentAncestor: DepartmentAncestorResolvers<{
+    dataSources: import("../../types").DataSources;
+} & import("../../types").ContextBase, BusinessDbRecord | DepartmentDbRecord>;
+export declare const Department: DepartmentResolvers<{
+    dataSources: import("../../types").DataSources;
+} & import("../../types").ContextBase, DepartmentDbRecord>;

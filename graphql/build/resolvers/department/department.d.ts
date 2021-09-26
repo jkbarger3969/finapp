@@ -5,5 +5,4 @@ export interface Returns {
     name: string;
     parent: NodeValue;
 }
-declare const department: QueryResolvers["department"];
-export default department;
+export declare const department: QueryResolvers["department"];

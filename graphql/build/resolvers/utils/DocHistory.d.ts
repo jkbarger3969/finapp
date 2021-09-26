@@ -1,135 +1,92 @@
 import { ObjectId } from "mongodb";
-export declare type PresentValueExpression<TDefaultValue = null> = {
-    readonly $ifNull: [{
-        readonly $arrayElemAt: [string, 0];
-    }, TDefaultValue];
-};
-export declare type PresentValueProjection<TDefaultValue = null> = {
-    readonly [field: string]: PresentValueExpression<TDefaultValue>;
-};
-export interface CreatedBy {
-    readonly node: ObjectId;
-    readonly id: ObjectId;
-}
+import { OmitProperties } from "ts-essentials";
 export interface HistoryObject<T> {
     readonly value: T;
-    readonly createdBy: CreatedBy;
+    readonly createdBy: ObjectId;
     readonly createdOn: Date;
 }
 export interface HistoricalRoot {
     readonly lastUpdate: Date;
     readonly createdOn: Date;
-    readonly createdBy: CreatedBy;
+    readonly createdBy: ObjectId;
 }
-export interface HistoricalDoc {
-    [field: string]: [HistoryObject<any>];
-}
-export declare type HistoricalRootDoc = HistoricalRoot & HistoricalDoc;
-export interface UpdateValue<T> {
-    readonly $each: [HistoryObject<T>];
-    readonly $position: 0;
-}
-export declare type UpdatePush = {
-    [field: string]: UpdateValue<any>;
+export declare type IDField<IsMongoRoot extends true | false = true> = IsMongoRoot extends true ? {
+    _id: ObjectId;
+} : {
+    id: ObjectId;
 };
-export declare type Update = {
-    $push: UpdatePush;
-    $set: {
-        readonly lastUpdate: Date;
-    } | {
-        [lastUpdateField: string]: Date;
-    };
-};
-declare class NewHistoricalDoc<T extends boolean> {
-    private readonly _docHistory_;
-    private readonly _doc_;
-    constructor(_docHistory_: DocHistory, withRootHistory: T);
-    addField<T>(field: string, value: T): this;
-    addFields(fieldValuesMap: Iterable<[string, any]>): this;
+export declare type IDFieldKeys = keyof IDField<true> | keyof IDField<false>;
+export declare type HistoricalDoc<IsRootDoc extends true | false, HistoricalFields extends Record<string, unknown>, Fields extends Record<string, unknown> | undefined = undefined, IsMongoRoot extends true | false = IsRootDoc> = Omit<{
+    [K in keyof HistoricalFields]: HistoryObject<HistoricalFields[K]>[];
+}, keyof HistoricalRoot | IDFieldKeys> & (Fields extends undefined ? {} : Omit<Fields, keyof HistoricalFields | keyof HistoricalRoot>) & (IsRootDoc extends true ? HistoricalRoot & IDField<IsMongoRoot> : {});
+export declare type ExtractHistoricalFields<THistoricalDoc> = OmitProperties<{
+    [K in string & keyof THistoricalDoc]: THistoricalDoc[K] extends HistoryObject<infer T>[] ? T : never;
+}, never>;
+export declare type ExtractFields<THistoricalDoc> = OmitProperties<{
+    [K in string & keyof Omit<THistoricalDoc, keyof HistoricalRoot | keyof ExtractHistoricalFields<THistoricalDoc>>]: THistoricalDoc[K];
+}, never>;
+export declare type ExtractIsRootDoc<THistoricalDoc> = Extract<string & keyof THistoricalDoc, IDFieldKeys> extends never ? false : true;
+export declare class NewHistoricalDoc<THistoricalDoc, IsRootDoc extends true | false = ExtractIsRootDoc<THistoricalDoc>, HistoricalFields extends ExtractHistoricalFields<THistoricalDoc> = ExtractHistoricalFields<THistoricalDoc>, Fields extends ExtractFields<THistoricalDoc> = ExtractFields<THistoricalDoc>> {
+    #private;
+    constructor({ docHistory, isRootDoc, }: {
+        docHistory: DocHistory;
+        isRootDoc: IsRootDoc;
+    });
+    addHistoricalField<K extends Exclude<keyof HistoricalFields, keyof HistoricalRoot | IDFieldKeys>>(field: K, value: HistoricalFields[K]): this;
     /**
      * Utility method to set a straight key/value to the historical doc.
      */
-    addNonHistoricalFieldValue(field: string, value: unknown): this;
-    doc(): T extends true ? HistoricalRootDoc : HistoricalDoc;
+    addFieldValued<K extends Exclude<keyof Fields, keyof HistoricalFields | keyof HistoricalRoot>>(field: K, value: Fields[K]): this;
+    get doc(): HistoricalDoc<IsRootDoc, HistoricalFields, Fields, IsRootDoc>;
+    valueOf(): HistoricalDoc<IsRootDoc, HistoricalFields, Fields>;
+    toString(): string;
 }
-declare class UpdateHistoricalDoc {
-    private readonly _docHistory_;
-    private readonly _update_;
-    private readonly _prependUpdateFields_;
-    private _hasUpdate_;
-    constructor(_docHistory_: DocHistory, args?: {
-        prependUpdateFields?: string;
-        prependLastUpdate?: string;
-    } | string);
+export interface HistoricalFieldUpdateValue<T> {
+    readonly $each: [HistoryObject<T>];
+    readonly $position: 0;
+}
+declare type PrefixFieldPath<T extends Record<string, unknown>, FieldPrefix extends string | undefined = undefined> = {
+    [K in string & keyof T as FieldPrefix extends undefined ? K : `${FieldPrefix}.${K}`]: T[K];
+};
+export declare type HistoricalFieldUpdate<HistoricalFields extends Record<string, unknown>, FieldPrefix extends string | undefined = undefined> = PrefixFieldPath<{
+    [K in keyof HistoricalFields]?: HistoricalFieldUpdateValue<HistoricalFields[K]>;
+}, FieldPrefix>;
+export declare type Update<IsRootDoc extends true | false, HistoricalFields extends Record<string, unknown>, Fields extends Record<string, unknown> | undefined = undefined, FieldPrefix extends string | undefined = undefined> = {
+    $push: HistoricalFieldUpdate<Omit<HistoricalFields, keyof HistoricalRoot | IDFieldKeys>, FieldPrefix>;
+} & (Fields extends undefined ? IsRootDoc extends true ? {
+    $set: PrefixFieldPath<Pick<HistoricalRoot, "lastUpdate">, FieldPrefix>;
+} : {} : IsRootDoc extends true ? {
+    $set: Partial<PrefixFieldPath<Omit<Fields, keyof HistoricalFields | keyof HistoricalRoot | IDFieldKeys>, FieldPrefix> & PrefixFieldPath<Pick<HistoricalRoot, "lastUpdate">, FieldPrefix>>;
+} : {
+    $set: Partial<PrefixFieldPath<Omit<Fields, keyof HistoricalFields | keyof HistoricalRoot | IDFieldKeys>, FieldPrefix>>;
+});
+export declare class UpdateHistoricalDoc<THistoricalDoc, FieldPrefix extends string | undefined = undefined, IsRootDoc extends true | false = ExtractIsRootDoc<THistoricalDoc>, HistoricalFields extends ExtractHistoricalFields<THistoricalDoc> = ExtractHistoricalFields<THistoricalDoc>, Fields extends ExtractFields<THistoricalDoc> = ExtractFields<THistoricalDoc>> {
+    #private;
+    constructor({ docHistory, isRootDoc, fieldPrefix, }: {
+        docHistory: DocHistory;
+        isRootDoc: IsRootDoc;
+        fieldPrefix?: FieldPrefix;
+    });
     get hasUpdate(): boolean;
-    updateField<T>(field: string, value: T): this;
-    updateFields(fieldValuesMap: Iterable<[string, any]>): this;
-    update(): Update;
+    updateHistoricalField<K extends Exclude<string & keyof HistoricalFields, keyof HistoricalRoot | IDFieldKeys>>(field: K, value: HistoricalFields[K]): this;
+    /**
+     * Utility method to set a straight key/value on the update.
+     */
+    updateFieldValue<K extends Exclude<string & keyof Fields, keyof HistoricalFields | keyof HistoricalRoot | IDFieldKeys>>(field: K, value: Fields[K]): this;
+    get update(): Update<IsRootDoc, HistoricalFields, Fields, FieldPrefix>;
+    valueOf(): Update<IsRootDoc, HistoricalFields, Fields, FieldPrefix> | null;
+    toString(): string;
+    static getFieldName<T extends string, FieldPrefix extends string | undefined>(field: T, fieldPrefix?: FieldPrefix): FieldPrefix extends undefined ? T : `${FieldPrefix}.${T}`;
 }
-export interface PresentValueExpressionOpts<TDefaultValue = null> {
-    defaultValue?: TDefaultValue;
-    asVar?: string;
-}
-export default class DocHistory {
-    private readonly _by_;
-    private readonly _date_;
-    constructor(_by_: CreatedBy, _date_?: Date);
+export declare class DocHistory {
+    #private;
+    constructor({ by, date }: {
+        by: ObjectId;
+        date?: Date;
+    });
     get date(): Date;
-    get by(): CreatedBy;
-    rootHistory(): HistoricalRoot;
-    newHistoricalDoc<T extends boolean>(withRootHistory: T): NewHistoricalDoc<T>;
-    updateHistoricalDoc(prependFields?: ConstructorParameters<typeof UpdateHistoricalDoc>[1]): UpdateHistoricalDoc;
+    get by(): ObjectId;
+    get rootHistory(): HistoricalRoot;
     historyObject<T>(value: T): HistoryObject<T>;
-    newValue<T>(value: T): [HistoryObject<T>];
-    getPresentValues(presentValueMap: Iterable<string>): PresentValueProjection<null>;
-    static getPresentValuesAllFields(args?: {
-        path?: string;
-        exclude?: Iterable<string>;
-    }): ({
-        $addFields: {
-            [x: string]: {
-                $arrayToObject: {
-                    $map: {
-                        input: {
-                            $objectToArray: string;
-                        };
-                        as: string;
-                        in: {
-                            $cond: {
-                                if: {
-                                    $nin?: (string | string[])[];
-                                    $eq: (string | {
-                                        $type: string;
-                                    })[];
-                                };
-                                then: {
-                                    k: string;
-                                    v: {
-                                        $ifNull: {
-                                            $arrayElemAt: (string | number)[];
-                                        }[];
-                                    };
-                                };
-                                else: string;
-                            };
-                        };
-                    };
-                };
-            };
-        };
-        $replaceRoot?: undefined;
-    } | {
-        $replaceRoot: {
-            newRoot: string;
-        };
-        $addFields?: undefined;
-    } | {
-        $addFields: {
-            [x: string]: string;
-        };
-        $replaceRoot?: undefined;
-    })[];
-    static getPresentValueExpression<TDefaultValue = null>(key: string, opts?: PresentValueExpressionOpts<TDefaultValue>): PresentValueExpression<TDefaultValue>;
-    static getPresentValues<TDefaultValue = null>(presentValueMap: Iterable<string | [path: string, projectionKey: string] | [string, PresentValueExpressionOpts<TDefaultValue>]>, opts?: PresentValueExpressionOpts<TDefaultValue>): PresentValueProjection<TDefaultValue>;
 }
 export {};

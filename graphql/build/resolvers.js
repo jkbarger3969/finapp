@@ -1,99 +1,85 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-// import { Budget, budgets } from "./resolvers/budget";
-const budget_1 = require("./resolvers/budget/budget");
-const budgets_1 = require("./resolvers/budget/budgets");
-const BudgetResolvers_1 = require("./resolvers/budget/BudgetResolvers");
+const alias_1 = require("./resolvers/alias");
+const account_1 = require("./resolvers/account");
+const budget_1 = require("./resolvers/budget");
 const business_1 = require("./resolvers/business");
-const business_2 = require("./resolvers/business/business");
-const businesses_1 = require("./resolvers/business/businesses");
-const BusinessResolvers_1 = require("./resolvers/business/BusinessResolvers");
-// import { Department, departments, department } from "./resolvers/departments";
-const department_1 = require("./resolvers/department/department");
-const departments_1 = require("./resolvers/department/departments");
-const DepartmentResolvers_1 = require("./resolvers/department/DepartmentResolvers");
-const journalEntry_1 = require("./resolvers/journalEntry");
-const journalEntries_1 = require("./resolvers/journalEntry/journalEntries");
-const journalEntry_2 = require("./resolvers/journalEntry/journalEntry");
-const journalEntryAdd_1 = require("./resolvers/journalEntry/journalEntryAdd");
-const journalEntryUpdate_1 = require("./resolvers/journalEntry/journalEntryUpdate");
-const journalEntryRefund_1 = require("./resolvers/journalEntry/journalEntryRefund");
-const journalEntryAddRefund_1 = require("./resolvers/journalEntry/journalEntryAddRefund");
-const journalEntryUpdateRefund_1 = require("./resolvers/journalEntry/journalEntryUpdateRefund");
-const journalEntryDeleteRefund_1 = require("./resolvers/journalEntry/journalEntryDeleteRefund");
-const journalEntryAddItem_1 = require("./resolvers/journalEntry/journalEntryAddItem");
-const journalEntryUpdateItem_1 = require("./resolvers/journalEntry/journalEntryUpdateItem");
-const journalEntryDeleteItem_1 = require("./resolvers/journalEntry/journalEntryDeleteItem");
-const journalEntryItem_1 = require("./resolvers/journalEntry/journalEntryItem");
-const JournalEntryResolver_1 = require("./resolvers/journalEntry/JournalEntryResolver");
-const JournalEntryRefundResolver_1 = require("./resolvers/journalEntry/JournalEntryRefundResolver");
-const JournalEntryItemResolver_1 = require("./resolvers/journalEntry/JournalEntryItemResolver");
-const journalEntryUpserted_1 = require("./resolvers/journalEntry/journalEntryUpserted");
-const journalEntrySource_1 = require("./resolvers/journalEntrySource");
-const journalEntryCategory_1 = require("./resolvers/journalEntryCategory");
-const journalEntryCategories_1 = require("./resolvers/journalEntryCategory/journalEntryCategories");
-const paymentMethods_1 = require("./resolvers/paymentMethod/paymentMethods");
-const paymentMethod_1 = require("./resolvers/paymentMethod/paymentMethod");
-const paymentMethodAdd_1 = require("./resolvers/paymentMethod/paymentMethodAdd");
-const paymentMethodUpdate_1 = require("./resolvers/paymentMethod/paymentMethodUpdate");
-const PaymehtMethodResolver_1 = require("./resolvers/paymentMethod/PaymehtMethodResolver");
+const department_1 = require("./resolvers/department");
+const entity_1 = require("./resolvers/entity");
+const entry_1 = require("./resolvers/entry");
+const paymentMethod_1 = require("./resolvers/paymentMethod");
+const entrySource_1 = require("./resolvers/entrySource");
+const index_1 = require("./resolvers/category/index");
 const person_1 = require("./resolvers/person");
-const people_1 = require("./resolvers/person/people");
-const person_2 = require("./resolvers/person/person");
-const fiscalYear_1 = require("./resolvers/fiscalYear/fiscalYear");
-const fiscalYears_1 = require("./resolvers/fiscalYear/fiscalYears");
+const fiscalYear_1 = require("./resolvers/fiscalYear");
 const user_1 = require("./resolvers/user");
+const scalars_1 = require("./resolvers/scalars");
 const resolvers = {
-    Budget: BudgetResolvers_1.default,
-    Business: BusinessResolvers_1.default,
-    Department: DepartmentResolvers_1.default,
-    JournalEntry: JournalEntryResolver_1.default,
-    JournalEntryRefund: JournalEntryRefundResolver_1.default,
-    JournalEntryItem: JournalEntryItemResolver_1.default,
-    PaymentMethod: PaymehtMethodResolver_1.default,
-    JournalEntryCategory: journalEntryCategory_1.JournalEntryCategory,
+    AccountInterface: account_1.AccountInterface,
+    AccountWithCardsInterface: account_1.AccountWithCardsInterface,
+    AccountCard: account_1.AccountCard,
+    AccountCheck: account_1.AccountCheck,
+    AccountChecking: account_1.AccountChecking,
+    AccountCreditCard: account_1.AccountCreditCard,
+    Alias: alias_1.Alias,
+    AliasTarget: alias_1.AliasTarget,
+    Date: scalars_1.dateScalar,
+    Rational: scalars_1.rationalScalar,
+    Budget: budget_1.Budget,
+    BudgetOwner: budget_1.BudgetOwner,
+    Business: business_1.Business,
+    Department: department_1.Department,
+    DepartmentAncestor: department_1.DepartmentAncestor,
+    Entity: entity_1.Entity,
+    Entry: entry_1.Entry,
+    EntryRefund: entry_1.EntryRefund,
+    EntryItem: entry_1.EntryItem,
+    FiscalYear: fiscalYear_1.FiscalYear,
+    PaymentCardInterface: paymentMethod_1.PaymentCardInterface,
+    PaymentCheckInterface: paymentMethod_1.PaymentCheckInterface,
+    PaymentMethodInterface: paymentMethod_1.PaymentMethodInterface,
+    PaymentMethodCard: paymentMethod_1.PaymentMethodCard,
+    Person: person_1.Person,
+    Category: index_1.Category,
     User: user_1.User,
     Query: {
-        budget: budget_1.default,
-        businesses: businesses_1.default,
-        business: business_2.default,
-        budgets: budgets_1.default,
-        journalEntry: journalEntry_2.default,
-        journalEntryRefund: journalEntryRefund_1.default,
-        journalEntryItem: journalEntryItem_1.default,
-        journalEntries: journalEntries_1.default,
-        journalEntrySources: journalEntrySource_1.journalEntrySources,
-        journalEntryCategories: journalEntryCategories_1.default,
-        journalEntryCategory: journalEntryCategory_1.journalEntryCategory,
-        departments: departments_1.default,
-        department: department_1.default,
-        paymentMethods: paymentMethods_1.default,
-        paymentMethod: paymentMethod_1.default,
-        person: person_2.default,
-        people: people_1.default,
-        fiscalYear: fiscalYear_1.default,
-        fiscalYears: fiscalYears_1.default,
+        account: account_1.account,
+        accounts: account_1.accounts,
+        accountCard: account_1.accountCard,
+        accountCards: account_1.accountCards,
+        alias: alias_1.alias,
+        aliases: alias_1.aliases,
+        budget: budget_1.budget,
+        businesses: business_1.businesses,
+        business: business_1.business,
+        budgets: budget_1.budgets,
+        entities: entity_1.entities,
+        entry: entry_1.entry,
+        entryRefund: entry_1.entryRefund,
+        entries: entry_1.entries,
+        entryRefunds: entry_1.entryRefunds,
+        sources: entrySource_1.sources,
+        categories: index_1.categories,
+        category: index_1.category,
+        departments: department_1.departments,
+        department: department_1.department,
+        person: person_1.person,
+        people: person_1.people,
+        fiscalYear: fiscalYear_1.fiscalYear,
+        fiscalYears: fiscalYear_1.fiscalYears,
     },
     Mutation: {
-        journalEntryAdd: journalEntryAdd_1.default,
-        journalEntryUpdate: journalEntryUpdate_1.default,
-        journalEntryDelete: journalEntry_1.journalEntryDelete,
-        journalEntryAddRefund: journalEntryAddRefund_1.default,
-        journalEntryUpdateRefund: journalEntryUpdateRefund_1.default,
-        journalEntryDeleteRefund: journalEntryDeleteRefund_1.default,
-        journalEntryAddItem: journalEntryAddItem_1.default,
-        journalEntryUpdateItem: journalEntryUpdateItem_1.default,
-        journalEntryDeleteItem: journalEntryDeleteItem_1.default,
-        addPerson: person_1.addPerson,
-        addBusiness: business_1.addBusiness,
-        paymentMethodAdd: paymentMethodAdd_1.default,
-        paymentMethodUpdate: paymentMethodUpdate_1.default,
+        addNewEntry: entry_1.addNewEntry,
+        addNewEntryRefund: entry_1.addNewEntryRefund,
+        deleteEntry: entry_1.deleteEntry,
+        deleteEntryRefund: entry_1.deleteEntryRefund,
+        updateEntry: entry_1.updateEntry,
+        updateEntryRefund: entry_1.updateEntryRefund,
+        reconcileEntries: entry_1.reconcileEntries,
     },
     Subscription: {
-        journalEntryAdded: journalEntry_1.journalEntryAdded,
-        journalEntryUpdated: journalEntry_1.journalEntryUpdated,
-        journalEntryUpserted: journalEntryUpserted_1.default,
+    // entryUpserted,
     },
 };
 exports.default = resolvers;
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicmVzb2x2ZXJzLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vc3JjL3Jlc29sdmVycy50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOztBQUNBLHdEQUF3RDtBQUN4RCxzREFBK0M7QUFDL0Msd0RBQWlEO0FBQ2pELHdFQUF3RDtBQUN4RCxtREFBbUQ7QUFDbkQsNERBQXFEO0FBQ3JELGdFQUF5RDtBQUN6RCw4RUFBOEQ7QUFDOUQsaUZBQWlGO0FBQ2pGLGtFQUEyRDtBQUMzRCxvRUFBNkQ7QUFDN0Qsb0ZBQW9FO0FBQ3BFLDJEQUlrQztBQUNsQyw0RUFBcUU7QUFDckUsd0VBQWlFO0FBQ2pFLDhFQUF1RTtBQUN2RSxvRkFBNkU7QUFDN0Usb0ZBQTZFO0FBQzdFLDBGQUFtRjtBQUNuRixnR0FBeUY7QUFDekYsZ0dBQXlGO0FBQ3pGLHNGQUErRTtBQUMvRSw0RkFBcUY7QUFDckYsNEZBQXFGO0FBQ3JGLGdGQUF5RTtBQUN6RSx3RkFBeUU7QUFDekUsb0dBQXFGO0FBQ3JGLGdHQUFpRjtBQUNqRix3RkFBaUY7QUFDakYsdUVBQXFFO0FBQ3JFLDJFQUkwQztBQUMxQyxvR0FBNkY7QUFDN0YsNkVBQXNFO0FBQ3RFLDJFQUFvRTtBQUNwRSxpRkFBMEU7QUFDMUUsdUZBQWdGO0FBQ2hGLDJGQUE0RTtBQUM1RSwrQ0FBK0M7QUFDL0Msc0RBQStDO0FBQy9DLHNEQUErQztBQUMvQyxrRUFBMkQ7QUFDM0Qsb0VBQTZEO0FBQzdELDJDQUF3QztBQUV4QyxNQUFNLFNBQVMsR0FBYztJQUMzQixNQUFNLEVBQU4seUJBQU07SUFDTixRQUFRLEVBQVIsMkJBQVE7SUFDUixVQUFVLEVBQVYsNkJBQVU7SUFDVixZQUFZLEVBQVosOEJBQVk7SUFDWixrQkFBa0IsRUFBbEIsb0NBQWtCO0lBQ2xCLGdCQUFnQixFQUFoQixrQ0FBZ0I7SUFDaEIsYUFBYSxFQUFiLCtCQUFhO0lBQ2Isb0JBQW9CLEVBQXBCLDJDQUFvQjtJQUNwQixJQUFJLEVBQUosV0FBSTtJQUNKLEtBQUssRUFBRTtRQUNMLE1BQU0sRUFBTixnQkFBTTtRQUNOLFVBQVUsRUFBVixvQkFBVTtRQUNWLFFBQVEsRUFBUixrQkFBUTtRQUNSLE9BQU8sRUFBUCxpQkFBTztRQUNQLFlBQVksRUFBWixzQkFBWTtRQUNaLGtCQUFrQixFQUFsQiw0QkFBa0I7UUFDbEIsZ0JBQWdCLEVBQWhCLDBCQUFnQjtRQUNoQixjQUFjLEVBQWQsd0JBQWM7UUFDZCxtQkFBbUIsRUFBbkIsd0NBQW1CO1FBQ25CLHNCQUFzQixFQUF0QixnQ0FBc0I7UUFDdEIsb0JBQW9CLEVBQXBCLDJDQUFvQjtRQUNwQixXQUFXLEVBQVgscUJBQVc7UUFDWCxVQUFVLEVBQVYsb0JBQVU7UUFDVixjQUFjLEVBQWQsd0JBQWM7UUFDZCxhQUFhLEVBQWIsdUJBQWE7UUFDYixNQUFNLEVBQU4sZ0JBQU07UUFDTixNQUFNLEVBQU4sZ0JBQU07UUFDTixVQUFVLEVBQVYsb0JBQVU7UUFDVixXQUFXLEVBQVgscUJBQVc7S0FDWjtJQUNELFFBQVEsRUFBRTtRQUNSLGVBQWUsRUFBZix5QkFBZTtRQUNmLGtCQUFrQixFQUFsQiw0QkFBa0I7UUFDbEIsa0JBQWtCLEVBQWxCLGlDQUFrQjtRQUNsQixxQkFBcUIsRUFBckIsK0JBQXFCO1FBQ3JCLHdCQUF3QixFQUF4QixrQ0FBd0I7UUFDeEIsd0JBQXdCLEVBQXhCLGtDQUF3QjtRQUN4QixtQkFBbUIsRUFBbkIsNkJBQW1CO1FBQ25CLHNCQUFzQixFQUF0QixnQ0FBc0I7UUFDdEIsc0JBQXNCLEVBQXRCLGdDQUFzQjtRQUN0QixTQUFTLEVBQVQsa0JBQVM7UUFDVCxXQUFXLEVBQVgsc0JBQVc7UUFDWCxnQkFBZ0IsRUFBaEIsMEJBQWdCO1FBQ2hCLG1CQUFtQixFQUFuQiw2QkFBbUI7S0FDcEI7SUFDRCxZQUFZLEVBQUU7UUFDWixpQkFBaUIsRUFBakIsZ0NBQWlCO1FBQ2pCLG1CQUFtQixFQUFuQixrQ0FBbUI7UUFDbkIsb0JBQW9CLEVBQXBCLDhCQUFvQjtLQUNyQjtDQUNGLENBQUM7QUFFRixrQkFBZSxTQUFTLENBQUMifQ==
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicmVzb2x2ZXJzLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vc3JjL3Jlc29sdmVycy50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOztBQUNBLDZDQUF1RTtBQUN2RSxpREFXNkI7QUFDN0IsK0NBQTBFO0FBQzFFLG1EQUFzRTtBQUN0RSx1REFLZ0M7QUFDaEMsK0NBQXNEO0FBQ3RELDZDQWUyQjtBQUMzQiw2REFLbUM7QUFDbkMseURBQWtEO0FBQ2xELHNEQUE0RTtBQUM1RSwrQ0FBNEQ7QUFDNUQsdURBQTZFO0FBQzdFLDJDQUF3QztBQUV4QyxpREFBaUU7QUFFakUsTUFBTSxTQUFTLEdBQWM7SUFDM0IsZ0JBQWdCLEVBQWhCLDBCQUFnQjtJQUNoQix5QkFBeUIsRUFBekIsbUNBQXlCO0lBQ3pCLFdBQVcsRUFBWCxxQkFBVztJQUNYLFlBQVksRUFBWixzQkFBWTtJQUNaLGVBQWUsRUFBZix5QkFBZTtJQUNmLGlCQUFpQixFQUFqQiwyQkFBaUI7SUFDakIsS0FBSyxFQUFMLGFBQUs7SUFDTCxXQUFXLEVBQVgsbUJBQVc7SUFDWCxJQUFJLEVBQUUsb0JBQVU7SUFDaEIsUUFBUSxFQUFFLHdCQUFjO0lBQ3hCLE1BQU0sRUFBTixlQUFNO0lBQ04sV0FBVyxFQUFYLG9CQUFXO0lBQ1gsUUFBUSxFQUFSLG1CQUFRO0lBQ1IsVUFBVSxFQUFWLHVCQUFVO0lBQ1Ysa0JBQWtCLEVBQWxCLCtCQUFrQjtJQUNsQixNQUFNLEVBQU4sZUFBTTtJQUNOLEtBQUssRUFBTCxhQUFLO0lBQ0wsV0FBVyxFQUFYLG1CQUFXO0lBQ1gsU0FBUyxFQUFULGlCQUFTO0lBQ1QsVUFBVSxFQUFWLHVCQUFVO0lBQ1Ysb0JBQW9CLEVBQXBCLG9DQUFvQjtJQUNwQixxQkFBcUIsRUFBckIscUNBQXFCO0lBQ3JCLHNCQUFzQixFQUF0QixzQ0FBc0I7SUFDdEIsaUJBQWlCLEVBQWpCLGlDQUFpQjtJQUNqQixNQUFNLEVBQU4sZUFBTTtJQUNOLFFBQVEsRUFBUixnQkFBUTtJQUNSLElBQUksRUFBSixXQUFJO0lBQ0osS0FBSyxFQUFFO1FBQ0wsT0FBTyxFQUFQLGlCQUFPO1FBQ1AsUUFBUSxFQUFSLGtCQUFRO1FBQ1IsV0FBVyxFQUFYLHFCQUFXO1FBQ1gsWUFBWSxFQUFaLHNCQUFZO1FBQ1osS0FBSyxFQUFMLGFBQUs7UUFDTCxPQUFPLEVBQVAsZUFBTztRQUNQLE1BQU0sRUFBTixlQUFNO1FBQ04sVUFBVSxFQUFWLHFCQUFVO1FBQ1YsUUFBUSxFQUFSLG1CQUFRO1FBQ1IsT0FBTyxFQUFQLGdCQUFPO1FBQ1AsUUFBUSxFQUFSLGlCQUFRO1FBQ1IsS0FBSyxFQUFMLGFBQUs7UUFDTCxXQUFXLEVBQVgsbUJBQVc7UUFDWCxPQUFPLEVBQVAsZUFBTztRQUNQLFlBQVksRUFBWixvQkFBWTtRQUNaLE9BQU8sRUFBUCxxQkFBTztRQUNQLFVBQVUsRUFBVixrQkFBVTtRQUNWLFFBQVEsRUFBUixnQkFBUTtRQUNSLFdBQVcsRUFBWCx3QkFBVztRQUNYLFVBQVUsRUFBVix1QkFBVTtRQUNWLE1BQU0sRUFBTixlQUFNO1FBQ04sTUFBTSxFQUFOLGVBQU07UUFDTixVQUFVLEVBQVYsdUJBQVU7UUFDVixXQUFXLEVBQVgsd0JBQVc7S0FDWjtJQUNELFFBQVEsRUFBRTtRQUNSLFdBQVcsRUFBWCxtQkFBVztRQUNYLGlCQUFpQixFQUFqQix5QkFBaUI7UUFDakIsV0FBVyxFQUFYLG1CQUFXO1FBQ1gsaUJBQWlCLEVBQWpCLHlCQUFpQjtRQUNqQixXQUFXLEVBQVgsbUJBQVc7UUFDWCxpQkFBaUIsRUFBakIseUJBQWlCO1FBQ2pCLGdCQUFnQixFQUFoQix3QkFBZ0I7S0FDakI7SUFDRCxZQUFZLEVBQUU7SUFDWixpQkFBaUI7S0FDbEI7Q0FDRixDQUFDO0FBRUYsa0JBQWUsU0FBUyxDQUFDIn0=

@@ -1,5 +1,4 @@
-import { WhereRegexInput } from "../../../graphTypes";
-declare const parseGQLMongoRegex: (whereRegex: WhereRegexInput) => {
+declare const parseGQLMongoRegex: (whereRegex: any) => {
     $regex: string;
     $options?: string;
 };

@@ -1,0 +1,11 @@
+import { ObjectId } from "mongodb";
+import { FiscalYearResolvers } from "../../graphTypes";
+export interface FiscalYearDbRecord {
+    _id: ObjectId;
+    name: string;
+    begin: Date;
+    end: Date;
+}
+export declare const FiscalYear: FiscalYearResolvers<{
+    dataSources: import("../../types").DataSources;
+} & import("../../types").ContextBase, import("../../graphTypes").FiscalYear>;

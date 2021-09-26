@@ -1,3 +1,2 @@
 import { QueryResolvers } from "../../graphTypes";
-declare const fiscalYear: QueryResolvers["fiscalYear"];
-export default fiscalYear;
+export declare const fiscalYear: QueryResolvers["fiscalYear"];

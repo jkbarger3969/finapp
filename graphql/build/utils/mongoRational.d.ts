@@ -1,17 +1,27 @@
-import { QuerySelector } from "mongodb";
-export interface MongoRational {
+import Fraction from "fraction.js";
+export interface Rational {
     s: 1 | -1;
     n: number;
     d: number;
 }
-export declare type MongoDbEqualityAndRangeOps = Extract<keyof QuerySelector<unknown>, "$eq" | "$gt" | "$gte" | "$lt" | "$lte" | "$ne">;
-export declare type MongoDbSetOps = Extract<keyof QuerySelector<unknown>, "$in" | "$nin">;
-export declare type RationalArg = MongoRational | string | [string, number];
+/**
+ * Utility method to convert {@link Fraction} to {@link Rational}.
+ */
+export declare const fractionToRational: (fraction: Fraction) => Rational;
+export declare type ComparisonOps = "$eq" | "$gt" | "$gte" | "$lt" | "$lte" | "$ne";
+export declare type SetOps = "$in" | "$nin";
+export declare type RationalOp = ComparisonOps | SetOps;
+/**
+ * - Rational number object.
+ * - Path to a rational number object.
+ * - Tuple of path to a rational number object and an $arrayElemAt idx.
+ * */
+export declare type RationalValue = Rational | string | [path: string, index: number];
 /**
  * @returns a mongodb [$expr](https://docs.mongodb.com/manual/reference/operator/query/expr/) value.
  *
  */
-declare const compareRationalEqualityAndRanges: (lhs: RationalArg, equalityOrRangeOp: MongoDbEqualityAndRangeOps, rhs: RationalArg) => {
+declare const compareRationalEqualityAndRanges: (lhs: RationalValue, comparisonOp: ComparisonOps, rhs: RationalValue) => {
     readonly [x: string]: readonly [{
         readonly $subtract: readonly [{
             readonly $multiply: readonly [string | 1 | -1, string | number, string | number];
@@ -39,7 +49,7 @@ declare const compareRationalEqualityAndRanges: (lhs: RationalArg, equalityOrRan
  * @returns a mongodb [$expr](https://docs.mongodb.com/manual/reference/operator/query/expr/) value.
  *
  */
-declare const compareRationalSet: (lhs: RationalArg, setOp: MongoDbSetOps, rationalSet: Iterable<RationalArg>) => {
+declare const compareRationalSet: (lhs: RationalValue, setOp: SetOps, rationalSet: Iterable<RationalValue>) => {
     readonly $anyElementTrue: readonly [({
         readonly [x: string]: readonly [{
             readonly $subtract: readonly [{
@@ -96,14 +106,13 @@ declare const compareRationalSet: (lhs: RationalArg, setOp: MongoDbSetOps, ratio
 };
 /**
  * @returns a mongodb [$expr](https://docs.mongodb.com/manual/reference/operator/query/expr/) value.
- * @param lhs when field is at array element, [field, index]
  */
-export declare function rationalComparison(lhs: RationalArg, equalityOrRangeOp: MongoDbEqualityAndRangeOps, rhs: RationalArg): ReturnType<typeof compareRationalEqualityAndRanges>;
-export declare function rationalComparison(lhs: RationalArg, setOp: MongoDbSetOps, rationalSet: Iterable<RationalArg>): ReturnType<typeof compareRationalSet>;
-export declare const addRational: (a: RationalArg, b: RationalArg) => {
+export declare function rationalComparison(lhs: RationalValue, op: RationalOp, rhs: RationalValue): ReturnType<typeof compareRationalEqualityAndRanges>;
+export declare function rationalComparison(lhs: RationalValue, op: RationalOp, rhs: Iterable<RationalValue>): ReturnType<typeof compareRationalSet>;
+export declare const addRational: (a: RationalValue, b: RationalValue) => {
     $let: {
         vars: {
-            addResult: {
+            arithmeticResult: {
                 readonly n: {
                     readonly [x: string]: readonly [{
                         readonly $multiply: readonly [string | number, string | number, string | 1 | -1];
@@ -170,10 +179,10 @@ export declare const addRational: (a: RationalArg, b: RationalArg) => {
         };
     };
 };
-export declare const subtractRational: (a: RationalArg, b: RationalArg) => {
+export declare const subtractRational: (a: RationalValue, b: RationalValue) => {
     $let: {
         vars: {
-            addResult: {
+            arithmeticResult: {
                 readonly n: {
                     readonly [x: string]: readonly [{
                         readonly $multiply: readonly [string | number, string | number, string | 1 | -1];

@@ -1,7 +1,4 @@
-/// <reference types="node" />
-import { QueryResolvers, FiscalYearWhereInput as Where } from "../../graphTypes";
-import { FieldAndConditionGenerator } from "../utils/filterQuery/filter";
-import { Context } from "vm";
-export declare const fieldAndCondGen: FieldAndConditionGenerator<Where, Context>;
-declare const fiscalYears: QueryResolvers["fiscalYears"];
-export default fiscalYears;
+import { FilterQuery } from "mongodb";
+import { QueryResolvers, FiscalYearsWhere } from "../../graphTypes";
+export declare const whereFiscalYear: (fiscalYearWhere: FiscalYearsWhere) => FilterQuery<unknown>;
+export declare const fiscalYears: QueryResolvers["fiscalYears"];

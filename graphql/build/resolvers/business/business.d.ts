@@ -9,5 +9,4 @@ export interface Returns {
         vendorId: string;
     };
 }
-declare const business: QueryResolvers["business"];
-export default business;
+export declare const business: QueryResolvers["business"];

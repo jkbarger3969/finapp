@@ -1,27 +1,31 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const nodeResolver_1 = require("../utils/nodeResolver");
-const rational_1 = require("../../utils/rational");
-const fiscalYear_1 = require("../fiscalYear/fiscalYear");
-const owner = (doc, args, context, info) => {
-    return nodeResolver_1.nodeDocResolver(doc.owner, context);
+exports.Budget = exports.BudgetOwner = void 0;
+const mongodb_1 = require("mongodb");
+const queryUtils_1 = require("../utils/queryUtils");
+const fraction_js_1 = require("fraction.js");
+const owner = ({ owner }, _, { db }) => {
+    if (owner.type === "Business") {
+        return (0, queryUtils_1.addTypename)(owner.type, db.collection("businesses").findOne({
+            _id: new mongodb_1.ObjectId(owner.id),
+        }));
+    }
+    else {
+        return (0, queryUtils_1.addTypename)(owner.type, db.collection("departments").findOne({
+            _id: new mongodb_1.ObjectId(owner.id),
+        }));
+    }
 };
-const fiscalYear = (doc, args, context, info) => __awaiter(void 0, void 0, void 0, function* () {
-    return fiscalYear_1.default({}, { id: doc.fiscalYear.toHexString() }, context, info);
-});
-const BudgetResolvers = {
+const fiscalYear = ({ fiscalYear }, _, { db }) => db.collection("fiscalYears").findOne({ _id: new mongodb_1.ObjectId(fiscalYear) });
+exports.BudgetOwner = {
+    // __typename added with addTypename
+    __resolveType: ({ __typename }) => __typename,
+};
+const BudgetResolver = {
+    id: ({ _id }) => _id.toString(),
     owner,
-    amount: (doc) => rational_1.fractionToRational(doc.amount),
+    amount: ({ amount }) => new fraction_js_1.default(amount),
     fiscalYear,
 };
-exports.default = BudgetResolvers;
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiQnVkZ2V0UmVzb2x2ZXJzLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vLi4vc3JjL3Jlc29sdmVycy9idWRnZXQvQnVkZ2V0UmVzb2x2ZXJzLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7O0FBSUEsd0RBQXdEO0FBQ3hELG1EQUEwRDtBQUMxRCx5REFBc0U7QUFHdEUsTUFBTSxLQUFLLEdBQThCLENBQUMsR0FBRyxFQUFFLElBQUksRUFBRSxPQUFPLEVBQUUsSUFBSSxFQUFFLEVBQUU7SUFDcEUsT0FBTyw4QkFBZSxDQUFHLEdBQWlDLENBQUMsS0FBSyxFQUFFLE9BQU8sQ0FBQyxDQUFDO0FBQzdFLENBQUMsQ0FBQztBQUVGLE1BQU0sVUFBVSxHQUFtQyxDQUNqRCxHQUFHLEVBQ0gsSUFBSSxFQUNKLE9BQU8sRUFDUCxJQUFJLEVBQ0osRUFBRTtJQUNGLE9BQU8sb0JBQWUsQ0FDcEIsRUFBRSxFQUNGLEVBQUUsRUFBRSxFQUFJLEdBQUcsQ0FBQyxVQUFtQyxDQUFDLFdBQVcsRUFBRSxFQUFFLEVBQy9ELE9BQU8sRUFDUCxJQUFJLENBQ0wsQ0FBQztBQUNKLENBQUMsQ0FBQSxDQUFDO0FBRUYsTUFBTSxlQUFlLEdBQXFCO0lBQ3hDLEtBQUs7SUFDTCxNQUFNLEVBQUUsQ0FBQyxHQUFHLEVBQUUsRUFBRSxDQUFDLDZCQUFrQixDQUFFLEdBQUcsQ0FBQyxNQUE4QixDQUFDO0lBQ3hFLFVBQVU7Q0FDRixDQUFDO0FBRVgsa0JBQWUsZUFBZSxDQUFDIn0=
+exports.Budget = BudgetResolver;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiQnVkZ2V0UmVzb2x2ZXJzLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vLi4vc3JjL3Jlc29sdmVycy9idWRnZXQvQnVkZ2V0UmVzb2x2ZXJzLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7OztBQUFBLHFDQUFtQztBQUtuQyxvREFBa0Q7QUFDbEQsNkNBQW1DO0FBWW5DLE1BQU0sS0FBSyxHQUFzRCxDQUMvRCxFQUFFLEtBQUssRUFBRSxFQUNULENBQUMsRUFDRCxFQUFFLEVBQUUsRUFBRSxFQUNOLEVBQUU7SUFDRixJQUFJLEtBQUssQ0FBQyxJQUFJLEtBQUssVUFBVSxFQUFFO1FBQzdCLE9BQU8sSUFBQSx3QkFBVyxFQUNoQixLQUFLLENBQUMsSUFBSSxFQUNWLEVBQUUsQ0FBQyxVQUFVLENBQUMsWUFBWSxDQUFDLENBQUMsT0FBTyxDQUFDO1lBQ2xDLEdBQUcsRUFBRSxJQUFJLGtCQUFRLENBQUMsS0FBSyxDQUFDLEVBQUUsQ0FBQztTQUM1QixDQUFDLENBQ0gsQ0FBQztLQUNIO1NBQU07UUFDTCxPQUFPLElBQUEsd0JBQVcsRUFDaEIsS0FBSyxDQUFDLElBQUksRUFDVixFQUFFLENBQUMsVUFBVSxDQUFDLGFBQWEsQ0FBQyxDQUFDLE9BQU8sQ0FBQztZQUNuQyxHQUFHLEVBQUUsSUFBSSxrQkFBUSxDQUFDLEtBQUssQ0FBQyxFQUFFLENBQUM7U0FDNUIsQ0FBQyxDQUNILENBQUM7S0FDSDtBQUNILENBQUMsQ0FBQztBQUVGLE1BQU0sVUFBVSxHQUEyRCxDQUN6RSxFQUFFLFVBQVUsRUFBRSxFQUNkLENBQUMsRUFDRCxFQUFFLEVBQUUsRUFBRSxFQUNOLEVBQUUsQ0FBQyxFQUFFLENBQUMsVUFBVSxDQUFDLGFBQWEsQ0FBQyxDQUFDLE9BQU8sQ0FBQyxFQUFFLEdBQUcsRUFBRSxJQUFJLGtCQUFRLENBQUMsVUFBVSxDQUFDLEVBQUUsQ0FBQyxDQUFDO0FBRWhFLFFBQUEsV0FBVyxHQUF5QjtJQUMvQyxvQ0FBb0M7SUFDcEMsYUFBYSxFQUFFLENBQUMsRUFBRSxVQUFVLEVBQUUsRUFBRSxFQUFFLENBQUMsVUFBVTtDQUN2QyxDQUFDO0FBRVQsTUFBTSxjQUFjLEdBQTZDO0lBQy9ELEVBQUUsRUFBRSxDQUFDLEVBQUUsR0FBRyxFQUFFLEVBQUUsRUFBRSxDQUFDLEdBQUcsQ0FBQyxRQUFRLEVBQUU7SUFDL0IsS0FBSztJQUNMLE1BQU0sRUFBRSxDQUFDLEVBQUUsTUFBTSxFQUFFLEVBQUUsRUFBRSxDQUFDLElBQUkscUJBQVEsQ0FBQyxNQUFNLENBQUM7SUFDNUMsVUFBVTtDQUNGLENBQUM7QUFFRSxRQUFBLE1BQU0sR0FBRyxjQUE0QyxDQUFDIn0=

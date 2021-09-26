@@ -9,27 +9,47 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const graphTypes_1 = require("../../graphTypes");
-const budgets_1 = require("../budget/budgets");
-const DepartmentResolvers_1 = require("../department/DepartmentResolvers");
-const budgets = (doc, args, context, info) => __awaiter(void 0, void 0, void 0, function* () {
-    return budgets_1.default({}, {
-        where: {
-            owner: {
-                eq: {
-                    id: doc.id,
-                    type: graphTypes_1.BudgetOwnerType.Business,
-                },
-            },
-        },
-    }, context, info);
-});
-const departments = (doc, args, context, info) => {
-    return DepartmentResolvers_1.getDeptDescendants({ id: doc.id, type: graphTypes_1.DepartmentAncestorType.Business }, context, info);
+exports.Business = void 0;
+const budgets = ({ _id }, _, { db }) => {
+    return db
+        .collection("budgets")
+        .find({
+        "owner.type": "Business",
+        "owner.id": _id,
+    })
+        .toArray();
 };
-const BusinessResolvers = {
+const departments = ({ _id }, { root }, { db }) => __awaiter(void 0, void 0, void 0, function* () {
+    const results = [];
+    const query = yield db
+        .collection("departments")
+        .find({
+        "parent.type": "Business",
+        "parent.id": _id,
+    })
+        .toArray();
+    if (root) {
+        results.push(...query);
+    }
+    else {
+        while (query.length) {
+            results.push(...query);
+            query.push(...(yield db
+                .collection("departments")
+                .find({
+                "parent.type": "Department",
+                "parent.id": {
+                    $in: query.splice(0).map(({ _id }) => _id),
+                },
+            })
+                .toArray()));
+        }
+    }
+    return results;
+});
+exports.Business = {
+    id: ({ _id }) => _id.toString(),
     budgets,
     departments,
 };
-exports.default = BusinessResolvers;
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiQnVzaW5lc3NSZXNvbHZlcnMuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi8uLi9zcmMvcmVzb2x2ZXJzL2J1c2luZXNzL0J1c2luZXNzUmVzb2x2ZXJzLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7O0FBQUEsaURBSTBCO0FBRTFCLCtDQUE2QztBQUM3QywyRUFBdUU7QUFFdkUsTUFBTSxPQUFPLEdBQWtDLENBQzdDLEdBQUcsRUFDSCxJQUFJLEVBQ0osT0FBTyxFQUNQLElBQUksRUFDSixFQUFFO0lBQ0YsT0FBTyxpQkFBWSxDQUNqQixFQUFFLEVBQ0Y7UUFDRSxLQUFLLEVBQUU7WUFDTCxLQUFLLEVBQUU7Z0JBQ0wsRUFBRSxFQUFFO29CQUNGLEVBQUUsRUFBRSxHQUFHLENBQUMsRUFBRTtvQkFDVixJQUFJLEVBQUUsNEJBQWUsQ0FBQyxRQUFRO2lCQUMvQjthQUNGO1NBQ0Y7S0FDRixFQUNELE9BQU8sRUFDUCxJQUFJLENBQ0wsQ0FBQztBQUNKLENBQUMsQ0FBQSxDQUFDO0FBRUYsTUFBTSxXQUFXLEdBQXNDLENBQ3JELEdBQUcsRUFDSCxJQUFJLEVBQ0osT0FBTyxFQUNQLElBQUksRUFDSixFQUFFO0lBQ0YsT0FBTyx3Q0FBa0IsQ0FDdkIsRUFBRSxFQUFFLEVBQUUsR0FBRyxDQUFDLEVBQUUsRUFBRSxJQUFJLEVBQUUsbUNBQXNCLENBQUMsUUFBUSxFQUFFLEVBQ3JELE9BQU8sRUFDUCxJQUFJLENBQ0wsQ0FBQztBQUNKLENBQUMsQ0FBQztBQUVGLE1BQU0saUJBQWlCLEdBQXVCO0lBQzVDLE9BQU87SUFDUCxXQUFXO0NBQ0gsQ0FBQztBQUVYLGtCQUFlLGlCQUFpQixDQUFDIn0=
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiYnVzaW5lc3NSZXNvbHZlcnMuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi8uLi9zcmMvcmVzb2x2ZXJzL2J1c2luZXNzL2J1c2luZXNzUmVzb2x2ZXJzLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7OztBQUdBLE1BQU0sT0FBTyxHQUFpQyxDQUFDLEVBQUUsR0FBRyxFQUFFLEVBQUUsQ0FBQyxFQUFFLEVBQUUsRUFBRSxFQUFFLEVBQUUsRUFBRTtJQUNuRSxPQUFPLEVBQUU7U0FDTixVQUFVLENBQUMsU0FBUyxDQUFDO1NBQ3JCLElBQUksQ0FBQztRQUNKLFlBQVksRUFBRSxVQUFVO1FBQ3hCLFVBQVUsRUFBRSxHQUFHO0tBQ2hCLENBQUM7U0FDRCxPQUFPLEVBQUUsQ0FBQztBQUNmLENBQUMsQ0FBQztBQUVGLE1BQU0sV0FBVyxHQUFxQyxDQUNwRCxFQUFFLEdBQUcsRUFBRSxFQUNQLEVBQUUsSUFBSSxFQUFFLEVBQ1IsRUFBRSxFQUFFLEVBQUUsRUFDTixFQUFFO0lBQ0YsTUFBTSxPQUFPLEdBQXlCLEVBQUUsQ0FBQztJQUV6QyxNQUFNLEtBQUssR0FBRyxNQUFNLEVBQUU7U0FDbkIsVUFBVSxDQUFxQixhQUFhLENBQUM7U0FDN0MsSUFBSSxDQUFDO1FBQ0osYUFBYSxFQUFFLFVBQVU7UUFDekIsV0FBVyxFQUFFLEdBQUc7S0FDakIsQ0FBQztTQUNELE9BQU8sRUFBRSxDQUFDO0lBRWIsSUFBSSxJQUFJLEVBQUU7UUFDUixPQUFPLENBQUMsSUFBSSxDQUFDLEdBQUcsS0FBSyxDQUFDLENBQUM7S0FDeEI7U0FBTTtRQUNMLE9BQU8sS0FBSyxDQUFDLE1BQU0sRUFBRTtZQUNuQixPQUFPLENBQUMsSUFBSSxDQUFDLEdBQUcsS0FBSyxDQUFDLENBQUM7WUFFdkIsS0FBSyxDQUFDLElBQUksQ0FDUixHQUFHLENBQUMsTUFBTSxFQUFFO2lCQUNULFVBQVUsQ0FBcUIsYUFBYSxDQUFDO2lCQUM3QyxJQUFJLENBQUM7Z0JBQ0osYUFBYSxFQUFFLFlBQVk7Z0JBQzNCLFdBQVcsRUFBRTtvQkFDWCxHQUFHLEVBQUUsS0FBSyxDQUFDLE1BQU0sQ0FBQyxDQUFDLENBQUMsQ0FBQyxHQUFHLENBQUMsQ0FBQyxFQUFFLEdBQUcsRUFBRSxFQUFFLEVBQUUsQ0FBQyxHQUFHLENBQUM7aUJBQzNDO2FBQ0YsQ0FBQztpQkFDRCxPQUFPLEVBQUUsQ0FBQyxDQUNkLENBQUM7U0FDSDtLQUNGO0lBRUQsT0FBTyxPQUFPLENBQUM7QUFDakIsQ0FBQyxDQUFBLENBQUM7QUFFVyxRQUFBLFFBQVEsR0FBc0I7SUFDekMsRUFBRSxFQUFFLENBQUMsRUFBRSxHQUFHLEVBQUUsRUFBRSxFQUFFLENBQUMsR0FBRyxDQUFDLFFBQVEsRUFBRTtJQUMvQixPQUFPO0lBQ1AsV0FBVztDQUNILENBQUMifQ==

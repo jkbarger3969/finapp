@@ -1,3 +1,2 @@
 import { QueryResolvers } from "../../graphTypes";
-declare const person: QueryResolvers["person"];
-export default person;
+export declare const person: QueryResolvers["person"];

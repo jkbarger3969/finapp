@@ -1,193 +1,156 @@
 "use strict";
+var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
+    if (kind === "m") throw new TypeError("Private method is not writable");
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
+    return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
+};
+var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, state, kind, f) {
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
+var _NewHistoricalDoc_historicalFields, _NewHistoricalDoc_fields, _NewHistoricalDoc_docHistory, _NewHistoricalDoc_isRootDoc, _UpdateHistoricalDoc_historicalFields, _UpdateHistoricalDoc_fields, _UpdateHistoricalDoc_docHistory, _UpdateHistoricalDoc_isRootDoc, _UpdateHistoricalDoc_fieldPrefix, _DocHistory_by, _DocHistory_date;
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.DocHistory = exports.UpdateHistoricalDoc = exports.NewHistoricalDoc = void 0;
 class NewHistoricalDoc {
-    constructor(_docHistory_, withRootHistory) {
-        this._docHistory_ = _docHistory_;
-        this._doc_ = (withRootHistory
-            ? Object.assign({}, _docHistory_.rootHistory()) : {});
+    constructor({ docHistory, isRootDoc, }) {
+        _NewHistoricalDoc_historicalFields.set(this, new Map());
+        _NewHistoricalDoc_fields.set(this, new Map());
+        _NewHistoricalDoc_docHistory.set(this, void 0);
+        _NewHistoricalDoc_isRootDoc.set(this, void 0);
+        __classPrivateFieldSet(this, _NewHistoricalDoc_docHistory, docHistory, "f");
+        __classPrivateFieldSet(this, _NewHistoricalDoc_isRootDoc, isRootDoc, "f");
     }
-    addField(field, value) {
-        this._doc_[field] = this._docHistory_.newValue(value);
-        return this;
-    }
-    addFields(fieldValuesMap) {
-        for (const [field, value] of fieldValuesMap) {
-            this.addField(field, value);
-        }
+    addHistoricalField(field, value) {
+        __classPrivateFieldGet(this, _NewHistoricalDoc_historicalFields, "f").set(field, value);
         return this;
     }
     /**
      * Utility method to set a straight key/value to the historical doc.
      */
-    addNonHistoricalFieldValue(field, value) {
-        this._doc_[field] = value;
+    addFieldValued(field, value) {
+        __classPrivateFieldGet(this, _NewHistoricalDoc_fields, "f").set(field, value);
         return this;
     }
-    doc() {
-        return this._doc_;
+    get doc() {
+        return this.valueOf();
+    }
+    valueOf() {
+        const docHistory = __classPrivateFieldGet(this, _NewHistoricalDoc_docHistory, "f");
+        const doc = Object.assign({}, (__classPrivateFieldGet(this, _NewHistoricalDoc_isRootDoc, "f") ? docHistory.rootHistory : undefined));
+        __classPrivateFieldGet(this, _NewHistoricalDoc_historicalFields, "f").forEach((value, key) => {
+            doc[key] = [docHistory.historyObject(value)];
+        });
+        __classPrivateFieldGet(this, _NewHistoricalDoc_fields, "f").forEach((value, key) => {
+            doc[key] = value;
+        });
+        return doc;
+    }
+    toString() {
+        return JSON.stringify(this.valueOf());
     }
 }
+exports.NewHistoricalDoc = NewHistoricalDoc;
+_NewHistoricalDoc_historicalFields = new WeakMap(), _NewHistoricalDoc_fields = new WeakMap(), _NewHistoricalDoc_docHistory = new WeakMap(), _NewHistoricalDoc_isRootDoc = new WeakMap();
 class UpdateHistoricalDoc {
-    constructor(_docHistory_, args) {
-        this._docHistory_ = _docHistory_;
-        this._prependUpdateFields_ = "";
-        this._hasUpdate_ = false;
-        if (args) {
-            if (typeof args === "string") {
-                this._prependUpdateFields_ = `${args}.`;
-                this._update_ = {
-                    $push: {},
-                    $set: {
-                        [`${this._prependUpdateFields_}lastUpdate`]: _docHistory_.date,
-                    },
-                };
-            }
-            else {
-                if (args.prependUpdateFields) {
-                    this._prependUpdateFields_ = `${args.prependUpdateFields}.`;
-                }
-                if (args.prependLastUpdate) {
-                    this._update_ = {
-                        $push: {},
-                        $set: {
-                            [`${args.prependLastUpdate}.lastUpdate`]: _docHistory_.date,
-                        },
-                    };
-                }
-            }
-        }
-        else {
-            this._update_ = {
-                $push: {},
-                $set: { lastUpdate: _docHistory_.date },
-            };
-        }
+    constructor({ docHistory, isRootDoc, fieldPrefix, }) {
+        _UpdateHistoricalDoc_historicalFields.set(this, new Map());
+        _UpdateHistoricalDoc_fields.set(this, new Map());
+        _UpdateHistoricalDoc_docHistory.set(this, void 0);
+        _UpdateHistoricalDoc_isRootDoc.set(this, void 0);
+        _UpdateHistoricalDoc_fieldPrefix.set(this, void 0);
+        __classPrivateFieldSet(this, _UpdateHistoricalDoc_docHistory, docHistory, "f");
+        __classPrivateFieldSet(this, _UpdateHistoricalDoc_isRootDoc, isRootDoc, "f");
+        __classPrivateFieldSet(this, _UpdateHistoricalDoc_fieldPrefix, fieldPrefix, "f");
     }
     get hasUpdate() {
-        return this._hasUpdate_;
+        return __classPrivateFieldGet(this, _UpdateHistoricalDoc_historicalFields, "f").size > 0 || __classPrivateFieldGet(this, _UpdateHistoricalDoc_fields, "f").size > 0;
     }
-    updateField(field, value) {
-        this._update_.$push[`${this._prependUpdateFields_}${field}`] = {
-            $each: [this._docHistory_.historyObject(value)],
-            $position: 0,
-        };
-        this._hasUpdate_ = true;
+    updateHistoricalField(field, value) {
+        __classPrivateFieldGet(this, _UpdateHistoricalDoc_historicalFields, "f").set(field, value);
         return this;
     }
-    updateFields(fieldValuesMap) {
-        for (const [field, value] of fieldValuesMap) {
-            this.updateField(field, value);
+    /**
+     * Utility method to set a straight key/value on the update.
+     */
+    updateFieldValue(field, value) {
+        __classPrivateFieldGet(this, _UpdateHistoricalDoc_fields, "f").set(field, value);
+        return this;
+    }
+    get update() {
+        return this.valueOf();
+    }
+    valueOf() {
+        if (!this.hasUpdate) {
+            return null;
         }
-        return this;
+        const docHistory = __classPrivateFieldGet(this, _UpdateHistoricalDoc_docHistory, "f");
+        const fieldPrefix = __classPrivateFieldGet(this, _UpdateHistoricalDoc_fieldPrefix, "f");
+        const update = {};
+        const $set = {};
+        const $push = {};
+        if (__classPrivateFieldGet(this, _UpdateHistoricalDoc_isRootDoc, "f")) {
+            $set[UpdateHistoricalDoc.getFieldName("lastUpdate", fieldPrefix)] = docHistory.date;
+            update.$set = $set;
+        }
+        if (__classPrivateFieldGet(this, _UpdateHistoricalDoc_fields, "f").size) {
+            __classPrivateFieldGet(this, _UpdateHistoricalDoc_fields, "f").forEach((value, key) => {
+                $set[UpdateHistoricalDoc.getFieldName(key, fieldPrefix)] =
+                    value;
+            });
+            update.$set = $set;
+        }
+        if (__classPrivateFieldGet(this, _UpdateHistoricalDoc_historicalFields, "f").size) {
+            __classPrivateFieldGet(this, _UpdateHistoricalDoc_historicalFields, "f").forEach((value, key) => {
+                const updateValue = {
+                    $each: [docHistory.historyObject(value)],
+                    $position: 0,
+                };
+                $push[UpdateHistoricalDoc.getFieldName(key, fieldPrefix)] =
+                    updateValue;
+            });
+            update.$push = $push;
+        }
+        return update;
     }
-    update() {
-        return this._update_;
+    toString() {
+        return JSON.stringify(this.valueOf());
+    }
+    static getFieldName(field, fieldPrefix) {
+        return (fieldPrefix ? `${fieldPrefix}.${field}` : field);
     }
 }
+exports.UpdateHistoricalDoc = UpdateHistoricalDoc;
+_UpdateHistoricalDoc_historicalFields = new WeakMap(), _UpdateHistoricalDoc_fields = new WeakMap(), _UpdateHistoricalDoc_docHistory = new WeakMap(), _UpdateHistoricalDoc_isRootDoc = new WeakMap(), _UpdateHistoricalDoc_fieldPrefix = new WeakMap();
 class DocHistory {
-    constructor(_by_, _date_ = new Date()) {
-        this._by_ = _by_;
-        this._date_ = _date_;
+    constructor({ by, date = new Date() }) {
+        _DocHistory_by.set(this, void 0);
+        _DocHistory_date.set(this, void 0);
+        __classPrivateFieldSet(this, _DocHistory_by, by, "f");
+        __classPrivateFieldSet(this, _DocHistory_date, date, "f");
     }
     get date() {
-        return this._date_;
+        return __classPrivateFieldGet(this, _DocHistory_date, "f");
     }
     get by() {
-        return this._by_;
+        return __classPrivateFieldGet(this, _DocHistory_by, "f");
     }
-    rootHistory() {
+    get rootHistory() {
         return {
-            lastUpdate: this._date_,
-            createdOn: this._date_,
-            createdBy: this._by_,
+            lastUpdate: __classPrivateFieldGet(this, _DocHistory_date, "f"),
+            createdOn: __classPrivateFieldGet(this, _DocHistory_date, "f"),
+            createdBy: __classPrivateFieldGet(this, _DocHistory_by, "f"),
         };
-    }
-    // newHistoricalDoc(withRootHistory: true): NewHistoricalDoc<true>;
-    // newHistoricalDoc(withRootHistory: false): NewHistoricalDoc<false>;
-    newHistoricalDoc(withRootHistory) {
-        return new NewHistoricalDoc(this, withRootHistory);
-    }
-    updateHistoricalDoc(prependFields) {
-        return new UpdateHistoricalDoc(this, prependFields);
     }
     historyObject(value) {
         return {
             value,
-            createdBy: this._by_,
-            createdOn: this._date_,
+            createdBy: __classPrivateFieldGet(this, _DocHistory_by, "f"),
+            createdOn: __classPrivateFieldGet(this, _DocHistory_date, "f"),
         };
-    }
-    newValue(value) {
-        return [this.historyObject(value)];
-    }
-    getPresentValues(presentValueMap) {
-        return DocHistory.getPresentValues(presentValueMap);
-    }
-    static getPresentValuesAllFields(args = {
-        path: "$$ROOT",
-    }) {
-        const { path = "$$ROOT", exclude } = args;
-        const isRoot = path === "$$ROOT";
-        const docLocation = isRoot ? "__doc" : `${path}.__doc`;
-        return [
-            {
-                $addFields: {
-                    [docLocation]: {
-                        $arrayToObject: {
-                            $map: {
-                                input: { $objectToArray: isRoot ? path : `$${path}` },
-                                as: "kv",
-                                in: {
-                                    $cond: {
-                                        if: Object.assign({ $eq: [{ $type: "$$kv.v" }, "array"] }, (exclude ? { $nin: ["$$kv.k", [...exclude]] } : {})),
-                                        then: {
-                                            k: "$$kv.k",
-                                            v: {
-                                                $ifNull: [{ $arrayElemAt: ["$$kv.v.value", 0] }, null],
-                                            },
-                                        },
-                                        else: "$$kv",
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-            isRoot
-                ? { $replaceRoot: { newRoot: `$${docLocation}` } }
-                : {
-                    $addFields: {
-                        [docLocation]: `$${docLocation}.__doc`,
-                    },
-                },
-        ];
-    }
-    static getPresentValueExpression(key, opts = {}) {
-        var _a;
-        const asVar = opts.asVar ? `$${opts.asVar}.` : "";
-        const defaultValue = (_a = opts === null || opts === void 0 ? void 0 : opts.defaultValue) !== null && _a !== void 0 ? _a : null;
-        return {
-            $ifNull: [{ $arrayElemAt: [`$${asVar}${key}.value`, 0] }, defaultValue],
-        };
-    }
-    static getPresentValues(presentValueMap, opts = {}) {
-        const presentValueProjection = {};
-        for (const val of presentValueMap) {
-            if (typeof val === "string") {
-                presentValueProjection[val] = this.getPresentValueExpression(val, opts);
-            }
-            else if (typeof val[1] === "string") {
-                const [path, projectionKey] = val;
-                presentValueProjection[projectionKey] = this.getPresentValueExpression(path, opts);
-            }
-            else {
-                const [key, keyOpts] = val;
-                presentValueProjection[key] = this.getPresentValueExpression(key, Object.assign(Object.assign({}, opts), keyOpts));
-            }
-        }
-        return presentValueProjection;
     }
 }
-exports.default = DocHistory;
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiRG9jSGlzdG9yeS5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uLy4uL3NyYy9yZXNvbHZlcnMvdXRpbHMvRG9jSGlzdG9yeS50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOztBQStDQSxNQUFNLGdCQUFnQjtJQUVwQixZQUE2QixZQUF3QixFQUFFLGVBQWtCO1FBQTVDLGlCQUFZLEdBQVosWUFBWSxDQUFZO1FBQ25ELElBQUksQ0FBQyxLQUFLLEdBQUcsQ0FBQyxlQUFlO1lBQzNCLENBQUMsbUJBQU0sWUFBWSxDQUFDLFdBQVcsRUFBRSxFQUNqQyxDQUFDLENBQUMsRUFBRSxDQUFRLENBQUM7SUFDakIsQ0FBQztJQUVELFFBQVEsQ0FBSSxLQUFhLEVBQUUsS0FBUTtRQUNoQyxJQUFJLENBQUMsS0FBYSxDQUFDLEtBQUssQ0FBQyxHQUFHLElBQUksQ0FBQyxZQUFZLENBQUMsUUFBUSxDQUFDLEtBQUssQ0FBQyxDQUFDO1FBQy9ELE9BQU8sSUFBSSxDQUFDO0lBQ2QsQ0FBQztJQUNELFNBQVMsQ0FBQyxjQUF1QztRQUMvQyxLQUFLLE1BQU0sQ0FBQyxLQUFLLEVBQUUsS0FBSyxDQUFDLElBQUksY0FBYyxFQUFFO1lBQzNDLElBQUksQ0FBQyxRQUFRLENBQUMsS0FBSyxFQUFFLEtBQUssQ0FBQyxDQUFDO1NBQzdCO1FBQ0QsT0FBTyxJQUFJLENBQUM7SUFDZCxDQUFDO0lBRUQ7O09BRUc7SUFDSCwwQkFBMEIsQ0FBQyxLQUFhLEVBQUUsS0FBYztRQUNyRCxJQUFJLENBQUMsS0FBaUMsQ0FBQyxLQUFLLENBQUMsR0FBRyxLQUFLLENBQUM7UUFDdkQsT0FBTyxJQUFJLENBQUM7SUFDZCxDQUFDO0lBRUQsR0FBRztRQUNELE9BQU8sSUFBSSxDQUFDLEtBQUssQ0FBQztJQUNwQixDQUFDO0NBQ0Y7QUFFRCxNQUFNLG1CQUFtQjtJQUl2QixZQUNtQixZQUF3QixFQUN6QyxJQUtVO1FBTk8saUJBQVksR0FBWixZQUFZLENBQVk7UUFIMUIsMEJBQXFC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
+exports.DocHistory = DocHistory;
+_DocHistory_by = new WeakMap(), _DocHistory_date = new WeakMap();
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiRG9jSGlzdG9yeS5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uLy4uL3NyYy9yZXNvbHZlcnMvdXRpbHMvRG9jSGlzdG9yeS50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7QUFxRUEsTUFBYSxnQkFBZ0I7SUFjM0IsWUFBWSxFQUNWLFVBQVUsRUFDVixTQUFTLEdBSVY7UUFkRCw2Q0FBNkIsSUFBSSxHQUFHLEVBR2pDLEVBQUM7UUFDSixtQ0FBbUIsSUFBSSxHQUFHLEVBQXNDLEVBQUM7UUFDakUsK0NBQWlDO1FBQ2pDLDhDQUErQjtRQVM3Qix1QkFBQSxJQUFJLGdDQUFlLFVBQVUsTUFBQSxDQUFDO1FBQzlCLHVCQUFBLElBQUksK0JBQWMsU0FBUyxNQUFBLENBQUM7SUFDOUIsQ0FBQztJQUVELGtCQUFrQixDQUtoQixLQUFRLEVBQUUsS0FBMEI7UUFDcEMsdUJBQUEsSUFBSSwwQ0FBa0IsQ0FBQyxHQUFHLENBQUMsS0FBSyxFQUFFLEtBQUssQ0FBQyxDQUFDO1FBQ3pDLE9BQU8sSUFBSSxDQUFDO0lBQ2QsQ0FBQztJQUVEOztPQUVHO0lBQ0gsY0FBYyxDQUtaLEtBQVEsRUFBRSxLQUFnQjtRQUMxQix1QkFBQSxJQUFJLGdDQUFRLENBQUMsR0FBRyxDQUFDLEtBQUssRUFBRSxLQUFLLENBQUMsQ0FBQztRQUMvQixPQUFPLElBQUksQ0FBQztJQUNkLENBQUM7SUFFRCxJQUFJLEdBQUc7UUFDTCxPQUFPLElBQUksQ0FBQyxPQUFPLEVBQUUsQ0FBQztJQUN4QixDQUFDO0lBRUQsT0FBTztRQUNMLE1BQU0sVUFBVSxHQUFHLHVCQUFBLElBQUksb0NBQVksQ0FBQztRQUNwQyxNQUFNLEdBQUcsR0FBRyxrQkFDUCxDQUFDLHVCQUFBLElBQUksbUNBQVcsQ0FBQyxDQUFDLENBQUMsVUFBVSxDQUFDLFdBQVcsQ0FBQyxDQUFDLENBQUMsU0FBUyxDQUFDLENBQ08sQ0FBQztRQUVuRSx1QkFBQSxJQUFJLDBDQUFrQixDQUFDLE9BQU8sQ0FBQyxDQUFDLEtBQUssRUFBRSxHQUFHLEVBQUUsRUFBRTtZQUMzQyxHQUFXLENBQUMsR0FBRyxDQUFDLEdBQUcsQ0FBQyxVQUFVLENBQUMsYUFBYSxDQUFDLEtBQUssQ0FBQyxDQUFDLENBQUM7UUFDeEQsQ0FBQyxDQUFDLENBQUM7UUFDSCx1QkFBQSxJQUFJLGdDQUFRLENBQUMsT0FBTyxDQUFDLENBQUMsS0FBSyxFQUFFLEdBQUcsRUFBRSxFQUFFO1lBQ2pDLEdBQVcsQ0FBQyxHQUFHLENBQUMsR0FBRyxLQUFLLENBQUM7UUFDNUIsQ0FBQyxDQUFDLENBQUM7UUFFSCxPQUFPLEdBQUcsQ0FBQztJQUNiLENBQUM7SUFFRCxRQUFRO1FBQ04sT0FBTyxJQUFJLENBQUMsU0FBUyxDQUFDLElBQUksQ0FBQyxPQUFPLEVBQUUsQ0FBQyxDQUFDO0lBQ3hDLENBQUM7Q0FDRjtBQXZFRCw0Q0F1RUM7O0FBcUVELE1BQWEsbUJBQW1CO0lBZ0I5QixZQUFZLEVBQ1YsVUFBVSxFQUNWLFNBQVMsRUFDVCxXQUFXLEdBS1o7UUFqQkQsZ0RBQTZCLElBQUksR0FBRyxFQUdqQyxFQUFDO1FBQ0osc0NBQW1CLElBQUksR0FBRyxFQUErQyxFQUFDO1FBQzFFLGtEQUFpQztRQUNqQyxpREFBK0I7UUFDL0IsbURBQW1DO1FBV2pDLHVCQUFBLElBQUksbUNBQWUsVUFBVSxNQUFBLENBQUM7UUFDOUIsdUJBQUEsSUFBSSxrQ0FBYyxTQUFTLE1BQUEsQ0FBQztRQUM1Qix1QkFBQSxJQUFJLG9DQUFnQixXQUFXLE1BQUEsQ0FBQztJQUNsQyxDQUFDO0lBQ0QsSUFBSSxTQUFTO1FBQ1gsT0FBTyx1QkFBQSxJQUFJLDZDQUFrQixDQUFDLElBQUksR0FBRyxDQUFDLElBQUksdUJBQUEsSUFBSSxtQ0FBUSxDQUFDLElBQUksR0FBRyxDQUFDLENBQUM7SUFDbEUsQ0FBQztJQUVELHFCQUFxQixDQUtuQixLQUFRLEVBQUUsS0FBMEI7UUFDcEMsdUJBQUEsSUFBSSw2Q0FBa0IsQ0FBQyxHQUFHLENBQUMsS0FBSyxFQUFFLEtBQUssQ0FBQyxDQUFDO1FBQ3pDLE9BQU8sSUFBSSxDQUFDO0lBQ2QsQ0FBQztJQUVEOztPQUVHO0lBQ0gsZ0JBQWdCLENBS2QsS0FBUSxFQUFFLEtBQWdCO1FBQzFCLHVCQUFBLElBQUksbUNBQVEsQ0FBQyxHQUFHLENBQUMsS0FBSyxFQUFFLEtBQUssQ0FBQyxDQUFDO1FBQy9CLE9BQU8sSUFBSSxDQUFDO0lBQ2QsQ0FBQztJQUVELElBQUksTUFBTTtRQUNSLE9BQU8sSUFBSSxDQUFDLE9BQU8sRUFBRSxDQUFDO0lBQ3hCLENBQUM7SUFFRCxPQUFPO1FBQ0wsSUFBSSxDQUFDLElBQUksQ0FBQyxTQUFTLEVBQUU7WUFDbkIsT0FBTyxJQUFJLENBQUM7U0FDYjtRQUVELE1BQU0sVUFBVSxHQUFHLHVCQUFBLElBQUksdUNBQVksQ0FBQztRQUVwQyxNQUFNLFdBQVcsR0FBRyx1QkFBQSxJQUFJLHdDQUFhLENBQUM7UUFFdEMsTUFBTSxNQUFNLEdBQUcsRUFLZCxDQUFDO1FBRUYsTUFBTSxJQUFJLEdBQUcsRUFLSixDQUFDO1FBRVYsTUFBTSxLQUFLLEdBQUcsRUFLSixDQUFDO1FBRVgsSUFBSSx1QkFBQSxJQUFJLHNDQUFXLEVBQUU7WUFDbEIsSUFBWSxDQUNYLG1CQUFtQixDQUFDLFlBQVksQ0FBQyxZQUFZLEVBQUUsV0FBVyxDQUFDLENBQzVELEdBQUcsVUFBVSxDQUFDLElBQUksQ0FBQztZQUVwQixNQUFNLENBQUMsSUFBSSxHQUFHLElBQUksQ0FBQztTQUNwQjtRQUVELElBQUksdUJBQUEsSUFBSSxtQ0FBUSxDQUFDLElBQUksRUFBRTtZQUNyQix1QkFBQSxJQUFJLG1DQUFRLENBQUMsT0FBTyxDQUFDLENBQUMsS0FBSyxFQUFFLEdBQUcsRUFBRSxFQUFFO2dCQUNqQyxJQUFZLENBQUMsbUJBQW1CLENBQUMsWUFBWSxDQUFDLEdBQUcsRUFBRSxXQUFXLENBQUMsQ0FBQztvQkFDL0QsS0FBSyxDQUFDO1lBQ1YsQ0FBQyxDQUFDLENBQUM7WUFFSCxNQUFNLENBQUMsSUFBSSxHQUFHLElBQUksQ0FBQztTQUNwQjtRQUVELElBQUksdUJBQUEsSUFBSSw2Q0FBa0IsQ0FBQyxJQUFJLEVBQUU7WUFDL0IsdUJBQUEsSUFBSSw2Q0FBa0IsQ0FBQyxPQUFPLENBQUMsQ0FBQyxLQUFLLEVBQUUsR0FBRyxFQUFFLEVBQUU7Z0JBQzVDLE1BQU0sV0FBVyxHQUE2QztvQkFDNUQsS0FBSyxFQUFFLENBQUMsVUFBVSxDQUFDLGFBQWEsQ0FBQyxLQUFLLENBQUMsQ0FBQztvQkFDeEMsU0FBUyxFQUFFLENBQUM7aUJBQ2IsQ0FBQztnQkFFRCxLQUFhLENBQUMsbUJBQW1CLENBQUMsWUFBWSxDQUFDLEdBQUcsRUFBRSxXQUFXLENBQUMsQ0FBQztvQkFDaEUsV0FBVyxDQUFDO1lBQ2hCLENBQUMsQ0FBQyxDQUFDO1lBQ0gsTUFBTSxDQUFDLEtBQUssR0FBRyxLQUFLLENBQUM7U0FDdEI7UUFFRCxPQUFPLE1BQWtFLENBQUM7SUFDNUUsQ0FBQztJQUVELFFBQVE7UUFDTixPQUFPLElBQUksQ0FBQyxTQUFTLENBQUMsSUFBSSxDQUFDLE9BQU8sRUFBRSxDQUFDLENBQUM7SUFDeEMsQ0FBQztJQUVELE1BQU0sQ0FBQyxZQUFZLENBQ2pCLEtBQVEsRUFDUixXQUF5QjtRQUV6QixPQUFPLENBQ0wsV0FBVyxDQUFDLENBQUMsQ0FBQyxHQUFHLFdBQVcsSUFBSSxLQUFLLEVBQUUsQ0FBQyxDQUFDLENBQUMsS0FBSyxDQUNhLENBQUM7SUFDakUsQ0FBQztDQUNGO0FBdklELGtEQXVJQzs7QUFFRCxNQUFhLFVBQVU7SUFHckIsWUFBWSxFQUFFLEVBQUUsRUFBRSxJQUFJLEdBQUcsSUFBSSxJQUFJLEVBQUUsRUFBaUM7UUFGcEUsaUNBQWM7UUFDZCxtQ0FBWTtRQUVWLHVCQUFBLElBQUksa0JBQU8sRUFBRSxNQUFBLENBQUM7UUFDZCx1QkFBQSxJQUFJLG9CQUFTLElBQUksTUFBQSxDQUFDO0lBQ3BCLENBQUM7SUFFRCxJQUFJLElBQUk7UUFDTixPQUFPLHVCQUFBLElBQUksd0JBQU0sQ0FBQztJQUNwQixDQUFDO0lBRUQsSUFBSSxFQUFFO1FBQ0osT0FBTyx1QkFBQSxJQUFJLHNCQUFJLENBQUM7SUFDbEIsQ0FBQztJQUVELElBQUksV0FBVztRQUNiLE9BQU87WUFDTCxVQUFVLEVBQUUsdUJBQUEsSUFBSSx3QkFBTTtZQUN0QixTQUFTLEVBQUUsdUJBQUEsSUFBSSx3QkFBTTtZQUNyQixTQUFTLEVBQUUsdUJBQUEsSUFBSSxzQkFBSTtTQUNwQixDQUFDO0lBQ0osQ0FBQztJQUVELGFBQWEsQ0FBSSxLQUFRO1FBQ3ZCLE9BQU87WUFDTCxLQUFLO1lBQ0wsU0FBUyxFQUFFLHVCQUFBLElBQUksc0JBQUk7WUFDbkIsU0FBUyxFQUFFLHVCQUFBLElBQUksd0JBQU07U0FDdEIsQ0FBQztJQUNKLENBQUM7Q0FDRjtBQS9CRCxnQ0ErQkMifQ==

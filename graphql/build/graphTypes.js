@@ -1,51 +1,58 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RegexOptions = exports.FilterType = exports.SortDirection = exports.RationalSign = exports.JournalEntrySourceType = exports.JournalEntryType = exports.DepartmentAncestorType = exports.BudgetOwnerType = void 0;
-var BudgetOwnerType;
-(function (BudgetOwnerType) {
-    BudgetOwnerType["Business"] = "BUSINESS";
-    BudgetOwnerType["Department"] = "DEPARTMENT";
-})(BudgetOwnerType = exports.BudgetOwnerType || (exports.BudgetOwnerType = {}));
-var DepartmentAncestorType;
-(function (DepartmentAncestorType) {
-    DepartmentAncestorType["Business"] = "BUSINESS";
-    DepartmentAncestorType["Department"] = "DEPARTMENT";
-})(DepartmentAncestorType = exports.DepartmentAncestorType || (exports.DepartmentAncestorType = {}));
-var JournalEntryType;
-(function (JournalEntryType) {
-    JournalEntryType["Credit"] = "CREDIT";
-    JournalEntryType["Debit"] = "DEBIT";
-})(JournalEntryType = exports.JournalEntryType || (exports.JournalEntryType = {}));
-var JournalEntrySourceType;
-(function (JournalEntrySourceType) {
-    JournalEntrySourceType["Business"] = "BUSINESS";
-    JournalEntrySourceType["Department"] = "DEPARTMENT";
-    JournalEntrySourceType["Person"] = "PERSON";
-})(JournalEntrySourceType = exports.JournalEntrySourceType || (exports.JournalEntrySourceType = {}));
-var RationalSign;
-(function (RationalSign) {
-    RationalSign["Pos"] = "POS";
-    RationalSign["Neg"] = "NEG";
-})(RationalSign = exports.RationalSign || (exports.RationalSign = {}));
-var SortDirection;
-(function (SortDirection) {
-    SortDirection["Asc"] = "ASC";
-    SortDirection["Desc"] = "DESC";
-})(SortDirection = exports.SortDirection || (exports.SortDirection = {}));
-var FilterType;
-(function (FilterType) {
-    FilterType["Include"] = "INCLUDE";
-    FilterType["Exclude"] = "EXCLUDE";
-})(FilterType = exports.FilterType || (exports.FilterType = {}));
-var RegexOptions;
-(function (RegexOptions) {
-    RegexOptions["CaseInsensitive"] = "CaseInsensitive";
-    RegexOptions["Multiline"] = "Multiline";
-    RegexOptions["Extended"] = "Extended";
-    RegexOptions["DotAll"] = "DotAll";
-    RegexOptions["I"] = "I";
-    RegexOptions["M"] = "M";
-    RegexOptions["X"] = "X";
-    RegexOptions["S"] = "S";
-})(RegexOptions = exports.RegexOptions || (exports.RegexOptions = {}));
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiZ3JhcGhUeXBlcy5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uL3NyYy9ncmFwaFR5cGVzLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7OztBQXlCQSxJQUFZLGVBR1g7QUFIRCxXQUFZLGVBQWU7SUFDekIsd0NBQXFCLENBQUE7SUFDckIsNENBQXlCLENBQUE7QUFDM0IsQ0FBQyxFQUhXLGVBQWUsR0FBZix1QkFBZSxLQUFmLHVCQUFlLFFBRzFCO0FBeVNELElBQVksc0JBR1g7QUFIRCxXQUFZLHNCQUFzQjtJQUNoQywrQ0FBcUIsQ0FBQTtJQUNyQixtREFBeUIsQ0FBQTtBQUMzQixDQUFDLEVBSFcsc0JBQXNCLEdBQXRCLDhCQUFzQixLQUF0Qiw4QkFBc0IsUUFHakM7QUEwREQsSUFBWSxnQkFHWDtBQUhELFdBQVksZ0JBQWdCO0lBQzFCLHFDQUFpQixDQUFBO0lBQ2pCLG1DQUFlLENBQUE7QUFDakIsQ0FBQyxFQUhXLGdCQUFnQixHQUFoQix3QkFBZ0IsS0FBaEIsd0JBQWdCLFFBRzNCO0FBZ0RELElBQVksc0JBSVg7QUFKRCxXQUFZLHNCQUFzQjtJQUNoQywrQ0FBcUIsQ0FBQTtJQUNyQixtREFBeUIsQ0FBQTtJQUN6QiwyQ0FBaUIsQ0FBQTtBQUNuQixDQUFDLEVBSlcsc0JBQXNCLEdBQXRCLDhCQUFzQixLQUF0Qiw4QkFBc0IsUUFJakM7QUF3VEQsSUFBWSxZQUdYO0FBSEQsV0FBWSxZQUFZO0lBQ3RCLDJCQUFXLENBQUE7SUFDWCwyQkFBVyxDQUFBO0FBQ2IsQ0FBQyxFQUhXLFlBQVksR0FBWixvQkFBWSxLQUFaLG9CQUFZLFFBR3ZCO0FBMEJELElBQVksYUFHWDtBQUhELFdBQVksYUFBYTtJQUN2Qiw0QkFBVyxDQUFBO0lBQ1gsOEJBQWEsQ0FBQTtBQUNmLENBQUMsRUFIVyxhQUFhLEdBQWIscUJBQWEsS0FBYixxQkFBYSxRQUd4QjtBQUVELElBQVksVUFHWDtBQUhELFdBQVksVUFBVTtJQUNwQixpQ0FBbUIsQ0FBQTtJQUNuQixpQ0FBbUIsQ0FBQTtBQUNyQixDQUFDLEVBSFcsVUFBVSxHQUFWLGtCQUFVLEtBQVYsa0JBQVUsUUFHckI7QUFXRCxJQUFZLFlBU1g7QUFURCxXQUFZLFlBQVk7SUFDdEIsbURBQW1DLENBQUE7SUFDbkMsdUNBQXVCLENBQUE7SUFDdkIscUNBQXFCLENBQUE7SUFDckIsaUNBQWlCLENBQUE7SUFDakIsdUJBQU8sQ0FBQTtJQUNQLHVCQUFPLENBQUE7SUFDUCx1QkFBTyxDQUFBO0lBQ1AsdUJBQU8sQ0FBQTtBQUNULENBQUMsRUFUVyxZQUFZLEdBQVosb0JBQVksS0FBWixvQkFBWSxRQVN2QiJ9
+exports.RegexFlags = exports.PaymentMethodType = exports.PaymentCardType = exports.EntryType = exports.EntityType = exports.Currency = exports.AliasType = exports.AccountType = void 0;
+var AccountType;
+(function (AccountType) {
+    AccountType["CreditCard"] = "CREDIT_CARD";
+    AccountType["Checking"] = "CHECKING";
+})(AccountType = exports.AccountType || (exports.AccountType = {}));
+var AliasType;
+(function (AliasType) {
+    AliasType["Alias"] = "ALIAS";
+    AliasType["PrefixDescendants"] = "PREFIX_DESCENDANTS";
+    AliasType["PostfixDescendants"] = "POSTFIX_DESCENDANTS";
+})(AliasType = exports.AliasType || (exports.AliasType = {}));
+var Currency;
+(function (Currency) {
+    Currency["Usd"] = "USD";
+})(Currency = exports.Currency || (exports.Currency = {}));
+var EntityType;
+(function (EntityType) {
+    EntityType["Person"] = "PERSON";
+    EntityType["Business"] = "BUSINESS";
+    EntityType["Department"] = "DEPARTMENT";
+})(EntityType = exports.EntityType || (exports.EntityType = {}));
+var EntryType;
+(function (EntryType) {
+    EntryType["Credit"] = "CREDIT";
+    EntryType["Debit"] = "DEBIT";
+})(EntryType = exports.EntryType || (exports.EntryType = {}));
+var PaymentCardType;
+(function (PaymentCardType) {
+    PaymentCardType["Visa"] = "VISA";
+    PaymentCardType["MasterCard"] = "MASTER_CARD";
+    PaymentCardType["AmericanExpress"] = "AMERICAN_EXPRESS";
+    PaymentCardType["Discover"] = "DISCOVER";
+})(PaymentCardType = exports.PaymentCardType || (exports.PaymentCardType = {}));
+var PaymentMethodType;
+(function (PaymentMethodType) {
+    PaymentMethodType["Card"] = "CARD";
+    PaymentMethodType["Check"] = "CHECK";
+    PaymentMethodType["Cash"] = "CASH";
+    PaymentMethodType["Online"] = "ONLINE";
+    PaymentMethodType["Combination"] = "COMBINATION";
+    PaymentMethodType["Unknown"] = "UNKNOWN";
+})(PaymentMethodType = exports.PaymentMethodType || (exports.PaymentMethodType = {}));
+/** https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#advanced_searching_with_flags */
+var RegexFlags;
+(function (RegexFlags) {
+    /** Global search. */
+    RegexFlags["G"] = "G";
+    /** Case-insensitive search. */
+    RegexFlags["I"] = "I";
+    /** Multi-line search. */
+    RegexFlags["M"] = "M";
+    /** Allows . to match newline characters. */
+    RegexFlags["S"] = "S";
+})(RegexFlags = exports.RegexFlags || (exports.RegexFlags = {}));
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiZ3JhcGhUeXBlcy5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uL3NyYy9ncmFwaFR5cGVzLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7OztBQXFGQSxJQUFZLFdBR1g7QUFIRCxXQUFZLFdBQVc7SUFDckIseUNBQTBCLENBQUE7SUFDMUIsb0NBQXFCLENBQUE7QUFDdkIsQ0FBQyxFQUhXLFdBQVcsR0FBWCxtQkFBVyxLQUFYLG1CQUFXLFFBR3RCO0FBaURELElBQVksU0FJWDtBQUpELFdBQVksU0FBUztJQUNuQiw0QkFBZSxDQUFBO0lBQ2YscURBQXdDLENBQUE7SUFDeEMsdURBQTBDLENBQUE7QUFDNUMsQ0FBQyxFQUpXLFNBQVMsR0FBVCxpQkFBUyxLQUFULGlCQUFTLFFBSXBCO0FBaUZELElBQVksUUFFWDtBQUZELFdBQVksUUFBUTtJQUNsQix1QkFBVyxDQUFBO0FBQ2IsQ0FBQyxFQUZXLFFBQVEsR0FBUixnQkFBUSxLQUFSLGdCQUFRLFFBRW5CO0FBMkRELElBQVksVUFJWDtBQUpELFdBQVksVUFBVTtJQUNwQiwrQkFBaUIsQ0FBQTtJQUNqQixtQ0FBcUIsQ0FBQTtJQUNyQix1Q0FBeUIsQ0FBQTtBQUMzQixDQUFDLEVBSlcsVUFBVSxHQUFWLGtCQUFVLEtBQVYsa0JBQVUsUUFJckI7QUFnSEQsSUFBWSxTQUdYO0FBSEQsV0FBWSxTQUFTO0lBQ25CLDhCQUFpQixDQUFBO0lBQ2pCLDRCQUFlLENBQUE7QUFDakIsQ0FBQyxFQUhXLFNBQVMsR0FBVCxpQkFBUyxLQUFULGlCQUFTLFFBR3BCO0FBZ0pELElBQVksZUFLWDtBQUxELFdBQVksZUFBZTtJQUN6QixnQ0FBYSxDQUFBO0lBQ2IsNkNBQTBCLENBQUE7SUFDMUIsdURBQW9DLENBQUE7SUFDcEMsd0NBQXFCLENBQUE7QUFDdkIsQ0FBQyxFQUxXLGVBQWUsR0FBZix1QkFBZSxLQUFmLHVCQUFlLFFBSzFCO0FBK0VELElBQVksaUJBT1g7QUFQRCxXQUFZLGlCQUFpQjtJQUMzQixrQ0FBYSxDQUFBO0lBQ2Isb0NBQWUsQ0FBQTtJQUNmLGtDQUFhLENBQUE7SUFDYixzQ0FBaUIsQ0FBQTtJQUNqQixnREFBMkIsQ0FBQTtJQUMzQix3Q0FBbUIsQ0FBQTtBQUNyQixDQUFDLEVBUFcsaUJBQWlCLEdBQWpCLHlCQUFpQixLQUFqQix5QkFBaUIsUUFPNUI7QUE4TUQsc0hBQXNIO0FBQ3RILElBQVksVUFTWDtBQVRELFdBQVksVUFBVTtJQUNwQixxQkFBcUI7SUFDckIscUJBQU8sQ0FBQTtJQUNQLCtCQUErQjtJQUMvQixxQkFBTyxDQUFBO0lBQ1AseUJBQXlCO0lBQ3pCLHFCQUFPLENBQUE7SUFDUCw0Q0FBNEM7SUFDNUMscUJBQU8sQ0FBQTtBQUNULENBQUMsRUFUVyxVQUFVLEdBQVYsa0JBQVUsS0FBVixrQkFBVSxRQVNyQiJ9
