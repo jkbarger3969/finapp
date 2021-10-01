@@ -1,1 +1,0 @@
-export { validatePaymentCard } from "./paymentCardValidators";

@@ -3,14 +3,14 @@ import { ObjectId } from "mongodb";
 
 import { AccountingDb } from "../../dataSources/accountingDb/accountingDb";
 
-export const validateCategory = {
-  exists: async ({
+export const validateCategory = new (class {
+  async exists({
     category,
     accountingDb,
   }: {
     category: ObjectId;
     accountingDb: AccountingDb;
-  }) => {
+  }) {
     if (
       !(await accountingDb.findOne({
         collection: "categories",
@@ -26,5 +26,28 @@ export const validateCategory = {
         `"Category" id "${category.toHexString()}" does not exists.`
       );
     }
-  },
-} as const;
+  }
+  async isNotRoot({
+    category,
+    accountingDb,
+  }: {
+    category: ObjectId;
+    accountingDb: AccountingDb;
+  }) {
+    const { parent } = await accountingDb.findOne({
+      collection: "categories",
+      filter: {
+        _id: category,
+      },
+      options: {
+        projection: { parent: true },
+      },
+    });
+
+    if (!parent) {
+      throw new UserInputError(
+        `Root category is not permitted. "Category" id "${category.toHexString()}" is a root category.`
+      );
+    }
+  }
+})();

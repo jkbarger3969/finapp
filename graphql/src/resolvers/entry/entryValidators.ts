@@ -399,7 +399,11 @@ export const validateEntry = new (class {
       }),
       // category
       validateCategory.exists({
-        category: new ObjectId(newEntry.category),
+        category: categoryId,
+        accountingDb,
+      }),
+      validateCategory.isNotRoot({
+        category: categoryId,
         accountingDb,
       }),
       // paymentMethod
@@ -476,6 +480,10 @@ export const validateEntry = new (class {
               category: categoryId,
               accountingDb,
             }),
+            validateCategory.isNotRoot({
+              category: categoryId,
+              accountingDb,
+            }),
             validatePaymentMethod.upsertPaymentMethod({
               upsertPaymentMethod: updateEntry.paymentMethod,
               accountingDb,
@@ -490,11 +498,16 @@ export const validateEntry = new (class {
             }),
           });
         } else if (categoryId) {
-          await validateCategory.exists({
-            category: categoryId,
-            accountingDb,
-          });
-
+          await Promise.all([
+            validateCategory.exists({
+              category: categoryId,
+              accountingDb,
+            }),
+            validateCategory.isNotRoot({
+              category: categoryId,
+              accountingDb,
+            }),
+          ]);
           await this.entryCategoryPayMethod({
             accountingDb,
             category: categoryId,

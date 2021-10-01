@@ -274,7 +274,9 @@ export const CategoryInputBase = forwardRef(function CategoryInputBase<
           if (category.children.length) {
             options.push(new BranchNode(category, branch));
           }
-          options.push(category);
+          if (category.parent) {
+            options.push(category);
+          }
 
           return options;
         }, [] as CategoryTreeSelectProps["options"])
