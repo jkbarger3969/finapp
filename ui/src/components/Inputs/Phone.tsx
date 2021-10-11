@@ -1,6 +1,6 @@
 import React, { forwardRef, useMemo } from "react";
 import {
-  isValidPhoneNumber,
+  isPossiblePhoneNumber,
   parsePhoneNumberFromString,
 } from "libphonenumber-js";
 import { MarkOptional } from "ts-essentials";
@@ -22,7 +22,7 @@ const phoneIsEqual: IsEqualFn<string> = (a, b) =>
   a?.trim().toLowerCase() === b?.trim().toLowerCase();
 
 const validPhone: Validator<string> = (phone?: string) => {
-  if (phone && !isValidPhoneNumber(phone, "US")) {
+  if (phone && !isPossiblePhoneNumber(phone, "US")) {
     return new TypeError("Invalid Phone Number");
   }
 };
