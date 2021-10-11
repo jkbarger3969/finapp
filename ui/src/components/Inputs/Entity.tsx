@@ -474,10 +474,16 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
     }
   }, [queryResult.data?.entities, branch]);
 
-  const freeSolo = useMemo<FreeSolo>(() => {
+  const [freeSolo, addFreeSoloText] = useMemo<[FreeSolo, string?]>(() => {
     const curBranch = branch?.valueOf();
-    return ((curBranch === "Person" && !!allowNewPerson) ||
-      (curBranch === "Business" && !!allowNewBusiness)) as FreeSolo;
+
+    if (curBranch === "Person" && !!allowNewPerson) {
+      return [true as FreeSolo, "Add Person:"];
+    } else if (curBranch === "Business" && !!allowNewBusiness) {
+      return [true as FreeSolo, "Add Business:"];
+    } else {
+      return [false as FreeSolo];
+    }
   }, [branch, allowNewPerson, allowNewBusiness]);
 
   return (
@@ -500,6 +506,7 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
       onInputChange={onInputChange}
       options={options}
       freeSolo={freeSolo}
+      addFreeSoloText={addFreeSoloText}
       // !props.value condition keeps the inputValue being taken as a
       // FreeSoloNode onBlur when a value is selected from the options.
       autoSelect={(autoSelect ?? false) || (freeSolo && !props.value)}
