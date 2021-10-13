@@ -665,29 +665,24 @@ export const PaymentMethodInputBase = forwardRef(
     );
 
     const renderOption = useCallback<
-      NonNullable<PayMethodTreeSelectProps["renderOption"]>
-    >(
-      (option) => {
-        if (option instanceof BranchNode) {
-          return (
-            <DefaultOption
-              option={option}
-              curBranch={branch}
-              getOptionLabel={getOptionLabel}
-            />
-          );
-        } else {
-          return (
-            <DefaultOption
-              option={option}
-              curBranch={branch}
-              getOptionLabel={getOptionLabelWithPrefixes}
-            />
-          );
-        }
-      },
-      [branch]
-    );
+      NonNullable<
+        PayMethodTreeSelectProps<Multiple, DisableClearable>["renderOption"]
+      >
+    >((props, option, state) => {
+      return (
+        <DefaultOption
+          props={props}
+          option={option}
+          state={{
+            ...state,
+            getOptionLabel:
+              option instanceof BranchNode
+                ? state.getOptionLabel
+                : getOptionLabelWithPrefixes,
+          }}
+        />
+      );
+    }, []);
 
     const renderInput = useCallback<
       NonNullable<PayMethodTreeSelectProps["renderInput"]>
@@ -817,7 +812,8 @@ export const PaymentMethodInputBase = forwardRef(
     ]);
 
     if (queryResult.loading) {
-      return <LoadingDefaultBlank {...rest} renderInput={renderInput} />;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return <LoadingDefaultBlank {...(props as any)} />;
     }
 
     return (

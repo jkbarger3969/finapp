@@ -330,7 +330,8 @@ export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
   ]);
 
   if (rootResult.loading) {
-    return <LoadingDefaultBlank {...props} />;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return <LoadingDefaultBlank {...(props as any)} />;
   }
 
   return (
