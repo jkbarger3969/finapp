@@ -581,8 +581,10 @@ export const PaymentMethodInputBase = forwardRef(
     const [state, setState] = useState<{
       checkingAccountBranchOpts: BranchNode<PaymentMethodInputBranchOpt>[];
       cardOpts: Map<PaymentCardType, AccountCardPayMethodInputOpt[]>;
+      cardBranchOpts: BranchNode<PaymentMethodInputBranchOpt>[];
     }>({
       checkingAccountBranchOpts: [],
+      cardBranchOpts: [],
       cardOpts: new Map<PaymentCardType, AccountCardPayMethodInputOpt[]>(),
     });
 
@@ -625,6 +627,9 @@ export const PaymentMethodInputBase = forwardRef(
               ...state,
               checkingAccountBranchOpts,
               cardOpts,
+              cardBranchOpts: paymentCardBranchOpts.filter((branchOpt) =>
+                cardOpts.has(branchOpt.valueOf() as PaymentCardType)
+              ),
             }));
           },
         }),
@@ -642,13 +647,62 @@ export const PaymentMethodInputBase = forwardRef(
           onInputChangeProp(args[0], "", "reset");
         }
 
-        setBranch(args[1]);
+        // Skip single children account card and checking branch opts
+        const newArgs = (() => {
+          const [, newBranch, direction] = args;
+
+          if ((entryType === EntryType.Credit && !isRefund) || !newBranch) {
+            return args;
+          } else {
+            const newBranchValue = newBranch.valueOf();
+            switch (newBranchValue) {
+              case PaymentMethodType.Card:
+                if (state.cardBranchOpts.length === 1) {
+                  const newArgs = [...args] as typeof args;
+                  if (direction === "up") {
+                    newArgs[1] = null;
+                    return newArgs;
+                  } else {
+                    newArgs[1] = state.cardBranchOpts[0];
+                    return newArgs;
+                  }
+                }
+                break;
+              case PaymentMethodType.Check:
+                if (state.checkingAccountBranchOpts.length === 1) {
+                  const newArgs = [...args] as typeof args;
+                  if (direction === "up") {
+                    newArgs[1] = null;
+                    return newArgs;
+                  } else {
+                    newArgs[1] = state.checkingAccountBranchOpts[0];
+                    return newArgs;
+                  }
+                }
+                break;
+              default:
+                break;
+            }
+            return args;
+          }
+        })();
+
+        setBranch(newArgs[1]);
 
         if (onBranchChangeProp) {
-          onBranchChangeProp(...args);
+          onBranchChangeProp(...newArgs);
         }
       },
-      [setInputValue, onInputChangeProp, setBranch, onBranchChangeProp]
+      [
+        setInputValue,
+        onInputChangeProp,
+        setBranch,
+        onBranchChangeProp,
+        entryType,
+        isRefund,
+        state.cardBranchOpts,
+        state.checkingAccountBranchOpts,
+      ]
     );
 
     const onInputChange = useCallback<
@@ -668,16 +722,16 @@ export const PaymentMethodInputBase = forwardRef(
       NonNullable<
         PayMethodTreeSelectProps<Multiple, DisableClearable>["renderOption"]
       >
-    >((props, option, state) => {
+    >((renderOptionProps, option, renderOptionState) => {
       return (
         <DefaultOption
-          props={props}
+          props={renderOptionProps}
           option={option}
           state={{
-            ...state,
+            ...renderOptionState,
             getOptionLabel:
               option instanceof BranchNode
-                ? state.getOptionLabel
+                ? renderOptionState.getOptionLabel
                 : getOptionLabelWithPrefixes,
           }}
         />
@@ -781,7 +835,12 @@ export const PaymentMethodInputBase = forwardRef(
       } else if (typeof curBranch === "string") {
         switch (curBranch) {
           case PaymentMethodType.Card:
-            return [paymentCardBranchOpts, false];
+            return [
+              entryType === EntryType.Credit && !isRefund
+                ? paymentCardBranchOpts
+                : state.cardBranchOpts,
+              false,
+            ];
           case PaymentMethodType.Check:
             if (entryType === EntryType.Credit) {
               return [[], true];
@@ -802,13 +861,14 @@ export const PaymentMethodInputBase = forwardRef(
         return [[], true];
       }
     }, [
-      isRefund,
+      branch,
+      queryResult.loading,
       entryTypeIsUndefined,
       entryType,
-      queryResult.loading,
+      isRefund,
+      state.cardBranchOpts,
       state.checkingAccountBranchOpts,
       state.cardOpts,
-      branch,
     ]);
 
     if (queryResult.loading) {
