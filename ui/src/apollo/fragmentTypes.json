@@ -35,10 +35,10 @@
     ],
     "PaymentMethodInterface": [
       "PaymentMethodCard",
-      "PaymentMethodCheck",
       "PaymentMethodCash",
-      "PaymentMethodOnline",
+      "PaymentMethodCheck",
       "PaymentMethodCombination",
+      "PaymentMethodOnline",
       "PaymentMethodUnknown"
     ],
     "Source": [

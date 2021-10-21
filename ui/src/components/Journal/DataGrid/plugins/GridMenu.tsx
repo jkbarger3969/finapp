@@ -18,6 +18,9 @@ import {
 } from "@material-ui/core";
 import MoreIcon from "@material-ui/icons/MoreVert";
 import ReconcileIcon from "@material-ui/icons/DoneAll";
+import SaveIcon from "@material-ui/icons/Save";
+
+import { ExportGrid } from "./ExportGrid";
 
 const anchorOrigin: PopoverOrigin = {
   vertical: "top",
@@ -42,11 +45,12 @@ export const GridMenu = (): JSX.Element => {
 
   return (
     <Plugin name="GridMenu" dependencies={deps}>
+      <ExportGrid />
       <Template name="toolbarContent">
         <TemplatePlaceholder />
         <TemplateConnector>
           {useCallback(
-            ({ reconcileMode }, { changeReconcileMode }) => (
+            ({ reconcileMode }, { changeReconcileMode, exportGrid }) => (
               <>
                 <IconButton
                   ref={setAnchorEl}
@@ -85,6 +89,18 @@ export const GridMenu = (): JSX.Element => {
                         }}
                       />
                     </ListItemSecondaryAction>
+                  </MenuItem>
+                  <MenuItem
+                    button
+                    onClick={() => {
+                      exportGrid();
+                      setOpen(false);
+                    }}
+                  >
+                    <ListItemIcon>
+                      <SaveIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Save to Disk" />
                   </MenuItem>
                 </Menu>
               </>
