@@ -26,6 +26,28 @@ export const EntryItem: EntryItemResolvers = {
 export const EntryRefund: EntryRefundResolvers = {
   id: ({ id }) => id.toString(),
   date: ({ date }) => date[0].value,
+  dateOfRecord: ({ dateOfRecord }) =>
+    dateOfRecord
+      ? {
+          date: dateOfRecord.date[0].value,
+          overrideFiscalYear: dateOfRecord.overrideFiscalYear[0].value,
+        }
+      : null,
+
+  fiscalYear: ({ date, dateOfRecord }, _, { db }) => {
+    const value = dateOfRecord?.overrideFiscalYear[0].value
+      ? dateOfRecord.date[0].value
+      : date[0].value;
+
+    return db.collection("fiscalYears").findOne({
+      begin: {
+        $lte: value,
+      },
+      end: {
+        $gt: value,
+      },
+    });
+  },
   deleted: ({ deleted }) => deleted[0].value,
   description: ({ description }) => (description ? description[0].value : null),
   entry: ({ id }, _, { db }) =>
@@ -71,7 +93,7 @@ export const Entry: EntryResolvers = {
   // lastUpdate: Default works
   paymentMethod: ({ paymentMethod }) => paymentMethod[0].value,
   reconciled: ({ reconciled }) => reconciled[0].value,
-  refunds: ({ refunds }) => refunds ?? ([] as any),
+  refunds: ({ refunds }) => refunds || [],
   source: ({ source }, _, { db }) => {
     const { type, id } = source[0].value;
 

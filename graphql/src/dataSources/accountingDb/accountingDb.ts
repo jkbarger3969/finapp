@@ -32,6 +32,12 @@ export class AccountingDb extends DataSource<Context> {
     return this.#db;
   }
 
+  getCollection<TCollection extends keyof CollectionSchemaMap>(
+    collection: TCollection
+  ) {
+    return this.#db.collection<CollectionSchemaMap[TCollection]>(collection);
+  }
+
   /**
    * Handles the session, and nested calls to withTransaction,
    */

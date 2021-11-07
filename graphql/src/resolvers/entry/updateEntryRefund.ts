@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { UpdateOne } from "../../dataSources/accountingDb/accountingDb";
 import { EntryRefundDbRecord } from "../../dataSources/accountingDb/types";
 import { MutationResolvers } from "../../graphTypes";
 import { fractionToRational } from "../../utils/mongoRational";
@@ -23,6 +24,7 @@ export const updateEntryRefund: MutationResolvers["updateEntryRefund"] = (
     const {
       id,
       date,
+      dateOfRecord,
       paymentMethod: paymentMethodInput,
       description: descriptionInput,
       total,
@@ -46,6 +48,34 @@ export const updateEntryRefund: MutationResolvers["updateEntryRefund"] = (
 
     if (date) {
       updateBuilder.updateHistoricalField("date", date);
+    }
+
+    const dateOfRecordUpdateBuilder = new UpdateHistoricalDoc<
+      NonNullable<EntryRefundDbRecord["dateOfRecord"]>,
+      "refunds.$.dateOfRecord"
+    >({
+      docHistory,
+      isRootDoc: false,
+      fieldPrefix: "refunds.$.dateOfRecord",
+    });
+
+    if (dateOfRecord?.clear) {
+      dateOfRecordUpdateBuilder
+        .updateHistoricalField("date", null)
+        .updateHistoricalField("overrideFiscalYear", null);
+    } else if (dateOfRecord) {
+      const { date, overrideFiscalYear } = dateOfRecord;
+
+      if (dateOfRecord.date) {
+        dateOfRecordUpdateBuilder.updateHistoricalField("date", date);
+      }
+
+      if ((overrideFiscalYear ?? NULLISH) !== NULLISH) {
+        dateOfRecordUpdateBuilder.updateHistoricalField(
+          "overrideFiscalYear",
+          overrideFiscalYear
+        );
+      }
     }
 
     if (paymentMethodInput) {
@@ -72,13 +102,31 @@ export const updateEntryRefund: MutationResolvers["updateEntryRefund"] = (
     if ((reconciled ?? NULLISH) !== NULLISH) {
       updateBuilder.updateHistoricalField("reconciled", reconciled);
     }
+    const entryRefundUpdate = updateBuilder.valueOf();
+    const dateOfRecordUpdate = dateOfRecordUpdateBuilder.valueOf();
+
+    const update = {} as UpdateOne<"entries">;
+
+    if (entryRefundUpdate?.$set || dateOfRecordUpdate?.$set) {
+      update.$set = {
+        ...entryRefundUpdate?.$set,
+        ...dateOfRecordUpdate?.$set,
+      };
+    }
+
+    if (entryRefundUpdate?.$push || dateOfRecordUpdate?.$push) {
+      update.$push = {
+        ...entryRefundUpdate?.$push,
+        ...dateOfRecordUpdate?.$push,
+      };
+    }
 
     await accountingDb.updateOne({
       collection: "entries",
       filter: {
         "refunds.id": refundId,
       },
-      update: updateBuilder.valueOf(),
+      update,
     });
 
     return {

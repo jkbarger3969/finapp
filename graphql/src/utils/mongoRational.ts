@@ -20,64 +20,30 @@ export type ComparisonOps = "$eq" | "$gt" | "$gte" | "$lt" | "$lte" | "$ne";
 export type SetOps = "$in" | "$nin";
 export type RationalOp = ComparisonOps | SetOps;
 
+// export interface RationalField {
+//   /**
+//    * Any [$let]{@link https://docs.mongodb.com/manual/reference/operator/aggregation/let/} vars expression that returns a Rational or array of Rationals.
+//    */
+//   rational: object;
+// }
+
 /**
  * - Rational number object.
- * - Path to a rational number object.
- * - Tuple of path to a rational number object and an $arrayElemAt idx.
+ * - Any [$let]{@link https://docs.mongodb.com/manual/reference/operator/aggregation/let/} vars expression that returns a Rational or array of Rationals.
  * */
-export type RationalValue = Rational | string | [path: string, index: number];
+export type RationalValue = Rational | object | string;
 
-const parseRationalValue = (
-  rationalValue: RationalValue,
-  letVar: string
-): Readonly<
-  [
-    s: string | 1 | -1,
-    n: string | number,
-    d: string | number,
-    path: string,
-    elemIndex: number
-  ]
-> => {
-  if (typeof rationalValue === "string") {
-    return [
-      `$${rationalValue}.s`,
-      `$${rationalValue}.n`,
-      `$${rationalValue}.d`,
-      "",
-      -1,
-    ] as const;
-  } else if (Array.isArray(rationalValue)) {
-    return [`$${letVar}.s`, `$${letVar}.n`, `$${letVar}.d`, ...rationalValue];
-  } else {
-    return [rationalValue.s, rationalValue.n, rationalValue.d, "", -1] as const;
-  }
-};
-
-const createLetVarsAtIndexExpr = <T>(
-  addVars: Iterable<{ path: string; index: number; letVar: string }>,
-  expression: T
-) => {
-  const vars = {} as Record<
-    string,
-    {
-      $arrayElemAt: [string, number];
-    }
-  >;
-
-  for (const { path, index, letVar } of addVars) {
-    vars[letVar] = {
-      $arrayElemAt: [`$${path}`, index],
-    };
-  }
-
-  return {
-    $let: {
-      vars,
-      in: expression,
-    },
-  } as const;
-};
+const comparisonExpression = [
+  {
+    $subtract: [
+      {
+        $multiply: ["$$lhs.s", "$$lhs.n", "$$rhs.d"],
+      },
+      { $multiply: ["$$rhs.s", "$$rhs.n", "$$lhs.d"] },
+    ],
+  },
+  0,
+] as const;
 
 /**
  * @returns a mongodb [$expr](https://docs.mongodb.com/manual/reference/operator/query/expr/) value.
@@ -88,54 +54,114 @@ const compareRationalEqualityAndRanges = (
   comparisonOp: ComparisonOps,
   rhs: RationalValue
 ) => {
-  const [sLhs, nLhs, dLhs, pathLhs, elemIndexLhs] = parseRationalValue(
-    lhs,
-    "lhs"
-  );
+  // const lhsArgs = parseRationalValueArg(lhs, "lhs");
 
-  const [sRhs, nRhs, dRhs, pathRhs, elemIndexRhs] = parseRationalValue(
-    rhs,
-    "rhs"
-  );
+  // const rhsArgs = parseRationalValueArg(rhs, "rhs");
 
-  const expression = {
-    [comparisonOp]: [
-      {
-        $subtract: [
-          {
-            $multiply: [sLhs, nLhs, dRhs],
+  return {
+    $let: {
+      vars: {
+        lhs: {
+          $let: {
+            vars: {
+              rational: lhs,
+            },
+            in: {
+              $cond: [{ $isArray: "$$rational" }, "$$rational", ["$$rational"]],
+            },
           },
-          { $multiply: [sRhs, nRhs, dLhs] },
-        ],
+        },
+        rhs: {
+          $let: {
+            vars: {
+              rational: rhs,
+            },
+            in: {
+              $cond: [{ $isArray: "$$rational" }, "$$rational", ["$$rational"]],
+            },
+          },
+        },
       },
-      0,
-    ],
-  } as const;
+      in: {
+        $reduce: {
+          input: "$$lhs",
+          initialValue: false,
+          in: {
+            $cond: [
+              "$$value",
+              true,
+              {
+                $let: {
+                  vars: {
+                    lhs: "$$this",
+                  },
+                  in: {
+                    $reduce: {
+                      input: "$$rhs",
+                      initialValue: false,
+                      in: {
+                        $cond: [
+                          "$$value",
+                          true,
+                          {
+                            [comparisonOp]: [
+                              {
+                                $subtract: [
+                                  {
+                                    $multiply: [
+                                      "$$lhs.s",
+                                      "$$lhs.n",
+                                      "$$this.d",
+                                    ],
+                                  },
+                                  {
+                                    $multiply: [
+                                      "$$this.s",
+                                      "$$this.n",
+                                      "$$lhs.d",
+                                    ],
+                                  },
+                                ],
+                              },
+                              0,
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  };
 
-  if (elemIndexLhs > -1 || elemIndexRhs > -1) {
-    return createLetVarsAtIndexExpr(
+  // const expression = {
+  //   [comparisonOp]: comparisonExpression,
+  // } as const;
+
+  /* let lhsIsField: boolean;
+  let rhsIsField: boolean;
+  if ((lhsIsField = "field" in lhsArgs) || (rhsIsField = "field" in rhsArgs)) {
+    return createLetVarsExpr(
       (function* () {
-        if (elemIndexLhs > -1) {
-          yield {
-            path: pathLhs,
-            index: elemIndexLhs,
-            letVar: "lhs",
-          };
+        if (lhsIsField) {
+          rhsIsField = "field" in rhsArgs;
+          yield [lhsArgs, "lhs"] as CreateLetVarsArgs;
         }
 
-        if (elemIndexRhs > -1) {
-          yield {
-            path: pathRhs,
-            index: elemIndexRhs,
-            letVar: "rhs",
-          };
+        if (rhsIsField) {
+          yield [rhsArgs, "rhs"] as CreateLetVarsArgs;
         }
       })(),
       expression
     );
   } else {
     return expression;
-  }
+  } */
 };
 
 /**
@@ -168,12 +194,12 @@ const compareRationalSet = (
  */
 export function rationalComparison(
   lhs: RationalValue,
-  op: RationalOp,
+  op: ComparisonOps,
   rhs: RationalValue
 ): ReturnType<typeof compareRationalEqualityAndRanges>;
 export function rationalComparison(
   lhs: RationalValue,
-  op: RationalOp,
+  op: SetOps,
   rhs: Iterable<RationalValue>
 ): ReturnType<typeof compareRationalSet>;
 export function rationalComparison(
@@ -212,41 +238,39 @@ const gcd = function (n: number, d: number) {
   }
 };
 
-const addOrSubtractRational = (
+/* const addOrSubtractRational = (
   a: RationalValue,
   b: RationalValue,
   type: "ADD" | "SUBTRACT"
 ) => {
-  const [sA, nA, dA, pathA, indexA] = parseRationalValue(a, "rA");
-  const [sB, nB, dB, pathB, indexB] = parseRationalValue(b, "rB");
+  const aArgs = parseRationalValueArg(a, "rA");
+  const bArgs = parseRationalValueArg(b, "rB");
 
   const op = type === "ADD" ? "$add" : "$subtract";
 
   const expression = {
     n: {
-      [op]: [{ $multiply: [dB, nA, sA] }, { $multiply: [dA, nB, sB] }],
+      [op]: [
+        { $multiply: [bArgs.d, aArgs.n, aArgs.s] },
+        { $multiply: [aArgs.d, bArgs.n, bArgs.s] },
+      ],
     },
-    d: { $multiply: [dA, dB] },
+    d: { $multiply: [aArgs.d, bArgs.d] },
   } as const;
 
+  let lhsIsField: boolean;
+  let rhsIsField: boolean;
   const expr =
-    indexA > -1 || indexB > -1
-      ? createLetVarsAtIndexExpr(
+    (lhsIsField = "field" in aArgs) || (rhsIsField = "field" in bArgs)
+      ? createLetVarsExpr(
           (function* () {
-            if (indexA > -1) {
-              yield {
-                path: pathA,
-                index: indexA,
-                letVar: "rA",
-              };
+            if (lhsIsField) {
+              rhsIsField = "field" in bArgs;
+              yield [aArgs, "rA"] as CreateLetVarsArgs;
             }
 
-            if (indexB > -1) {
-              yield {
-                path: pathB,
-                index: indexB,
-                letVar: "rB",
-              };
+            if (rhsIsField) {
+              yield [bArgs, "rB"] as CreateLetVarsArgs;
             }
           })(),
           expression
@@ -293,4 +317,4 @@ export const addRational = (a: RationalValue, b: RationalValue) => {
 
 export const subtractRational = (a: RationalValue, b: RationalValue) => {
   return addOrSubtractRational(a, b, "SUBTRACT");
-};
+}; */

@@ -49,6 +49,7 @@ import {
 } from "../../../apollo/graphTypes";
 import { deserializeDate, deserializeRational } from "../../../apollo/scalars";
 import { startOfDay } from "date-fns/esm";
+import { DATE_OF_RECORD_NAME } from "./useEntry";
 
 const useStyles = makeStyles({
   adornedStart: {
@@ -75,6 +76,7 @@ export const RECONCILED_NAME = "reconciled";
 
 export type RefundFieldDef = {
   refund: DateFieldDef<typeof DATE_NAME> &
+    DateFieldDef<typeof DATE_OF_RECORD_NAME> &
     DescriptionFieldDef<typeof DESCRIPTION_NAME> &
     PaymentMethodFieldDef<false> &
     RationalFieldDef<typeof TOTAL_NAME> &
@@ -101,9 +103,6 @@ const REFUND_ENTRY_STATE = gql`
       __typename
       id
       date
-      dateOfRecord {
-        date
-      }
       category {
         __typename
         id

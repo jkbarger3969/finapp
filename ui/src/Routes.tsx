@@ -3,7 +3,7 @@ import { Route, Switch, RouteComponentProps } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 
 // import Journal from "./components/Journal/Table/Journal";
-import Grid from "./components/Journal/DataGrid/Grid";
+import Grid, { GridRefundsWhere } from "./components/Journal/DataGrid/Grid";
 import Dashboard from "./components/Dashboard/Dashboard";
 import TopNav from "./components/TopNav";
 import {
@@ -70,6 +70,37 @@ const GridParent = (
     [props.match.params.id, props.match.params.fiscalYear]
   );
 
+  const refundsWhere = useMemo<GridRefundsWhere>(
+    () => ({
+      where: {
+        fiscalYear: {
+          id: {
+            eq: props.match.params.fiscalYear,
+          },
+        },
+        deleted: false,
+      },
+      entriesWhere: {
+        department: {
+          id: {
+            lte: props.match.params.id,
+          },
+        },
+        fiscalYear: {
+          nor: [
+            {
+              id: {
+                eq: props.match.params.fiscalYear,
+              },
+            },
+          ],
+        },
+        deleted: false,
+      },
+    }),
+    [props.match.params.fiscalYear, props.match.params.id]
+  );
+
   const selectableDepts = useMemo<DepartmentsWhere>(
     () => ({
       id: {
@@ -107,6 +138,7 @@ const GridParent = (
       reconcileMode={props.reconcileMode}
       loading={loading}
       where={where}
+      refundsWhere={refundsWhere}
       selectableDepts={selectableDepts}
       selectableAccounts={selectableAccounts}
     />

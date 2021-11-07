@@ -93,11 +93,11 @@ export type UpsertRefundProps = {
     onClose?: DialogOnClose;
   };
   refetchQueries?: {
-    onUpdateEntry?: MutationHookOptions<
+    onUpdateEntryRefund?: MutationHookOptions<
       UpdateEntryRefundMutation,
       UpdateEntryRefundMutationVars
     >["refetchQueries"];
-    onNewEntry?: MutationHookOptions<
+    onNewEntryRefund?: MutationHookOptions<
       NewEntryRefundMutation,
       NewEntryRefundMutationVars
     >["refetchQueries"];
@@ -139,12 +139,12 @@ const InnerDialog = (
     NEW_ENTRY_REFUND,
     useMemo(
       () =>
-        refetchQueries?.onNewEntry
+        refetchQueries?.onNewEntryRefund
           ? {
-              refetchQueries: refetchQueries?.onNewEntry,
+              refetchQueries: refetchQueries?.onNewEntryRefund,
             }
           : undefined,
-      [refetchQueries?.onNewEntry]
+      [refetchQueries?.onNewEntryRefund]
     )
   );
 
@@ -155,12 +155,12 @@ const InnerDialog = (
     UPDATE_ENTRY_REFUND,
     useMemo(
       () =>
-        refetchQueries?.onUpdateEntry
+        refetchQueries?.onUpdateEntryRefund
           ? {
-              refetchQueries: refetchQueries?.onUpdateEntry,
+              refetchQueries: refetchQueries?.onUpdateEntryRefund,
             }
           : undefined,
-      [refetchQueries?.onUpdateEntry]
+      [refetchQueries?.onUpdateEntryRefund]
     )
   );
 
@@ -183,6 +183,12 @@ const InnerDialog = (
             const entryRefundUpdate: UpdateEntryRefund = {
               id: updateRefundId,
               date: refund?.date ? serializeDate(refund.date) : null,
+              dateOfRecord: refund?.dateOfRecord
+                ? {
+                    date: serializeDate(refund.dateOfRecord),
+                    overrideFiscalYear: true,
+                  }
+                : null,
               paymentMethod: refund?.paymentMethod
                 ? toUpsertPaymentMethod({
                     paymentMethodInput: refund.paymentMethod,
@@ -216,7 +222,12 @@ const InnerDialog = (
             const newEntryRefund: NewEntryRefund = {
               entry: entryId as string,
               date: serializeDate(refund?.date as Date),
-
+              dateOfRecord: refund?.dateOfRecord
+                ? {
+                    date: serializeDate(refund.dateOfRecord),
+                    overrideFiscalYear: true,
+                  }
+                : null,
               paymentMethod: toUpsertPaymentMethod({
                 paymentMethodInput: refund?.paymentMethod as Parameters<
                   typeof toUpsertPaymentMethod
@@ -274,6 +285,10 @@ const InnerDialog = (
         required: true,
         form,
         date: {
+          ...sharedInputProps.DateInputProps,
+          ...refundProps.date,
+        },
+        dateOfRecord: {
           ...sharedInputProps.DateInputProps,
           ...refundProps.date,
         },

@@ -20,6 +20,58 @@ import { whereBusiness } from "../business";
 import { wherePeople } from "../person/people";
 import { whereFiscalYear, FiscalYearDbRecord } from "../fiscalYear";
 
+const refundDateOfRecordCondition = (
+  $and: FilterQuery<unknown>[],
+  dateLetVar = "date"
+) => ({
+  $expr: {
+    $let: {
+      vars: {
+        // Grab refunds or provided default
+        refunds: { $ifNull: ["$refunds", []] },
+      },
+      in: {
+        // Loop over refunds and check conditions
+        $reduce: {
+          input: {
+            // Ensure $$refunds is an array
+            $cond: [{ $isArray: "$$refunds" }, "$$refunds", ["$$refunds"]],
+          },
+          initialValue: false,
+          in: {
+            $cond: [
+              "$$value",
+              // Short circuit on "true" condition
+              true,
+              // Perform condition check
+              {
+                $let: {
+                  vars: {
+                    // dateOfRecord or fallback to date.
+                    [dateLetVar]: {
+                      $ifNull: [
+                        {
+                          $arrayElemAt: ["$$this.dateOfRecord.date.value", 0],
+                        },
+                        {
+                          $arrayElemAt: ["$$this.date.value", 0],
+                        },
+                      ],
+                    },
+                  },
+                  in: {
+                    $and,
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  },
+});
+
 export const whereEntryRefunds = (
   entryRefundsWhere: EntryRefundsWhere,
   db: Db,
@@ -37,31 +89,120 @@ export const whereEntryRefunds = (
           entryRefundsWhere[whereKey]
         );
         break;
-      case "entry": {
-        if (!("$and" in filterQuery)) {
-          filterQuery.$and = [];
-        }
-        const result = whereEntries(entryRefundsWhere[whereKey], db);
+      case "dateOfRecord":
+        for (const dateOfRecordKey of iterateOwnKeys(
+          entryRefundsWhere[whereKey]
+        )) {
+          switch (dateOfRecordKey) {
+            case "date":
+              {
+                const $and: unknown[] = [];
 
-        if (result instanceof Promise) {
-          promises.push(
-            result.then((result) => {
-              filterQuery.$and.push(result);
-            })
-          );
-        } else {
-          filterQuery.$and.push(result);
-        }
+                for (const [op, value] of iterateOwnKeyValues(
+                  whereDate(entryRefundsWhere[whereKey][dateOfRecordKey])
+                )) {
+                  $and.push({
+                    [op]: ["$$date", value],
+                  });
+                }
 
+                if (!("$and" in filterQuery)) {
+                  filterQuery.$and = [];
+                }
+
+                // Note: "dateOfRecord" falls back to "date".
+                filterQuery.$and.push(
+                  refundDateOfRecordCondition($and, "date")
+                );
+              }
+              break;
+            case "overrideFiscalYear":
+              filterQuery["refunds.dateOfRecord.overrideFiscalYear.0.value"] =
+                entryRefundsWhere[whereKey][dateOfRecordKey];
+              break;
+          }
+        }
         break;
-      }
+      case "fiscalYear":
+        promises.push(
+          (async () => {
+            const fiscalYearsQuery = whereFiscalYear(
+              entryRefundsWhere[whereKey]
+            );
+
+            const fiscalYears = await db
+              .collection<Pick<FiscalYearDbRecord, "end" | "begin">>(
+                "fiscalYears"
+              )
+              .find(fiscalYearsQuery, {
+                projection: {
+                  begin: true,
+                  end: true,
+                },
+              })
+              .toArray();
+
+            const $and: FilterQuery<unknown>[] = [];
+
+            for (const { begin, end } of fiscalYears) {
+              $and.push(
+                {
+                  $gte: ["$$date", begin],
+                },
+                {
+                  $lt: ["$$date", end],
+                }
+              );
+            }
+
+            if (!("$and" in filterQuery)) {
+              filterQuery.$and = [];
+            }
+            filterQuery.$and.push(refundDateOfRecordCondition($and, "date"));
+          })()
+        );
+        break;
       case "total":
         if (!("$and" in filterQuery)) {
           filterQuery.$and = [];
         }
         filterQuery.$and.push(
           ...whereRational(
-            ["refunds.total.value", 0],
+            {
+              $let: {
+                vars: {
+                  lhs: {
+                    $reduce: {
+                      input: {
+                        $ifNull: ["$refunds", []],
+                      },
+                      initialValue: [],
+                      in: {
+                        $concatArrays: [
+                          "$$value",
+                          [
+                            {
+                              $arrayElemAt: ["$$this.total.value", 0],
+                            },
+                          ],
+                        ],
+                      },
+                    },
+                  },
+                },
+                in: {
+                  $cond: [
+                    { $gt: [{ $size: "$$lhs" }, 0] },
+                    "$$lhs",
+                    {
+                      s: 1,
+                      n: 0,
+                      d: 1,
+                    },
+                  ],
+                },
+              },
+            },
             entryRefundsWhere[whereKey]
           )
         );
@@ -240,7 +381,18 @@ export const whereEntryItems = (
           filterQuery.$and = [];
         }
         filterQuery.$and.push(
-          ...whereRational(["items.total.value", 0], itemRefundsWhere[whereKey])
+          ...whereRational(
+            {
+              field: "items.total.value",
+              elemIndex: 0,
+              defaultValue: {
+                s: 1,
+                n: 0,
+                d: 1,
+              },
+            },
+            itemRefundsWhere[whereKey]
+          )
         );
         break;
       case "lastUpdate":
@@ -346,7 +498,15 @@ export const whereEntryItems = (
   return filterQuery;
 };
 
-export const whereEntries = (entriesWhere: EntriesWhere, db: Db) => {
+export const whereEntries = (
+  entriesWhere: EntriesWhere,
+  db: Db,
+  {
+    excludeWhereRefunds = false,
+  }: {
+    excludeWhereRefunds?: boolean;
+  } = {}
+) => {
   const filterQuery: FilterQuery<unknown> = {};
 
   const promises: Promise<void | unknown>[] = [];
@@ -357,7 +517,7 @@ export const whereEntries = (entriesWhere: EntriesWhere, db: Db) => {
         filterQuery["_id"] = whereId(entriesWhere[whereKey]);
         break;
       case "refunds":
-        {
+        if (!excludeWhereRefunds) {
           const result = whereEntryRefunds(
             entriesWhere[whereKey],
             db,
@@ -388,20 +548,13 @@ export const whereEntries = (entriesWhere: EntriesWhere, db: Db) => {
           switch (dateOfRecordKey) {
             case "date":
               {
-                const dateOfRecordAnd: unknown[] = [];
-                const dateAnd: unknown[] = [];
+                const $and: unknown[] = [];
 
                 for (const [op, value] of iterateOwnKeyValues(
                   whereDate(entriesWhere[whereKey][dateOfRecordKey])
                 )) {
-                  dateOfRecordAnd.push({
-                    [op]: [
-                      { $arrayElemAt: ["$dateOfRecord.date.value", 0] },
-                      value,
-                    ],
-                  });
-                  dateAnd.push({
-                    [op]: [{ $arrayElemAt: ["$date.value", 0] }, value],
+                  $and.push({
+                    [op]: ["$$date", value],
                   });
                 }
 
@@ -411,15 +564,22 @@ export const whereEntries = (entriesWhere: EntriesWhere, db: Db) => {
 
                 filterQuery.$and.push({
                   $expr: {
-                    $cond: {
-                      if: {
-                        $ne: [{ $type: "$dateOfRecord.date.value" }, "missing"],
+                    $let: {
+                      vars: {
+                        // Get dateOfRecord or fallback to date
+                        date: {
+                          $ifNull: [
+                            {
+                              $arrayElemAt: ["$dateOfRecord.date.value", 0],
+                            },
+                            {
+                              $arrayElemAt: ["$date.value", 0],
+                            },
+                          ],
+                        },
                       },
-                      then: {
-                        $and: dateOfRecordAnd,
-                      },
-                      else: {
-                        $and: dateAnd,
+                      in: {
+                        $and,
                       },
                     },
                   },
@@ -541,7 +701,10 @@ export const whereEntries = (entriesWhere: EntriesWhere, db: Db) => {
           filterQuery.$and = [];
         }
         filterQuery.$and.push(
-          ...whereRational(["total.value", 0], entriesWhere[whereKey])
+          ...whereRational(
+            { $arrayElemAt: ["$total.value", 0] },
+            entriesWhere[whereKey]
+          )
         );
         break;
       case "source":
@@ -752,14 +915,58 @@ export const whereEntries = (entriesWhere: EntriesWhere, db: Db) => {
   return filterQuery;
 };
 
-export const entries: QueryResolvers["entries"] = (_, { where }, { db }) => {
-  const query = where ? whereEntries(where, db) : {};
+export const entries: QueryResolvers["entries"] = async (
+  _,
+  { where, filterRefunds },
+  { db }
+) => {
+  const pipeline: object[] = [];
+  if (where) {
+    pipeline.push({
+      $match: await whereEntries(where, db),
+    });
 
-  if (query instanceof Promise) {
-    return query.then((query) =>
-      db.collection("entries").find(query).toArray()
-    );
+    if (filterRefunds) {
+      const matchRefunds = await whereEntries(where, db, {
+        excludeWhereRefunds: true,
+      });
+
+      pipeline.push(
+        {
+          $facet: {
+            all: [
+              {
+                $project: { refunds: false },
+              },
+            ],
+            refunds: [
+              { $unwind: "$refunds" },
+              // Map refunds on entry NOTE: a refund is a subset of an entry.
+              {
+                $replaceRoot: {
+                  newRoot: { $mergeObjects: ["$$CURRENT", "$refunds"] },
+                },
+              },
+              {
+                $match: matchRefunds,
+              },
+              {
+                $group: { _id: "$_id", refunds: { $push: "$refunds" } },
+              },
+            ],
+          },
+        },
+        {
+          $project: {
+            all: { $concatArrays: ["$all", "$refunds"] },
+          },
+        },
+        { $unwind: "$all" },
+        { $group: { _id: "$all._id", docs: { $push: "$all" } } },
+        { $replaceRoot: { newRoot: { $mergeObjects: "$docs" } } }
+      );
+    }
   }
 
-  return db.collection("entries").find(query).toArray();
+  return db.collection("entries").aggregate(pipeline).toArray();
 };

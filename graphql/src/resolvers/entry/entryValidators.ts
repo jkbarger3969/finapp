@@ -632,6 +632,11 @@ export const validateEntry = new (class {
           newEntryDate: updateEntryRefund.date,
           reqDateTime,
         }),
+      // Date of Record
+      updateEntryRefund.dateOfRecord &&
+        this.updateEntryDateOfRecord({
+          updateEntryDateOfRecord: updateEntryRefund.dateOfRecord,
+        }),
       // paymentMethod
       updateEntryRefund.paymentMethod &&
         (async () => {
