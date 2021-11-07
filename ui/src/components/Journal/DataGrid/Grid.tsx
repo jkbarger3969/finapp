@@ -51,9 +51,13 @@ import {
   DepartmentsWhere,
   AccountsWhere,
   GridPaymentMethodFragment,
+  EntryRefundsWhere,
+  GridEntryRefundsQuery,
+  GridEntryRefundsQueryVariables,
+  GridEntryRefundFragment,
 } from "../../../apollo/graphTypes";
 import { deserializeDate, deserializeRational } from "../../../apollo/scalars";
-import { GRID_ENTRIES } from "./Grid.gql";
+import { GRID_ENTRIES, GRID_ENTRY_REFUNDS } from "./Grid.gql";
 import OverlayLoading from "../../utils/OverlayLoading";
 import useLocalStorage from "../../utils/useLocalStorage";
 import {
@@ -139,6 +143,36 @@ export type GridEntry = Omit<
         entryId: string;
       }
   );
+
+const deserializeGridRefund = (refund: GridRefundFragment): GridRefund => ({
+  ...refund,
+  date: deserializeDate(refund.date),
+  dateOfRecord: (refund.dateOfRecord
+    ? {
+        ...refund.dateOfRecord,
+        date: deserializeDate(refund.dateOfRecord.date),
+      }
+    : undefined) as GridRefund["dateOfRecord"],
+  total: deserializeRational(refund.total),
+});
+
+const deserializeEntry = (
+  entry: GridEntryFragment | GridEntryRefundFragment["entry"]
+): GridEntry =>
+  ({
+    ...entry,
+    date: deserializeDate(entry.date),
+    dateOfRecord: entry.dateOfRecord
+      ? {
+          ...entry.dateOfRecord,
+          date: deserializeDate(entry.dateOfRecord.date),
+        }
+      : undefined,
+    total: deserializeRational(entry.total),
+    refunds: ("refunds" in entry ? entry.refunds : []).map<GridRefund>(
+      (refund) => deserializeGridRefund(refund)
+    ),
+  } as GridEntry);
 
 type ColumnsNames =
   | "date"
@@ -392,11 +426,17 @@ const integratedFilteringColumnExtensions: IntegratedFiltering.ColumnExtension[]
     sourceFilterColumnExtension("source", sourceToStr),
   ];
 
+export type GridRefundsWhere = {
+  where: EntryRefundsWhere;
+  entriesWhere?: EntriesWhere;
+};
+
 export type Props = {
   title?: string;
   loading?: boolean;
   reconcileMode?: boolean;
   where?: EntriesWhere;
+  refundsWhere?: GridRefundsWhere;
   selectableDepts: DepartmentsWhere;
   selectableAccounts: AccountsWhere;
   layoutCacheKey?: string;
@@ -404,73 +444,104 @@ export type Props = {
 const JournalGrid: React.FC<Props> = (props: Props) => {
   const classes = useStyles();
 
-  const variables = useMemo<GridEntriesQueryVariables>(
+  const entryVariables = useMemo<GridEntriesQueryVariables>(
     () => ({
       where: props.where,
+      filterRefunds: true,
     }),
     [props.where]
   );
+
+  const entryRefundVariables = props?.refundsWhere;
 
   const cachePrefix = useMemo<string>(
     () => props.layoutCacheKey ?? `${md5(JSON.stringify(props.where))}`,
 
     [props.where, props.layoutCacheKey]
   );
-  const { loading, error, data } = useQuery<
+  const gridEntryResults = useQuery<
     GridEntriesQuery,
     GridEntriesQueryVariables
   >(GRID_ENTRIES, {
-    variables,
+    variables: entryVariables,
+    fetchPolicy: "cache-and-network",
   });
 
+  const gridEntryRefundResults = useQuery<
+    GridEntryRefundsQuery,
+    GridEntryRefundsQueryVariables
+  >(GRID_ENTRY_REFUNDS, {
+    skip: !entryRefundVariables,
+    variables: entryRefundVariables as GridRefundsWhere,
+    fetchPolicy: "cache-and-network",
+  });
+
+  const loading = gridEntryResults.loading || gridEntryRefundResults.loading;
+  const error = gridEntryResults.error || gridEntryRefundResults.error;
+
   const rows = useMemo<GridEntry[]>(() => {
-    if (!data?.entries) {
-      return [];
-    }
+    const refundsMap = (gridEntryRefundResults.data?.entryRefunds || []).reduce(
+      (refundsMap, { entry, ...refundRaw }) => {
+        if (!refundRaw.deleted) {
+          const refund = deserializeGridRefund(refundRaw);
 
-    const rows = data.entries.reduce((entries, entryRaw: GridEntryFragment) => {
-      if (entryRaw.deleted) {
-        return entries;
-      }
+          refundsMap.set(refund.id, {
+            ...deserializeEntry(entry),
+            ...refund,
+            refunds: [refund],
+            entryId: entry.id,
+          } as GridEntry);
+        }
 
-      const entry = {
-        ...entryRaw,
-        date: deserializeDate(entryRaw.date),
-        dateOfRecord: entryRaw.dateOfRecord
-          ? {
-              ...entryRaw.dateOfRecord,
-              date: deserializeDate(entryRaw.dateOfRecord.date),
+        return refundsMap;
+      },
+      new Map<string, GridEntry>()
+    );
+
+    const gridEntries = (gridEntryResults.data?.entries || []).reduce(
+      (entries, entryRaw: GridEntryFragment) => {
+        if (entryRaw.deleted) {
+          return entries;
+        }
+
+        const entry = deserializeEntry(entryRaw);
+
+        entries.push(entry as GridEntry);
+
+        if (entry.refunds.length > 0) {
+          for (const refund of entry.refunds) {
+            if (!refund.deleted) {
+              const refundEntry = (() => {
+                if (refundsMap.has(refund.id)) {
+                  const refundEntry = refundsMap.get(refund.id) as GridEntry;
+                  refundsMap.delete(refund.id);
+                  return refundEntry;
+                }
+
+                return {
+                  ...entry,
+                  ...refund,
+                  entryId: entry.id,
+                };
+              })();
+
+              entries.push(refundEntry as unknown as GridEntry);
             }
-          : undefined,
-        total: deserializeRational(entryRaw.total),
-        refunds: entryRaw.refunds.map((refund) => ({
-          ...refund,
-          date: deserializeDate(refund.date),
-          total: deserializeRational(refund.total),
-        })),
-      };
-
-      entries.push(entry as GridEntry);
-
-      if (entry.refunds.length > 0) {
-        for (const refund of entry.refunds) {
-          if (!refund.deleted) {
-            const refundEntry = {
-              ...entry,
-              ...refund,
-              entryId: entry.id,
-            };
-
-            entries.push(refundEntry as unknown as GridEntry);
           }
         }
-      }
 
-      return entries;
-    }, [] as GridEntry[]);
+        return entries;
+      },
+      [] as GridEntry[]
+    );
 
-    return rows;
-  }, [data?.entries]);
+    gridEntries.push(...refundsMap.values());
+
+    return gridEntries;
+  }, [
+    gridEntryRefundResults.data?.entryRefunds,
+    gridEntryResults.data?.entries,
+  ]);
 
   const filterCellProviderProps = useMemo<
     CellProviderProps<ColumnsNames>
@@ -681,7 +752,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
           onNewEntry: [
             {
               query: GRID_ENTRIES,
-              variables,
+              variables: entryVariables,
             },
           ],
         },
@@ -691,6 +762,26 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
         refundProps: {
           paymentMethod: { accounts: props.selectableAccounts },
         },
+        refetchQueries: entryRefundVariables
+          ? {
+              onNewEntryRefund: [
+                {
+                  query: GRID_ENTRY_REFUNDS,
+                  variables: entryRefundVariables,
+                },
+              ],
+              onUpdateEntryRefund: [
+                {
+                  query: GRID_ENTRY_REFUNDS,
+                  variables: entryRefundVariables,
+                },
+                {
+                  query: GRID_ENTRIES,
+                  variables: entryVariables,
+                },
+              ],
+            }
+          : undefined,
       } as UpsertRefundProps,
       {
         keepMounted: false,
@@ -705,7 +796,12 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
         },
       } as ReconcileEntriesProps,
     ],
-    [props.selectableAccounts, props.selectableDepts, variables]
+    [
+      props.selectableAccounts,
+      props.selectableDepts,
+      entryVariables,
+      entryRefundVariables,
+    ]
   );
 
   if (error) {

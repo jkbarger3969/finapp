@@ -86,6 +86,9 @@ export const REFUND = gql`
     __typename
     id
     date
+    dateOfRecord {
+      date
+    }
     description
     paymentMethod {
       ...GridPaymentMethod
@@ -97,8 +100,8 @@ export const REFUND = gql`
   ${PAYMENT_METHOD}
 `;
 
-export const ENTRY = gql`
-  fragment GridEntry on Entry {
+export const ENTRY_SANS_REFUNDS = gql`
+  fragment GridEntrySansRefunds on Entry {
     __typename
     id
     date
@@ -127,23 +130,53 @@ export const ENTRY = gql`
       ...GridEntrySrcDept
     }
     reconciled
-    refunds {
-      ...GridRefund
-    }
     deleted
   }
   ${SOURCE_PERSON}
   ${SOURCE_BUSINESS}
   ${SOURCE_DEPT}
   ${PAYMENT_METHOD}
+`;
+
+export const ENTRY = gql`
+  fragment GridEntry on Entry {
+    ...GridEntrySansRefunds
+    refunds {
+      ...GridRefund
+    }
+  }
+  ${ENTRY_SANS_REFUNDS}
   ${REFUND}
 `;
 
 export const GRID_ENTRIES = gql`
-  query GridEntries($where: EntriesWhere) {
-    entries(where: $where) {
+  query GridEntries($where: EntriesWhere, $filterRefunds: Boolean) {
+    entries(where: $where, filterRefunds: $filterRefunds) {
       ...GridEntry
     }
   }
   ${ENTRY}
+`;
+
+export const GRID_ENTRY_REFUND = gql`
+  fragment GridEntryRefund on EntryRefund {
+    ...GridRefund
+    entry {
+      ...GridEntrySansRefunds
+    }
+  }
+  ${REFUND}
+  ${ENTRY_SANS_REFUNDS}
+`;
+
+export const GRID_ENTRY_REFUNDS = gql`
+  query GridEntryRefunds(
+    $where: EntryRefundsWhere
+    $entriesWhere: EntriesWhere
+  ) {
+    entryRefunds(where: $where, entriesWhere: $entriesWhere) {
+      ...GridEntryRefund
+    }
+  }
+  ${GRID_ENTRY_REFUND}
 `;

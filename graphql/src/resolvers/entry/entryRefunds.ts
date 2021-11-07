@@ -1,37 +1,47 @@
-import { FilterQuery } from "mongodb";
+import { ObjectId } from "mongodb";
+import { EntryRefundDbRecord } from "../../dataSources/accountingDb/types";
 
 import { QueryResolvers } from "../../graphTypes";
-import { whereEntryRefunds } from "./entries";
+import { whereEntryRefunds, whereEntries } from "./entries";
 
-const getPipeline = (filterQuery: FilterQuery<unknown>): object[] => [
-  { $match: filterQuery },
-  { $unwind: "$refunds" },
-  { $match: filterQuery },
-  {
-    $project: {
-      refunds: true,
-    },
-  },
-];
-
-export const entryRefunds: QueryResolvers["entryRefunds"] = (
+export const entryRefunds: QueryResolvers["entryRefunds"] = async (
   _,
-  { where },
-  { db }
+  { where, entriesWhere },
+  { dataSources: { accountingDb } }
 ) => {
-  const query = where ? whereEntryRefunds(where, db) : {};
+  const pipeline: object[] = [];
 
-  if (query instanceof Promise) {
-    return query
-      .then((query) =>
-        db.collection("entries").aggregate(getPipeline(query)).toArray()
-      )
-      .then((entries) => entries.map(({ refunds }) => refunds));
-  } else {
-    return db
-      .collection("entries")
-      .aggregate(getPipeline(query))
-      .toArray()
-      .then((entries) => entries.map(({ refunds }) => refunds));
+  const entriesCollect = accountingDb.getCollection("entries");
+
+  if (entriesWhere) {
+    const entryIds = (
+      await entriesCollect
+        .find(await whereEntries(entriesWhere, accountingDb.db), {
+          projection: { _id: true },
+        })
+        .toArray()
+    ).map(({ _id }) => _id);
+
+    pipeline.push({
+      $match: {
+        _id: {
+          $in: entryIds,
+        },
+      },
+    });
   }
+
+  pipeline.push({ $unwind: "$refunds" });
+
+  if (where) {
+    pipeline.push({ $match: await whereEntryRefunds(where, accountingDb.db) });
+  }
+
+  pipeline.push({
+    $replaceRoot: { newRoot: "$refunds" },
+  });
+
+  return entriesCollect.aggregate(pipeline).toArray() as unknown as Promise<
+    EntryRefundDbRecord[]
+  >;
 };

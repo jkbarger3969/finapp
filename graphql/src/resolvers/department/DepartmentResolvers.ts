@@ -7,7 +7,6 @@ import {
 import {
   DepartmentResolvers,
   DepartmentAncestorResolvers,
-  Department as TDepartment,
 } from "../../graphTypes";
 import { Context } from "../../types";
 import { addTypename } from "../utils/queryUtils";

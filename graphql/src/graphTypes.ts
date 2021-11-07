@@ -374,6 +374,8 @@ export type EntryRefund = {
   __typename?: 'EntryRefund';
   id: Scalars['ID'];
   date: Scalars['Date'];
+  dateOfRecord?: Maybe<EntryDateOfRecord>;
+  fiscalYear: FiscalYear;
   deleted: Scalars['Boolean'];
   description?: Maybe<Scalars['String']>;
   /** `Entry` associated with `EntryRefund` */
@@ -387,7 +389,8 @@ export type EntryRefund = {
 export type EntryRefundsWhere = {
   id?: Maybe<WhereId>;
   date?: Maybe<WhereDate>;
-  entry?: Maybe<EntriesWhere>;
+  dateOfRecord?: Maybe<EntriesWhereDateOfRecord>;
+  fiscalYear?: Maybe<FiscalYearsWhere>;
   total?: Maybe<WhereRational>;
   reconciled?: Maybe<Scalars['Boolean']>;
   lastUpdate?: Maybe<WhereDate>;
@@ -511,6 +514,7 @@ export type NewEntryDateOfRecord = {
 export type NewEntryRefund = {
   entry: Scalars['ID'];
   date: Scalars['Date'];
+  dateOfRecord?: Maybe<NewEntryDateOfRecord>;
   description?: Maybe<Scalars['String']>;
   paymentMethod: UpsertPaymentMethod;
   total: Scalars['Rational'];
@@ -693,6 +697,10 @@ export type Query = {
   department: Department;
   departments: Array<Department>;
   entities: Array<Entity>;
+  /**
+   * filterRefunds: filter refunds against `where` argument by mapping the refund onto it's entry and running the `EntriesWhere` filter.
+   * NOTE: A `EntryRefund` is a subset of an `Entry`.  Excludes `EntriesWhere.refunds` in refund matching.
+   */
   entries: Array<Entry>;
   entry?: Maybe<Entry>;
   entryItem?: Maybe<EntryItem>;
@@ -783,6 +791,7 @@ export type QueryEntitiesArgs = {
 
 export type QueryEntriesArgs = {
   where?: Maybe<EntriesWhere>;
+  filterRefunds?: Maybe<Scalars['Boolean']>;
 };
 
 
@@ -803,6 +812,7 @@ export type QueryEntryRefundArgs = {
 
 export type QueryEntryRefundsArgs = {
   where?: Maybe<EntryRefundsWhere>;
+  entriesWhere?: Maybe<EntriesWhere>;
 };
 
 
@@ -891,6 +901,7 @@ export type UpdateEntryPayload = {
 export type UpdateEntryRefund = {
   id: Scalars['ID'];
   date?: Maybe<Scalars['Date']>;
+  dateOfRecord?: Maybe<UpdateEntryDateOfRecord>;
   description?: Maybe<Scalars['String']>;
   paymentMethod?: Maybe<UpsertPaymentMethod>;
   total?: Maybe<Scalars['Rational']>;
@@ -1474,6 +1485,8 @@ export type EntryItemResolvers<ContextType = Context, ParentType = ResolversPare
 export type EntryRefundResolvers<ContextType = Context, ParentType = ResolversParentTypes['EntryRefund']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   date?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
+  dateOfRecord?: Resolver<Maybe<ResolversTypes['EntryDateOfRecord']>, ParentType, ContextType>;
+  fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType>;
   deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   entry?: Resolver<ResolversTypes['Entry'], ParentType, ContextType>;
@@ -1591,7 +1604,7 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentsArgs, never>>;
   entities?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType, RequireFields<QueryEntitiesArgs, 'where'>>;
-  entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, never>>;
+  entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, 'filterRefunds'>>;
   entry?: Resolver<Maybe<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntryArgs, 'id'>>;
   entryItem?: Resolver<Maybe<ResolversTypes['EntryItem']>, ParentType, ContextType, RequireFields<QueryEntryItemArgs, 'id'>>;
   entryRefund?: Resolver<Maybe<ResolversTypes['EntryRefund']>, ParentType, ContextType, RequireFields<QueryEntryRefundArgs, 'id'>>;

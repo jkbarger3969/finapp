@@ -22,6 +22,7 @@ export const addNewEntryRefund: MutationResolvers["addNewEntryRefund"] = (
     const {
       entry,
       date,
+      dateOfRecord,
       paymentMethod: paymentMethodInput,
       description: descriptionInput,
       total: totalInput,
@@ -56,6 +57,21 @@ export const addNewEntryRefund: MutationResolvers["addNewEntryRefund"] = (
 
     if (description) {
       newDocBuilder.addHistoricalField("description", description);
+    }
+
+    if (dateOfRecord) {
+      const { date, overrideFiscalYear } = dateOfRecord;
+      const dateOfRecordDoc = new NewHistoricalDoc<
+        NonNullable<EntryRefundDbRecord["dateOfRecord"]>
+      >({
+        docHistory,
+        isRootDoc: false,
+      })
+        .addHistoricalField("date", date)
+        .addHistoricalField("overrideFiscalYear", overrideFiscalYear)
+        .valueOf();
+
+      newDocBuilder.addFieldValued("dateOfRecord", dateOfRecordDoc);
     }
 
     await accountingDb.updateOne({

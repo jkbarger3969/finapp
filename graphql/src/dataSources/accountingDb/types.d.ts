@@ -35,6 +35,14 @@ export type EntryItemDbRecord = HistoricalDoc<
   false
 >;
 
+type DateOfRecordDbRecord = HistoricalDoc<
+  false,
+  {
+    date: Date;
+    overrideFiscalYear: boolean;
+  }
+>;
+
 export type EntryRefundDbRecord = HistoricalDoc<
   true,
   {
@@ -45,7 +53,7 @@ export type EntryRefundDbRecord = HistoricalDoc<
     reconciled: boolean;
     total: Rational;
   },
-  { id: ObjectId },
+  { id: ObjectId; dateOfRecord?: DateOfRecordDbRecord },
   false
 >;
 
@@ -70,13 +78,7 @@ export type EntryDbRecord = HistoricalDoc<
     total: Rational;
   },
   {
-    dateOfRecord?: HistoricalDoc<
-      false,
-      {
-        date: Date;
-        overrideFiscalYear: boolean;
-      }
-    >;
+    dateOfRecord?: DateOfRecordDbRecord;
     items?: EntryItemDbRecord[];
     refunds?: EntryRefundDbRecord[];
   }

@@ -1,7 +1,7 @@
 import gql from "graphql-tag";
 
 export const GET_REPORT_DATA_DEPT_FRAGMENT = gql`
-  fragment GetReportDataDept_1Fragment on Department {
+  fragment GetReportDataDept on Department {
     __typename
     id
     name
@@ -17,15 +17,47 @@ export const GET_REPORT_DATA_DEPT_FRAGMENT = gql`
   }
 `;
 
-export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
-  fragment GetReportDataEntry_1Fragment on Entry {
+export const REPORT_DATA_ENTRY_REFUND = gql`
+  fragment ReportDataEntryRefund on EntryRefund {
+    __typename
+    id
+    total
+    deleted
+    lastUpdate
+  }
+`;
+
+export const REPORT_DATA_ENTRY_CATEGORY = gql`
+  fragment ReportDataEntryCategory on Category {
+    __typename
+    id
+    name
+    type
+  }
+`;
+
+export const REPORT_DATA_ENTRY_DEPT = gql`
+  fragment ReportDataEntryDept on Department {
+    __typename
+    id
+    ancestors {
+      __typename
+      ... on Business {
+        id
+      }
+      ... on Department {
+        id
+      }
+    }
+  }
+`;
+
+export const GET_REPORT_DATA_ENTRY_SANS_REFUNDS = gql`
+  fragment GetReportDataEntrySansRefunds on Entry {
     id
     __typename
     category {
-      __typename
-      id
-      name
-      type
+      ...ReportDataEntryCategory
     }
     total
     fiscalYear {
@@ -33,24 +65,7 @@ export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
       id
     }
     department {
-      __typename
-      id
-      ancestors {
-        __typename
-        ... on Business {
-          id
-        }
-        ... on Department {
-          id
-        }
-      }
-    }
-    refunds {
-      __typename
-      id
-      total
-      deleted
-      lastUpdate
+      ...ReportDataEntryDept
     }
     items {
       __typename
@@ -65,19 +80,57 @@ export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
     lastUpdate
     deleted
   }
+  ${REPORT_DATA_ENTRY_CATEGORY}
+  ${REPORT_DATA_ENTRY_DEPT}
+`;
+
+export const GET_REPORT_DATA_ENTRY_FRAGMENT = gql`
+  fragment GetReportDataEntry on Entry {
+    ...GetReportDataEntrySansRefunds
+    refunds {
+      ...ReportDataEntryRefund
+    }
+  }
+  ${GET_REPORT_DATA_ENTRY_SANS_REFUNDS}
+  ${REPORT_DATA_ENTRY_REFUND}
+`;
+
+export const REPORT_DATA_OTHER_ENTRY_REFUND = gql`
+  fragment ReportDataOtherEntryRefund on EntryRefund {
+    ...ReportDataEntryRefund
+    entry {
+      __typename
+      id
+      category {
+        ...ReportDataEntryCategory
+      }
+      department {
+        ...ReportDataEntryDept
+      }
+    }
+  }
+  ${REPORT_DATA_ENTRY_REFUND}
+  ${REPORT_DATA_ENTRY_CATEGORY}
+  ${REPORT_DATA_ENTRY_DEPT}
 `;
 
 export const GET_REPORT_DATA = gql`
-  query GetReportData($deptId:ID!, $where:EntriesWhere!) {
+ 
+  query GetReportData($deptId:ID!, $where:EntriesWhere!, $filterRefunds:Boolean, $whereRefunds:EntryRefundsWhere!, $whereRefundEntries:EntriesWhere!) {
     department(id:$deptId) {
-      ...GetReportDataDept_1Fragment
+      ...GetReportDataDept
       descendants {
-        ...GetReportDataDept_1Fragment
+        ...GetReportDataDept
       }
     }
-    entries(where:$where) {
-      ...GetReportDataEntry_1Fragment
+    entries(where:$where, filterRefunds:$filterRefunds) {
+      ...GetReportDataEntry
     }
+  
+    entryRefunds(where:$whereRefunds, entriesWhere:$whereRefundEntries) {
+      ...ReportDataOtherEntryRefund
+    }
+
     fiscalYears {
       __typename
       id
@@ -88,12 +141,13 @@ export const GET_REPORT_DATA = gql`
   }
   ${GET_REPORT_DATA_DEPT_FRAGMENT},
   ${GET_REPORT_DATA_ENTRY_FRAGMENT}
+  ${REPORT_DATA_OTHER_ENTRY_REFUND}
 `;
 
 export const JOURNAL_ENTRY_ADDED_SUB = gql`
   subscription EntryAdded_2 {
     entryAdded {
-      ...GetReportDataEntry_1Fragment
+      ...GetReportDataEntry
     }
   }
   ${GET_REPORT_DATA_ENTRY_FRAGMENT}
@@ -102,7 +156,7 @@ export const JOURNAL_ENTRY_ADDED_SUB = gql`
 export const JOURNAL_ENTRY_UPDATED_SUB = gql`
   subscription EntryUpdated_2 {
     entryUpdated {
-      ...GetReportDataEntry_1Fragment
+      ...GetReportDataEntry
     }
   }
   ${GET_REPORT_DATA_ENTRY_FRAGMENT}

@@ -20,7 +20,7 @@ export const whereBudgets = (
         break;
       case "amount":
         {
-          const $and = whereRational("amount", budgetWhere[whereKey]);
+          const $and = whereRational("$amount", budgetWhere[whereKey]);
 
           if ("$and" in filterQuery) {
             filterQuery.$and.push(...$and);
@@ -60,16 +60,14 @@ export const whereBudgets = (
       case "and":
         {
           let hasPromise = false;
-          const $and: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = budgetWhere[whereKey].map((where) => {
-            const result = whereBudgets(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $and: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            budgetWhere[whereKey].map((where) => {
+              const result = whereBudgets(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -93,16 +91,14 @@ export const whereBudgets = (
       case "or":
         {
           let hasPromise = false;
-          const $or: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = budgetWhere[whereKey].map((where) => {
-            const result = whereBudgets(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $or: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            budgetWhere[whereKey].map((where) => {
+              const result = whereBudgets(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -126,16 +122,14 @@ export const whereBudgets = (
       case "nor":
         {
           let hasPromise = false;
-          const $nor: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = budgetWhere[whereKey].map((where) => {
-            const result = whereBudgets(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $nor: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            budgetWhere[whereKey].map((where) => {
+              const result = whereBudgets(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(

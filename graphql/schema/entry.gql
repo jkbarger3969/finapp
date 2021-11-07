@@ -52,7 +52,6 @@ input EntriesWhere {
   department: DepartmentsWhere
   fiscalYear: FiscalYearsWhere
   category: CategoriesWhere
-  # paymentMethod: PaymentMethodsWhere
   description: WhereRegex
   total: WhereRational
   source: EntriesWhereSource
@@ -124,6 +123,8 @@ input UpdateEntry {
 type EntryRefund {
   id: ID!
   date: Date!
+  dateOfRecord: EntryDateOfRecord
+  fiscalYear: FiscalYear!
   deleted: Boolean!
   description: String
   """
@@ -139,6 +140,7 @@ type EntryRefund {
 input NewEntryRefund {
   entry: ID!
   date: Date!
+  dateOfRecord: NewEntryDateOfRecord
   description: String
   paymentMethod: UpsertPaymentMethod!
   total: Rational!
@@ -148,6 +150,7 @@ input NewEntryRefund {
 input UpdateEntryRefund {
   id: ID!
   date: Date
+  dateOfRecord: UpdateEntryDateOfRecord
   description: String
   paymentMethod: UpsertPaymentMethod
   total: Rational
@@ -158,8 +161,8 @@ input EntryRefundsWhere {
   # Fields
   id: WhereId
   date: WhereDate
-  entry: EntriesWhere
-  # paymentMethod: PaymentMethodsWhere
+  dateOfRecord: EntriesWhereDateOfRecord
+  fiscalYear: FiscalYearsWhere
   total: WhereRational
   reconciled: Boolean
   lastUpdate: WhereDate
@@ -206,10 +209,17 @@ input ReconcileEntries {
 }
 
 type Query {
-  entries(where: EntriesWhere): [Entry!]!
+  """
+  filterRefunds: filter refunds against `where` argument by mapping the refund onto it's entry and running the `EntriesWhere` filter.
+  NOTE: A `EntryRefund` is a subset of an `Entry`.  Excludes `EntriesWhere.refunds` in refund matching.
+  """
+  entries(where: EntriesWhere, filterRefunds: Boolean = false): [Entry!]!
   entry(id: ID!): Entry
   entryRefund(id: ID!): EntryRefund
-  entryRefunds(where: EntryRefundsWhere): [EntryRefund!]!
+  entryRefunds(
+    where: EntryRefundsWhere
+    entriesWhere: EntriesWhere
+  ): [EntryRefund!]!
   entryItem(id: ID!): EntryItem
 }
 

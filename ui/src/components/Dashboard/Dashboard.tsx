@@ -15,7 +15,6 @@ import CardContent from "@material-ui/core/CardContent";
 import numeral from "numeral";
 import { red, green, orange, grey } from "@material-ui/core/colors";
 import { Color, FormControl, InputLabel } from "@material-ui/core";
-import gql from "graphql-tag";
 import Fraction from "fraction.js";
 import { Select, SelectProps } from "@material-ui/core";
 import { MenuItem } from "@material-ui/core";
@@ -24,23 +23,19 @@ import {
   GetReportDataQuery,
   GetReportDataQueryVariables,
   EntryType,
-  OnEntryUpsert_2Subscription as OnEntryUpsert,
-  GetReportDataDept_1Fragment as DepartmentFragment,
+  GetReportDataDeptFragment as DepartmentFragment,
   FiscalYear,
   DepartmentsWhere,
   AccountsWhere,
+  ReportDataOtherEntryRefundFragment,
 } from "../../apollo/graphTypes";
-import { deserializeRational } from "../../apollo/scalars";
-import {
-  GET_REPORT_DATA,
-  GET_REPORT_DATA_ENTRY_FRAGMENT,
-} from "./ReportData.gql";
+import { deserializeRational, serializeDate } from "../../apollo/scalars";
+import { GET_REPORT_DATA } from "./ReportData.gql";
 import {
   UpsertEntry,
   UpsertEntryProps,
 } from "../Journal/DataGrid/forms/UpsertEntry";
 import { dialogProps } from "../Journal/DataGrid/forms/shared";
-// import { DEPT_ENTRY_OPT_FRAGMENT } from "../Journal/Upsert/upsertEntry.gql";
 
 const colorMeter = (percentSpent: number, shade: keyof Color = 800) => {
   if (percentSpent < 0.75) {
@@ -77,23 +72,6 @@ interface DeptReport {
   budget: Fraction | null;
 }
 
-const ON_ENTRY_UPSERT = gql`
-  subscription OnEntryUpsert_2 {
-    entryUpserted {
-      ...GetReportDataEntry_1Fragment
-      department {
-        ancestors {
-          ... on Department {
-            __typename
-            id
-          }
-        }
-      }
-    }
-  }
-  ${GET_REPORT_DATA_ENTRY_FRAGMENT}
-`;
-
 const Dashboard = (props: {
   deptId: string;
   selectableDepts: DepartmentsWhere;
@@ -103,10 +81,16 @@ const Dashboard = (props: {
 
   const [addEntryOpen, setAddEntryOpen] = useState<boolean>(false);
 
-  const variables = useMemo(
+  const [year, setYear] = useState<Date>(new Date(new Date().toDateString()));
+  const variables = useMemo<GetReportDataQueryVariables>(
     () => ({
       deptId,
       where: {
+        fiscalYear: {
+          date: {
+            eq: serializeDate(year),
+          },
+        },
         department: {
           id: {
             lte: deptId,
@@ -114,11 +98,37 @@ const Dashboard = (props: {
         },
         deleted: false,
       },
+      whereRefunds: {
+        fiscalYear: {
+          date: {
+            eq: serializeDate(year),
+          },
+        },
+        deleted: false,
+      },
+      whereRefundEntries: {
+        department: {
+          id: {
+            lte: deptId,
+          },
+        },
+        fiscalYear: {
+          nor: [
+            {
+              date: {
+                eq: serializeDate(year),
+              },
+            },
+          ],
+        },
+        deleted: false,
+      },
+      filterRefunds: true,
     }),
-    [deptId]
+    [deptId, year]
   );
 
-  const { loading, error, data, subscribeToMore } = useQuery<
+  const { loading, error, data } = useQuery<
     GetReportDataQuery,
     GetReportDataQueryVariables
   >(GET_REPORT_DATA, {
@@ -127,54 +137,6 @@ const Dashboard = (props: {
   });
 
   const isLoading = loading && !data?.entries;
-
-  // Subscribe to updates
-  useEffect(() => {
-    return subscribeToMore<OnEntryUpsert>({
-      document: ON_ENTRY_UPSERT,
-      updateQuery: (prev, { subscriptionData }) => {
-        if (!subscriptionData.data) {
-          return prev;
-        }
-
-        const upsertEntry = subscriptionData.data.entryUpserted;
-
-        const ancestors = upsertEntry.department.ancestors;
-
-        if (
-          deptId &&
-          upsertEntry.department.id !== deptId &&
-          ancestors.every(
-            (dept) => dept.__typename === "Department" && dept.id !== deptId
-          )
-        ) {
-          // Filter entry out of query results if department changes.
-          const entriesFiltered = prev.entries.filter(
-            (entry) => entry.id !== upsertEntry.id
-          );
-
-          if (entriesFiltered.length === prev.entries.length) {
-            return prev;
-          }
-
-          return Object.assign({}, prev, {
-            entries: entriesFiltered,
-          });
-        }
-
-        // Apollo will take care of updating if entry already exists in cache.
-        if (prev.entries.some((entry) => entry.id === upsertEntry.id)) {
-          return prev;
-        }
-
-        return Object.assign({}, prev, {
-          entries: [upsertEntry, ...prev.entries],
-        });
-      },
-    });
-  }, [deptId, subscribeToMore]);
-
-  const [year, setYear] = useState<Date>(new Date(new Date().toDateString()));
 
   const fiscalYear = useMemo<null | FiscalYear>(() => {
     for (const fiscalYear of data?.fiscalYears || []) {
@@ -189,10 +151,11 @@ const Dashboard = (props: {
   }, [year, data]);
 
   const entries = useMemo(() => {
-    return (data?.entries || []).filter(
-      (entry) => !entry.deleted && fiscalYear?.id === entry.fiscalYear.id
-    );
-  }, [data, fiscalYear]);
+    return data?.entries || [];
+  }, [data?.entries]);
+  const extraneousRefunds = useMemo(() => {
+    return data?.entryRefunds || [];
+  }, [data?.entryRefunds]);
   const deptName = data?.department?.name || "";
 
   useEffect(() => {
@@ -245,6 +208,15 @@ const Dashboard = (props: {
         }
       }
 
+      const otherRefundsMap = extraneousRefunds.reduce(
+        (otherRefundsMap, otherRefund) => {
+          otherRefundsMap.set(otherRefund.id, otherRefund);
+
+          return otherRefundsMap;
+        },
+        new Map<string, ReportDataOtherEntryRefundFragment>()
+      );
+
       // Calculating aggregate depts and credits
       for (const entry of entries) {
         if (entry.deleted) {
@@ -261,6 +233,8 @@ const Dashboard = (props: {
           if (refund.deleted) {
             continue;
           }
+          // Remove if accounted for
+          otherRefundsMap.delete(refund.id);
           entryTotal = entryTotal.sub(deserializeRational(refund.total));
         }
 
@@ -289,16 +263,36 @@ const Dashboard = (props: {
         }
       }
 
+      // Calculate other refunds
+      for (const otherRefund of otherRefundsMap.values()) {
+        const entry = otherRefund.entry;
+        const refundTotal = deserializeRational(otherRefund.total);
+        const deptReport = deptReports.get(entry.department.id) as DeptReport;
+
+        if (entry.category.type === EntryType.Debit) {
+          uSpent = uSpent.sub(refundTotal);
+          deptReport.spent = deptReport.spent.sub(refundTotal);
+        } else {
+          uSpent = uSpent.add(refundTotal);
+          deptReport.spent = deptReport.spent.add(refundTotal);
+        }
+      }
+
       return {
         totalRemaining: numeral(uBudget.sub(uSpent).valueOf()).format(
           "$0,0.00"
         ),
         budget: numeral(uBudget.valueOf()).format("$0,0.00"),
-        spentToBudgetRatio: uBudget.n === 0 ? 1 : uSpent.div(uBudget).valueOf(),
+        spentToBudgetRatio:
+          uBudget.n === 0
+            ? uSpent.s === -1
+              ? 0
+              : 1
+            : uSpent.div(uBudget).valueOf(),
         deptReports,
         uBudget,
       };
-    }, [department, fiscalYear?.id, entries]);
+    }, [department, extraneousRefunds, fiscalYear?.id, entries]);
 
   const subDeptCards = useMemo(() => {
     const subDeptCards: JSX.Element[] = [];
@@ -450,7 +444,6 @@ const Dashboard = (props: {
   if (isLoading) {
     return <p>Loading...</p>;
   } else if (error) {
-    console.error(error);
     return <p>{error.message}</p>;
   }
 
