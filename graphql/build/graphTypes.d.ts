@@ -340,6 +340,8 @@ export declare type EntryRefund = {
     __typename?: 'EntryRefund';
     id: Scalars['ID'];
     date: Scalars['Date'];
+    dateOfRecord?: Maybe<EntryDateOfRecord>;
+    fiscalYear: FiscalYear;
     deleted: Scalars['Boolean'];
     description?: Maybe<Scalars['String']>;
     /** `Entry` associated with `EntryRefund` */
@@ -352,7 +354,8 @@ export declare type EntryRefund = {
 export declare type EntryRefundsWhere = {
     id?: Maybe<WhereId>;
     date?: Maybe<WhereDate>;
-    entry?: Maybe<EntriesWhere>;
+    dateOfRecord?: Maybe<EntriesWhereDateOfRecord>;
+    fiscalYear?: Maybe<FiscalYearsWhere>;
     total?: Maybe<WhereRational>;
     reconciled?: Maybe<Scalars['Boolean']>;
     lastUpdate?: Maybe<WhereDate>;
@@ -450,6 +453,7 @@ export declare type NewEntryDateOfRecord = {
 export declare type NewEntryRefund = {
     entry: Scalars['ID'];
     date: Scalars['Date'];
+    dateOfRecord?: Maybe<NewEntryDateOfRecord>;
     description?: Maybe<Scalars['String']>;
     paymentMethod: UpsertPaymentMethod;
     total: Scalars['Rational'];
@@ -601,6 +605,10 @@ export declare type Query = {
     department: Department;
     departments: Array<Department>;
     entities: Array<Entity>;
+    /**
+     * filterRefunds: filter refunds against `where` argument by mapping the refund onto it's entry and running the `EntriesWhere` filter.
+     * NOTE: A `EntryRefund` is a subset of an `Entry`.  Excludes `EntriesWhere.refunds` in refund matching.
+     */
     entries: Array<Entry>;
     entry?: Maybe<Entry>;
     entryItem?: Maybe<EntryItem>;
@@ -659,6 +667,7 @@ export declare type QueryEntitiesArgs = {
 };
 export declare type QueryEntriesArgs = {
     where?: Maybe<EntriesWhere>;
+    filterRefunds?: Maybe<Scalars['Boolean']>;
 };
 export declare type QueryEntryArgs = {
     id: Scalars['ID'];
@@ -671,6 +680,7 @@ export declare type QueryEntryRefundArgs = {
 };
 export declare type QueryEntryRefundsArgs = {
     where?: Maybe<EntryRefundsWhere>;
+    entriesWhere?: Maybe<EntriesWhere>;
 };
 export declare type QueryFiscalYearArgs = {
     id: Scalars['ID'];
@@ -740,6 +750,7 @@ export declare type UpdateEntryPayload = {
 export declare type UpdateEntryRefund = {
     id: Scalars['ID'];
     date?: Maybe<Scalars['Date']>;
+    dateOfRecord?: Maybe<UpdateEntryDateOfRecord>;
     description?: Maybe<Scalars['String']>;
     paymentMethod?: Maybe<UpsertPaymentMethod>;
     total?: Maybe<Scalars['Rational']>;
@@ -1293,6 +1304,8 @@ export declare type EntryItemResolvers<ContextType = Context, ParentType = Resol
 export declare type EntryRefundResolvers<ContextType = Context, ParentType = ResolversParentTypes['EntryRefund']> = {
     id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
     date?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
+    dateOfRecord?: Resolver<Maybe<ResolversTypes['EntryDateOfRecord']>, ParentType, ContextType>;
+    fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType>;
     deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
     entry?: Resolver<ResolversTypes['Entry'], ParentType, ContextType>;
@@ -1394,7 +1407,7 @@ export declare type QueryResolvers<ContextType = Context, ParentType = Resolvers
     department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
     departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<QueryDepartmentsArgs, never>>;
     entities?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType, RequireFields<QueryEntitiesArgs, 'where'>>;
-    entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, never>>;
+    entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, 'filterRefunds'>>;
     entry?: Resolver<Maybe<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntryArgs, 'id'>>;
     entryItem?: Resolver<Maybe<ResolversTypes['EntryItem']>, ParentType, ContextType, RequireFields<QueryEntryItemArgs, 'id'>>;
     entryRefund?: Resolver<Maybe<ResolversTypes['EntryRefund']>, ParentType, ContextType, RequireFields<QueryEntryRefundArgs, 'id'>>;

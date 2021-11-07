@@ -13,35 +13,70 @@ export declare type SetOps = "$in" | "$nin";
 export declare type RationalOp = ComparisonOps | SetOps;
 /**
  * - Rational number object.
- * - Path to a rational number object.
- * - Tuple of path to a rational number object and an $arrayElemAt idx.
+ * - Any [$let]{@link https://docs.mongodb.com/manual/reference/operator/aggregation/let/} vars expression that returns a Rational or array of Rationals.
  * */
-export declare type RationalValue = Rational | string | [path: string, index: number];
+export declare type RationalValue = Rational | object | string;
 /**
  * @returns a mongodb [$expr](https://docs.mongodb.com/manual/reference/operator/query/expr/) value.
  *
  */
 declare const compareRationalEqualityAndRanges: (lhs: RationalValue, comparisonOp: ComparisonOps, rhs: RationalValue) => {
-    readonly [x: string]: readonly [{
-        readonly $subtract: readonly [{
-            readonly $multiply: readonly [string | 1 | -1, string | number, string | number];
-        }, {
-            readonly $multiply: readonly [string | 1 | -1, string | number, string | number];
-        }];
-    }, 0];
-} | {
-    readonly $let: {
-        readonly vars: Record<string, {
-            $arrayElemAt: [string, number];
-        }>;
-        readonly in: {
-            readonly [x: string]: readonly [{
-                readonly $subtract: readonly [{
-                    readonly $multiply: readonly [string | 1 | -1, string | number, string | number];
-                }, {
-                    readonly $multiply: readonly [string | 1 | -1, string | number, string | number];
-                }];
-            }, 0];
+    $let: {
+        vars: {
+            lhs: {
+                $let: {
+                    vars: {
+                        rational: RationalValue;
+                    };
+                    in: {
+                        $cond: (string | string[] | {
+                            $isArray: string;
+                        })[];
+                    };
+                };
+            };
+            rhs: {
+                $let: {
+                    vars: {
+                        rational: RationalValue;
+                    };
+                    in: {
+                        $cond: (string | string[] | {
+                            $isArray: string;
+                        })[];
+                    };
+                };
+            };
+        };
+        in: {
+            $reduce: {
+                input: string;
+                initialValue: boolean;
+                in: {
+                    $cond: (string | boolean | {
+                        $let: {
+                            vars: {
+                                lhs: string;
+                            };
+                            in: {
+                                $reduce: {
+                                    input: string;
+                                    initialValue: boolean;
+                                    in: {
+                                        $cond: (string | boolean | {
+                                            [x: string]: (number | {
+                                                $subtract: {
+                                                    $multiply: string[];
+                                                }[];
+                                            })[];
+                                        })[];
+                                    };
+                                };
+                            };
+                        };
+                    })[];
+                };
+            };
         };
     };
 };
@@ -50,203 +85,135 @@ declare const compareRationalEqualityAndRanges: (lhs: RationalValue, comparisonO
  *
  */
 declare const compareRationalSet: (lhs: RationalValue, setOp: SetOps, rationalSet: Iterable<RationalValue>) => {
-    readonly $anyElementTrue: readonly [({
-        readonly [x: string]: readonly [{
-            readonly $subtract: readonly [{
-                readonly $multiply: readonly [string | 1 | -1, string | number, string | number];
-            }, {
-                readonly $multiply: readonly [string | 1 | -1, string | number, string | number];
-            }];
-        }, 0];
-    } | {
-        readonly $let: {
-            readonly vars: Record<string, {
-                $arrayElemAt: [string, number];
-            }>;
-            readonly in: {
-                readonly [x: string]: readonly [{
-                    readonly $subtract: readonly [{
-                        readonly $multiply: readonly [string | 1 | -1, string | number, string | number];
-                    }, {
-                        readonly $multiply: readonly [string | 1 | -1, string | number, string | number];
-                    }];
-                }, 0];
+    readonly $anyElementTrue: readonly [{
+        $let: {
+            vars: {
+                lhs: {
+                    $let: {
+                        vars: {
+                            rational: RationalValue;
+                        };
+                        in: {
+                            $cond: (string | string[] | {
+                                $isArray: string;
+                            })[];
+                        };
+                    };
+                };
+                rhs: {
+                    $let: {
+                        vars: {
+                            rational: RationalValue;
+                        };
+                        in: {
+                            $cond: (string | string[] | {
+                                $isArray: string;
+                            })[];
+                        };
+                    };
+                };
+            };
+            in: {
+                $reduce: {
+                    input: string;
+                    initialValue: boolean;
+                    in: {
+                        $cond: (string | boolean | {
+                            $let: {
+                                vars: {
+                                    lhs: string;
+                                };
+                                in: {
+                                    $reduce: {
+                                        input: string;
+                                        initialValue: boolean;
+                                        in: {
+                                            $cond: (string | boolean | {
+                                                [x: string]: (number | {
+                                                    $subtract: {
+                                                        $multiply: string[];
+                                                    }[];
+                                                })[];
+                                            })[];
+                                        };
+                                    };
+                                };
+                            };
+                        })[];
+                    };
+                };
             };
         };
-    })[]];
+    }[]];
     readonly $not?: undefined;
 } | {
     readonly $not: readonly [{
-        readonly $anyElementTrue: readonly [({
-            readonly [x: string]: readonly [{
-                readonly $subtract: readonly [{
-                    readonly $multiply: readonly [string | 1 | -1, string | number, string | number];
-                }, {
-                    readonly $multiply: readonly [string | 1 | -1, string | number, string | number];
-                }];
-            }, 0];
-        } | {
-            readonly $let: {
-                readonly vars: Record<string, {
-                    $arrayElemAt: [string, number];
-                }>;
-                readonly in: {
-                    readonly [x: string]: readonly [{
-                        readonly $subtract: readonly [{
-                            readonly $multiply: readonly [string | 1 | -1, string | number, string | number];
-                        }, {
-                            readonly $multiply: readonly [string | 1 | -1, string | number, string | number];
-                        }];
-                    }, 0];
+        readonly $anyElementTrue: readonly [{
+            $let: {
+                vars: {
+                    lhs: {
+                        $let: {
+                            vars: {
+                                rational: RationalValue;
+                            };
+                            in: {
+                                $cond: (string | string[] | {
+                                    $isArray: string;
+                                })[];
+                            };
+                        };
+                    };
+                    rhs: {
+                        $let: {
+                            vars: {
+                                rational: RationalValue;
+                            };
+                            in: {
+                                $cond: (string | string[] | {
+                                    $isArray: string;
+                                })[];
+                            };
+                        };
+                    };
+                };
+                in: {
+                    $reduce: {
+                        input: string;
+                        initialValue: boolean;
+                        in: {
+                            $cond: (string | boolean | {
+                                $let: {
+                                    vars: {
+                                        lhs: string;
+                                    };
+                                    in: {
+                                        $reduce: {
+                                            input: string;
+                                            initialValue: boolean;
+                                            in: {
+                                                $cond: (string | boolean | {
+                                                    [x: string]: (number | {
+                                                        $subtract: {
+                                                            $multiply: string[];
+                                                        }[];
+                                                    })[];
+                                                })[];
+                                            };
+                                        };
+                                    };
+                                };
+                            })[];
+                        };
+                    };
                 };
             };
-        })[]];
+        }[]];
     }];
     readonly $anyElementTrue?: undefined;
 };
 /**
  * @returns a mongodb [$expr](https://docs.mongodb.com/manual/reference/operator/query/expr/) value.
  */
-export declare function rationalComparison(lhs: RationalValue, op: RationalOp, rhs: RationalValue): ReturnType<typeof compareRationalEqualityAndRanges>;
-export declare function rationalComparison(lhs: RationalValue, op: RationalOp, rhs: Iterable<RationalValue>): ReturnType<typeof compareRationalSet>;
-export declare const addRational: (a: RationalValue, b: RationalValue) => {
-    $let: {
-        vars: {
-            arithmeticResult: {
-                readonly n: {
-                    readonly [x: string]: readonly [{
-                        readonly $multiply: readonly [string | number, string | number, string | 1 | -1];
-                    }, {
-                        readonly $multiply: readonly [string | number, string | number, string | 1 | -1];
-                    }];
-                };
-                readonly d: {
-                    readonly $multiply: readonly [string | number, string | number];
-                };
-            } | {
-                readonly $let: {
-                    readonly vars: Record<string, {
-                        $arrayElemAt: [string, number];
-                    }>;
-                    readonly in: {
-                        readonly n: {
-                            readonly [x: string]: readonly [{
-                                readonly $multiply: readonly [string | number, string | number, string | 1 | -1];
-                            }, {
-                                readonly $multiply: readonly [string | number, string | number, string | 1 | -1];
-                            }];
-                        };
-                        readonly d: {
-                            readonly $multiply: readonly [string | number, string | number];
-                        };
-                    };
-                };
-            };
-        };
-        in: {
-            $let: {
-                vars: {
-                    gcd: {
-                        $function: {
-                            body: string;
-                            args: (string | {
-                                $abs: string;
-                            })[];
-                            lang: string;
-                        };
-                    };
-                };
-                in: {
-                    s: {
-                        $cond: {
-                            if: {
-                                $gte: (string | number)[];
-                            };
-                            then: number;
-                            else: number;
-                        };
-                    };
-                    n: {
-                        $divide: (string | {
-                            $abs: string;
-                        })[];
-                    };
-                    d: {
-                        $divide: string[];
-                    };
-                };
-            };
-        };
-    };
-};
-export declare const subtractRational: (a: RationalValue, b: RationalValue) => {
-    $let: {
-        vars: {
-            arithmeticResult: {
-                readonly n: {
-                    readonly [x: string]: readonly [{
-                        readonly $multiply: readonly [string | number, string | number, string | 1 | -1];
-                    }, {
-                        readonly $multiply: readonly [string | number, string | number, string | 1 | -1];
-                    }];
-                };
-                readonly d: {
-                    readonly $multiply: readonly [string | number, string | number];
-                };
-            } | {
-                readonly $let: {
-                    readonly vars: Record<string, {
-                        $arrayElemAt: [string, number];
-                    }>;
-                    readonly in: {
-                        readonly n: {
-                            readonly [x: string]: readonly [{
-                                readonly $multiply: readonly [string | number, string | number, string | 1 | -1];
-                            }, {
-                                readonly $multiply: readonly [string | number, string | number, string | 1 | -1];
-                            }];
-                        };
-                        readonly d: {
-                            readonly $multiply: readonly [string | number, string | number];
-                        };
-                    };
-                };
-            };
-        };
-        in: {
-            $let: {
-                vars: {
-                    gcd: {
-                        $function: {
-                            body: string;
-                            args: (string | {
-                                $abs: string;
-                            })[];
-                            lang: string;
-                        };
-                    };
-                };
-                in: {
-                    s: {
-                        $cond: {
-                            if: {
-                                $gte: (string | number)[];
-                            };
-                            then: number;
-                            else: number;
-                        };
-                    };
-                    n: {
-                        $divide: (string | {
-                            $abs: string;
-                        })[];
-                    };
-                    d: {
-                        $divide: string[];
-                    };
-                };
-            };
-        };
-    };
-};
+export declare function rationalComparison(lhs: RationalValue, op: ComparisonOps, rhs: RationalValue): ReturnType<typeof compareRationalEqualityAndRanges>;
+export declare function rationalComparison(lhs: RationalValue, op: SetOps, rhs: Iterable<RationalValue>): ReturnType<typeof compareRationalSet>;
 export {};

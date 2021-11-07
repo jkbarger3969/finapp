@@ -1,31 +1,41 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.entryRefunds = void 0;
 const entries_1 = require("./entries");
-const getPipeline = (filterQuery) => [
-    { $match: filterQuery },
-    { $unwind: "$refunds" },
-    { $match: filterQuery },
-    {
-        $project: {
-            refunds: true,
-        },
-    },
-];
-const entryRefunds = (_, { where }, { db }) => {
-    const query = where ? (0, entries_1.whereEntryRefunds)(where, db) : {};
-    if (query instanceof Promise) {
-        return query
-            .then((query) => db.collection("entries").aggregate(getPipeline(query)).toArray())
-            .then((entries) => entries.map(({ refunds }) => refunds));
+const entryRefunds = (_, { where, entriesWhere }, { dataSources: { accountingDb } }) => __awaiter(void 0, void 0, void 0, function* () {
+    const pipeline = [];
+    const entriesCollect = accountingDb.getCollection("entries");
+    if (entriesWhere) {
+        const entryIds = (yield entriesCollect
+            .find(yield (0, entries_1.whereEntries)(entriesWhere, accountingDb.db), {
+            projection: { _id: true },
+        })
+            .toArray()).map(({ _id }) => _id);
+        pipeline.push({
+            $match: {
+                _id: {
+                    $in: entryIds,
+                },
+            },
+        });
     }
-    else {
-        return db
-            .collection("entries")
-            .aggregate(getPipeline(query))
-            .toArray()
-            .then((entries) => entries.map(({ refunds }) => refunds));
+    pipeline.push({ $unwind: "$refunds" });
+    if (where) {
+        pipeline.push({ $match: yield (0, entries_1.whereEntryRefunds)(where, accountingDb.db) });
     }
-};
+    pipeline.push({
+        $replaceRoot: { newRoot: "$refunds" },
+    });
+    return entriesCollect.aggregate(pipeline).toArray();
+});
 exports.entryRefunds = entryRefunds;
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiZW50cnlSZWZ1bmRzLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vLi4vc3JjL3Jlc29sdmVycy9lbnRyeS9lbnRyeVJlZnVuZHMudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7O0FBR0EsdUNBQThDO0FBRTlDLE1BQU0sV0FBVyxHQUFHLENBQUMsV0FBaUMsRUFBWSxFQUFFLENBQUM7SUFDbkUsRUFBRSxNQUFNLEVBQUUsV0FBVyxFQUFFO0lBQ3ZCLEVBQUUsT0FBTyxFQUFFLFVBQVUsRUFBRTtJQUN2QixFQUFFLE1BQU0sRUFBRSxXQUFXLEVBQUU7SUFDdkI7UUFDRSxRQUFRLEVBQUU7WUFDUixPQUFPLEVBQUUsSUFBSTtTQUNkO0tBQ0Y7Q0FDRixDQUFDO0FBRUssTUFBTSxZQUFZLEdBQW1DLENBQzFELENBQUMsRUFDRCxFQUFFLEtBQUssRUFBRSxFQUNULEVBQUUsRUFBRSxFQUFFLEVBQ04sRUFBRTtJQUNGLE1BQU0sS0FBSyxHQUFHLEtBQUssQ0FBQyxDQUFDLENBQUMsSUFBQSwyQkFBaUIsRUFBQyxLQUFLLEVBQUUsRUFBRSxDQUFDLENBQUMsQ0FBQyxDQUFDLEVBQUUsQ0FBQztJQUV4RCxJQUFJLEtBQUssWUFBWSxPQUFPLEVBQUU7UUFDNUIsT0FBTyxLQUFLO2FBQ1QsSUFBSSxDQUFDLENBQUMsS0FBSyxFQUFFLEVBQUUsQ0FDZCxFQUFFLENBQUMsVUFBVSxDQUFDLFNBQVMsQ0FBQyxDQUFDLFNBQVMsQ0FBQyxXQUFXLENBQUMsS0FBSyxDQUFDLENBQUMsQ0FBQyxPQUFPLEVBQUUsQ0FDakU7YUFDQSxJQUFJLENBQUMsQ0FBQyxPQUFPLEVBQUUsRUFBRSxDQUFDLE9BQU8sQ0FBQyxHQUFHLENBQUMsQ0FBQyxFQUFFLE9BQU8sRUFBRSxFQUFFLEVBQUUsQ0FBQyxPQUFPLENBQUMsQ0FBQyxDQUFDO0tBQzdEO1NBQU07UUFDTCxPQUFPLEVBQUU7YUFDTixVQUFVLENBQUMsU0FBUyxDQUFDO2FBQ3JCLFNBQVMsQ0FBQyxXQUFXLENBQUMsS0FBSyxDQUFDLENBQUM7YUFDN0IsT0FBTyxFQUFFO2FBQ1QsSUFBSSxDQUFDLENBQUMsT0FBTyxFQUFFLEVBQUUsQ0FBQyxPQUFPLENBQUMsR0FBRyxDQUFDLENBQUMsRUFBRSxPQUFPLEVBQUUsRUFBRSxFQUFFLENBQUMsT0FBTyxDQUFDLENBQUMsQ0FBQztLQUM3RDtBQUNILENBQUMsQ0FBQztBQXBCVyxRQUFBLFlBQVksZ0JBb0J2QiJ9
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiZW50cnlSZWZ1bmRzLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vLi4vc3JjL3Jlc29sdmVycy9lbnRyeS9lbnRyeVJlZnVuZHMudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7O0FBSUEsdUNBQTREO0FBRXJELE1BQU0sWUFBWSxHQUFtQyxDQUMxRCxDQUFDLEVBQ0QsRUFBRSxLQUFLLEVBQUUsWUFBWSxFQUFFLEVBQ3ZCLEVBQUUsV0FBVyxFQUFFLEVBQUUsWUFBWSxFQUFFLEVBQUUsRUFDakMsRUFBRTtJQUNGLE1BQU0sUUFBUSxHQUFhLEVBQUUsQ0FBQztJQUU5QixNQUFNLGNBQWMsR0FBRyxZQUFZLENBQUMsYUFBYSxDQUFDLFNBQVMsQ0FBQyxDQUFDO0lBRTdELElBQUksWUFBWSxFQUFFO1FBQ2hCLE1BQU0sUUFBUSxHQUFHLENBQ2YsTUFBTSxjQUFjO2FBQ2pCLElBQUksQ0FBQyxNQUFNLElBQUEsc0JBQVksRUFBQyxZQUFZLEVBQUUsWUFBWSxDQUFDLEVBQUUsQ0FBQyxFQUFFO1lBQ3ZELFVBQVUsRUFBRSxFQUFFLEdBQUcsRUFBRSxJQUFJLEVBQUU7U0FDMUIsQ0FBQzthQUNELE9BQU8sRUFBRSxDQUNiLENBQUMsR0FBRyxDQUFDLENBQUMsRUFBRSxHQUFHLEVBQUUsRUFBRSxFQUFFLENBQUMsR0FBRyxDQUFDLENBQUM7UUFFeEIsUUFBUSxDQUFDLElBQUksQ0FBQztZQUNaLE1BQU0sRUFBRTtnQkFDTixHQUFHLEVBQUU7b0JBQ0gsR0FBRyxFQUFFLFFBQVE7aUJBQ2Q7YUFDRjtTQUNGLENBQUMsQ0FBQztLQUNKO0lBRUQsUUFBUSxDQUFDLElBQUksQ0FBQyxFQUFFLE9BQU8sRUFBRSxVQUFVLEVBQUUsQ0FBQyxDQUFDO0lBRXZDLElBQUksS0FBSyxFQUFFO1FBQ1QsUUFBUSxDQUFDLElBQUksQ0FBQyxFQUFFLE1BQU0sRUFBRSxNQUFNLElBQUEsMkJBQWlCLEVBQUMsS0FBSyxFQUFFLFlBQVksQ0FBQyxFQUFFLENBQUMsRUFBRSxDQUFDLENBQUM7S0FDNUU7SUFFRCxRQUFRLENBQUMsSUFBSSxDQUFDO1FBQ1osWUFBWSxFQUFFLEVBQUUsT0FBTyxFQUFFLFVBQVUsRUFBRTtLQUN0QyxDQUFDLENBQUM7SUFFSCxPQUFPLGNBQWMsQ0FBQyxTQUFTLENBQUMsUUFBUSxDQUFDLENBQUMsT0FBTyxFQUVoRCxDQUFDO0FBQ0osQ0FBQyxDQUFBLENBQUM7QUF4Q1csUUFBQSxZQUFZLGdCQXdDdkIifQ==

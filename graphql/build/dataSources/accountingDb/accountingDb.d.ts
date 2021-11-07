@@ -10,6 +10,7 @@ export declare class AccountingDb extends DataSource<Context> {
     });
     get client(): MongoClient;
     get db(): Db;
+    getCollection<TCollection extends keyof CollectionSchemaMap>(collection: TCollection): import("mongodb").Collection<CollectionSchemaMap[TCollection]>;
     /**
      * Handles the session, and nested calls to withTransaction,
      */
