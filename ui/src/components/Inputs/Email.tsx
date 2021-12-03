@@ -1,6 +1,8 @@
 import React, { forwardRef, useMemo } from "react";
 import isEmail from "validator/lib/isEmail";
-import normalizeEmail from "validator/lib/normalizeEmail";
+import normalizeEmail, {
+  NormalizeEmailOptions,
+} from "validator/lib/normalizeEmail";
 
 import { TextFieldControlled, TextFieldControlledProps } from "./shared";
 import {
@@ -22,11 +24,18 @@ const validEmail: Validator<string> = (email?: string) => {
     return new TypeError("Invalid Email");
   }
 };
+
+const emailNormOpts: NormalizeEmailOptions = {
+  gmail_remove_dots: false,
+};
+
 const setEmailAs: NonNullable<TextFieldControlledProps["setValueAs"]> = (
   event
 ) => {
   const email = event.target.value.trim();
-  return (isEmail(email) ? normalizeEmail(email) : email) || undefined;
+  return (
+    (isEmail(email) ? normalizeEmail(email, emailNormOpts) : email) || undefined
+  );
 };
 export const EMAIL_NAME = "email";
 export type EmailFieldDef<TName extends string = typeof EMAIL_NAME> = {
