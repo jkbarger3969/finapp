@@ -10,9 +10,9 @@ import {
   AccountCheckingResolvers,
 } from "../../graphTypes";
 import { Context } from "../../types";
-import { snakeCase } from "snake-case";
 import { PaymentCardTypeDbRecord } from "../paymentMethod";
 import { EntityDbRecord, getEntity, getEntities } from "../entity";
+import { serializeGQLEnum } from "../utils/gqlEnums";
 
 export interface AccountCreditCardDbRecord {
   _id: ObjectId;
@@ -70,7 +70,7 @@ const AccountCardResolver: AccountCardResolvers<Context, AccountCardDbRecord> =
     },
     authorizedUsers: ({ authorizedUsers }, _, { db }) =>
       getEntities(authorizedUsers, db),
-    type: ({ type }) => snakeCase(type).toUpperCase() as PaymentCardType,
+    type: ({ type }) => serializeGQLEnum(type) as PaymentCardType,
   };
 
 export const AccountCard =

@@ -6,6 +6,7 @@ type Category {
   children: [Category!]!
   ancestors: [Category!]!
   aliases: [Alias!]!
+  active: Boolean!
 }
 
 input CategoriesWhere {
@@ -14,6 +15,7 @@ input CategoriesWhere {
   name: WhereRegex
   type: EntryType
   parent: WhereId
+  active: Boolean
 
   # Logic Operators
   and: [CategoriesWhere!]

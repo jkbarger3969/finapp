@@ -118,20 +118,21 @@ export const whereCategories = (
       case "parent":
         filterQuery["parent"] = whereId(categoryWhere[whereKey]);
         break;
+      case "active":
+        filterQuery["active"] = categoryWhere[whereKey];
+        break;
       // Logic
       case "and":
         {
           let hasPromise = false;
-          const $and: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = categoryWhere[whereKey].map((where) => {
-            const result = whereCategories(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $and: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            categoryWhere[whereKey].map((where) => {
+              const result = whereCategories(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -147,16 +148,14 @@ export const whereCategories = (
       case "or":
         {
           let hasPromise = false;
-          const $or: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = categoryWhere[whereKey].map((where) => {
-            const result = whereCategories(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $or: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            categoryWhere[whereKey].map((where) => {
+              const result = whereCategories(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
@@ -172,16 +171,14 @@ export const whereCategories = (
       case "nor":
         {
           let hasPromise = false;
-          const $nor: (
-            | FilterQuery<unknown>
-            | Promise<FilterQuery<unknown>>
-          )[] = categoryWhere[whereKey].map((where) => {
-            const result = whereCategories(where, db);
-            if (result instanceof Promise) {
-              hasPromise = true;
-            }
-            return result;
-          });
+          const $nor: (FilterQuery<unknown> | Promise<FilterQuery<unknown>>)[] =
+            categoryWhere[whereKey].map((where) => {
+              const result = whereCategories(where, db);
+              if (result instanceof Promise) {
+                hasPromise = true;
+              }
+              return result;
+            });
 
           if (hasPromise) {
             promises.push(
