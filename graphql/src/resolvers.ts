@@ -39,6 +39,7 @@ import {
 } from "./resolvers/entry";
 import {
   PaymentCardInterface,
+  PaymentCard,
   PaymentCheckInterface,
   PaymentMethodInterface,
   PaymentMethodCard,
@@ -73,6 +74,7 @@ const resolvers: Resolvers = {
   EntryItem,
   FiscalYear,
   PaymentCardInterface,
+  PaymentCard,
   PaymentCheckInterface,
   PaymentMethodInterface,
   PaymentMethodCard,

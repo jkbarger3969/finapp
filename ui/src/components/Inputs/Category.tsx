@@ -215,6 +215,7 @@ export const CategoryInputBase = forwardRef(function CategoryInputBase<
               parent: {
                 eq: branch.valueOf().id,
               },
+              active: true,
             },
           },
         };
@@ -224,6 +225,7 @@ export const CategoryInputBase = forwardRef(function CategoryInputBase<
           variables: {
             where: {
               root: true,
+              active: true,
             },
           },
         };

@@ -1,4 +1,5 @@
 export {
+  PaymentCard,
   PaymentCardInterface,
   PaymentCheckInterface,
   PaymentMethodInterface,

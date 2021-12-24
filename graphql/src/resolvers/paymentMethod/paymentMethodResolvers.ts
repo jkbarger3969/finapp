@@ -6,10 +6,10 @@ import {
   PaymentCheckInterfaceResolvers,
   PaymentMethodInterfaceResolvers,
   PaymentMethodCardResolvers,
-  PaymentMethodCheckResolvers,
+  PaymentCardResolvers,
 } from "../../graphTypes";
 import { Context } from "../../types";
-import { deserializeGQLEnum } from "../utils/gqlEnums";
+import { serializeGQLEnum } from "../utils/gqlEnums";
 import { addTypename } from "../utils/queryUtils";
 
 export type PaymentCardTypeDbRecord =
@@ -49,8 +49,10 @@ export type PaymentMethodDBRecord =
 // Payment Card
 export const PaymentCardInterface: PaymentCardInterfaceResolvers = {
   __resolveType: ({ __typename }) => __typename,
-  type: ({ type }) => deserializeGQLEnum<PaymentCardType>(type),
+  type: ({ type }) => serializeGQLEnum<PaymentCardType>(type),
 };
+
+export const PaymentCard: PaymentCardResolvers = PaymentCardInterface;
 
 //  Payment Check
 const PaymentCheckInterfaceResolver: PaymentCheckInterfaceResolvers<

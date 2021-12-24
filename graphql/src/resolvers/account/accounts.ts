@@ -3,7 +3,7 @@ import { Db, FilterQuery, ObjectId } from "mongodb";
 import { QueryResolvers, AccountsWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";
 import { whereEntities } from "../entity";
-import { serializeGQLEnum } from "../utils/gqlEnums";
+import { deserializeGQLEnum } from "../utils/gqlEnums";
 import { whereId, whereRegex } from "../utils/queryUtils";
 import { whereAccountCards } from "./accountCards";
 
@@ -21,7 +21,9 @@ export const whereAccounts = (accountsWhere: AccountsWhere, db: Db) => {
         filterQuery["accountNumber"] = whereRegex(accountsWhere[whereKey]);
         break;
       case "accountType":
-        filterQuery["accountType"] = serializeGQLEnum(accountsWhere[whereKey]);
+        filterQuery["accountType"] = deserializeGQLEnum(
+          accountsWhere[whereKey]
+        );
         break;
       case "active":
         filterQuery["active"] = accountsWhere[whereKey];

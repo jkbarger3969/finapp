@@ -201,6 +201,7 @@ export type CategoriesWhere = {
   name?: Maybe<WhereRegex>;
   type?: Maybe<EntryType>;
   parent?: Maybe<WhereId>;
+  active?: Maybe<Scalars['Boolean']>;
   and?: Maybe<Array<CategoriesWhere>>;
   or?: Maybe<Array<CategoriesWhere>>;
   nor?: Maybe<Array<CategoriesWhere>>;
@@ -217,6 +218,7 @@ export type Category = {
   children: Array<Category>;
   ancestors: Array<Category>;
   aliases: Array<Alias>;
+  active: Scalars['Boolean'];
 };
 
 export enum Currency {
@@ -2023,6 +2025,7 @@ export type CategoryResolvers<ContextType = Context, ParentType extends Resolver
   children?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
   ancestors?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
   aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType>;
+  active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
