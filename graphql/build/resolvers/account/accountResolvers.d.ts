@@ -33,7 +33,7 @@ export interface AccountCardDbRecord {
 export declare const AccountCard: AccountCardResolvers<{
     dataSources: import("../../types").DataSources;
 } & import("../../types").ContextBase, import("../../graphTypes").Omit<import("../../graphTypes").AccountCard, "authorizedUsers"> & {
-    authorizedUsers: (import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord | import("../../graphTypes").Person)[];
+    authorizedUsers: (import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord)[];
 }>;
 export interface AccountCheckDbRecord {
     account: ObjectId;
@@ -45,24 +45,24 @@ export declare const AccountCheck: AccountCheckResolvers<{
 export declare const AccountInterface: AccountInterfaceResolvers<{
     dataSources: import("../../types").DataSources;
 } & import("../../types").ContextBase, (import("../../graphTypes").Omit<import("../../graphTypes").AccountChecking, "owner"> & {
-    owner: import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord | import("../../graphTypes").Person;
+    owner: import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
 }) | (import("../../graphTypes").Omit<import("../../graphTypes").AccountCreditCard, "owner"> & {
-    owner: import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord | import("../../graphTypes").Person;
+    owner: import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
 })>;
 export declare const AccountWithCardsInterface: AccountWithCardsInterfaceResolvers<{
     dataSources: import("../../types").DataSources;
 } & import("../../types").ContextBase, (import("../../graphTypes").Omit<import("../../graphTypes").AccountChecking, "owner"> & {
-    owner: import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord | import("../../graphTypes").Person;
+    owner: import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
 }) | (import("../../graphTypes").Omit<import("../../graphTypes").AccountCreditCard, "owner"> & {
-    owner: import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord | import("../../graphTypes").Person;
+    owner: import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
 })>;
 export declare const AccountCreditCard: AccountCreditCardResolvers<{
     dataSources: import("../../types").DataSources;
 } & import("../../types").ContextBase, import("../../graphTypes").Omit<import("../../graphTypes").AccountCreditCard, "owner"> & {
-    owner: import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord | import("../../graphTypes").Person;
+    owner: import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
 }>;
 export declare const AccountChecking: AccountCheckingResolvers<{
     dataSources: import("../../types").DataSources;
 } & import("../../types").ContextBase, import("../../graphTypes").Omit<import("../../graphTypes").AccountChecking, "owner"> & {
-    owner: import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord | import("../../graphTypes").Person;
+    owner: import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
 }>;

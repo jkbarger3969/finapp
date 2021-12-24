@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { Currency, PaymentCardInterfaceResolvers, PaymentCheckInterfaceResolvers, PaymentMethodInterfaceResolvers, PaymentMethodCardResolvers } from "../../graphTypes";
+import { Currency, PaymentCardInterfaceResolvers, PaymentCheckInterfaceResolvers, PaymentMethodInterfaceResolvers, PaymentMethodCardResolvers, PaymentCardResolvers } from "../../graphTypes";
 export declare type PaymentCardTypeDbRecord = "Visa" | "MasterCard" | "AmericanExpress" | "Discover";
 export interface PaymentMethodCardDBRecord {
     currency: Currency;
@@ -22,6 +22,7 @@ export declare type PaymentMethodDBRecord = PaymentMethodCheckDBRecord | Payment
     type: "Unknown" | "Online" | "Cash" | "Combination";
 };
 export declare const PaymentCardInterface: PaymentCardInterfaceResolvers;
+export declare const PaymentCard: PaymentCardResolvers;
 export declare const PaymentCheckInterface: PaymentCheckInterfaceResolvers<{
     dataSources: import("../../types").DataSources;
 } & import("../../types").ContextBase, import("../../graphTypes").AccountCheck | import("../../graphTypes").PaymentCheck>;

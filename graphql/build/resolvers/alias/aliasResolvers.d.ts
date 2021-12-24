@@ -12,5 +12,5 @@ export declare const AliasTarget: AliasTargetResolvers;
 export declare const Alias: AliasResolvers<{
     dataSources: import("../../types").DataSources;
 } & import("../../types").ContextBase, import("../../graphTypes").Omit<import("../../graphTypes").Alias, "target"> & {
-    target: import("../../dataSources/accountingDb/types").CategoryDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
+    target: import("../../dataSources/accountingDb/types").DepartmentDbRecord | import("../../dataSources/accountingDb/types").CategoryDbRecord;
 }>;

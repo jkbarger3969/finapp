@@ -189,6 +189,7 @@ export declare type CategoriesWhere = {
     name?: Maybe<WhereRegex>;
     type?: Maybe<EntryType>;
     parent?: Maybe<WhereId>;
+    active?: Maybe<Scalars['Boolean']>;
     and?: Maybe<Array<CategoriesWhere>>;
     or?: Maybe<Array<CategoriesWhere>>;
     nor?: Maybe<Array<CategoriesWhere>>;
@@ -204,6 +205,7 @@ export declare type Category = {
     children: Array<Category>;
     ancestors: Array<Category>;
     aliases: Array<Alias>;
+    active: Scalars['Boolean'];
 };
 export declare enum Currency {
     Usd = "USD"
@@ -1234,6 +1236,7 @@ export declare type CategoryResolvers<ContextType = Context, ParentType = Resolv
     children?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
     ancestors?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
     aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType>;
+    active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 export interface DateScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['Date'], any> {
