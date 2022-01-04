@@ -15,6 +15,5 @@
     "isolatedModules": true,
     "jsx": "react"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["Ledger.BAK"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }
