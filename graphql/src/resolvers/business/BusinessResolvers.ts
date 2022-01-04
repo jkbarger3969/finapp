@@ -8,7 +8,7 @@ const budgets: BusinessResolvers["budgets"] = ({ _id }, _, { db }) => {
       "owner.type": "Business",
       "owner.id": _id,
     })
-    .toArray();
+    .toArray() as any;
 };
 
 const departments: BusinessResolvers["departments"] = async (

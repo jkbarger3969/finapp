@@ -19,74 +19,99 @@ const budgets: DepartmentResolvers["budgets"] = ({ _id }, _, { db }) => {
       "owner.type": "Department",
       "owner.id": _id,
     })
-    .toArray();
+    .toArray() as any;
 };
 
 const business: DepartmentResolvers["business"] = async (
   { parent },
   _,
-  { db }
+  { dataSources: { accountingDb } }
 ) => {
   if (parent.type === "Business") {
-    return db.collection("businesses").findOne({ _id: parent.id });
+    return accountingDb.findOne({
+      collection: "businesses",
+      filter: { _id: parent.id },
+    });
   }
 
-  let ancestor = await db
-    .collection<DepartmentDbRecord>("departments")
-    .findOne({ _id: parent.id });
+  let ancestor = await accountingDb.findOne({
+    collection: "departments",
+    filter: { _id: parent.id },
+  });
 
   while (ancestor.parent.type !== "Business") {
-    ancestor = await db
-      .collection<DepartmentDbRecord>("departments")
-      .findOne({ _id: ancestor.parent.id });
+    ancestor = await accountingDb.findOne({
+      collection: "departments",
+      filter: { _id: ancestor.parent.id },
+    });
   }
 
-  return db.collection("businesses").findOne({ _id: ancestor.parent.id });
+  return accountingDb.findOne({
+    collection: "businesses",
+    filter: { _id: ancestor.parent.id },
+  });
 };
 
-const parent: DepartmentResolvers["parent"] = ({ parent }, _, { db }) =>
+const parent: DepartmentResolvers["parent"] = (
+  { parent },
+  _,
+  { dataSources: { accountingDb } }
+) =>
   addTypename(
     parent.type,
-    db
-      .collection(parent.type === "Business" ? "businesses" : "departments")
-      .findOne({ _id: parent.id })
+    accountingDb.findOne({
+      collection: parent.type === "Business" ? "businesses" : "departments",
+      filter: {
+        _id: parent.id,
+      },
+    })
   );
 
-const children: DepartmentResolvers["children"] = ({ _id }, _, { db }) =>
-  db
-    .collection("departments")
-    .find({
+const children: DepartmentResolvers["children"] = (
+  { _id },
+  _,
+  { dataSources: { accountingDb } }
+) =>
+  accountingDb.find({
+    collection: "departments",
+    filter: {
       "parent.type": "Department",
       "parent.id": _id,
-    })
-    .toArray();
+    },
+  });
 
 const ancestors: Extract<DepartmentResolvers["ancestors"], Function> = async (
   ...args
 ) => {
-  const [{ parent }, { root }, { db }] = args;
+  const [
+    { parent },
+    { root },
+    {
+      dataSources: { accountingDb },
+    },
+  ] = args;
 
   if (root) {
     const [rootDepartments, ancestorsArr] = await Promise.all([
-      db
-        .collection("departments")
-        .find<{ _id: ObjectId }>(await whereDepartments(root, db), {
-          projection: {
-            _id: true,
+      accountingDb
+        .find({
+          collection: "departments",
+          filter: await whereDepartments(root, accountingDb.db),
+          options: {
+            projection: {
+              _id: true,
+            },
           },
         })
-        .toArray()
         .then(
           (results) => new Set(results.map(({ _id }) => _id.toHexString()))
         ),
-      ancestors(args[0], {}, args[2], args[3]) as unknown as Promise<
-        (DepartmentDbRecord | BusinessDbRecord)[]
-      >,
+      ancestors(args[0], {}, args[2], args[3]),
     ]);
 
-    const results: unknown[] = [];
+    const results: (DepartmentDbRecord | BusinessDbRecord)[] = [];
 
-    for (const ancestor of ancestorsArr) {
+    for await (const ancestor of ancestorsArr) {
       results.push(ancestor);
       if (rootDepartments.has(ancestor._id.toHexString())) {
         return results;
@@ -97,14 +122,20 @@ const ancestors: Extract<DepartmentResolvers["ancestors"], Function> = async (
   } else if (parent.type === "Business") {
     return await addTypename(
       "Business",
-      db.collection("businesses").find({ _id: parent.id }).toArray()
+      accountingDb.find({
+        collection: "businesses",
+        filter: { _id: parent.id },
+      })
     );
   }
-  const results: unknown[] = [];
+  const results: (DepartmentDbRecord | BusinessDbRecord)[] = [];
 
   let ancestor = await addTypename(
     "Department",
-    db.collection<DepartmentDbRecord>("departments").findOne({ _id: parent.id })
+    accountingDb.findOne({
+      collection: "departments",
+      filter: { _id: parent.id },
+    })
   );
 
   results.push(ancestor);
@@ -112,16 +143,20 @@ const ancestors: Extract<DepartmentResolvers["ancestors"], Function> = async (
   while (ancestor.parent.type !== "Business") {
     ancestor = await addTypename(
       "Department",
-      db
-        .collection<DepartmentDbRecord>("departments")
-        .findOne({ _id: ancestor.parent.id })
+      accountingDb.findOne({
+        collection: "departments",
+        filter: { _id: ancestor.parent.id },
+      })
     );
     results.push(ancestor);
   }
 
   const biz = await addTypename(
     "Business",
-    db.collection("businesses").findOne({ _id: ancestor.parent.id })
+    accountingDb.findOne({
+      collection: "businesses",
+      filter: { _id: ancestor.parent.id },
+    })
   );
 
   results.push(biz);
@@ -132,27 +167,27 @@ const ancestors: Extract<DepartmentResolvers["ancestors"], Function> = async (
 const descendants: DepartmentResolvers["descendants"] = async (
   { _id },
   _,
-  { db }
+  { dataSources: { accountingDb } }
 ) => {
   const descendants: DepartmentDbRecord[] = [];
 
-  const query = await db
-    .collection("departments")
-    .find({ "parent.type": "Department", "parent.id": _id })
-    .toArray();
+  const query = await accountingDb.find({
+    collection: "departments",
+    filter: { "parent.type": "Department", "parent.id": _id },
+  });
 
   while (query.length) {
     descendants.push(...query);
     query.push(
-      ...(await db
-        .collection("departments")
-        .find({
+      ...(await accountingDb.find({
+        collection: "departments",
+        filter: {
           "parent.type": "Department",
           "parent.id": {
             $in: query.splice(0).map(({ _id }) => _id),
           },
-        })
-        .toArray())
+        },
+      }))
     );
   }
 

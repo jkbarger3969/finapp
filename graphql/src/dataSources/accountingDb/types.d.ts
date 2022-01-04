@@ -1,4 +1,4 @@
-import { FindOneOptions as MongoFindOneOptions, ObjectId } from "mongodb";
+import { FindOptions as MongoFindOneOptions, ObjectId } from "mongodb";
 import {
   AccountType,
   Currency,
@@ -127,7 +127,7 @@ export type PaymentMethodDBRecord =
   | PaymentMethodCardDBRecord
   | PaymentMethodTypeOnlyDBRecord;
 
-export interface PaymentCardsDbRecord {
+export interface PaymentCardDbRecord {
   _id: ObjectId;
   account: ObjectId;
   active: boolean;
@@ -139,7 +139,7 @@ export interface PaymentCardsDbRecord {
 
 export type AccountTypeDBRecord = PascalCase<AccountType>;
 
-export interface AccountDBRecord {
+export interface AccountDbRecord {
   _id: ObjectId;
   name: string;
   accountType: AccountTypeDBRecord;
@@ -148,6 +148,13 @@ export interface AccountDBRecord {
   owner: EntityDbRecord;
   cards: ObjectId[];
   type: Currency;
+}
+
+export interface BudgetDbRecord {
+  _id: ObjectId;
+  amount: Rational;
+  fiscalYear: ObjectId;
+  owner: NodeDbRecord;
 }
 
 export interface BusinessDbRecord {
@@ -174,6 +181,13 @@ export interface DepartmentDbRecord {
   virtualRoot?: boolean;
 }
 
+export interface FiscalYearDbRecord {
+  _id: ObjectId;
+  name: string;
+  begin: Date;
+  end: Date;
+}
+
 export interface PersonDbRecord {
   _id: ObjectId;
   name: {
@@ -185,11 +199,13 @@ export interface PersonDbRecord {
 }
 
 export type CollectionSchemaMap = {
-  accounts: AccountDBRecord;
+  accounts: AccountDbRecord;
+  budgets: BudgetDbRecord;
   businesses: BusinessDbRecord;
   categories: CategoryDbRecord;
   departments: DepartmentDbRecord;
   entries: EntryDbRecord;
-  paymentCards: PaymentCardsDbRecord;
+  fiscalYears: FiscalYearDbRecord;
+  paymentCards: PaymentCardDbRecord;
   people: PersonDbRecord;
 };

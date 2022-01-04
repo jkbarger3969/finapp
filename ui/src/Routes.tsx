@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Route, Switch, RouteComponentProps } from "react-router-dom";
+import { Route, Routes, useParams } from "react-router-dom";
 import { useQuery, gql } from "@apollo/client";
 
 // import Journal from "./components/Journal/Table/Journal";
@@ -15,23 +15,25 @@ import {
 } from "./apollo/graphTypes";
 import { Typography } from "@material-ui/core";
 
-const DashBoardRender = (props: RouteComponentProps<{ id: string }>) => {
+const DashBoardRender = () => {
+  const { id } = useParams<{ id: string }>();
+
   const selectableDepts = useMemo<DepartmentsWhere>(
     () => ({
       id: {
-        eq: props.match.params.id,
+        eq: id,
       },
     }),
-    [props.match.params.id]
+    [id]
   );
 
   const selectableAccounts = useMemo<AccountsWhere>(() => ({}), []);
 
-  return props.match.params.id ? (
+  return id ? (
     <Dashboard
       selectableDepts={selectableDepts}
       selectableAccounts={selectableAccounts}
-      deptId={props.match.params.id}
+      deptId={id}
     />
   ) : (
     <div>Error: No Dept ID!</div>
@@ -48,26 +50,29 @@ const DEPT_NAME = gql`
   }
 `;
 
-const GridParent = (
-  props: RouteComponentProps<{ id: string; fiscalYear: string }> & {
-    reconcileMode?: boolean;
-  }
-): JSX.Element => {
+const GridParent = ({
+  reconcileMode,
+}: {
+  reconcileMode?: boolean;
+}): JSX.Element => {
+  const { id = "", fiscalYear } =
+    useParams<{ id: string; fiscalYear: string }>();
+
   const where = useMemo<EntriesWhere>(
     () => ({
       department: {
         id: {
-          lte: props.match.params.id,
+          lte: id,
         },
       },
       fiscalYear: {
         id: {
-          eq: props.match.params.fiscalYear,
+          eq: fiscalYear,
         },
       },
       deleted: false,
     }),
-    [props.match.params.id, props.match.params.fiscalYear]
+    [id, fiscalYear]
   );
 
   const refundsWhere = useMemo<GridRefundsWhere>(
@@ -75,7 +80,7 @@ const GridParent = (
       where: {
         fiscalYear: {
           id: {
-            eq: props.match.params.fiscalYear,
+            eq: fiscalYear,
           },
         },
         deleted: false,
@@ -83,14 +88,14 @@ const GridParent = (
       entriesWhere: {
         department: {
           id: {
-            lte: props.match.params.id,
+            lte: id,
           },
         },
         fiscalYear: {
           nor: [
             {
               id: {
-                eq: props.match.params.fiscalYear,
+                eq: fiscalYear,
               },
             },
           ],
@@ -98,16 +103,16 @@ const GridParent = (
         deleted: false,
       },
     }),
-    [props.match.params.fiscalYear, props.match.params.id]
+    [fiscalYear, id]
   );
 
   const selectableDepts = useMemo<DepartmentsWhere>(
     () => ({
       id: {
-        eq: props.match.params.id,
+        eq: id,
       },
     }),
-    [props.match.params.id]
+    [id]
   );
 
   const selectableAccounts = useMemo<AccountsWhere>(() => ({}), []);
@@ -119,12 +124,12 @@ const GridParent = (
     DEPT_NAME,
     useMemo(
       () => ({
-        skip: !props.match.params.id,
+        skip: !id,
         variables: {
-          id: props.match.params.id,
+          id: id,
         },
       }),
-      [props.match.params.id]
+      [id]
     )
   );
 
@@ -135,7 +140,7 @@ const GridParent = (
   return (
     <Grid
       title={data?.department?.name}
-      reconcileMode={props.reconcileMode}
+      reconcileMode={reconcileMode}
       loading={loading}
       where={where}
       refundsWhere={refundsWhere}
@@ -145,23 +150,22 @@ const GridParent = (
   );
 };
 
-const GridReconcileMode = (
-  props: RouteComponentProps<{ id: string; fiscalYear: string }>
-): JSX.Element => <GridParent {...props} reconcileMode />;
+const GridReconcileMode = (): JSX.Element => <GridParent reconcileMode />;
 
-const Routes = (): JSX.Element => {
+const AppRoutes = (): JSX.Element => {
   return (
-    <Switch>
-      <Route exact path="/" component={TopNav} />
-      <Route exact path="/department/:id" component={DashBoardRender} />
-      <Route exact path="/journal/:id/:fiscalYear/" component={GridParent} />
-      <Route
-        exact
-        path="/journal/:id/:fiscalYear/reconcile"
-        component={GridReconcileMode}
-      />
-    </Switch>
+    <Routes>
+      <Route path="/" element={<TopNav />} />
+      <Route path="department/:id" element={<DashBoardRender />} />
+      <Route path="journal">
+        <Route path=":id/:fiscalYear" element={<GridParent />}></Route>
+        <Route
+          path=":id/:fiscalYear/reconcile"
+          element={<GridReconcileMode />}
+        />
+      </Route>
+    </Routes>
   );
 };
 
-export default Routes;
+export default AppRoutes;

@@ -19,20 +19,26 @@ export interface BudgetDbRecord {
 const owner: BudgetResolvers<Context, BudgetDbRecord>["owner"] = (
   { owner },
   _,
-  { db }
+  { dataSources: { accountingDb } }
 ) => {
   if (owner.type === "Business") {
     return addTypename(
       owner.type,
-      db.collection("businesses").findOne({
-        _id: new ObjectId(owner.id),
+      accountingDb.findOne({
+        collection: "businesses",
+        filter: {
+          _id: new ObjectId(owner.id),
+        },
       })
     );
   } else {
     return addTypename(
       owner.type,
-      db.collection("departments").findOne({
-        _id: new ObjectId(owner.id),
+      accountingDb.findOne({
+        collection: "departments",
+        filter: {
+          _id: new ObjectId(owner.id),
+        },
       })
     );
   }
@@ -41,8 +47,14 @@ const owner: BudgetResolvers<Context, BudgetDbRecord>["owner"] = (
 const fiscalYear: BudgetResolvers<Context, BudgetDbRecord>["fiscalYear"] = (
   { fiscalYear },
   _,
-  { db }
-) => db.collection("fiscalYears").findOne({ _id: new ObjectId(fiscalYear) });
+  { dataSources: { accountingDb } }
+) =>
+  accountingDb.findOne({
+    collection: "fiscalYears",
+    filter: {
+      _id: new ObjectId(fiscalYear),
+    },
+  });
 
 export const BudgetOwner: BudgetOwnerResolvers = {
   // __typename added with addTypename

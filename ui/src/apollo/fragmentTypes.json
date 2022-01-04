@@ -13,17 +13,17 @@
       "Department"
     ],
     "BudgetOwner": [
-      "Department",
-      "Business"
-    ],
-    "DepartmentAncestor": [
-      "Department",
-      "Business"
-    ],
-    "Entity": [
-      "Person",
       "Business",
       "Department"
+    ],
+    "DepartmentAncestor": [
+      "Business",
+      "Department"
+    ],
+    "Entity": [
+      "Business",
+      "Department",
+      "Person"
     ],
     "PaymentCardInterface": [
       "AccountCard",
@@ -42,9 +42,9 @@
       "PaymentMethodUnknown"
     ],
     "Source": [
-      "Person",
       "Business",
-      "Department"
+      "Department",
+      "Person"
     ]
   }
 }

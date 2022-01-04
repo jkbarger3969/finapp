@@ -1,4 +1,4 @@
-import { QuerySelector } from "mongodb";
+import { FilterOperators as QuerySelector } from "mongodb";
 
 const NULLISH = Symbol();
 
@@ -21,10 +21,12 @@ const mapComparisonOperators = async (
   comparisonOperators: ComparisonOperators,
   operatorValueTransformer: OperatorValueTransformer = defaultOpValTransformer
 ) => {
-  const comparisonSelector: Partial<Pick<
-    QuerySelector<any>,
-    "$eq" | "$gt" | "$gte" | "$in" | "$lt" | "$lte" | "$ne" | "$nin"
-  >> = {};
+  const comparisonSelector: Partial<
+    Pick<
+      QuerySelector<any>,
+      "$eq" | "$gt" | "$gte" | "$in" | "$lt" | "$lte" | "$ne" | "$nin"
+    >
+  > = {};
 
   for (const op of Object.keys(
     comparisonOperators

@@ -1,4 +1,4 @@
-import { FilterQuery } from "mongodb";
+import { Filter as FilterQuery } from "mongodb";
 import { pascalCase } from "change-case";
 
 import { AliasesWhere, QueryResolvers } from "../../graphTypes";
@@ -6,7 +6,7 @@ import { iterateOwnKeys } from "../../utils/iterableFns";
 import { whereId, whereNode, whereRegex } from "../utils/queryUtils";
 
 const whereAliases = (aliasesWhere: AliasesWhere): FilterQuery<unknown> => {
-  const filterQuery: FilterQuery<unknown> = {};
+  const filterQuery: FilterQuery<any> = {};
 
   for (const whereKey of iterateOwnKeys(aliasesWhere)) {
     switch (whereKey) {
@@ -70,5 +70,5 @@ const whereAliases = (aliasesWhere: AliasesWhere): FilterQuery<unknown> => {
 export const aliases: QueryResolvers["aliases"] = (_, { where }, { db }) => {
   const query = where ? whereAliases(where) : {};
 
-  return db.collection("aliases").find(query).toArray();
+  return db.collection("aliases").find(query).toArray() as any;
 };

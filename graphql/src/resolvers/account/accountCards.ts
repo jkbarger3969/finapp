@@ -1,4 +1,4 @@
-import { FilterQuery, Db, ObjectId } from "mongodb";
+import { Filter as FilterQuery, Db, ObjectId } from "mongodb";
 import { pascalCase } from "change-case";
 
 import { QueryResolvers, AccountCardsWhere } from "../../graphTypes";
@@ -11,7 +11,7 @@ export const whereAccountCards = (
   accountCardsWhere: AccountCardsWhere,
   db: Db
 ) => {
-  const filterQuery: FilterQuery<unknown> = {
+  const filterQuery: FilterQuery<any> = {
     $and: [{ account: { $exists: true } }],
   };
 
@@ -171,20 +171,14 @@ export const whereAccountCards = (
   return filterQuery;
 };
 
-export const accountCards: QueryResolvers["accountCards"] = (
+export const accountCards: QueryResolvers["accountCards"] = async (
   _,
   { where },
-  { db }
-) => {
-  const query = where
-    ? whereAccountCards(where, db)
-    : { account: { $exists: true } };
-
-  if (query instanceof Promise) {
-    return query.then((query) =>
-      db.collection("paymentCards").find(query).toArray()
-    );
-  }
-
-  return db.collection("paymentCards").find(query).toArray();
-};
+  { dataSources: { accountingDb } }
+) =>
+  accountingDb.find({
+    collection: "paymentCards",
+    filter: where
+      ? await whereAccountCards(where, accountingDb.db)
+      : { account: { $exists: true } },
+  });

@@ -1,4 +1,4 @@
-import { QuerySelector } from "mongodb";
+import { FilterOperators as QuerySelector } from "mongodb";
 
 import { MongoOpsMap, OpValueParser, OpsParser } from "./types";
 import { AsyncIterableIteratorFns } from "../../../../utils/iterableFns";

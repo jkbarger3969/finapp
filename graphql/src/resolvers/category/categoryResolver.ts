@@ -7,6 +7,7 @@ import {
   FindOneOptions,
 } from "../../dataSources/accountingDb/types";
 import { AccountingDb } from "../../dataSources/accountingDb/accountingDb";
+import { Db } from "mongodb";
 
 const NULLISH = Symbol("NULLISH");
 
@@ -58,8 +59,12 @@ export const categoryAncestorPath = async function* ({
 
 export const Category: CategoryResolvers = {
   id: ({ _id }) => _id.toString(),
-  parent: async ({ parent }, _, { db }) =>
-    (await db.collection("categories").findOne({ _id: parent })) || null,
+  parent: async ({ parent }, _, { dataSources: { accountingDb } }) =>
+    accountingDb.findOne({
+      collection: "categories",
+      filter: { _id: parent },
+    }),
+
   type: async ({ _id }, _, { dataSources: { accountingDb } }) => {
     const type = await categoryType({
       accountingDb,
@@ -68,8 +73,11 @@ export const Category: CategoryResolvers = {
 
     return snakeCase(type).toUpperCase() as EntryType;
   },
-  children: ({ _id }, _, { db }) =>
-    db.collection("categories").find({ parent: _id }).toArray(),
+  children: ({ _id }, _, { dataSources: { accountingDb } }) =>
+    accountingDb.find({
+      collection: "categories",
+      filter: { parent: _id },
+    }),
   ancestors: async ({ parent }, _, { dataSources: { accountingDb } }) => {
     const ancestors: CategoryDbRecord[] = [];
 

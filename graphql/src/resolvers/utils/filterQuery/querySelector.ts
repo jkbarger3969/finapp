@@ -1,4 +1,4 @@
-import { QuerySelector } from "mongodb";
+import { FilterOperators as QuerySelector } from "mongodb";
 
 import {
   iterateIteratorResults,
@@ -65,7 +65,7 @@ export interface QuerySelectorGenerator<TOp extends string, TOpValue, TReturn> {
 
 // Wraps QuerySelectorIterableIterators, yields results, and captures return
 // promises from async OperatorValueTransmutator(s) into passed promises array.
-const querySelectorIterableIteratorWrapper = function*<
+const querySelectorIterableIteratorWrapper = function* <
   TOp extends string,
   TOpValue
 >(
@@ -89,7 +89,7 @@ const querySelectorIterableIteratorWrapper = function*<
 // values unmatched by the QuerySelectorGenerator(s) and returns the
 // QuerySelector or a promise that resolves with the QuerySelector.
 // Allows for custom handling of unmatched operators.
-export const querySelectorGenerator = function*<
+export const querySelectorGenerator = function* <
   TCondition extends Object,
   TReturn = unknown
 >(
@@ -104,7 +104,7 @@ export const querySelectorGenerator = function*<
   const promises: Promise<void>[] = [];
 
   let querySelectorIterableIterator = querySelectorIterableIteratorWrapper(
-    (function*() {
+    (function* () {
       for (const op in condition) {
         if (!Object.prototype.hasOwnProperty.call(condition, op)) {
           continue;

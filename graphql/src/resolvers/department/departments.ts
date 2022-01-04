@@ -1,4 +1,4 @@
-import { Db, FilterQuery, ObjectId } from "mongodb";
+import { Db, Filter as FilterQuery, ObjectId } from "mongodb";
 
 import { QueryResolvers, DepartmentsWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";
@@ -9,7 +9,7 @@ export const whereDepartments = (
   deptWhere: DepartmentsWhere,
   db: Db
 ): Promise<FilterQuery<unknown>> | FilterQuery<unknown> => {
-  const filterQuery: FilterQuery<unknown> = {};
+  const filterQuery: FilterQuery<any> = {};
 
   const promises: Promise<void>[] = [];
 
@@ -276,11 +276,11 @@ export const whereDepartments = (
 export const departments: QueryResolvers["departments"] = async (
   _,
   { where },
-  { db }
+  { dataSources: { accountingDb } }
 ) =>
-  db
-    .collection("departments")
-    .find(where ? await whereDepartments(where, db) : {})
-    .toArray();
+  accountingDb.find({
+    collection: "departments",
+    filter: where ? await whereDepartments(where, accountingDb.db) : {},
+  });
 
 export default departments;

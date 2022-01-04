@@ -30,12 +30,12 @@ const AliasResolver: AliasResolvers<Context, AliasDbRecord> = {
         return addTypename(
           type,
           db.collection("categories").findOne({ _id: new ObjectId(id) })
-        );
+        ) as any;
       case "Department":
         return addTypename(
           type,
           db.collection("departments").findOne({ _id: new ObjectId(id) })
-        );
+        ) as any;
     }
   },
   type: ({ type }) => snakeCase(type).toUpperCase() as AliasType,

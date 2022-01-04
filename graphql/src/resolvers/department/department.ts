@@ -12,7 +12,10 @@ export interface Returns {
 export const department: QueryResolvers["department"] = async (
   _,
   { id },
-  { db }
+  { dataSources: { accountingDb } }
 ) => {
-  return db.collection("departments").findOne({ _id: new ObjectId(id) });
+  return accountingDb.findOne({
+    collection: "departments",
+    filter: { _id: new ObjectId(id) },
+  });
 };

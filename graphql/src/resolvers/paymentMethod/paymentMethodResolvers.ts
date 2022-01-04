@@ -48,7 +48,7 @@ export type PaymentMethodDBRecord =
 
 // Payment Card
 export const PaymentCardInterface: PaymentCardInterfaceResolvers = {
-  __resolveType: ({ __typename }) => __typename,
+  __resolveType: (card) => ("account" in card ? "AccountCard" : "PaymentCard"),
   type: ({ type }) => serializeGQLEnum<PaymentCardType>(type),
 };
 

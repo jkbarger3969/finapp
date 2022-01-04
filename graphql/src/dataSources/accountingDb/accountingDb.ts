@@ -3,9 +3,9 @@ import {
   MongoClient,
   Db,
   ClientSession,
-  FilterQuery,
+  Filter as FilterQuery,
   OptionalId,
-  UpdateQuery,
+  UpdateFilter as UpdateQuery,
 } from "mongodb";
 
 import { Context } from "../../types";

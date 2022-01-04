@@ -11,5 +11,12 @@ export interface Returns {
   year: number;
 }
 
-export const budget: QueryResolvers["budget"] = async (_, { id }, { db }) =>
-  db.collection("budgets").findOne({ _id: new ObjectId(id) });
+export const budget: QueryResolvers["budget"] = async (
+  _,
+  { id },
+  { dataSources: { accountingDb } }
+) =>
+  accountingDb.findOne({
+    collection: "budgets",
+    filter: { _id: new ObjectId(id) },
+  });

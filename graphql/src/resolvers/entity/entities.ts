@@ -10,7 +10,7 @@ import { addTypename } from "../utils/queryUtils";
 export const entities: QueryResolvers["entities"] = async (
   _,
   { where },
-  { db }
+  { dataSources: { accountingDb } }
 ) => {
   const results: any[] = [];
 
@@ -24,10 +24,10 @@ export const entities: QueryResolvers["entities"] = async (
             results.push(
               ...(await addTypename(
                 "Business",
-                db
-                  .collection("businesses")
-                  .find(whereBusiness(where[whereKey]))
-                  .toArray()
+                accountingDb.find({
+                  collection: "businesses",
+                  filter: whereBusiness(where[whereKey]),
+                })
               ))
             );
           })()
@@ -39,10 +39,13 @@ export const entities: QueryResolvers["entities"] = async (
             results.push(
               ...(await addTypename(
                 "Department",
-                db
-                  .collection("departments")
-                  .find(await whereDepartments(where[whereKey], db))
-                  .toArray()
+                accountingDb.find({
+                  collection: "departments",
+                  filter: await whereDepartments(
+                    where[whereKey],
+                    accountingDb.db
+                  ),
+                })
               ))
             );
           })()
@@ -54,10 +57,10 @@ export const entities: QueryResolvers["entities"] = async (
             results.push(
               ...(await addTypename(
                 "Person",
-                db
-                  .collection("people")
-                  .find(wherePeople(where[whereKey]))
-                  .toArray()
+                accountingDb.find({
+                  collection: "people",
+                  filter: wherePeople(where[whereKey]),
+                })
               ))
             );
           })()

@@ -1,10 +1,10 @@
-import { FilterQuery } from "mongodb";
+import { Filter as FilterQuery } from "mongodb";
 import { QueryResolvers, PeopleWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";
 import { whereId, whereRegex } from "../utils/queryUtils";
 
 export const wherePeople = (peopleWhere: PeopleWhere): FilterQuery<unknown> => {
-  const filterQuery: FilterQuery<unknown> = {};
+  const filterQuery: FilterQuery<any> = {};
 
   for (const whereKey of iterateOwnKeys(peopleWhere)) {
     switch (whereKey) {
@@ -48,8 +48,12 @@ export const wherePeople = (peopleWhere: PeopleWhere): FilterQuery<unknown> => {
   return filterQuery;
 };
 
-export const people: QueryResolvers["people"] = (_, { where }, { db }) =>
-  db
-    .collection("people")
-    .find(where ? wherePeople(where) : {})
-    .toArray();
+export const people: QueryResolvers["people"] = (
+  _,
+  { where },
+  { dataSources: { accountingDb } }
+) =>
+  accountingDb.find({
+    collection: "people",
+    filter: where ? wherePeople(where) : {},
+  });

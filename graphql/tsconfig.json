@@ -16,6 +16,7 @@
     "moduleResolution": "Node",
     "outDir": "build",
     "pretty": true,
+    "skipLibCheck": true,
     "target": "ES2016"
   }
 }

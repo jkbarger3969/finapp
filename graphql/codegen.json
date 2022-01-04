@@ -8,13 +8,21 @@
         "allowParentTypeOverride": true,
         "contextType": "./types#Context",
         "mappers": {
+          "AccountCard": "./dataSources/accountingDb/types#PaymentCardDbRecord",
+          "AccountChecking": "./dataSources/accountingDb/types#AccountDbRecord",
+          "AccountInterface": "./dataSources/accountingDb/types#AccountDbRecord",
+          "AccountWithCardsInterface": "./dataSources/accountingDb/types#AccountDbRecord",
+          "Budget": "./dataSources/accountingDb/types#BudgetDbRecord",
           "Business": "./dataSources/accountingDb/types#BusinessDbRecord",
           "Category": "./dataSources/accountingDb/types#CategoryDbRecord",
           "Department": "./dataSources/accountingDb/types#DepartmentDbRecord",
           "Entry": "./dataSources/accountingDb/types#EntryDbRecord",
           "EntryRefund": "./dataSources/accountingDb/types#EntryRefundDbRecord",
           "EntryItem": "./dataSources/accountingDb/types#EntryItemDbRecord",
-          "NewEntryRefund": "./dataSources/accountingDb/types#EntryRefundDbRecord"
+          "FiscalYear": "./dataSources/accountingDb/types#FiscalYearDbRecord",
+          "NewEntryRefund": "./dataSources/accountingDb/types#EntryRefundDbRecord",
+
+          "Person": "./dataSources/accountingDb/types#PersonDbRecord"
         },
         "noSchemaStitching": true,
         "optionalResolveType": true,

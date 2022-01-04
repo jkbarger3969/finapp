@@ -51,16 +51,24 @@ export interface AccountCardDbRecord {
 const AccountCardResolver: AccountCardResolvers<Context, AccountCardDbRecord> =
   {
     id: ({ _id }) => _id.toString(),
-    account: ({ account }, _, { db }) =>
-      db.collection("accounts").findOne({ _id: account }),
-    active: async ({ account, active }, _, { db }) => {
+    account: ({ account }, _, { dataSources: { accountingDb } }) =>
+      accountingDb.findOne({
+        collection: "accounts",
+        filter: { _id: account },
+      }),
+    active: async (
+      { account, active },
+      _,
+      { dataSources: { accountingDb } }
+    ) => {
       if (
         !active ||
         // If the linked account is NOT active all CARDS are NOT active.
         !(
-          await db
-            .collection<AccountDbRecord>("accounts")
-            .findOne({ _id: account })
+          await accountingDb.findOne({
+            collection: "accounts",
+            filter: { _id: account },
+          })
         ).active
       ) {
         return false;
@@ -85,8 +93,11 @@ const AccountCheckResolver: AccountCheckResolvers<
   Context,
   AccountCheckDbRecord
 > = {
-  account: ({ account }, _, { db }) =>
-    db.collection("accounts").findOne({ _id: account }),
+  account: ({ account }, _, { dataSources: { accountingDb } }) =>
+    accountingDb.findOne({
+      collection: "accounts",
+      filter: { _id: account },
+    }),
 };
 
 export const AccountCheck =
@@ -119,12 +130,12 @@ const AccountCreditCardResolver: AccountCreditCardResolvers<
   AccountCreditCardDbRecord
 > = {
   id: ({ _id }) => _id.toString(),
-  cards: ({ cards }, _, { db }) =>
+  cards: ({ cards }, _, { dataSources: { accountingDb } }) =>
     cards
-      ? db
-          .collection("paymentCards")
-          .find({ _id: { $in: cards } })
-          .toArray()
+      ? accountingDb.find({
+          collection: "paymentCards",
+          filter: { _id: { $in: cards } },
+        })
       : [],
   owner: ({ owner }, _, { db }) => getEntity(owner, db),
 };
@@ -137,12 +148,12 @@ const AccountCheckingResolver: AccountCheckingResolvers<
   AccountCheckingDbRecord
 > = {
   id: ({ _id }) => _id.toString(),
-  cards: ({ cards }, _, { db }) =>
+  cards: ({ cards }, _, { dataSources: { accountingDb } }) =>
     cards
-      ? db
-          .collection("paymentCards")
-          .find({ _id: { $in: cards } })
-          .toArray()
+      ? accountingDb.find({
+          collection: "paymentCards",
+          filter: { _id: { $in: cards } },
+        })
       : [],
   owner: ({ owner }, _, { db }) => getEntity(owner, db),
 };

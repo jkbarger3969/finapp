@@ -1,4 +1,8 @@
-import { QuerySelector, ObjectId, FilterQuery } from "mongodb";
+import {
+  FilterOperators as QuerySelector,
+  ObjectId,
+  Filter as FilterQuery,
+} from "mongodb";
 
 import {
   WhereRegex,
