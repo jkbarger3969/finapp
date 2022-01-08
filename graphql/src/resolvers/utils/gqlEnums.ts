@@ -1,5 +1,4 @@
-import { pascalCase, constantCase } from "change-case";
-import { snakeCase } from "lodash";
+import { pascalCase, snakeCase } from "change-case";
 
 export const deserializeGQLEnum = <T extends string>(gqlEnum: T): string =>
   pascalCase(gqlEnum);

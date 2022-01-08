@@ -1,4 +1,4 @@
-import { FilterQuery } from "mongodb";
+import { Filter as FilterQuery } from "mongodb";
 
 import { QueryResolvers, FiscalYearsWhere } from "../../graphTypes";
 import { iterateOwnKeyValues, iterateOwnKeys } from "../../utils/iterableFns";
@@ -8,7 +8,7 @@ import { whereRegex, whereId } from "../utils/queryUtils";
 export const whereFiscalYear = (
   fiscalYearWhere: FiscalYearsWhere
 ): FilterQuery<unknown> => {
-  const filterQuery: FilterQuery<unknown> = {};
+  const filterQuery: FilterQuery<any> = {};
 
   for (const whereKey of iterateOwnKeys(fiscalYearWhere)) {
     switch (whereKey) {
@@ -89,9 +89,9 @@ export const whereFiscalYear = (
 export const fiscalYears: QueryResolvers["fiscalYears"] = (
   _,
   { where },
-  { db }
-) => {
-  const query = where ? whereFiscalYear(where) : {};
-
-  return db.collection("fiscalYears").find(query).toArray();
-};
+  { dataSources: { accountingDb } }
+) =>
+  accountingDb.find({
+    collection: "fiscalYears",
+    filter: where ? whereFiscalYear(where) : {},
+  });

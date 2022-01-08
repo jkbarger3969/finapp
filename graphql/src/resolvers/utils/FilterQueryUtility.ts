@@ -1,4 +1,4 @@
-import { FilterQuery, Condition, Collection } from "mongodb";
+import { Filter as FilterQuery, Condition, Collection } from "mongodb";
 
 type TLogicOperators = "$and" | "$not" | "$nor" | "$or";
 

@@ -1,19 +1,19 @@
 import React, { Fragment } from "react";
 import { ApolloProvider } from "@apollo/client";
 import CssBaseline from "@material-ui/core/CssBaseline";
-import { BrowserRouter as Router } from "react-router-dom";
+import { BrowserRouter } from "react-router-dom";
 
 import client from "./apollo/apollo";
-import Routes from "./Routes";
+import AppRoutes from "./Routes";
 
 const App = (): JSX.Element => (
   <Fragment>
     <CssBaseline />
 
     <ApolloProvider client={client}>
-      <Router>
-        <Routes />
-      </Router>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
     </ApolloProvider>
   </Fragment>
 );

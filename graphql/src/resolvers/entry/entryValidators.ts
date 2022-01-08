@@ -25,7 +25,6 @@ import {
   upsertPaymentMethodToDbRecord,
   validatePaymentMethod,
 } from "../paymentMethod";
-import { result } from "lodash";
 
 export const validateEntry = new (class {
   async exists({

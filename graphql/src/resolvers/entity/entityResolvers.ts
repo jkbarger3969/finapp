@@ -1,6 +1,15 @@
 import { Db } from "mongodb";
-import { EntityResolvers, Entity as EntityType } from "../../graphTypes";
+import {
+  BusinessDbRecord,
+  DepartmentDbRecord,
+} from "../../dataSources/accountingDb/types";
+import {
+  EntityResolvers,
+  Entity as EntityType,
+  Department,
+} from "../../graphTypes";
 import { Context } from "../../types";
+import { PersonDbRecord } from "../person";
 import { addTypename, NodeDbRecord } from "../utils/queryUtils";
 
 export type EntityTypename = "Person" | "Business" | "Department";
@@ -14,15 +23,18 @@ export const getEntity = (node: EntityDbRecord, db: Db) => {
     case "Business":
       return addTypename(
         type,
-        db.collection("businesses").findOne({ _id: id })
+        db.collection<BusinessDbRecord>("businesses").findOne({ _id: id })
       );
     case "Department":
       return addTypename(
         type,
-        db.collection("departments").findOne({ _id: id })
+        db.collection<DepartmentDbRecord>("departments").findOne({ _id: id })
       );
     case "Person":
-      return addTypename(type, db.collection("people").findOne({ _id: id }));
+      return addTypename(
+        type,
+        db.collection<PersonDbRecord>("people").findOne({ _id: id })
+      );
   }
 };
 

@@ -1,4 +1,4 @@
-import { QuerySelector } from "mongodb";
+import { FilterOperators as QuerySelector } from "mongodb";
 
 import { OpsParser } from "./types";
 import {

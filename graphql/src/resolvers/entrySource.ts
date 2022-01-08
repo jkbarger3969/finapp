@@ -59,5 +59,5 @@ export const sources: QueryResolvers["sources"] = async function (
   return results.reduce((results, result) => {
     results.push(...result);
     return results;
-  }, []);
+  }, []) as any;
 };

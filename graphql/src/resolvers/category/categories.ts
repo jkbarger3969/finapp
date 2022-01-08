@@ -1,4 +1,4 @@
-import { ObjectId, FilterQuery, Db } from "mongodb";
+import { ObjectId, Filter as FilterQuery, Db } from "mongodb";
 import { pascalCase } from "change-case";
 
 import { QueryResolvers, CategoriesWhere } from "../../graphTypes";
@@ -9,7 +9,7 @@ export const whereCategories = (
   categoryWhere: CategoriesWhere,
   db: Db
 ): Promise<FilterQuery<unknown>> | FilterQuery<unknown> => {
-  const filterQuery: FilterQuery<unknown> = {};
+  const filterQuery: FilterQuery<any> = {};
 
   const promises: Promise<void>[] = [];
 
@@ -209,18 +209,12 @@ export const whereCategories = (
   return filterQuery;
 };
 
-export const categories: QueryResolvers["categories"] = (
+export const categories: QueryResolvers["categories"] = async (
   _,
   { where },
-  { db }
-) => {
-  const query = where ? whereCategories(where, db) : {};
-
-  if (query instanceof Promise) {
-    return query.then((query) =>
-      db.collection("categories").find(query).toArray()
-    );
-  }
-
-  return db.collection("categories").find(query).toArray();
-};
+  { dataSources: { accountingDb } }
+) =>
+  accountingDb.find({
+    collection: "categories",
+    filter: where ? await whereCategories(where, accountingDb.db) : {},
+  });

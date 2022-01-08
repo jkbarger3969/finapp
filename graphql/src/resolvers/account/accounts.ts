@@ -1,4 +1,4 @@
-import { Db, FilterQuery, ObjectId } from "mongodb";
+import { Db, Filter as FilterQuery, ObjectId } from "mongodb";
 
 import { QueryResolvers, AccountsWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";
@@ -8,7 +8,7 @@ import { whereId, whereRegex } from "../utils/queryUtils";
 import { whereAccountCards } from "./accountCards";
 
 export const whereAccounts = (accountsWhere: AccountsWhere, db: Db) => {
-  const filterQuery: FilterQuery<unknown> = {};
+  const filterQuery: FilterQuery<any> = {};
 
   const promises: Promise<void>[] = [];
 
@@ -166,14 +166,12 @@ export const whereAccounts = (accountsWhere: AccountsWhere, db: Db) => {
   return filterQuery;
 };
 
-export const accounts: QueryResolvers["accounts"] = (_, { where }, { db }) => {
-  const query = where ? whereAccounts(where, db) : {};
-
-  if (query instanceof Promise) {
-    return query.then((query) =>
-      db.collection("accounts").find(query).toArray()
-    );
-  }
-
-  return db.collection("accounts").find(query).toArray();
-};
+export const accounts: QueryResolvers["accounts"] = async (
+  _,
+  { where },
+  { db, dataSources: { accountingDb } }
+) =>
+  accountingDb.find({
+    collection: "accounts",
+    filter: where ? await whereAccounts(where, db) : {},
+  });

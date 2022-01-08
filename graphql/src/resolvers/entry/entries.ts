@@ -1,4 +1,4 @@
-import { Db, FilterQuery, ObjectId } from "mongodb";
+import { Db, Filter as FilterQuery, ObjectId } from "mongodb";
 
 import {
   QueryResolvers,
@@ -19,6 +19,7 @@ import { whereCategories } from "../category";
 import { whereBusiness } from "../business";
 import { wherePeople } from "../person/people";
 import { whereFiscalYear, FiscalYearDbRecord } from "../fiscalYear";
+import { EntryDbRecord } from "../../dataSources/accountingDb/types";
 
 const refundDateOfRecordCondition = (
   $and: FilterQuery<unknown>[],
@@ -75,7 +76,7 @@ const refundDateOfRecordCondition = (
 export const whereEntryRefunds = (
   entryRefundsWhere: EntryRefundsWhere,
   db: Db,
-  filterQuery: FilterQuery<unknown> = {}
+  filterQuery: FilterQuery<any> = {}
 ) => {
   const promises: Promise<void>[] = [];
 
@@ -318,7 +319,7 @@ export const whereEntryRefunds = (
 export const whereEntryItems = (
   itemRefundsWhere: EntryItemsWhere,
   db: Db,
-  filterQuery: FilterQuery<unknown> = {}
+  filterQuery: FilterQuery<any> = {}
 ) => {
   const promises: Promise<void>[] = [];
 
@@ -507,7 +508,7 @@ export const whereEntries = (
     excludeWhereRefunds?: boolean;
   } = {}
 ) => {
-  const filterQuery: FilterQuery<unknown> = {};
+  const filterQuery: FilterQuery<any> = {};
 
   const promises: Promise<void | unknown>[] = [];
 
@@ -918,16 +919,16 @@ export const whereEntries = (
 export const entries: QueryResolvers["entries"] = async (
   _,
   { where, filterRefunds },
-  { db }
+  { dataSources: { accountingDb } }
 ) => {
   const pipeline: object[] = [];
   if (where) {
     pipeline.push({
-      $match: await whereEntries(where, db),
+      $match: await whereEntries(where, accountingDb.db),
     });
 
     if (filterRefunds) {
-      const matchRefunds = await whereEntries(where, db, {
+      const matchRefunds = await whereEntries(where, accountingDb.db, {
         excludeWhereRefunds: true,
       });
 
@@ -968,5 +969,8 @@ export const entries: QueryResolvers["entries"] = async (
     }
   }
 
-  return db.collection("entries").aggregate(pipeline).toArray();
+  return accountingDb
+    .getCollection("entries")
+    .aggregate<EntryDbRecord>(pipeline)
+    .toArray();
 };

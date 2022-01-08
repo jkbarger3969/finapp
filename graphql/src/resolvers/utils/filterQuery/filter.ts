@@ -1,4 +1,4 @@
-import { FilterQuery, Condition } from "mongodb";
+import { Filter as FilterQuery, Condition } from "mongodb";
 
 import {
   AsyncIterableIteratorFns,
@@ -6,7 +6,6 @@ import {
   iterateOwnKeyValues,
   iterableToAsyncIterable,
 } from "../../../utils/iterableFns";
-import { cond } from "lodash";
 
 const NULLISH = Symbol();
 
@@ -42,10 +41,12 @@ const _logicOpParser_ = async function* <
   where: TWhere | AsyncIterable<[keyof TWhere, TWhere[keyof TWhere]]>,
   fieldAndConditionGenerator: FieldAndConditionGenerator<TWhere, Toptions>,
   options?: Toptions
-): AsyncIterableIteratorFns<[
-  Exclude<keyof TWhere, keyof LogicOperators<TWhere>>,
-  TWhere[Exclude<keyof TWhere, keyof LogicOperators<TWhere>>]
-]> {
+): AsyncIterableIteratorFns<
+  [
+    Exclude<keyof TWhere, keyof LogicOperators<TWhere>>,
+    TWhere[Exclude<keyof TWhere, keyof LogicOperators<TWhere>>]
+  ]
+> {
   for await (const [key, value] of where[Symbol.asyncIterator]
     ? (where as AsyncIterable<[keyof TWhere, TWhere[keyof TWhere]]>)
     : iterableToAsyncIterable(iterateOwnKeyValues(where))) {

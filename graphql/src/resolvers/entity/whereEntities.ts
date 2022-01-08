@@ -1,4 +1,4 @@
-import { Db, FilterQuery, ObjectId } from "mongodb";
+import { Db, Filter as FilterQuery, ObjectId } from "mongodb";
 
 import { EntitiesWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";

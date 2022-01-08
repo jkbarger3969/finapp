@@ -30,14 +30,20 @@ const config = (env): WebpackConfig => {
     },
     devtool: mode === "production" ? "source-map" : "inline-source-map",
     devServer: {
-      contentBase: BUILD_DIR,
+      static: {
+        directory: BUILD_DIR,
+      },
+      client: {
+        overlay: true,
+      },
+      devMiddleware: {
+        stats: "errors-warnings",
+      },
       historyApiFallback: true, // Do not server paths react-router will handle.
       hot: true,
-      overlay: true,
       proxy: {
         "/graphql": { target: "http://localhost:4000" /* ws: true */ },
       },
-      stats: "errors-warnings",
     },
     module: {
       rules: [
@@ -95,8 +101,14 @@ const config = (env): WebpackConfig => {
       new CleanWebpackPlugin(),
       new HtmlWebpackPlugin({
         title: "Budget Management",
-        template: "node_modules/html-webpack-template/index.ejs",
-        appMountId: "root",
+        templateContent: `
+          <html>
+            <body>
+              <div id="root"></div>
+            </body>
+          </html>
+      `,
+        // appMountId: "root",
       }),
       new ForkTsCheckerWebpackPlugin({
         eslint: {

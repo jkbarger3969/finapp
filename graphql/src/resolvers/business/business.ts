@@ -12,5 +12,12 @@ export interface Returns {
   };
 }
 
-export const business: QueryResolvers["business"] = (_, { id }, { db }) =>
-  db.collection("businesses").findOne({ _id: new ObjectId(id) });
+export const business: QueryResolvers["business"] = (
+  _,
+  { id },
+  { dataSources: { accountingDb } }
+) =>
+  accountingDb.findOne({
+    collection: "businesses",
+    filter: { _id: new ObjectId(id) },
+  });

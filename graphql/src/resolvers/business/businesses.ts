@@ -1,4 +1,4 @@
-import { FilterQuery } from "mongodb";
+import { Filter as FilterQuery } from "mongodb";
 
 import { QueryResolvers, BusinessesWhere } from "../../graphTypes";
 
@@ -12,7 +12,7 @@ export type Returns = BusinessReturns[];
 export const whereBusiness = (
   businessWhere: BusinessesWhere
 ): FilterQuery<unknown> => {
-  const filterQuery: FilterQuery<unknown> = {};
+  const filterQuery: FilterQuery<any> = {};
 
   for (const whereKey of iterateOwnKeys(businessWhere)) {
     switch (whereKey) {
@@ -46,9 +46,9 @@ export const whereBusiness = (
 export const businesses: QueryResolvers["businesses"] = (
   _,
   { where },
-  { db }
-) => {
-  const query = where ? whereBusiness(where) : {};
-
-  return db.collection("businesses").find(query).toArray();
-};
+  { dataSources: { accountingDb } }
+) =>
+  accountingDb.find({
+    collection: "businesses",
+    filter: where ? whereBusiness(where) : {},
+  });

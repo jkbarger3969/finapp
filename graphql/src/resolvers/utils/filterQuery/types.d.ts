@@ -1,4 +1,4 @@
-import { QuerySelector } from "mongodb";
+import { FilterOperators as QuerySelector } from "mongodb";
 
 export type OperatorValueTransmutator<T, U, V> =
   | ((operatorValue: T, operator?: U) => V)

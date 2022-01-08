@@ -1,4 +1,4 @@
-import { Db, FilterQuery, ObjectId } from "mongodb";
+import { Db, Filter as FilterQuery, ObjectId } from "mongodb";
 
 import { QueryResolvers, BudgetsWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";
@@ -9,7 +9,7 @@ export const whereBudgets = (
   budgetWhere: BudgetsWhere,
   db: Db
 ): FilterQuery<unknown> | Promise<FilterQuery<unknown>> => {
-  const filterQuery: FilterQuery<unknown> = {};
+  const filterQuery: FilterQuery<any> = {};
 
   const promises: Promise<void>[] = [];
 
@@ -163,16 +163,9 @@ export const whereBudgets = (
 export const budgets: QueryResolvers["budgets"] = async (
   _,
   { where },
-  { db }
-) => {
-  const query = where ? whereBudgets(where, db) : {};
-
-  if (query instanceof Promise) {
-    return db
-      .collection("budgets")
-      .find(await query)
-      .toArray();
-  }
-
-  return db.collection("budgets").find(query).toArray();
-};
+  { dataSources: { accountingDb } }
+) =>
+  accountingDb.find({
+    collection: "budgets",
+    filter: where ? await whereBudgets(where, accountingDb.db) : {},
+  });

@@ -1,4 +1,4 @@
-import { QuerySelector } from "mongodb";
+import { FilterOperators as QuerySelector } from "mongodb";
 
 import { AsyncIterableIteratorFns } from "../../../../utils/iterableFns";
 
@@ -7,13 +7,12 @@ export type ValidMongoOps = Exclude<
   "$expr" | "$jsonSchema" //These are typed "any"
 >;
 
-export type MongoOpsMap<
-  TMongoOpsMap extends { [op: string]: ValidMongoOps }
-> = {
-  [op in keyof TMongoOpsMap]: TMongoOpsMap[op] extends ValidMongoOps
-    ? TMongoOpsMap[op]
-    : never;
-};
+export type MongoOpsMap<TMongoOpsMap extends { [op: string]: ValidMongoOps }> =
+  {
+    [op in keyof TMongoOpsMap]: TMongoOpsMap[op] extends ValidMongoOps
+      ? TMongoOpsMap[op]
+      : never;
+  };
 
 export type MongoOpValue<
   TOp extends keyof TMongoOpsMap,

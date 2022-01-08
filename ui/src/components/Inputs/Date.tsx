@@ -35,76 +35,77 @@ export type DateFieldDef<TName extends string = typeof DATE_NAME> = {
   [key in TName]: FieldValue<Date>;
 };
 
-export const DateInput = forwardRef(
-  (props: DateInputProps, ref: Ref<HTMLDivElement>) => {
-    const {
-      defaultValue,
-      name: nameProp = DATE_NAME,
-      form,
-      onBlur: onBlurProp,
-      onChange: onChangeProp,
-      disabled,
-      ...rest
-    } = props;
+export const DateInput = forwardRef(function DateInput(
+  props: DateInputProps,
+  ref: Ref<HTMLDivElement>
+) {
+  const {
+    defaultValue,
+    name: nameProp = DATE_NAME,
+    form,
+    onBlur: onBlurProp,
+    onChange: onChangeProp,
+    disabled,
+    ...rest
+  } = props;
 
-    const isSubmitting = useFormContext(form)?.isSubmitting ?? false;
+  const isSubmitting = useFormContext(form)?.isSubmitting ?? false;
 
-    const {
-      props: { name, value },
-      state: { isTouched, errors },
-      setValue,
-      setTouched,
-    } = useField<Date>({
-      name: nameProp,
-      defaultValue,
-      isEqual: isEqual,
-      validator: validDate,
-      form,
-    });
+  const {
+    props: { name, value },
+    state: { isTouched, errors },
+    setValue,
+    setTouched,
+  } = useField<Date>({
+    name: nameProp,
+    defaultValue,
+    isEqual: isEqual,
+    validator: validDate,
+    form,
+  });
 
-    const handleChange = useCallback<KeyboardDatePickerProps["onChange"]>(
-      (...args) => {
-        // undefined clears values in KISS form
-        setValue(args[0] ?? undefined);
-        if (onChangeProp) {
-          onChangeProp(...args);
-        }
-      },
-      [setValue, onChangeProp]
-    );
+  const handleChange = useCallback<KeyboardDatePickerProps["onChange"]>(
+    (...args) => {
+      // undefined clears values in KISS form
+      setValue(args[0] ?? undefined);
+      if (onChangeProp) {
+        onChangeProp(...args);
+      }
+    },
+    [setValue, onChangeProp]
+  );
 
-    const handleBlur = useCallback<
-      NonNullable<KeyboardDatePickerProps["onBlur"]>
-    >(
-      (...args) => {
-        setTouched(true);
+  const handleBlur = useCallback<
+    NonNullable<KeyboardDatePickerProps["onBlur"]>
+  >(
+    (...args) => {
+      setTouched(true);
 
-        if (onBlurProp) {
-          onBlurProp(...args);
-        }
-      },
-      [setTouched, onBlurProp]
-    );
+      if (onBlurProp) {
+        onBlurProp(...args);
+      }
+    },
+    [setTouched, onBlurProp]
+  );
 
-    return (
-      <MuiPickersUtilsProvider utils={DateFnsUtils}>
-        <KeyboardDatePicker
-          ref={ref}
-          {...rest}
-          {...(isTouched && errors.length
-            ? {
-                error: true,
-                helperText: errors[0].message,
-              }
-            : {})}
-          name={name}
-          // Must control value with null
-          value={value ?? null}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          disabled={isSubmitting || disabled}
-        />
-      </MuiPickersUtilsProvider>
-    );
-  }
-);
+  return (
+    <MuiPickersUtilsProvider utils={DateFnsUtils}>
+      <KeyboardDatePicker
+        ref={ref}
+        {...rest}
+        {...(isTouched && errors.length
+          ? {
+              error: true,
+              helperText: errors[0].message,
+            }
+          : {})}
+        name={name}
+        // Must control value with null
+        value={value ?? null}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        disabled={isSubmitting || disabled}
+      />
+    </MuiPickersUtilsProvider>
+  );
+});
