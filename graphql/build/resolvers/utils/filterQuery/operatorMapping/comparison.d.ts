@@ -1,4 +1,4 @@
-import { QuerySelector } from "mongodb";
+import { FilterOperators as QuerySelector } from "mongodb";
 import { MongoOpsMap, QuerySelectorGenerator, OperatorValueTransmutator } from "../querySelector";
 export declare type ComparisonMongoOpsMap = MongoOpsMap<MongoComparisonOperators, {
     eq: "$eq";
@@ -22,5 +22,5 @@ declare const comparisonQueryGenerator: <TOpValue, TReturn>(opValueTransmutator?
     lte: "$lte";
     ne: "$ne";
     nin: "$nin";
-}>, "gt" | "gte" | "lt" | "lte" | "eq" | "ne" | "in" | "nin">) => QuerySelectorGenerator<string, TOpValue, TReturn>;
+}>, "gt" | "gte" | "lt" | "lte" | "eq" | "in" | "ne" | "nin">) => QuerySelectorGenerator<string, TOpValue, TReturn>;
 export default comparisonQueryGenerator;

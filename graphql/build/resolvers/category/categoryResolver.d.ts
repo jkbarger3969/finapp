@@ -8,7 +8,7 @@ export declare const categoryAncestorPath: ({ accountingDb, fromCategory, option
     accountingDb: AccountingDb;
     fromCategory?: CategoryDbRecord["parent"];
     options?: FindOneOptions<"categories">;
-}) => AsyncGenerator<CategoryDbRecord, void, unknown>;
+}) => AsyncGenerator<import("mongodb").WithId<CategoryDbRecord>, void, unknown>;
 /**
  * Look up category type
  */ export declare const categoryType: ({ accountingDb, category, }: {

@@ -1,10 +1,36 @@
 import { Db } from "mongodb";
+import { BusinessDbRecord, DepartmentDbRecord } from "../../dataSources/accountingDb/types";
 import { EntityResolvers } from "../../graphTypes";
+import { PersonDbRecord } from "../person";
 import { NodeDbRecord } from "../utils/queryUtils";
 export declare type EntityTypename = "Person" | "Business" | "Department";
 export declare type EntityDbRecord = NodeDbRecord<EntityTypename>;
-export declare const getEntity: (node: EntityDbRecord, db: Db) => Promise<any>;
-export declare const getEntities: (nodes: EntityDbRecord[], db: Db) => Promise<any[]>;
+export declare const getEntity: (node: EntityDbRecord, db: Db) => Promise<Pick<DepartmentDbRecord, "name" | "code" | "parent" | "virtualRoot"> & {
+    _id: import("bson").ObjectID;
+} & {
+    __typename: "Department";
+}> | Promise<Pick<BusinessDbRecord, "name" | "vendor" | "budget"> & {
+    _id: import("bson").ObjectID;
+} & {
+    __typename: "Business";
+}> | Promise<Pick<PersonDbRecord, "name"> & {
+    _id: import("bson").ObjectID;
+} & {
+    __typename: "Person";
+}>;
+export declare const getEntities: (nodes: EntityDbRecord[], db: Db) => Promise<((Pick<DepartmentDbRecord, "name" | "code" | "parent" | "virtualRoot"> & {
+    _id: import("bson").ObjectID;
+} & {
+    __typename: "Department";
+}) | (Pick<BusinessDbRecord, "name" | "vendor" | "budget"> & {
+    _id: import("bson").ObjectID;
+} & {
+    __typename: "Business";
+}) | (Pick<PersonDbRecord, "name"> & {
+    _id: import("bson").ObjectID;
+} & {
+    __typename: "Person";
+}))[]>;
 export declare const Entity: EntityResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord>;
+} & import("../../types").ContextBase, BusinessDbRecord | DepartmentDbRecord | import("../../dataSources/accountingDb/types").PersonDbRecord>;

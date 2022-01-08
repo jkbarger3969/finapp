@@ -13,6 +13,4 @@ export interface BudgetDbRecord {
 export declare const BudgetOwner: BudgetOwnerResolvers;
 export declare const Budget: BudgetResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, import("../../graphTypes").Omit<import("../../graphTypes").Budget, "owner"> & {
-    owner: import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
-}>;
+} & import("../../types").ContextBase, import("../../dataSources/accountingDb/types").BudgetDbRecord>;

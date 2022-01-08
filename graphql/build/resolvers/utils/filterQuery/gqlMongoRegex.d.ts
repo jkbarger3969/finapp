@@ -1,4 +1,4 @@
-declare const parseGQLMongoRegex: (whereRegex: any) => {
+declare const parseGQLMongoRegex: (whereRegex: WhereRegexInput) => {
     $regex: string;
     $options?: string;
 };

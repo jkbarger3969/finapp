@@ -1,5 +1,5 @@
 import { DataSource } from "apollo-datasource";
-import { MongoClient, Db, ClientSession, FilterQuery, OptionalId, UpdateQuery } from "mongodb";
+import { MongoClient, Db, ClientSession, Filter as FilterQuery, OptionalId, UpdateFilter as UpdateQuery } from "mongodb";
 import { Context } from "../../types";
 import { FindOneOptions, CollectionSchemaMap } from "./types";
 export declare type UpdateOne<TCollection extends keyof CollectionSchemaMap> = UpdateQuery<CollectionSchemaMap[TCollection]>;
@@ -20,22 +20,22 @@ export declare class AccountingDb extends DataSource<Context> {
     insertOne<TCollection extends keyof CollectionSchemaMap>({ collection, doc, }: {
         collection: TCollection;
         doc: OptionalId<CollectionSchemaMap[TCollection]>;
-    }): Promise<import("mongodb").InsertOneWriteOpResult<import("mongodb").WithId<CollectionSchemaMap[TCollection]>>>;
+    }): Promise<import("mongodb").InsertOneResult<CollectionSchemaMap[TCollection]>>;
     updateOne<TCollection extends keyof CollectionSchemaMap>({ collection, filter, update, }: {
         collection: TCollection;
         filter: FilterQuery<CollectionSchemaMap[TCollection]>;
         update: UpdateOne<TCollection>;
-    }): Promise<import("mongodb").UpdateWriteOpResult>;
+    }): Promise<import("mongodb").UpdateResult>;
     find<TCollection extends keyof CollectionSchemaMap>({ collection, filter, options, }: {
         collection: TCollection;
         filter: FilterQuery<CollectionSchemaMap[TCollection]>;
         options?: FindOneOptions<TCollection>;
         skipCache?: boolean;
-    }): Promise<CollectionSchemaMap[TCollection][]>;
+    }): Promise<import("mongodb").WithId<CollectionSchemaMap[TCollection]>[]>;
     findOne<TCollection extends keyof CollectionSchemaMap>({ collection, filter, options, }: {
         collection: TCollection;
         filter: FilterQuery<CollectionSchemaMap[TCollection]>;
         options?: FindOneOptions<TCollection>;
         skipCache?: boolean;
-    }): Promise<CollectionSchemaMap[TCollection]>;
+    }): Promise<import("mongodb").WithId<CollectionSchemaMap[TCollection]>>;
 }

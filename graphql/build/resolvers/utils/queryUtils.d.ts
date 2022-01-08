@@ -1,4 +1,4 @@
-import { QuerySelector, ObjectId, FilterQuery } from "mongodb";
+import { FilterOperators as QuerySelector, ObjectId, Filter as FilterQuery } from "mongodb";
 import { WhereRegex, Resolvers, WhereDate, WhereRational, WhereId, WhereTreeId, WhereNode, WhereInt } from "../../graphTypes";
 import { RationalValue } from "../../utils/mongoRational";
 export interface NodeDbRecord<T extends string = string> {

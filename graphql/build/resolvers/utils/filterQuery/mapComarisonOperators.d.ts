@@ -1,4 +1,4 @@
-import { QuerySelector } from "mongodb";
+import { FilterOperators as QuerySelector } from "mongodb";
 export interface ComparisonOperators {
     eq?: any;
     gt?: any;

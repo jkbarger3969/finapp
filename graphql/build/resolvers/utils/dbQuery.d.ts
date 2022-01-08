@@ -1,4 +1,4 @@
-import { Db, FilterQuery, FindOneOptions, CollectionAggregationOptions } from "mongodb";
+import { Db } from "mongodb";
 interface CollectionTypeNames {
     addresses: "Address";
     budgets: "Budget";

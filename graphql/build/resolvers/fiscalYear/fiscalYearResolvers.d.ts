@@ -8,4 +8,4 @@ export interface FiscalYearDbRecord {
 }
 export declare const FiscalYear: FiscalYearResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, import("../../graphTypes").FiscalYear>;
+} & import("../../types").ContextBase, import("../../dataSources/accountingDb/types").FiscalYearDbRecord>;

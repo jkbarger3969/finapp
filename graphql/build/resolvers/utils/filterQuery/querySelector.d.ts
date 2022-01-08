@@ -1,4 +1,4 @@
-import { QuerySelector } from "mongodb";
+import { FilterOperators as QuerySelector } from "mongodb";
 export declare type ValidMongoOps = Exclude<keyof QuerySelector<unknown>, "$expr" | "$jsonSchema">;
 export declare type MongoOpsMap<TMongoOps extends ValidMongoOps = ValidMongoOps, TMongoOpsMap extends {
     [op: string]: TMongoOps;

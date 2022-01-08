@@ -9,4 +9,4 @@ export interface PersonDbRecord {
 }
 export declare const Person: PersonResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, import("../../graphTypes").Person>;
+} & import("../../types").ContextBase, import("../../dataSources/accountingDb/types").PersonDbRecord>;

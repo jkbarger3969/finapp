@@ -4,4 +4,4 @@ import { NewPerson } from "../../graphTypes";
 export declare const addNewPersonRecord: ({ newPerson, accountingDb, }: {
     newPerson: NewPerson;
     accountingDb: AccountingDb;
-}) => Promise<import("mongodb").InsertOneWriteOpResult<import("mongodb").WithId<PersonDbRecord>>>;
+}) => Promise<import("mongodb").InsertOneResult<PersonDbRecord>>;

@@ -25,7 +25,9 @@ export declare const PaymentCardInterface: PaymentCardInterfaceResolvers;
 export declare const PaymentCard: PaymentCardResolvers;
 export declare const PaymentCheckInterface: PaymentCheckInterfaceResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, import("../../graphTypes").AccountCheck | import("../../graphTypes").PaymentCheck>;
+} & import("../../types").ContextBase, import("../../graphTypes").PaymentCheck | (import("../../graphTypes").Omit<import("../../graphTypes").AccountCheck, "account"> & {
+    account: import("../../dataSources/accountingDb/types").AccountDbRecord;
+})>;
 export declare const PaymentMethodInterface: PaymentMethodInterfaceResolvers<{
     dataSources: import("../../types").DataSources;
 } & import("../../types").ContextBase, import("../../graphTypes").PaymentMethodCard | import("../../graphTypes").PaymentMethodCash | import("../../graphTypes").PaymentMethodCheck | import("../../graphTypes").PaymentMethodCombination | import("../../graphTypes").PaymentMethodOnline | import("../../graphTypes").PaymentMethodUnknown>;

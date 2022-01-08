@@ -1,4 +1,4 @@
-import { FilterQuery, Condition } from "mongodb";
+import { Filter as FilterQuery, Condition } from "mongodb";
 export interface LogicOperators<T> {
     and?: (T & LogicOperators<T>)[];
     or?: (T & LogicOperators<T>)[];

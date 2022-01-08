@@ -1,4 +1,4 @@
-import { FilterQuery } from "mongodb";
+import { Filter as FilterQuery } from "mongodb";
 import { QueryResolvers, BusinessesWhere } from "../../graphTypes";
 import { Returns as BusinessReturns } from "./business";
 export declare type Returns = BusinessReturns[];

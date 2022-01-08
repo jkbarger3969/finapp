@@ -32,37 +32,28 @@ export interface AccountCardDbRecord {
 }
 export declare const AccountCard: AccountCardResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, import("../../graphTypes").Omit<import("../../graphTypes").AccountCard, "authorizedUsers"> & {
-    authorizedUsers: (import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord)[];
-}>;
+} & import("../../types").ContextBase, import("../../dataSources/accountingDb/types").PaymentCardDbRecord>;
 export interface AccountCheckDbRecord {
     account: ObjectId;
     checkNumber: string;
 }
 export declare const AccountCheck: AccountCheckResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, import("../../graphTypes").AccountCheck>;
+} & import("../../types").ContextBase, import("../../graphTypes").Omit<import("../../graphTypes").AccountCheck, "account"> & {
+    account: import("../../dataSources/accountingDb/types").AccountDbRecord;
+}>;
 export declare const AccountInterface: AccountInterfaceResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, (import("../../graphTypes").Omit<import("../../graphTypes").AccountChecking, "owner"> & {
-    owner: import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
-}) | (import("../../graphTypes").Omit<import("../../graphTypes").AccountCreditCard, "owner"> & {
-    owner: import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
-})>;
+} & import("../../types").ContextBase, import("../../dataSources/accountingDb/types").AccountDbRecord>;
 export declare const AccountWithCardsInterface: AccountWithCardsInterfaceResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, (import("../../graphTypes").Omit<import("../../graphTypes").AccountChecking, "owner"> & {
-    owner: import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
-}) | (import("../../graphTypes").Omit<import("../../graphTypes").AccountCreditCard, "owner"> & {
-    owner: import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
-})>;
+} & import("../../types").ContextBase, import("../../dataSources/accountingDb/types").AccountDbRecord>;
 export declare const AccountCreditCard: AccountCreditCardResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, import("../../graphTypes").Omit<import("../../graphTypes").AccountCreditCard, "owner"> & {
-    owner: import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
+} & import("../../types").ContextBase, import("../../graphTypes").Omit<import("../../graphTypes").AccountCreditCard, "owner" | "cards"> & {
+    cards: import("../../dataSources/accountingDb/types").PaymentCardDbRecord[];
+    owner: import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord | import("../../dataSources/accountingDb/types").PersonDbRecord;
 }>;
 export declare const AccountChecking: AccountCheckingResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, import("../../graphTypes").Omit<import("../../graphTypes").AccountChecking, "owner"> & {
-    owner: import("../../graphTypes").Person | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord;
-}>;
+} & import("../../types").ContextBase, import("../../dataSources/accountingDb/types").AccountDbRecord>;
