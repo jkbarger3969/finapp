@@ -8,12 +8,7 @@ import {
   TemplateProps,
 } from "@devexpress/dx-react-core";
 
-import {
-  ChangeColumnFilter,
-  ColumnFilter,
-  Filter,
-  OnFilter,
-} from "./FilteringState";
+import { ChangeColumnFilter, Filters, OnFilter } from "./Filtering";
 
 export type CellProviderCellOptions = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -110,12 +105,11 @@ export const FilterCellProvider = <ColumnNames extends string = string>(
 
             return (
               <TemplateConnector>
-                {(_, { changeColumnFilterState }) => (
+                {() => (
                   <TemplatePlaceholder
                     params={{
                       ...params,
                       cellProviderCellOptions,
-                      changeColumnFilterState,
                     }}
                   />
                 )}
@@ -172,7 +166,7 @@ export const FilterCell = React.memo(function FilterCell(
     OnFilter | TableFilterRow.CellProps["onFilter"] | undefined
   >(() => {
     if (changeColumnFilterState) {
-      return (filter: Filter | ColumnFilter | null): void => {
+      return (filter: Filters | null): void => {
         if (!filter) {
           changeColumnFilterState({
             columnName: filterCellProps.tableColumn.column?.name || "",

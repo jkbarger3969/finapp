@@ -34,7 +34,10 @@ const config = (env): WebpackConfig => {
         directory: BUILD_DIR,
       },
       client: {
-        overlay: true,
+        overlay: {
+          errors: true,
+          warnings: false,
+        },
       },
       devMiddleware: {
         stats: "errors-warnings",

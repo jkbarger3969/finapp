@@ -2,20 +2,25 @@ import React, { useCallback, useMemo, useState } from "react";
 import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
 import { capitalCase } from "capital-case";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
-import TreeSelect, { BranchNode, TreeSelectProps } from "mui-tree-select";
+import TreeSelect, {
+  BranchNode,
+  TreeSelectProps,
+  ValueNode,
+} from "mui-tree-select";
 
 import {
   GridPaymentMethodFragment,
   PaymentCardType,
 } from "../../../../apollo/graphTypes";
-import { OnFilter } from "../plugins";
-import { Filter, LogicFilter } from "../plugins";
+import { TableFilterCellProps } from "../plugins";
+import { Filter } from "../plugins";
 import {
   inlineAutoCompleteProps,
   inlinePadding,
   renderFilterInput,
 } from "./shared";
 import { getCardTypeAbbreviation } from "../../../Inputs/PaymentMethod";
+import { AvailableFilterOperations } from "../filters/rangeFilterUtils";
 
 export const payMethodToStr = (
   payMethod: GridPaymentMethodFragment
@@ -52,11 +57,10 @@ export const PayMethodCell = (props: Table.DataCellProps): JSX.Element => {
 };
 
 // Filter Cell
-export type PayMethodFilterProps = Omit<
-  TableFilterRow.CellProps,
-  "onFilter"
+export type PayMethodFilterProps = TableFilterCellProps<
+  GridPaymentMethodFragment,
+  Extract<AvailableFilterOperations, "equal">
 > & {
-  onFilter: OnFilter<GridPaymentMethodFragment, "equal">;
   payMethodFilterOpts?: GridPaymentMethodFragment[];
 };
 
@@ -120,6 +124,7 @@ export const PayMethodFilter = (props: PayMethodFilterProps): JSX.Element => {
   >;
 
   const { payMethodFilterOpts, ...rest } = props;
+  const { onFilter, filter } = props;
 
   const [branch, setBranch] = useState<PayMethodTreeProps["branch"]>(null);
 
@@ -287,26 +292,16 @@ export const PayMethodFilter = (props: PayMethodFilterProps): JSX.Element => {
 
   const columnName = props.column.name;
 
-  const { onFilter } = props;
-
-  const onChange = useCallback<NonNullable<PayMethodTreeProps["onChange"]>>(
+  const handleChange = useCallback<NonNullable<PayMethodTreeProps["onChange"]>>(
     (_, value) => {
       if (value.length) {
-        const logicFilter: LogicFilter<GridPaymentMethodFragment, "equal"> = {
-          operator: "or",
-          filters: [],
-        };
-
-        for (const option of value) {
-          logicFilter.filters.push({
-            operation: "equal",
-            value: option.valueOf(),
-          });
-        }
-
         onFilter({
           columnName,
-          filters: [logicFilter],
+          operator: "or",
+          filters: value.map((option) => ({
+            operation: "equal",
+            value: option.valueOf(),
+          })),
         });
       } else {
         onFilter(null);
@@ -315,7 +310,7 @@ export const PayMethodFilter = (props: PayMethodFilterProps): JSX.Element => {
     [columnName, onFilter]
   );
 
-  const onBranchChange = useCallback<
+  const handleBranchChange = useCallback<
     NonNullable<PayMethodTreeProps["onBranchChange"]>
   >((_, branch) => setBranch(branch), []);
 
@@ -368,6 +363,32 @@ export const PayMethodFilter = (props: PayMethodFilterProps): JSX.Element => {
     []
   );
 
+  const value = useMemo<
+    ValueNode<GridPaymentMethodFragment, PayMethodBranch>[]
+  >(() => {
+    if (!filter) {
+      return [];
+    } else if ("operator" in filter) {
+      return filter.filters.reduce((value, filter) => {
+        if ("operation" in filter && filter.value) {
+          value.push(
+            branch
+              ? new ValueNode(filter.value, branch)
+              : new ValueNode(filter.value)
+          );
+        }
+        return value;
+      }, [] as ValueNode<GridPaymentMethodFragment, PayMethodBranch>[]);
+    }
+    return "operation" in filter && filter.value
+      ? [
+          branch
+            ? new ValueNode(filter.value, branch)
+            : new ValueNode(filter.value),
+        ]
+      : [];
+  }, [filter, branch]);
+
   return (
     <TableFilterRow.Cell
       {...(rest as TableFilterRow.CellProps)}
@@ -380,14 +401,15 @@ export const PayMethodFilter = (props: PayMethodFilterProps): JSX.Element => {
         false,
         false
       >
-        onBranchChange={onBranchChange}
+        onBranchChange={handleBranchChange}
         branch={branch}
-        onChange={onChange}
+        onChange={handleChange}
         options={options}
         multiple
         getOptionLabel={getOptionLabel}
         getOptionSelected={getOptionSelected}
         renderInput={renderFilterInput}
+        value={value}
         {...inlineAutoCompleteProps}
       />
     </TableFilterRow.Cell>
@@ -400,15 +422,22 @@ export const payMethodFilterColumnExtension = (
 ): IntegratedFiltering.ColumnExtension => ({
   columnName,
   predicate: (value, filter, row): boolean => {
+    const filterValue = (filter as unknown as Filter<GridPaymentMethodFragment>)
+      .value;
+
+    if (filterValue === undefined) {
+      return true;
+    }
+
     switch (filter.operation) {
       case "equal":
         return payMethodFilterEquals(
-          (filter as unknown as Filter<GridPaymentMethodFragment>).value,
+          filterValue,
           value as GridPaymentMethodFragment
         );
       case "notEqual":
         return payMethodFilterEquals(
-          (filter as unknown as Filter<GridPaymentMethodFragment>).value,
+          filterValue,
           value as GridPaymentMethodFragment
         );
       default:

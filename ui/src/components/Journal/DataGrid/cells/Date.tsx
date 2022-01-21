@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
 import { Box, makeStyles } from "@material-ui/core";
 import {
@@ -7,23 +7,17 @@ import {
   MuiPickersUtilsProvider,
 } from "@material-ui/pickers";
 import DateFnsUtils from "@date-io/date-fns";
-import {
-  addDays,
-  differenceInDays,
-  isSameDay,
-  startOfDay,
-  subDays,
-} from "date-fns";
+import { isEqual, isSameDay, startOfDay } from "date-fns";
 
 import {
   availableFilterOperations,
   AvailableFilterOperations,
   AvailableRangeFilterOperations,
   getAvailableRangeOps,
+  isRangeSelector,
   RangeFilterIcons,
 } from "../filters/rangeFilterUtils";
-import { OnFilter } from "../plugins";
-import { LogicFilter } from "../plugins";
+import { TableFilterCellProps } from "../plugins";
 import { inlinePaddingWithSelector } from "./shared";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
 import { DefaultFilterOperations, Filter } from "../plugins";
@@ -59,9 +53,10 @@ const defaultKeyboardDatePickerProps: Partial<KeyboardDatePickerProps> = {
 };
 
 // Filter Cell
-export type DateFilterProps = Omit<TableFilterRow.CellProps, "onFilter"> & {
-  onFilter: OnFilter<Date, AvailableFilterOperations>;
-};
+export type DateFilterProps = TableFilterCellProps<
+  Date,
+  AvailableFilterOperations
+>;
 
 const useStyles = makeStyles((theme) => ({
   keyboardDatePicker: {
@@ -77,346 +72,183 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-const isIntervalValid = (
-  opA: AvailableFilterOperations,
-  dateA: Date,
-  opB: AvailableRangeFilterOperations,
-  dateB: Date
-): boolean => {
-  if (opA === "equal" || opA === "notEqual") {
-    // All ops MUST be inequalities.
-    return false;
-  }
-
-  // Inequalities CANNOT have the SAME direction.
-  switch (opA) {
-    case "greaterThan":
-      if (opB === "greaterThan" || opB === "greaterThanOrEqual") {
-        // Inequalities CANNOT have the SAME direction.
-        return false;
-      }
-
-      return differenceInDays(dateB, dateA) > 0;
-
-    case "greaterThanOrEqual":
-      if (opB === "greaterThan" || opB === "greaterThanOrEqual") {
-        // Inequalities CANNOT have the SAME direction.
-        return false;
-      } else if (opB === "lessThanOrEqual") {
-        // When both ops are inclusive, equal dates are valid.
-        return differenceInDays(dateB, dateA) >= 0;
-      }
-
-      return differenceInDays(dateB, dateA) > 0;
-
-    case "lessThan":
-      // Inequalities CANNOT have the SAME direction.
-      if (opB === "lessThan" || opB === "lessThanOrEqual") {
-        return false;
-      }
-
-      return differenceInDays(dateA, dateB) > 0;
-
-    case "lessThanOrEqual":
-      if (opB === "lessThan" || opB === "lessThanOrEqual") {
-        // Inequalities CANNOT have the SAME direction.
-        return false;
-      } else if (opB === "greaterThanOrEqual") {
-        // When both ops are inclusive, equal dates are valid .
-        return differenceInDays(dateA, dateB) >= 0;
-      }
-
-      return differenceInDays(dateA, dateB) > 0;
-  }
-};
-
-const getOnFilterArgs = (
-  columnName: string,
-  opA: AvailableFilterOperations,
-  dateA: Date | null,
-  opB: AvailableRangeFilterOperations | undefined,
-  dateB: Date | null
-): Parameters<OnFilter<Date, AvailableFilterOperations>> => {
-  if (!dateA) {
-    return [null];
-  }
-
-  const logicFilter: LogicFilter<Date, AvailableFilterOperations> = {
-    operator: "and",
-    filters: [
-      {
-        operation: opA,
-        value: dateA,
-      },
-    ],
-  };
-
-  if (opB && dateB) {
-    logicFilter.filters.push({
-      operation: opB,
-      value: dateB,
-    });
-  }
-
-  return [
-    {
-      columnName,
-      filters: [logicFilter],
-    },
-  ];
-};
-
 export const DateFilter = (props: DateFilterProps): JSX.Element => {
-  const { filteringEnabled, getMessage } = props;
+  const { filteringEnabled, getMessage, filter, onFilter } = props;
 
   const columnName = props.column.name;
 
   const classes = useStyles();
 
-  const [state, setState] = useState<{
+  type DateFilterState = {
     date: Date | null;
-    boundDate: Date | null;
-    selectorValue: AvailableFilterOperations;
-    rangeSelectorValue?: AvailableRangeFilterOperations;
-    availableRangeValues?: AvailableRangeFilterOperations[];
-  }>({
-    date: null,
-    boundDate: null,
-    selectorValue: "equal",
-  });
+    dateSelector: AvailableFilterOperations;
+    rangeDate: Date | null;
+    rangeDateSelector?: AvailableRangeFilterOperations;
+    availableRangeDateSelectors?: AvailableRangeFilterOperations[];
+    maxRangeDate?: Date;
+    minRangeDate?: Date;
+  };
 
-  const { onFilter } = props;
+  const {
+    date,
+    dateSelector,
+    rangeDate,
+    rangeDateSelector,
+    availableRangeDateSelectors,
+    maxRangeDate,
+    minRangeDate,
+  } = useMemo<DateFilterState>(() => {
+    const dateFilterState: DateFilterState = {
+      date: null,
+      dateSelector: "equal",
+      rangeDate: null,
+    };
 
-  const onChangeDate = useCallback<KeyboardDatePickerProps["onChange"]>(
-    (date) => {
-      if (
-        date &&
-        state.rangeSelectorValue &&
-        state.boundDate &&
-        !isIntervalValid(
-          state.selectorValue,
-          date,
-          state.rangeSelectorValue,
-          state.boundDate
-        )
-      ) {
-        const availableRangeValues = getAvailableRangeOps(state.selectorValue);
-
-        setState((state) => ({
-          ...state,
-          date,
-          boundDate: null,
-          rangeSelectorValue: undefined,
-          availableRangeValues,
-        }));
-      } else {
-        setState((state) => ({
-          ...state,
-          date,
-        }));
-      }
-
-      onFilter(
-        ...getOnFilterArgs(
-          columnName,
-          state.selectorValue,
-          date,
-          state.rangeSelectorValue,
-          state.boundDate
-        )
-      );
-    },
-    [
-      state.rangeSelectorValue,
-      state.boundDate,
-      state.selectorValue,
-      onFilter,
-      columnName,
-    ]
-  );
-
-  const onChangeBoundDate = useCallback<KeyboardDatePickerProps["onChange"]>(
-    (boundDate) => {
-      setState((state) => ({
-        ...state,
-        boundDate,
-        rangeSelectorValue: boundDate ? state.rangeSelectorValue : undefined,
-      }));
-
-      onFilter(
-        ...getOnFilterArgs(
-          columnName,
-          state.selectorValue,
-          state.date,
-          state.rangeSelectorValue,
-          boundDate
-        )
-      );
-    },
-    [
-      onFilter,
-      columnName,
-      state.selectorValue,
-      state.date,
-      state.rangeSelectorValue,
-    ]
-  );
-
-  const onChangeFilterOp = useCallback<
-    TableFilterRow.FilterSelectorProps["onChange"]
-  >(
-    (selectorValue) => {
-      const availableRangeValues = getAvailableRangeOps(
-        selectorValue as AvailableFilterOperations
-      );
-
-      if (
-        state.date &&
-        state.rangeSelectorValue &&
-        state.boundDate &&
-        !isIntervalValid(
-          selectorValue as AvailableFilterOperations,
-          state.date,
-          state.rangeSelectorValue,
-          state.boundDate
-        )
-      ) {
-        // Reset bounded range if new interval is Invalid
-        setState((state) => ({
-          ...state,
-          selectorValue: selectorValue as AvailableFilterOperations,
-          boundDate: null,
-          rangeSelectorValue: undefined,
-          availableRangeValues,
-        }));
-      } else {
-        switch (selectorValue as AvailableFilterOperations) {
-          case "greaterThan":
-          case "greaterThanOrEqual":
-            setState((state) => ({
-              ...state,
-              selectorValue: selectorValue as AvailableFilterOperations,
-              availableRangeValues,
-            }));
-            break;
-          case "lessThan":
-          case "lessThanOrEqual":
-            setState((state) => ({
-              ...state,
-              selectorValue: selectorValue as AvailableFilterOperations,
-              availableRangeValues,
-            }));
-            break;
-          default:
-            setState((state) => ({
-              ...state,
-              selectorValue: selectorValue as AvailableFilterOperations,
-              boundDate: null,
-              rangeSelectorValue: undefined,
-              availableRangeValues,
-            }));
-        }
-      }
-
-      onFilter(
-        ...getOnFilterArgs(
-          columnName,
-          selectorValue as AvailableFilterOperations,
-          state.date,
-          state.rangeSelectorValue,
-          state.boundDate
-        )
-      );
-    },
-    [
-      state.date,
-      state.rangeSelectorValue,
-      state.boundDate,
-      onFilter,
-      columnName,
-    ]
-  );
-
-  const onChangeRangeFilterOp = useCallback<
-    TableFilterRow.FilterSelectorProps["onChange"]
-  >(
-    (rangeSelectorValue) => {
-      if (
-        state.date &&
-        state.boundDate &&
-        !isIntervalValid(
-          state.selectorValue as AvailableFilterOperations,
-          state.date,
-          rangeSelectorValue as AvailableRangeFilterOperations,
-          state.boundDate
-        )
-      ) {
-        // Reset bounded date if new interval is Invalid
-        setState((state) => ({
-          ...state,
-          rangeSelectorValue:
-            rangeSelectorValue as AvailableRangeFilterOperations,
-          boundDate: null,
-        }));
-      } else {
-        setState((state) => ({
-          ...state,
-          rangeSelectorValue:
-            rangeSelectorValue as AvailableRangeFilterOperations,
-        }));
-      }
-
-      onFilter(
-        ...getOnFilterArgs(
-          columnName,
-          state.selectorValue as AvailableFilterOperations,
-          state.date,
-          rangeSelectorValue as AvailableRangeFilterOperations,
-          state.boundDate
-        )
-      );
-    },
-    [state.date, state.boundDate, state.selectorValue, onFilter, columnName]
-  );
-
-  const minDate = useMemo<KeyboardDatePickerProps["minDate"]>(() => {
-    if (!state.date) {
-      return undefined;
+    // Default;
+    if (!filter) {
+      return dateFilterState;
     }
 
-    switch (state.selectorValue) {
+    if ("operation" in filter) {
+      dateFilterState.date = filter.value || null;
+      dateFilterState.dateSelector = filter.operation;
+    } else {
+      const [dateOp, rangeDateOp] = filter.filters;
+
+      if ("operation" in dateOp) {
+        dateFilterState.date = dateOp.value || null;
+        dateFilterState.dateSelector = dateOp.operation;
+      }
+
+      if ("operation" in rangeDateOp) {
+        dateFilterState.rangeDate = rangeDateOp.value || null;
+        dateFilterState.rangeDateSelector =
+          rangeDateOp.operation as AvailableRangeFilterOperations;
+      }
+    }
+
+    // Set available range selectors
+    dateFilterState.availableRangeDateSelectors = getAvailableRangeOps(
+      dateFilterState.dateSelector
+    );
+
+    // Set max or min range dates
+    switch (dateFilterState.dateSelector) {
       case "greaterThan":
-        return addDays(state.date, 1);
       case "greaterThanOrEqual":
-        if (state.rangeSelectorValue === "lessThanOrEqual") {
-          return state.date;
-        }
-        return addDays(state.date, 1);
-      default:
-        return undefined;
-    }
-  }, [state.selectorValue, state.rangeSelectorValue, state.date]);
-
-  const maxDate = useMemo<KeyboardDatePickerProps["maxDate"]>(() => {
-    if (!state.date) {
-      return undefined;
-    }
-
-    switch (state.selectorValue) {
+        dateFilterState.minRangeDate = dateFilterState.date || undefined;
+        break;
       case "lessThan":
-        return subDays(state.date, 1);
       case "lessThanOrEqual":
-        if (state.rangeSelectorValue === "greaterThanOrEqual") {
-          return state.date;
-        }
-        return subDays(state.date, 1);
+        dateFilterState.maxRangeDate = dateFilterState.date || undefined;
+        break;
       default:
-        return undefined;
+        break;
     }
-  }, [state.selectorValue, state.rangeSelectorValue, state.date]);
 
-  const isRangeOp =
-    state.selectorValue !== "equal" && state.selectorValue !== "notEqual";
+    return dateFilterState;
+  }, [filter]);
+
+  const handleDateChange = useCallback<KeyboardDatePickerProps["onChange"]>(
+    (newDate) => {
+      if (
+        (newDate !== null && date !== null && isEqual(newDate, date)) ||
+        newDate === date
+      ) {
+        return;
+      }
+
+      if (!newDate) {
+        onFilter(null);
+      } else if (rangeDate && rangeDateSelector) {
+        onFilter({
+          columnName,
+          operator: "and",
+          filters: [
+            { operation: dateSelector, value: newDate },
+            { operation: rangeDateSelector, value: rangeDate },
+          ],
+        });
+      } else {
+        onFilter({
+          columnName,
+          operation: dateSelector,
+          value: newDate || undefined,
+        });
+      }
+    },
+    [date, rangeDate, rangeDateSelector, onFilter, columnName, dateSelector]
+  );
+
+  const handleDateRangeChange = useCallback<
+    KeyboardDatePickerProps["onChange"]
+  >(
+    (newRangeDate) => {
+      if (
+        (newRangeDate !== null &&
+          rangeDate !== null &&
+          isEqual(newRangeDate, rangeDate)) ||
+        newRangeDate === rangeDate
+      ) {
+        return;
+      }
+
+      onFilter({
+        columnName,
+        operator: "and",
+        filters: [
+          { operation: dateSelector, value: date as Date },
+          {
+            operation: rangeDateSelector as AvailableRangeFilterOperations,
+            value: newRangeDate || undefined,
+          },
+        ],
+      });
+    },
+    [rangeDate, onFilter, columnName, dateSelector, date, rangeDateSelector]
+  );
+
+  const handleDateSelectorChange = useCallback<
+    TableFilterRow.FilterSelectorProps["onChange"]
+  >(
+    (newDateSelector) => {
+      if (newDateSelector === dateSelector) {
+        return;
+      }
+
+      onFilter({
+        columnName,
+        operation: newDateSelector as AvailableFilterOperations,
+        value: date || undefined,
+      });
+    },
+    [columnName, date, dateSelector, onFilter]
+  );
+
+  const handleRangeDateSelectorChange = useCallback<
+    TableFilterRow.FilterSelectorProps["onChange"]
+  >(
+    (newRangeDateSelector) => {
+      if (newRangeDateSelector === rangeDateSelector) {
+        return;
+      }
+
+      onFilter({
+        columnName,
+        operator: "and",
+        filters: [
+          { operation: dateSelector, value: date as Date },
+          {
+            operation: newRangeDateSelector as AvailableRangeFilterOperations,
+            value: rangeDate || undefined,
+          },
+        ],
+      });
+    },
+    [columnName, date, dateSelector, onFilter, rangeDate, rangeDateSelector]
+  );
+
+  const isRangeOp = isRangeSelector(dateSelector);
 
   return (
     <TableFilterRow.Cell
@@ -433,44 +265,44 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
               disabled={!filteringEnabled}
               getMessage={getMessage}
               iconComponent={RangeFilterIcons}
-              onChange={onChangeFilterOp}
+              onChange={handleDateSelectorChange}
               toggleButtonComponent={TableFilterRow.ToggleButton}
-              value={state.selectorValue}
+              value={dateSelector}
             />
             <KeyboardDatePicker
               {...defaultKeyboardDatePickerProps}
               className={classes.keyboardDatePicker}
               disabled={!filteringEnabled}
               initialFocusedDate={startOfDay(new Date()).toISOString()}
-              onChange={onChangeDate}
-              value={state.date}
+              onChange={handleDateChange}
+              value={date}
+              // maxDate={maxDate}
+              // minDate={minDate}
             />
           </MuiPickersUtilsProvider>
         </Box>
-        {isRangeOp && !!state.date && (
+        {isRangeOp && !!date && (
           <Box display="flex" alignItems="center">
             <MuiPickersUtilsProvider utils={DateFnsUtils}>
               <TableFilterRow.FilterSelector
-                availableValues={state.availableRangeValues || []}
-                disabled={!filteringEnabled || !isRangeOp}
+                availableValues={availableRangeDateSelectors || []}
+                disabled={!filteringEnabled}
                 getMessage={getMessage}
                 iconComponent={RangeFilterIcons}
-                onChange={onChangeRangeFilterOp}
+                onChange={handleRangeDateSelectorChange}
                 toggleButtonComponent={TableFilterRow.ToggleButton}
-                value={state.rangeSelectorValue || "addRangeBound"}
+                value={rangeDateSelector || "addRangeBound"}
               />
               <KeyboardDatePicker
                 {...defaultKeyboardDatePickerProps}
-                disabled={
-                  !filteringEnabled || !isRangeOp || !state.rangeSelectorValue
-                }
+                disabled={!filteringEnabled || !rangeDateSelector}
                 className={classes.keyboardDatePicker}
                 initialFocusedDate={startOfDay(new Date()).toISOString()}
                 inputVariant="standard"
-                maxDate={maxDate}
-                minDate={minDate}
-                onChange={onChangeBoundDate}
-                value={state.boundDate}
+                maxDate={maxRangeDate}
+                minDate={minRangeDate}
+                onChange={handleDateRangeChange}
+                value={rangeDate}
               />
             </MuiPickersUtilsProvider>
           </Box>
@@ -488,6 +320,10 @@ export const dateFilterColumnExtension = (
     columnName,
     predicate: (value, filter, row): boolean => {
       const filterDate = (filter as unknown as Filter<Date>).value;
+
+      if (filterDate === undefined) {
+        return true;
+      }
 
       switch (filter.operation as DefaultFilterOperations) {
         case "equal":

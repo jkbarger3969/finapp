@@ -1,5 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useCallback, useMemo, useState } from "react";
+import React, {
+  FormEvent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Action,
   Getter,
@@ -15,6 +21,7 @@ import {
   IntegratedSelection,
   SelectionState,
   TableColumn,
+  TableFilterRow,
 } from "@devexpress/dx-react-grid";
 import {
   Table,
@@ -24,6 +31,7 @@ import {
   TableFixedColumns,
 } from "@devexpress/dx-react-grid-material-ui";
 import {
+  Tooltip,
   IconButton,
   ListItemIcon,
   ListItemText,
@@ -32,13 +40,28 @@ import {
   SvgIcon,
   SvgIconProps,
   TableCell,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  TextField,
+  DialogActions,
+  Button,
+  TextFieldProps,
+  Typography,
+  Divider,
+  List,
+  ListItem,
+  ListItemSecondaryAction,
 } from "@material-ui/core";
 import {
   MoreVert as MoreVertIcon,
   AddCircle as AddCircleIcon,
   Delete as DeleteIcon,
-  Edit as EditIcon,
   DoneAll as ReconcileIcon,
+  Save as SaveIcon,
+  FilterList as FilterListIcon,
+  Clear as ClearIcon,
+  Edit as EditIcon,
 } from "@material-ui/icons";
 
 import { UpsertEntry, UpsertEntryProps } from "../forms/UpsertEntry";
@@ -51,6 +74,24 @@ import {
   ReconcileEntriesProps,
 } from "../forms/ReconcileEntries";
 import { DialogOnClose } from "../forms/shared";
+import { ClearColumnFilters, LoadNamedFilter } from "./Filtering";
+import {
+  FiltersDef,
+  AddNamedFilters,
+  CancelAddedNamedFilters,
+  CommitAddedNamedFilters,
+  ChangeAddedNamedFilter,
+  AddNamedFilterPayload,
+  DeleteNamedFilters,
+  CancelDeletedNamedFilters,
+  CommitDeletedNamedFilters,
+  ChangeNamedFilter,
+  CancelChangedNamedFilters,
+  CommitChangedNamedFilters,
+  NamedFilters,
+  NamedFiltersChanges,
+} from ".";
+import { TransitionProps } from "@material-ui/core/transitions";
 
 const AddRefund = (props: SvgIconProps): JSX.Element => {
   return (
@@ -288,6 +329,346 @@ const EditColumnHeaderCell = React.memo(function EditColumnHeaderCell(
   );
 });
 
+const dialogPaperProps = {
+  component: "form",
+  onSubmit: (event: FormEvent) => void event.preventDefault(),
+};
+
+const EditColumnFilterHeaderCellInternal = (
+  props: Table.CellProps & {
+    filters: FiltersDef;
+    hasNamedFilters: boolean;
+    hasColumnFilters: boolean;
+    namedFilters: NamedFilters | null;
+    loadedNamedFilter: string | null;
+    addedNamedFilters: AddNamedFilterPayload[];
+    namedFilterChanges: NamedFiltersChanges | null;
+    deletedNamedFilters: string[];
+    clearColumnFilters: ClearColumnFilters;
+    addNamedFilters: AddNamedFilters;
+    cancelAddedNamedFilters: CancelAddedNamedFilters;
+    commitAddedNamedFilters: CommitAddedNamedFilters;
+    changeAddedNamedFilter: ChangeAddedNamedFilter;
+    changeNamedFilter: ChangeNamedFilter;
+    cancelChangedNamedFilters: CancelChangedNamedFilters;
+    commitChangedNamedFilters: CommitChangedNamedFilters;
+    deleteNamedFilters: DeleteNamedFilters;
+    cancelDeletedNamedFilters: CancelDeletedNamedFilters;
+    commitDeletedNamedFilters: CommitDeletedNamedFilters;
+    loadNamedFilter: LoadNamedFilter;
+  }
+) => {
+  const {
+    filters,
+    hasNamedFilters,
+    hasColumnFilters,
+    namedFilters,
+    namedFilterChanges,
+    loadedNamedFilter,
+    addedNamedFilters,
+    deletedNamedFilters,
+    clearColumnFilters,
+    addNamedFilters,
+    cancelAddedNamedFilters,
+    commitAddedNamedFilters,
+    changeAddedNamedFilter,
+    changeNamedFilter,
+    cancelChangedNamedFilters,
+    commitChangedNamedFilters,
+    loadNamedFilter,
+    deleteNamedFilters,
+    cancelDeletedNamedFilters,
+    commitDeletedNamedFilters,
+    ...rest
+  } = props;
+
+  // Save named filter
+  const [addedNamedFilter] = addedNamedFilters;
+
+  const handleAddNamedFilter = useCallback(
+    () =>
+      void addNamedFilters([
+        {
+          name: "",
+          filters,
+        },
+      ]),
+    [addNamedFilters, filters]
+  );
+
+  const handleFilterNameChange = useCallback<
+    NonNullable<TextFieldProps["onChange"]>
+  >(
+    (event) =>
+      void changeAddedNamedFilter({
+        name: addedNamedFilter.name,
+        change: {
+          name: event.target.value || "",
+        },
+      }),
+    [addedNamedFilter?.name, changeAddedNamedFilter]
+  );
+
+  const handleCancelNamedFilters = useCallback(
+    () =>
+      void cancelAddedNamedFilters(addedNamedFilters.map(({ name }) => name)),
+    [addedNamedFilters, cancelAddedNamedFilters]
+  );
+
+  // Modify named filters
+  const [editingNamedFilterNames, setEditingNameFilterNames] = useState<
+    Set<string>
+  >(new Set());
+
+  const handleChangeNamedFilter = useCallback(() => {
+    changeNamedFilter();
+    setOpen(false);
+  }, [changeNamedFilter]);
+
+  const handleCancelNamedFiltersChanges = useCallback(() => {
+    cancelChangedNamedFilters();
+    cancelDeletedNamedFilters();
+  }, [cancelChangedNamedFilters, cancelDeletedNamedFilters]);
+
+  const handleCommitNamedFiltersChanges = useCallback(() => {
+    commitChangedNamedFilters();
+    commitDeletedNamedFilters();
+  }, [commitChangedNamedFilters, commitDeletedNamedFilters]);
+
+  // Named filters
+  const [open, setOpen] = useState(false);
+  const handleOpen = useCallback(() => void setOpen(true), []);
+  const handleClose = useCallback(() => void setOpen(false), []);
+  const anchorElRef = useRef<HTMLButtonElement>(null);
+
+  // Cleanup
+  const transitionProps = useMemo<TransitionProps>(
+    () => ({
+      onExited: () => {
+        setEditingNameFilterNames(new Set());
+      },
+    }),
+    []
+  );
+
+  return (
+    <TableEditColumn.HeaderCell {...rest}>
+      {hasColumnFilters ? (
+        <>
+          <Tooltip title="Clear Filters">
+            <IconButton size="medium" onClick={clearColumnFilters}>
+              <ClearIcon />
+            </IconButton>
+          </Tooltip>
+          {!loadedNamedFilter && (
+            <Tooltip title="Save Filter">
+              <IconButton size="medium" onClick={handleAddNamedFilter}>
+                <SaveIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Dialog
+            open={!!addedNamedFilter}
+            maxWidth="xs"
+            fullWidth
+            keepMounted={false}
+            PaperProps={dialogPaperProps as any}
+          >
+            <DialogTitle>Save Filter</DialogTitle>
+            <DialogContent>
+              <TextField
+                variant="filled"
+                autoFocus
+                margin="dense"
+                id="name"
+                label="Filter Name"
+                type="text"
+                fullWidth
+                value={addedNamedFilter?.name || ""}
+                onChange={handleFilterNameChange}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={!addedNamedFilter?.name}
+                onClick={() =>
+                  void commitAddedNamedFilters({
+                    load: addedNamedFilter.name,
+                  })
+                }
+                color="primary"
+              >
+                Save
+              </Button>
+              <Button onClick={handleCancelNamedFilters}>Cancel</Button>
+            </DialogActions>
+          </Dialog>
+        </>
+      ) : hasNamedFilters ? (
+        <>
+          <Tooltip title="Saved Filters">
+            <IconButton ref={anchorElRef} size="medium" onClick={handleOpen}>
+              <FilterListIcon />
+            </IconButton>
+          </Tooltip>
+          <Menu
+            anchorEl={anchorElRef.current}
+            keepMounted={false}
+            open={open && Boolean(anchorElRef.current)}
+            onClose={handleClose}
+          >
+            {(() => {
+              const menuItems = Object.keys(namedFilters || {}).map(
+                (namedFilter) => (
+                  <MenuItem
+                    key={namedFilter}
+                    selected={namedFilter === loadedNamedFilter}
+                    onClick={() => {
+                      setOpen(false);
+                      void loadNamedFilter(namedFilter);
+                    }}
+                  >
+                    {namedFilter}
+                  </MenuItem>
+                )
+              );
+
+              menuItems.push(
+                <Divider key="_divider" />,
+                <MenuItem key="_edit" onClick={handleChangeNamedFilter}>
+                  <ListItemIcon>
+                    <EditIcon fontSize="small" />
+                  </ListItemIcon>
+                  <Typography variant="inherit">Edit</Typography>
+                </MenuItem>
+              );
+
+              return menuItems;
+            })()}
+          </Menu>
+          <Dialog
+            open={!!namedFilterChanges}
+            maxWidth="xs"
+            fullWidth
+            keepMounted={false}
+            TransitionProps={transitionProps}
+            PaperProps={dialogPaperProps as any}
+          >
+            <DialogContent>
+              <DialogTitle>Edit Filters</DialogTitle>
+              <List>
+                {(() => {
+                  const namedFiltersSet = new Set([
+                    ...Object.keys(namedFilters || {}),
+                  ]);
+                  Object.keys(namedFilterChanges || {}).forEach((namedFilter) =>
+                    namedFiltersSet.add(namedFilter)
+                  );
+
+                  return [...namedFiltersSet].reduce((items, namedFilter) => {
+                    if (deletedNamedFilters.includes(namedFilter)) {
+                      return items;
+                    }
+
+                    const name =
+                      (namedFilterChanges || {})[namedFilter]?.name ??
+                      namedFilter;
+
+                    items.push(
+                      <ListItem
+                        button
+                        key={namedFilter}
+                        onClick={() =>
+                          setEditingNameFilterNames(
+                            (state) => new Set([...state, namedFilter])
+                          )
+                        }
+                      >
+                        {editingNamedFilterNames.has(namedFilter) ? (
+                          <TextField
+                            variant="standard"
+                            margin="none"
+                            size="small"
+                            fullWidth
+                            autoFocus
+                            value={name}
+                            onBlur={() =>
+                              setEditingNameFilterNames((state) => {
+                                const newState = new Set([...state]);
+                                newState.delete(namedFilter);
+                                return newState;
+                              })
+                            }
+                            onChange={(event) =>
+                              changeNamedFilter({
+                                name: namedFilter,
+                                change: {
+                                  name: event.target.value || "",
+                                },
+                              })
+                            }
+                          />
+                        ) : (
+                          <>
+                            <ListItemText primary={name} />
+                            <ListItemSecondaryAction
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void deleteNamedFilters([namedFilter]);
+                              }}
+                            >
+                              <IconButton edge="end">
+                                <DeleteIcon />
+                              </IconButton>
+                            </ListItemSecondaryAction>
+                          </>
+                        )}
+                      </ListItem>
+                    );
+
+                    return items;
+                  }, [] as JSX.Element[]);
+                })()}
+              </List>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                type="submit"
+                disabled={
+                  !(
+                    Object.keys(namedFilterChanges || {}).length ||
+                    deletedNamedFilters.length
+                  )
+                }
+                variant="contained"
+                color="primary"
+                onClick={handleCommitNamedFiltersChanges}
+              >
+                Save
+              </Button>
+              <Button onClick={handleCancelNamedFiltersChanges}>Cancel</Button>
+            </DialogActions>
+          </Dialog>
+        </>
+      ) : null}
+    </TableEditColumn.HeaderCell>
+  );
+};
+
+/**
+ * Add to TableProps.stubHeaderCellComponent
+ */
+export const EditColumnFilterHeaderCell = React.memo(
+  function EditColumnFilterCell(props: Table.CellProps) {
+    if (isEditColumnFilterCell(props)) {
+      return <EditColumnFilterHeaderCellInternal {...(props as any)} />;
+    }
+    return <Table.StubHeaderCell {...props} />;
+  }
+);
+
 const deps: IDependency[] = [
   {
     name: "EntryActionState",
@@ -310,6 +691,12 @@ const isEditColumnHeaderCell = ({
   tableColumn,
 }: Table.CellProps): boolean =>
   tableRow.type === TableHeaderRow.ROW_TYPE &&
+  tableColumn.type === TableEditColumn.COLUMN_TYPE;
+const isEditColumnFilterCell = ({
+  tableRow,
+  tableColumn,
+}: Table.CellProps): boolean =>
+  tableRow.type === TableFilterRow.ROW_TYPE &&
   tableColumn.type === TableEditColumn.COLUMN_TYPE;
 const isSelectColumnHeaderCell = ({
   tableRow,
@@ -466,6 +853,71 @@ export const EntryAction = () => (
                 params={{
                   ...params,
                   addRow,
+                }}
+              />
+            )}
+          </TemplateConnector>
+        ),
+        []
+      )}
+    </Template>
+    {/* Inject additional state into "EditColumnFilterCell" */}
+    <Template
+      name="tableCell"
+      predicate={isEditColumnFilterCell as TemplateProps["predicate"]}
+    >
+      {useCallback(
+        (params) => (
+          <TemplateConnector>
+            {(
+              {
+                filters,
+                hasColumnFilters,
+                hasNamedFilters,
+                namedFilters,
+                loadedNamedFilter,
+                addedNamedFilters,
+                namedFilterChanges,
+                deletedNamedFilters,
+              },
+              {
+                clearColumnFilters,
+                addNamedFilters,
+                cancelAddedNamedFilters,
+                commitAddedNamedFilters,
+                changeAddedNamedFilter,
+                changeNamedFilter,
+                cancelChangedNamedFilters,
+                commitChangedNamedFilters,
+                loadNamedFilter,
+                deleteNamedFilters,
+                cancelDeletedNamedFilters,
+                commitDeletedNamedFilters,
+              }
+            ) => (
+              <TemplatePlaceholder
+                params={{
+                  ...params,
+                  filters,
+                  hasNamedFilters,
+                  hasColumnFilters,
+                  namedFilters,
+                  loadedNamedFilter,
+                  addedNamedFilters,
+                  namedFilterChanges,
+                  deletedNamedFilters,
+                  clearColumnFilters,
+                  addNamedFilters,
+                  cancelAddedNamedFilters,
+                  commitAddedNamedFilters,
+                  changeAddedNamedFilter,
+                  changeNamedFilter,
+                  cancelChangedNamedFilters,
+                  commitChangedNamedFilters,
+                  loadNamedFilter,
+                  deleteNamedFilters,
+                  cancelDeletedNamedFilters,
+                  commitDeletedNamedFilters,
                 }}
               />
             )}

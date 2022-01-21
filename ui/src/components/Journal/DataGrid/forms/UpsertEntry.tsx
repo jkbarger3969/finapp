@@ -324,8 +324,6 @@ const InnerDialog = (
               reconciled: entry?.reconciled ?? null,
             };
 
-            console.log(entryUpdate);
-
             const { errors } = await updateEntry({
               variables: {
                 updateEntry: entryUpdate,
