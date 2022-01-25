@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
 import Fraction from "fraction.js";
 import { Box } from "@material-ui/core";
@@ -8,13 +8,14 @@ import {
   AvailableFilterOperations,
   AvailableRangeFilterOperations,
   getAvailableRangeOps,
+  isRangeSelector,
   RangeFilterIcons,
 } from "../filters/rangeFilterUtils";
 import {
   RationalInputBase,
   RationalInputBaseProps,
 } from "../../../Inputs/RationalInput";
-import { LogicFilter } from "../plugins/FilteringState";
+import { TableFilterCellProps } from "../plugins";
 import { DefaultFilterOperations, Filter, OnFilter } from "../plugins";
 import { inlineInputProps, inlinePaddingWithSelector } from "./shared";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
@@ -41,95 +42,10 @@ export const RationalCell = (
 };
 
 // Filter Cell
-const isIntervalValid = (
-  opA: AvailableFilterOperations,
-  totalA: Fraction,
-  opB: AvailableRangeFilterOperations,
-  totalB: Fraction
-): boolean => {
-  if (opA === "equal" || opA === "notEqual") {
-    // All ops MUST be inequalities.
-    return false;
-  }
-
-  // Inequalities CANNOT have the SAME direction.
-  switch (opA) {
-    case "greaterThan":
-      if (opB === "greaterThan" || opB === "greaterThanOrEqual") {
-        // Inequalities CANNOT have the SAME direction.
-        return false;
-      }
-
-      return totalB.compare(totalA) > 0;
-
-    case "greaterThanOrEqual":
-      if (opB === "greaterThan" || opB === "greaterThanOrEqual") {
-        // Inequalities CANNOT have the SAME direction.
-        return false;
-      } else if (opB === "lessThanOrEqual") {
-        // When both ops are inclusive, equal totals are valid.
-        return totalB.compare(totalA) >= 0;
-      }
-
-      return totalB.compare(totalA) > 0;
-
-    case "lessThan":
-      // Inequalities CANNOT have the SAME direction.
-      if (opB === "lessThan" || opB === "lessThanOrEqual") {
-        return false;
-      }
-      return totalA.compare(totalB) > 0;
-
-    case "lessThanOrEqual":
-      if (opB === "lessThan" || opB === "lessThanOrEqual") {
-        // Inequalities CANNOT have the SAME direction.
-        return false;
-      } else if (opB === "greaterThanOrEqual") {
-        // When both ops are inclusive, equal totals are valid .
-        return totalA.compare(totalB) >= 0;
-      }
-
-      return totalA.compare(totalB) > 0;
-  }
-};
-
-const getOnFilterArgs = (
-  columnName: string,
-  opA: AvailableFilterOperations,
-  totalA: Fraction | null,
-  opB: AvailableRangeFilterOperations | undefined,
-  totalB: Fraction | null
-): Parameters<OnFilter<Fraction, AvailableFilterOperations>> => {
-  if (!totalA) {
-    return [null];
-  }
-
-  const logicFilter: LogicFilter<Fraction, AvailableFilterOperations> = {
-    operator: "and",
-    filters: [
-      {
-        operation: opA,
-        value: totalA,
-      },
-    ],
-  };
-
-  if (opB && totalB) {
-    logicFilter.filters.push({
-      operation: opB,
-      value: totalB,
-    });
-  }
-
-  return [
-    {
-      columnName,
-      filters: [logicFilter],
-    },
-  ];
-};
-
-export type RationalFilterProps = Omit<TableFilterRow.CellProps, "onFilter"> & {
+export type RationalFilterProps = TableFilterCellProps<
+  Fraction,
+  AvailableFilterOperations
+> & {
   onFilter: OnFilter;
   rationalInputProps?: RationalInputBaseProps;
 };
@@ -137,230 +53,205 @@ export type RationalFilterProps = Omit<TableFilterRow.CellProps, "onFilter"> & {
 export const RationalFilter = (props: RationalFilterProps): JSX.Element => {
   const { rationalInputProps: rationalInputPropsProp, ...rest } = props;
 
-  const { filteringEnabled, getMessage, onFilter, column } = props;
+  const { filteringEnabled, getMessage, filter, onFilter } = props;
 
-  const columnName = column.name;
+  const columnName = props.column.name;
 
-  const [state, setState] = useState<{
-    total: Fraction | null;
-    boundTotal: Fraction | null;
-    selectorValue: AvailableFilterOperations;
-    rangeSelectorValue?: AvailableRangeFilterOperations;
-    availableRangeValues?: AvailableRangeFilterOperations[];
-  }>({
-    total: null,
-    boundTotal: null,
-    selectorValue: "equal",
-  });
+  type RationalFilterState = {
+    rational: Fraction | null;
+    rationalSelector: AvailableFilterOperations;
+    rangeRational: Fraction | null;
+    rangeRationalSelector?: AvailableRangeFilterOperations;
+    availableRangeRationalSelectors?: AvailableRangeFilterOperations[];
+    maxRangeRational?: Fraction;
+    minRangeRational?: Fraction;
+  };
 
-  const onChangeRational = useCallback<
+  const {
+    rational,
+    rationalSelector,
+    rangeRational,
+    rangeRationalSelector,
+    availableRangeRationalSelectors,
+    // maxRangeRational,
+    // minRangeRational,
+  } = useMemo<RationalFilterState>(() => {
+    const rationalFilterState: RationalFilterState = {
+      rational: null,
+      rationalSelector: "equal",
+      rangeRational: null,
+    };
+
+    if (!filter) {
+      return rationalFilterState;
+    } else if ("operation" in filter) {
+      rationalFilterState.rational = filter.value || null;
+      rationalFilterState.rationalSelector = filter.operation;
+    } else {
+      const [rationalOp, rangeRationalOp] = filter.filters;
+
+      if ("operation" in rationalOp) {
+        rationalFilterState.rational = rationalOp.value || null;
+        rationalFilterState.rationalSelector = rationalOp.operation;
+      }
+
+      if ("operation" in rangeRationalOp) {
+        rationalFilterState.rangeRational = rangeRationalOp.value || null;
+        rationalFilterState.rangeRationalSelector =
+          rangeRationalOp.operation as AvailableRangeFilterOperations;
+      }
+    }
+
+    // Set available range selectors
+    rationalFilterState.availableRangeRationalSelectors = getAvailableRangeOps(
+      rationalFilterState.rationalSelector
+    );
+
+    // Set max or min range rationals
+    switch (rationalFilterState.rationalSelector) {
+      case "greaterThan":
+      case "greaterThanOrEqual":
+        rationalFilterState.minRangeRational =
+          rationalFilterState.rational || undefined;
+        break;
+      case "lessThan":
+      case "lessThanOrEqual":
+        rationalFilterState.maxRangeRational =
+          rationalFilterState.rational || undefined;
+        break;
+      default:
+        break;
+    }
+
+    return rationalFilterState;
+  }, [filter]);
+
+  const handleRationalChange = useCallback<
     NonNullable<RationalInputBaseProps["onChange"]>
   >(
-    (_, total) => {
+    (_, newRational) => {
       if (
-        total &&
-        state.rangeSelectorValue &&
-        state.boundTotal &&
-        !isIntervalValid(
-          state.selectorValue,
-          total,
-          state.rangeSelectorValue,
-          state.boundTotal
-        )
+        (newRational !== null &&
+          rational !== null &&
+          newRational.equals(rational)) ||
+        newRational === rational
       ) {
-        const availableRangeValues = getAvailableRangeOps(state.selectorValue);
-
-        setState((state) => ({
-          ...state,
-          total,
-          boundTotal: null,
-          rangeSelectorValue: undefined,
-          availableRangeValues,
-        }));
-      } else {
-        setState((state) => ({
-          ...state,
-          total,
-        }));
+        return;
       }
 
-      onFilter(
-        ...getOnFilterArgs(
+      if (!newRational) {
+        onFilter(null);
+      } else if (rangeRational && rangeRationalSelector) {
+        onFilter({
           columnName,
-          state.selectorValue,
-          total,
-          state.rangeSelectorValue,
-          state.boundTotal
-        )
-      );
+          operator: "and",
+          filters: [
+            { operation: rationalSelector, value: newRational },
+            { operation: rangeRationalSelector, value: rangeRational },
+          ],
+        });
+      } else {
+        onFilter({
+          columnName,
+          operation: rationalSelector,
+          value: newRational || undefined,
+        });
+      }
+
+      // if(newRational)
     },
     [
       columnName,
       onFilter,
-      setState,
-      state.selectorValue,
-      state.rangeSelectorValue,
-      state.boundTotal,
+      rangeRational,
+      rangeRationalSelector,
+      rational,
+      rationalSelector,
     ]
   );
 
-  const onChangeBoundRational = useCallback<
+  const handleRangeRationalChange = useCallback<
     NonNullable<RationalInputBaseProps["onChange"]>
   >(
-    (_, boundTotal) => {
-      setState((state) => ({
-        ...state,
-        boundTotal,
-        rangeSelectorValue: boundTotal ? state.rangeSelectorValue : undefined,
-      }));
-
-      onFilter(
-        ...getOnFilterArgs(
-          columnName,
-          state.selectorValue,
-          state.total,
-          state.rangeSelectorValue,
-          boundTotal
-        )
-      );
-    },
-    [
-      setState,
-      state.selectorValue,
-      state.total,
-      state.rangeSelectorValue,
-      columnName,
-      onFilter,
-    ]
-  );
-
-  const onChangeFilterOp = useCallback<
-    TableFilterRow.FilterSelectorProps["onChange"]
-  >(
-    (selectorValue) => {
-      const availableRangeValues = getAvailableRangeOps(
-        selectorValue as AvailableFilterOperations
-      );
-
+    (_, newRangeRational) => {
       if (
-        state.total &&
-        state.rangeSelectorValue &&
-        state.boundTotal &&
-        !isIntervalValid(
-          selectorValue as AvailableFilterOperations,
-          state.total,
-          state.rangeSelectorValue,
-          state.boundTotal
-        )
+        (newRangeRational !== null &&
+          rangeRational !== null &&
+          newRangeRational.equals(rangeRational)) ||
+        newRangeRational === rangeRational
       ) {
-        // Reset bounded range if new interval is Invalid
-        setState((state) => ({
-          ...state,
-          selectorValue: selectorValue as AvailableFilterOperations,
-          boundTotal: null,
-          rangeSelectorValue: undefined,
-          availableRangeValues,
-        }));
-      } else {
-        switch (selectorValue as AvailableFilterOperations) {
-          case "greaterThan":
-          case "greaterThanOrEqual":
-            setState((state) => ({
-              ...state,
-              selectorValue: selectorValue as AvailableFilterOperations,
-              availableRangeValues,
-            }));
-            break;
-          case "lessThan":
-          case "lessThanOrEqual":
-            setState((state) => ({
-              ...state,
-              selectorValue: selectorValue as AvailableFilterOperations,
-              availableRangeValues,
-            }));
-            break;
-          default:
-            setState((state) => ({
-              ...state,
-              selectorValue: selectorValue as AvailableFilterOperations,
-              boundTotal: null,
-              rangeSelectorValue: undefined,
-              availableRangeValues,
-            }));
-        }
+        return;
       }
 
-      onFilter(
-        ...getOnFilterArgs(
-          columnName,
-          selectorValue as AvailableFilterOperations,
-          state.total,
-          state.rangeSelectorValue,
-          state.boundTotal
-        )
-      );
+      onFilter({
+        columnName,
+        operator: "and",
+        filters: [
+          { operation: rationalSelector, value: rational as Fraction },
+          {
+            operation: rangeRationalSelector as AvailableRangeFilterOperations,
+            value: newRangeRational || undefined,
+          },
+        ],
+      });
     },
     [
-      setState,
-      state.total,
-      state.rangeSelectorValue,
-      state.boundTotal,
-      columnName,
+      rangeRational,
       onFilter,
+      columnName,
+      rationalSelector,
+      rational,
+      rangeRationalSelector,
     ]
   );
 
-  const onChangeRangeFilterOp = useCallback<
+  const handleRationalSelectorChange = useCallback<
     TableFilterRow.FilterSelectorProps["onChange"]
   >(
-    (rangeSelectorValue) => {
-      if (
-        state.total &&
-        state.boundTotal &&
-        !isIntervalValid(
-          state.selectorValue as AvailableFilterOperations,
-          state.total,
-          rangeSelectorValue as AvailableRangeFilterOperations,
-          state.boundTotal
-        )
-      ) {
-        // Reset bounded total if new interval is Invalid
-        setState((state) => ({
-          ...state,
-          rangeSelectorValue:
-            rangeSelectorValue as AvailableRangeFilterOperations,
-          boundTotal: null,
-        }));
-      } else {
-        setState((state) => ({
-          ...state,
-          rangeSelectorValue:
-            rangeSelectorValue as AvailableRangeFilterOperations,
-        }));
+    (newRationalSelector) => {
+      if (newRationalSelector === rationalSelector) {
+        return;
       }
 
-      onFilter(
-        ...getOnFilterArgs(
-          columnName,
-          state.selectorValue as AvailableFilterOperations,
-          state.total,
-          rangeSelectorValue as AvailableRangeFilterOperations,
-          state.boundTotal
-        )
-      );
+      onFilter({
+        columnName,
+        operation: newRationalSelector as AvailableFilterOperations,
+        value: rational || undefined,
+      });
     },
-    [
-      setState,
-      state.total,
-      state.boundTotal,
-      state.selectorValue,
-      columnName,
-      onFilter,
-    ]
+    [columnName, rational, rationalSelector, onFilter]
   );
 
-  const isRangeOp =
-    state.selectorValue !== "equal" && state.selectorValue !== "notEqual";
+  const handleRangeRationalSelectorChange = useCallback<
+    TableFilterRow.FilterSelectorProps["onChange"]
+  >(
+    (newRangeRationalSelector) => {
+      if (newRangeRationalSelector === rangeRationalSelector) {
+        return;
+      }
+
+      onFilter({
+        columnName,
+        operator: "and",
+        filters: [
+          { operation: rationalSelector, value: rational as Fraction },
+          {
+            operation:
+              newRangeRationalSelector as AvailableRangeFilterOperations,
+            value: rangeRational || undefined,
+          },
+        ],
+      });
+    },
+    [
+      columnName,
+      rational,
+      rationalSelector,
+      onFilter,
+      rangeRational,
+      rangeRationalSelector,
+    ]
+  );
 
   const rationalInputProps = useMemo(() => {
     if (rationalInputPropsProp) {
@@ -378,6 +269,8 @@ export const RationalFilter = (props: RationalFilterProps): JSX.Element => {
     }
   }, [rationalInputPropsProp]);
 
+  const isRangeOp = isRangeSelector(rationalSelector);
+
   return (
     <TableFilterRow.Cell
       {...(rest as TableFilterRow.CellProps)}
@@ -392,36 +285,36 @@ export const RationalFilter = (props: RationalFilterProps): JSX.Element => {
             disabled={!filteringEnabled}
             getMessage={getMessage}
             iconComponent={RangeFilterIcons}
-            onChange={onChangeFilterOp}
+            onChange={handleRationalSelectorChange}
             toggleButtonComponent={TableFilterRow.ToggleButton}
-            value={state.selectorValue}
+            value={rationalSelector}
           />
           <RationalInputBase
             disabled={!filteringEnabled}
             fullWidth
-            onChange={onChangeRational}
+            onChange={handleRationalChange}
             size="small"
+            value={rational}
             {...rationalInputProps}
           />
         </Box>
-        {isRangeOp && !!state.total && (
+        {isRangeOp && !!rational && (
           <Box display="flex" alignItems="center">
             <TableFilterRow.FilterSelector
-              availableValues={state.availableRangeValues || []}
-              disabled={!filteringEnabled || !isRangeOp}
+              availableValues={availableRangeRationalSelectors || []}
+              disabled={!filteringEnabled}
               getMessage={getMessage}
               iconComponent={RangeFilterIcons}
-              onChange={onChangeRangeFilterOp}
+              onChange={handleRangeRationalSelectorChange}
               toggleButtonComponent={TableFilterRow.ToggleButton}
-              value={state.rangeSelectorValue || "addRangeBound"}
+              value={rangeRationalSelector || "addRangeBound"}
             />
             <RationalInputBase
-              disabled={
-                !filteringEnabled || !isRangeOp || !state.rangeSelectorValue
-              }
+              disabled={!filteringEnabled || !rangeRationalSelector}
               fullWidth
-              onChange={onChangeBoundRational}
+              onChange={handleRangeRationalChange}
               size="small"
+              value={rangeRational}
               {...(rationalInputProps || {})}
             />
           </Box>
@@ -438,6 +331,10 @@ export const rationalFilterColumnExtension = (
   columnName,
   predicate: (value, filter, row): boolean => {
     const filterTotal = (filter as unknown as Filter<Fraction>).value;
+
+    if (filterTotal === undefined) {
+      return true;
+    }
 
     switch (filter.operation as DefaultFilterOperations) {
       case "equal":

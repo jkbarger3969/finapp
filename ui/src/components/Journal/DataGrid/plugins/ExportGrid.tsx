@@ -15,9 +15,9 @@ export const ExportGrid = () => {
       <Action
         name="exportGrid"
         action={useCallback((...args) => {
-          const [, { rows }] = args as unknown as [
+          const [, { rows, loadedNamedFilter }] = args as unknown as [
             unknown,
-            { rows: GridEntry[] }
+            { rows: GridEntry[]; loadedNamedFilter?: string }
           ];
 
           if (!rows.length) {
@@ -65,7 +65,14 @@ export const ExportGrid = () => {
             type: "text/csv;charset=utf-8",
           });
 
-          saveAs(blob, `journal-${formatDate(new Date(), "yyyy-MM-dd")}.csv`);
+          if (loadedNamedFilter) {
+            saveAs(
+              blob,
+              `${loadedNamedFilter}-${formatDate(new Date(), "yyyy-MM-dd")}.csv`
+            );
+          } else {
+            saveAs(blob, `journal-${formatDate(new Date(), "yyyy-MM-dd")}.csv`);
+          }
         }, [])}
       />
     </Plugin>

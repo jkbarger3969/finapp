@@ -4,23 +4,25 @@ import TreeSelect, {
   BranchNode,
   defaultInput,
   TreeSelectProps,
+  ValueNode,
 } from "mui-tree-select";
 import { IntegratedFiltering } from "@devexpress/dx-react-grid";
 
 import { GridEntryFragment } from "../../../../apollo/graphTypes";
-import { OnFilter } from "../plugins";
+import { TableFilterCellProps } from "../plugins";
 import {
   EntityDefaultInputOpt,
   EntityInputOpt,
   getOptionLabel as getOptionLabelUtil,
   getOptionSelected as getOptionSelectedUtil,
 } from "../../../Inputs/Entity";
-import { Filter, LogicFilter } from "../plugins";
+import { Filter } from "../plugins";
 import {
   inlineAutoCompleteProps,
   inlineInputProps,
   inlinePadding,
 } from "./shared";
+import { AvailableFilterOperations } from "../filters/rangeFilterUtils";
 
 export const sourceToStr = (src: GridEntryFragment["source"]): string => {
   switch (src.__typename) {
@@ -44,8 +46,10 @@ export const SourceCell = (props: Table.DataCellProps): JSX.Element => {
 };
 
 // Filter Cell
-export type SourceFilterProps = Omit<TableFilterRow.CellProps, "onFilter"> & {
-  onFilter: OnFilter<EntityInputOpt, "equal">;
+export type SourceFilterProps = TableFilterCellProps<
+  EntityInputOpt,
+  Extract<AvailableFilterOperations, "equal">
+> & {
   srcFilterOpts?: EntityInputOpt[];
 };
 
@@ -98,15 +102,21 @@ const getOptionSelected: NonNullable<
 };
 
 export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
+  type SourceFilterTreeProps = TreeSelectProps<
+    EntityInputOpt,
+    SrcFilterInputOpt,
+    true,
+    false,
+    false
+  >;
+
   const { srcFilterOpts, ...rest } = props;
 
-  const { onFilter } = props;
+  const { onFilter, filter } = props;
 
   const columnName = props.column.name;
 
-  const [state, setState] = useState<{
-    branch?: BranchNode<EntityDefaultInputOpt | "Department">;
-  }>({});
+  const [branch, setBranch] = useState<SourceFilterTreeProps["branch"]>(null);
 
   const options = useMemo<
     TreeSelectProps<
@@ -119,8 +129,8 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
   >(() => {
     if (!srcFilterOpts) {
       return [];
-    } else if (state.branch) {
-      const typename = state.branch.valueOf();
+    } else if (branch) {
+      const typename = branch.valueOf();
       return srcFilterOpts.filter((option) => option.__typename === typename);
     } else {
       const branchOptions = new Set<EntityDefaultInputOpt | "Department">();
@@ -140,9 +150,9 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
         (branchOption) => new BranchNode(branchOption)
       );
     }
-  }, [srcFilterOpts, state.branch]);
+  }, [srcFilterOpts, branch]);
 
-  const onBranchChange = useCallback<
+  const handleBranchChange = useCallback<
     TreeSelectProps<
       SrcFilterInputOpt,
       SrcFilterInputOpt,
@@ -152,17 +162,12 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
     >["onBranchChange"]
   >(
     (_, branchOption) => {
-      setState((state) => ({
-        ...state,
-        branch: branchOption as BranchNode<
-          EntityDefaultInputOpt | "Department"
-        >,
-      }));
+      setBranch(branchOption);
     },
-    [setState]
+    [setBranch]
   );
 
-  const onChange = useCallback<
+  const handleChange = useCallback<
     NonNullable<
       TreeSelectProps<
         EntityInputOpt,
@@ -176,21 +181,13 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
     (_, value) => {
       if (value.length) {
         // Other options will ONLY be BranchNode(s) and never called onChange.
-        const logicFilter: LogicFilter<EntityInputOpt, "equal"> = {
-          operator: "or",
-          filters: [],
-        };
-
-        for (const val of value) {
-          logicFilter.filters.push({
-            operation: "equal",
-            value: val.valueOf(),
-          });
-        }
-
         onFilter({
           columnName,
-          filters: [logicFilter],
+          operator: "or",
+          filters: value.map((option) => ({
+            operation: "equal",
+            value: option.valueOf(),
+          })),
         });
       } else {
         onFilter(null);
@@ -221,6 +218,30 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
     []
   );
 
+  const value = useMemo<ValueNode<EntityInputOpt, SrcFilterInputOpt>[]>(() => {
+    if (!filter) {
+      return [];
+    } else if ("operator" in filter) {
+      return filter.filters.reduce((value, filter) => {
+        if ("operation" in filter && filter.value) {
+          value.push(
+            branch
+              ? new ValueNode(filter.value, branch)
+              : new ValueNode(filter.value)
+          );
+        }
+        return value;
+      }, [] as ValueNode<EntityInputOpt, SrcFilterInputOpt>[]);
+    }
+    return "operation" in filter && filter.value
+      ? [
+          branch
+            ? new ValueNode(filter.value, branch)
+            : new ValueNode(filter.value),
+        ]
+      : [];
+  }, [filter, branch]);
+
   return (
     <TableFilterRow.Cell
       {...(rest as TableFilterRow.CellProps)}
@@ -229,11 +250,12 @@ export const SourceFilter = (props: SourceFilterProps): JSX.Element => {
       <TreeSelect<EntityInputOpt, SrcFilterInputOpt, true, false, false>
         getOptionLabel={getOptionLabel}
         getOptionSelected={getOptionSelected}
-        onBranchChange={onBranchChange}
+        onBranchChange={handleBranchChange}
         multiple
-        onChange={onChange}
+        onChange={handleChange}
         options={options}
         renderInput={renderInput}
+        value={value}
         {...inlineAutoCompleteProps}
       />
     </TableFilterRow.Cell>
@@ -246,25 +268,25 @@ export const sourceFilterColumnExtension = (
 ): IntegratedFiltering.ColumnExtension => ({
   columnName,
   predicate: (value, filter, row): boolean => {
-    switch (filter.operation) {
-      case "equal": {
-        const filterValue = (filter as unknown as Filter<EntityInputOpt>).value;
+    const filterValue = (filter as unknown as Filter<EntityInputOpt>).value;
 
+    if (filterValue == undefined) {
+      return true;
+    }
+
+    switch (filter.operation) {
+      case "equal":
         return (
           filterValue.__typename ===
             (value as GridEntryFragment["source"]).__typename &&
           filterValue.id === (value as GridEntryFragment["source"]).id
         );
-      }
-      case "notEqual": {
-        const filterValue = (filter as unknown as Filter<EntityInputOpt>).value;
-
+      case "notEqual":
         return (
           filterValue.__typename !==
             (value as GridEntryFragment["source"]).__typename ||
           filterValue.id !== (value as GridEntryFragment["source"]).id
         );
-      }
       default:
         return IntegratedFiltering.defaultPredicate(
           toString(value as GridEntryFragment["source"]),

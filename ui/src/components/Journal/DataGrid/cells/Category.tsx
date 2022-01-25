@@ -9,8 +9,8 @@ import TreeSelect, {
 } from "mui-tree-select";
 
 import { EntryType, GridEntryFragment } from "../../../../apollo/graphTypes";
-import { OnFilter } from "../plugins";
-import { Filter, LogicFilter } from "../plugins";
+import { TableFilterCellProps } from "../plugins";
+import { Filter } from "../plugins";
 import {
   CategoryInputOpt,
   getOptionLabel,
@@ -22,6 +22,7 @@ import {
   renderFilterInput,
 } from "./shared";
 import { GridEntry } from "../Grid";
+import { AvailableFilterOperations } from "../filters/rangeFilterUtils";
 
 export const CategoryCell = (props: Table.DataCellProps): JSX.Element => {
   const { value, ...rest } = props;
@@ -35,8 +36,10 @@ export const CategoryCell = (props: Table.DataCellProps): JSX.Element => {
 };
 
 // Filter Cell
-export type CategoryFilterProps = Omit<TableFilterRow.CellProps, "onFilter"> & {
-  onFilter: OnFilter<CategoryInputOpt, "equal">;
+export type CategoryFilterProps = TableFilterCellProps<
+  CategoryInputOpt,
+  Extract<AvailableFilterOperations, "equal">
+> & {
   categoryFilterOpts?: Exclude<CategoryInputOpt, EntryType>[];
 };
 
@@ -93,6 +96,8 @@ const getFilterOptionSelected: NonNullable<
 export const CategoryFilter = (props: CategoryFilterProps): JSX.Element => {
   const { categoryFilterOpts, ...rest } = props;
 
+  const { filter, onFilter } = props;
+
   const columnName = props.column.name;
 
   const [state, setState] = useState<{
@@ -101,7 +106,7 @@ export const CategoryFilter = (props: CategoryFilterProps): JSX.Element => {
     branch: null,
   });
 
-  const onBranchChange = useCallback<
+  const handleBranchChange = useCallback<
     NonNullable<CategoryFilterSelect["onBranchChange"]>
   >(
     (_, branch) => {
@@ -165,26 +170,18 @@ export const CategoryFilter = (props: CategoryFilterProps): JSX.Element => {
     }
   }, [creditOpts, debitOpts, state.branch]);
 
-  const { onFilter } = props;
-
-  const onChange = useCallback<NonNullable<CategoryFilterSelect["onChange"]>>(
+  const handleChange = useCallback<
+    NonNullable<CategoryFilterSelect["onChange"]>
+  >(
     (_, value) => {
       if (value.length) {
-        const logicFilter: LogicFilter<CategoryInputOpt, "equal"> = {
-          operator: "or",
-          filters: [],
-        };
-
-        for (const option of value) {
-          logicFilter.filters.push({
-            operation: "equal",
-            value: option.valueOf() as CategoryInputOpt,
-          });
-        }
-
         onFilter({
           columnName,
-          filters: [logicFilter],
+          operator: "or",
+          filters: value.map((option) => ({
+            operation: "equal",
+            value: option.valueOf() as CategoryInputOpt,
+          })),
         });
       } else {
         onFilter(null);
@@ -192,6 +189,24 @@ export const CategoryFilter = (props: CategoryFilterProps): JSX.Element => {
     },
     [columnName, onFilter]
   );
+
+  const value = useMemo<
+    ValueNode<CategoryFilterInputOpt, CategoryFilterInputOpt>[]
+  >(() => {
+    if (!filter) {
+      return [];
+    } else if ("operator" in filter) {
+      return filter.filters.reduce((value, filter) => {
+        if ("operation" in filter && filter.value) {
+          value.push(new ValueNode(filter.value, state.branch));
+        }
+        return value;
+      }, [] as ValueNode<CategoryFilterInputOpt, CategoryFilterInputOpt>[]);
+    }
+    return "operation" in filter && filter.value
+      ? [new ValueNode(filter.value, state.branch)]
+      : [];
+  }, [filter, state.branch]);
 
   return (
     <TableFilterRow.Cell
@@ -210,10 +225,11 @@ export const CategoryFilter = (props: CategoryFilterProps): JSX.Element => {
         getOptionLabel={getFilterOptionLabel}
         getOptionSelected={getFilterOptionSelected}
         multiple
-        onBranchChange={onBranchChange}
-        onChange={onChange}
+        onBranchChange={handleBranchChange}
+        onChange={handleChange}
         options={options}
         renderInput={renderFilterInput}
+        value={value}
         {...inlineAutoCompleteProps}
       />
     </TableFilterRow.Cell>
@@ -228,6 +244,11 @@ export const categoryFilterColumnExtension = (
   predicate: (value, filter, row): boolean => {
     const filterValue = (filter as unknown as Filter<CategoryFilterInputOpt>)
       .value;
+
+    if (filterValue === undefined) {
+      return true;
+    }
+
     switch (filter.operation) {
       case "equal":
         if (isEntryType(filterValue)) {

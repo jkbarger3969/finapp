@@ -1,15 +1,32 @@
-export { FilteringState } from "./FilteringState";
-export type { FilteringStateProps, OnFilter } from "./FilteringState";
+export { FilteringState } from "./Filtering";
 export type {
+  DefaultFilterOperations,
+  Operation,
   Filter,
   LogicFilter,
-  ChangeColumnFilter,
-  ColumnFilterOperation,
-  ColumnFilter,
-  DefaultFilterOperations,
-  IsColumnFilteringEnabled,
+  ColumnLogicFilter,
   Filters,
-} from "./FilteringState";
+  OnFilter,
+  FiltersDef,
+  ChangeColumnFilter,
+  FilterExpression,
+  FilteringStateProps,
+  TableFilterCellProps,
+  AddNamedFilterPayload,
+  AddNamedFilters,
+  CancelAddedNamedFilters,
+  CommitAddedNamedFilters,
+  ChangeAddedNamedFilter,
+  LoadNamedFilter,
+  DeleteNamedFilters,
+  CancelDeletedNamedFilters,
+  CommitDeletedNamedFilters,
+  ChangeNamedFilter,
+  CancelChangedNamedFilters,
+  CommitChangedNamedFilters,
+  NamedFilters,
+  NamedFiltersChanges,
+} from "./Filtering";
 export {
   DataCellProvider,
   FilterCellProvider,
@@ -17,4 +34,8 @@ export {
   FilterCell,
 } from "./TableCell";
 export type { CellProviderProps, CellProviderCellOptions } from "./TableCell";
-export { EntryActionState, EntryAction } from "./EntryActions";
+export {
+  EntryActionState,
+  EntryAction,
+  EditColumnFilterHeaderCell,
+} from "./EntryActions";

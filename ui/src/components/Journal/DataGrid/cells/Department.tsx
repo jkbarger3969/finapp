@@ -7,13 +7,13 @@ import { ValueNode } from "mui-tree-select";
 
 import { GridEntrySrcDeptFragment } from "../../../../apollo/graphTypes";
 import { DepartmentInputOpt } from "../../../Inputs/Department";
-import { OnFilter } from "../plugins";
-import { Filter, LogicFilter } from "../plugins";
+import { Filter, TableFilterCellProps } from "../plugins";
 import {
   inlineAutoCompleteProps,
   inlineInputProps,
   inlinePadding,
 } from "./shared";
+import { AvailableFilterOperations } from "../filters/rangeFilterUtils";
 
 export const DeptCell = (props: Table.DataCellProps): JSX.Element => {
   const { value, ...rest } = props;
@@ -24,8 +24,10 @@ export const DeptCell = (props: Table.DataCellProps): JSX.Element => {
 };
 
 // Filter Cell
-export type DeptFilterProps = Omit<TableFilterRow.CellProps, "onFilter"> & {
-  onFilter: OnFilter<DepartmentInputOpt, "equal">;
+export type DeptFilterProps = TableFilterCellProps<
+  DepartmentInputOpt,
+  Extract<AvailableFilterOperations, "equal">
+> & {
   deptFilterOpts?: DepartmentInputOpt[];
 };
 
@@ -53,32 +55,24 @@ const getOptionLabel: NonNullable<
 export const DeptFilter = (props: DeptFilterProps): JSX.Element => {
   const { deptFilterOpts, ...rest } = props;
 
+  const { filter, onFilter } = props;
+
   const columnName = props.column.name;
 
   const options = useMemo(() => deptFilterOpts || [], [deptFilterOpts]);
 
   type Props = AutocompleteProps<DepartmentInputOpt, true, false, false>;
 
-  const { onFilter } = props;
-
-  const onChange = useCallback<NonNullable<Props["onChange"]>>(
+  const handleChange = useCallback<NonNullable<Props["onChange"]>>(
     (_, value) => {
       if (value.length) {
-        const logicFilter: LogicFilter<DepartmentInputOpt, "equal"> = {
-          operator: "or",
-          filters: [],
-        };
-
-        for (const option of value) {
-          logicFilter.filters.push({
-            operation: "equal",
-            value: option,
-          });
-        }
-
         onFilter({
           columnName,
-          filters: [logicFilter],
+          operator: "or",
+          filters: value.map((option) => ({
+            operation: "equal",
+            value: option,
+          })),
         });
       } else {
         onFilter(null);
@@ -86,6 +80,20 @@ export const DeptFilter = (props: DeptFilterProps): JSX.Element => {
     },
     [columnName, onFilter]
   );
+
+  const value = useMemo<DepartmentInputOpt[]>(() => {
+    if (!filter) {
+      return [];
+    } else if ("operator" in filter) {
+      return filter.filters.reduce((value, filter) => {
+        if ("operation" in filter && filter.value) {
+          value.push(filter.value);
+        }
+        return value;
+      }, [] as DepartmentInputOpt[]);
+    }
+    return "operation" in filter && filter.value ? [filter.value] : [];
+  }, [filter]);
 
   return (
     <TableFilterRow.Cell
@@ -96,8 +104,9 @@ export const DeptFilter = (props: DeptFilterProps): JSX.Element => {
         getOptionLabel={getOptionLabel}
         multiple
         renderInput={renderInput}
-        onChange={onChange}
+        onChange={handleChange}
         options={options}
+        value={value}
         {...inlineAutoCompleteProps}
       />
     </TableFilterRow.Cell>
@@ -110,17 +119,21 @@ export const deptFilterColumnExtension = (
 ): IntegratedFiltering.ColumnExtension => ({
   columnName,
   predicate: (value, filter, row): boolean => {
+    const filterValue = (filter as unknown as Filter<DepartmentInputOpt>).value;
+
+    if (filterValue === undefined) {
+      return IntegratedFiltering.defaultPredicate(
+        toString(value as DepartmentInputOpt),
+        filter,
+        row
+      );
+    }
+
     switch (filter.operation) {
       case "equal":
-        return (
-          (filter as unknown as Filter<DepartmentInputOpt>).value.id ===
-          (value as DepartmentInputOpt).id
-        );
+        return filterValue.id === (value as DepartmentInputOpt).id;
       case "notEqual":
-        return (
-          (filter as unknown as Filter<DepartmentInputOpt>).value.id !==
-          (value as DepartmentInputOpt).id
-        );
+        return filterValue.id !== (value as DepartmentInputOpt).id;
       default:
         return IntegratedFiltering.defaultPredicate(
           toString(value as DepartmentInputOpt),

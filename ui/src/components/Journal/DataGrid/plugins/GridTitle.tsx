@@ -25,7 +25,7 @@ export const GridTitle = ({ title }: { title?: string }): JSX.Element => {
     <Plugin name="GridTitle" dependencies={gridTitleDeps}>
       <Template name="toolbarContent">
         <TemplateConnector>
-          {({ totalSummaryValues, totalSummaryItems }) => {
+          {({ totalSummaryValues, totalSummaryItems, loadedNamedFilter }) => {
             const totalAggregate = totalSummaryValues[
               (totalSummaryItems as SummaryItem[]).findIndex(
                 ({ type, columnName }) =>
@@ -36,7 +36,23 @@ export const GridTitle = ({ title }: { title?: string }): JSX.Element => {
             return (
               <>
                 <Typography variant="h6">
-                  {title ? `${title}: ${totalAggregate}` : totalAggregate}
+                  {(() => {
+                    let gridTitle = "";
+
+                    if (title) {
+                      gridTitle = title;
+                    }
+
+                    if (loadedNamedFilter) {
+                      gridTitle = gridTitle
+                        ? `${gridTitle} (${loadedNamedFilter})`
+                        : `${loadedNamedFilter}`;
+                    }
+
+                    return gridTitle
+                      ? `${gridTitle}: ${totalAggregate}`
+                      : totalAggregate;
+                  })()}
                 </Typography>
                 <TemplatePlaceholder />
               </>

@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Done as DoneIcon } from "@material-ui/icons";
 import { Table, TableFilterRow } from "@devexpress/dx-react-grid-material-ui";
 import { TextField, TextFieldProps } from "@material-ui/core";
@@ -9,9 +9,10 @@ import {
   inlineInputProps,
   inlineAutoCompleteProps,
 } from "./shared";
+import { TableFilterCellProps } from "../plugins";
+import { AvailableFilterOperations } from "../filters/rangeFilterUtils";
 
 // Data Cell
-
 const boolCellStyle: React.CSSProperties = {
   width: "100%",
   display: "flex",
@@ -45,7 +46,10 @@ const renderInput: AutocompleteProps<
   return <TextField {...props} />;
 };
 
-export type BoolFilterProps = TableFilterRow.CellProps & {
+export type BoolFilterProps = TableFilterCellProps<
+  boolean,
+  Extract<AvailableFilterOperations, "equal">
+> & {
   boolLabels?: {
     trueLabel: string;
     falseLabel: string;
@@ -61,22 +65,25 @@ export const BoolFilter = (props: BoolFilterProps): JSX.Element => {
 
   type Props = AutocompleteProps<boolean, false, false, false>;
 
-  const { onFilter } = props;
+  const { onFilter, filter } = props;
 
-  const onChange = useCallback<NonNullable<Props["onChange"]>>(
+  const value = useMemo(() => {
+    if (filter && "operation" in filter) {
+      return filter.value ?? null;
+    }
+    return null;
+  }, [filter]);
+
+  const handleChange = useCallback<NonNullable<Props["onChange"]>>(
     (_, value) => {
-      if (value === true) {
-        onFilter({
-          columnName,
-          value: value.toString(),
-        });
-      } else if (value === false) {
-        onFilter({
-          columnName,
-          value: value.toString(),
-        });
-      } else {
+      if (value === null) {
         onFilter(null);
+      } else {
+        onFilter({
+          columnName,
+          operation: "equal",
+          value: value,
+        });
       }
     },
     [columnName, onFilter]
@@ -94,12 +101,14 @@ export const BoolFilter = (props: BoolFilterProps): JSX.Element => {
   );
 
   return (
-    <TableFilterRow.Cell {...rest} style={inlinePadding}>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    <TableFilterRow.Cell {...(rest as any)} style={inlinePadding}>
       <Autocomplete
         getOptionLabel={getOptionLabel}
         renderInput={renderInput}
-        onChange={onChange}
+        onChange={handleChange}
         options={filterOptions}
+        value={value}
         {...inlineAutoCompleteProps}
       />
     </TableFilterRow.Cell>

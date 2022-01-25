@@ -30,8 +30,8 @@ import {
   ColumnChooser,
   VirtualTable,
   SearchPanel,
-  TableFilterRow,
   Toolbar,
+  TableFilterRow,
 } from "@devexpress/dx-react-grid-material-ui";
 import { green, red } from "@material-ui/core/colors";
 import { makeStyles } from "@material-ui/core/styles";
@@ -59,10 +59,12 @@ import {
 import { deserializeDate, deserializeRational } from "../../../apollo/scalars";
 import { GRID_ENTRIES, GRID_ENTRY_REFUNDS } from "./Grid.gql";
 import OverlayLoading from "../../utils/OverlayLoading";
-import useLocalStorage from "../../utils/useLocalStorage";
+import useLocalStorage, {
+  UseLocalStorageArg,
+} from "../../utils/useLocalStorage";
 import {
   FilteringState,
-  Filters,
+  FiltersDef,
   DataCell,
   FilterCell,
   DataCellProvider,
@@ -70,6 +72,8 @@ import {
   CellProviderProps,
   EntryActionState,
   EntryAction,
+  EditColumnFilterHeaderCell,
+  NamedFilters,
 } from "./plugins";
 import {
   BoolCell,
@@ -357,35 +361,50 @@ const defaultColumnWidths: ReadonlyArray<TableColumnWidthInfo> = [
     width: "135px",
   },
 ];
-const columnWidthUpdater = (
-  cachedValue: TableColumnWidthInfo[],
-  defaultValue: TableColumnWidthInfo[]
-): TableColumnWidthInfo[] => {
-  const defaultColumns = defaultValue.reduce(
-    (defaultColumns, defaultColumn) =>
-      defaultColumns.set(defaultColumn.columnName, defaultColumn),
-    new Map<string, TableColumnWidthInfo>()
-  );
-
-  const columnWidths = cachedValue.filter((column) => {
-    if (defaultColumns.has(column.columnName)) {
-      defaultColumns.delete(column.columnName);
-      return true;
-    } else {
-      // Remove replaced columns
-      return false;
-    }
-  });
-
-  // Add NEW defaults
-  columnWidths.push(...defaultColumns.values());
-
-  return columnWidths;
-};
 
 const defaultColumnOrder: NonNullable<
   TableColumnReorderingProps["defaultOrder"]
 > = columns.map((column) => column.name);
+
+const namedFilterSerialization: UseLocalStorageArg<NamedFilters>["serializer"] =
+  {
+    serialize: (namedFilters) =>
+      JSON.stringify(namedFilters, function (key, value) {
+        const rawValue = this[key];
+
+        if (rawValue instanceof Date) {
+          return { _TYPE_: "Date", value: this[key].toISOString() };
+        } else if (rawValue instanceof Fraction) {
+          return {
+            _TYPE_: "Rational",
+            value: {
+              s: rawValue.s,
+              n: rawValue.n,
+              d: rawValue.d,
+            },
+          };
+        }
+        return value;
+      }),
+    deserialize: (namedFilters) =>
+      JSON.parse(namedFilters, (_, value) => {
+        if (
+          value &&
+          typeof value === "object" &&
+          "_TYPE_" in value &&
+          "value" in value
+        ) {
+          switch (value._TYPE_) {
+            case "Date":
+              return new Date(value.value);
+            case "Rational":
+              return new Fraction(value.value);
+          }
+        }
+
+        return value;
+      }),
+  };
 
 const defaultSorting: Sorting[] = [
   { columnName: "dateOfRecord", direction: "asc" },
@@ -631,7 +650,6 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
   const [columnWidths, setColumnWidths] = useLocalStorage({
     defaultValue: defaultColumnWidths as TableColumnWidthInfo[],
     cacheKey: `column_widths_${cachePrefix}`,
-    cacheUpdater: columnWidthUpdater,
   });
   const [hiddenColumnNames, setHiddenColumnNames] = useLocalStorage({
     defaultValue: [] as NonNullable<
@@ -645,7 +663,13 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     cacheKey: `column_visibility_sorting${cachePrefix}`,
   });
 
-  const [filters, setFilters] = useState<Filters>([]);
+  const [filters, setFilters] = useState<FiltersDef>([]);
+
+  const [namedFilters, setNamedFilters] = useLocalStorage<NamedFilters>({
+    defaultValue: {},
+    cacheKey: `named_filters_${cachePrefix}`,
+    serializer: namedFilterSerialization,
+  });
 
   const dataCellColor = useCallback(
     ({
@@ -828,7 +852,12 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
           reconcileEntriesProps={reconcileEntriesProps}
         />
         <SearchState />
-        <FilteringState filters={filters} onFiltersChange={setFilters} />
+        <FilteringState
+          filters={filters}
+          onFiltersChange={setFilters}
+          namedFilters={namedFilters}
+          onNamedFiltersChange={setNamedFilters}
+        />
 
         <SortingState sorting={sorting} onSortingChange={setSorting} />
         <SummaryState totalItems={totalItems as unknown as SummaryItem[]} />
@@ -842,7 +871,12 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
           columnExtensions={integratedSortingColumnExtensions}
         />
 
-        <VirtualTable height="auto" cellComponent={DataCell} />
+        <VirtualTable
+          height="auto"
+          cellComponent={DataCell}
+          // Allows for named filters
+          stubHeaderCellComponent={EditColumnFilterHeaderCell}
+        />
         <TableColumnResizing
           columnWidths={columnWidths}
           onColumnWidthsChange={setColumnWidths}
