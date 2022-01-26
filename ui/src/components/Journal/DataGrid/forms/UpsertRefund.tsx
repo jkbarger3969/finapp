@@ -362,7 +362,11 @@ const InnerDialog = (
             </Grid>
             <Grid {...inputGridItemProps}>{refundInputs.descriptionInput}</Grid>
             <Grid {...inputGridItemProps}>{refundInputs.totalInput}</Grid>
-            <Grid {...inputGridItemProps}>{refundInputs.reconciledInput}</Grid>
+            {isUpdate && (
+              <Grid {...inputGridItemProps}>
+                {refundInputs.reconciledInput}
+              </Grid>
+            )}
           </Grid>
         </DialogContent>
       )}
