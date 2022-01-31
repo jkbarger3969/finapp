@@ -18,6 +18,7 @@ import { Color, FormControl, InputLabel } from "@material-ui/core";
 import Fraction from "fraction.js";
 import { Select, SelectProps } from "@material-ui/core";
 import { MenuItem } from "@material-ui/core";
+import { format as formatDate } from "date-fns";
 
 import {
   GetReportDataQuery,
@@ -29,7 +30,11 @@ import {
   AccountsWhere,
   ReportDataOtherEntryRefundFragment,
 } from "../../apollo/graphTypes";
-import { deserializeRational, serializeDate } from "../../apollo/scalars";
+import {
+  deserializeDate,
+  deserializeRational,
+  serializeDate,
+} from "../../apollo/scalars";
 import { GET_REPORT_DATA } from "./ReportData.gql";
 import {
   UpsertEntry,
@@ -403,10 +408,13 @@ const Dashboard = (props: {
                 (a, b) =>
                   new Date(a.begin).getTime() - new Date(b.begin).getTime()
               )
-              .map((fiscalYear) => {
+              .map(({ id, begin, end }) => {
                 return (
-                  <MenuItem key={fiscalYear.id} value={fiscalYear.id}>
-                    {fiscalYear.name}
+                  <MenuItem key={id} value={id}>
+                    {`${formatDate(
+                      deserializeDate(begin),
+                      "uuuu"
+                    )}-${formatDate(deserializeDate(end), "uuuu")}`}
                   </MenuItem>
                 );
               })}

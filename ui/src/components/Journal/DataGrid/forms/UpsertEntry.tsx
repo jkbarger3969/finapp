@@ -519,7 +519,9 @@ const InnerDialog = (
             </Grid>
             <Grid {...inputGridItemProps}>{entryInputs.descriptionInput}</Grid>
             <Grid {...inputGridItemProps}>{entryInputs.totalInput}</Grid>
-            <Grid {...inputGridItemProps}>{entryInputs.reconciledInput}</Grid>
+            {isUpdate && (
+              <Grid {...inputGridItemProps}>{entryInputs.reconciledInput}</Grid>
+            )}
           </Grid>
           {sourceValue instanceof FreeSoloNode &&
             sourceValue.parent?.valueOf() === "Person" && (
