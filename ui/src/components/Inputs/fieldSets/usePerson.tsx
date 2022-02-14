@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { TextFieldProps } from "@material-ui/core";
 
 import { useName, NameProps, NameFieldDef } from "./useName";
@@ -9,8 +9,6 @@ import {
   prefixName,
   UseFieldOptions,
   useNamePrefix,
-  useValidators,
-  Validator,
 } from "../../../useKISSForm/form";
 
 export type PersonProps = {
@@ -51,13 +49,12 @@ export const usePerson = (
     PersonProps,
     "email" | "phone"
   > as `${Name}Input`]-?: JSX.Element;
-} &
-  {
-    [Name in keyof Pick<
-      PersonProps,
-      "email" | "phone"
-    > as `${Name}InputName`]-?: string;
-  } => {
+} & {
+  [Name in keyof Pick<
+    PersonProps,
+    "email" | "phone"
+  > as `${Name}InputName`]-?: string;
+} => {
   const {
     showLabels,
     insertNamePrefix,
@@ -87,6 +84,7 @@ export const usePerson = (
   const emailInputName = prefixName(EMAIL_NAME, fullName);
   const phoneInputName = prefixName(PHONE_NAME, fullName);
 
+  /* Keep the following code for future use
   useValidators(
     useMemo(() => {
       if (required) {
@@ -136,14 +134,15 @@ export const usePerson = (
           } as any,
           form,
         };
-      }
-
+      } 
+      
       return {
         validators: {},
         form,
       };
     }, [emailInputName, form, personNamePrefix, phoneInputName, required])
-  );
+    );
+    */
 
   return {
     name,

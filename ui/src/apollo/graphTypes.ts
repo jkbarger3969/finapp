@@ -667,8 +667,10 @@ export type PeopleWhere = {
 
 export type Person = {
   __typename?: 'Person';
+  email?: Maybe<Scalars['String']>;
   id: Scalars['ID'];
   name: PersonName;
+  phone?: Maybe<Scalars['String']>;
 };
 
 export type PersonName = {
@@ -1091,13 +1093,13 @@ export type DepartmentInputOptsQuery = { __typename?: 'Query', departments: Arra
 
 export type EntityBusinessInputOptFragment = { __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> };
 
-export type EntityPersonInputOptFragment = { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } };
+export type EntityPersonInputOptFragment = { __typename: 'Person', id: string, email?: string | null | undefined, phone?: string | null | undefined, personName: { __typename?: 'PersonName', first: string, last: string } };
 
 export type EntityInputDefaultValue_Business_Fragment = { __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> };
 
 export type EntityInputDefaultValue_Department_Fragment = { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> }>, children: Array<{ __typename: 'Department', id: string }> };
 
-export type EntityInputDefaultValue_Person_Fragment = { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } };
+export type EntityInputDefaultValue_Person_Fragment = { __typename: 'Person', id: string, email?: string | null | undefined, phone?: string | null | undefined, personName: { __typename?: 'PersonName', first: string, last: string } };
 
 export type EntityInputDefaultValueFragment = EntityInputDefaultValue_Business_Fragment | EntityInputDefaultValue_Department_Fragment | EntityInputDefaultValue_Person_Fragment;
 
@@ -1106,7 +1108,7 @@ export type EntityInputOptsQueryVariables = Exact<{
 }>;
 
 
-export type EntityInputOptsQuery = { __typename?: 'Query', entities: Array<{ __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } }> };
+export type EntityInputOptsQuery = { __typename?: 'Query', entities: Array<{ __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Person', id: string, email?: string | null | undefined, phone?: string | null | undefined, personName: { __typename?: 'PersonName', first: string, last: string } }> };
 
 export type EntityInputDefaultValueQueryVariables = Exact<{
   where: EntitiesWhere;
@@ -1114,7 +1116,7 @@ export type EntityInputDefaultValueQueryVariables = Exact<{
 }>;
 
 
-export type EntityInputDefaultValueQuery = { __typename?: 'Query', entities: Array<{ __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> }>, children: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } }> };
+export type EntityInputDefaultValueQuery = { __typename?: 'Query', entities: Array<{ __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> }>, children: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Person', id: string, email?: string | null | undefined, phone?: string | null | undefined, personName: { __typename?: 'PersonName', first: string, last: string } }> };
 
 export type AccountCardPayMethodInputOptFragment = { __typename: 'AccountCard', id: string, active: boolean, type: PaymentCardType, trailingDigits: string };
 
@@ -1171,7 +1173,7 @@ export type UpdateEntryDefaultValuesQueryVariables = Exact<{
 }>;
 
 
-export type UpdateEntryDefaultValuesQuery = { __typename?: 'Query', entry?: { __typename: 'Entry', id: string, date: string, description?: string | null | undefined, reconciled: boolean, total: string, dateOfRecord?: { __typename?: 'EntryDateOfRecord', date: string } | null | undefined, category: { __typename: 'Category', id: string, name: string, type: EntryType, ancestors: Array<{ __typename: 'Category', id: string, name: string, type: EntryType, children: Array<{ __typename: 'Category', id: string }>, parent?: { __typename: 'Category', id: string } | null | undefined }>, children: Array<{ __typename: 'Category', id: string }>, parent?: { __typename: 'Category', id: string } | null | undefined }, department: { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Business' } | { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> }>, children: Array<{ __typename: 'Department', id: string }> }, source: { __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> }>, children: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } }, paymentMethod: { __typename: 'PaymentMethodCard', currency: Currency, card: { __typename: 'AccountCard', trailingDigits: string, type: PaymentCardType, id: string, active: boolean } | { __typename: 'PaymentCard', trailingDigits: string, type: PaymentCardType } } | { __typename: 'PaymentMethodCash', currency: Currency } | { __typename: 'PaymentMethodCheck', currency: Currency, check: { __typename: 'AccountCheck', checkNumber: string, account: { __typename: 'AccountChecking', id: string, accountNumber: string, active: boolean, name: string, cards: Array<{ __typename: 'AccountCard', id: string, active: boolean, type: PaymentCardType, trailingDigits: string }>, owner: { __typename: 'Business', id: string, name: string } | { __typename: 'Department', id: string, name: string } | { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } } } } | { __typename: 'PaymentCheck', checkNumber: string } } | { __typename: 'PaymentMethodCombination', currency: Currency } | { __typename: 'PaymentMethodOnline', currency: Currency } | { __typename: 'PaymentMethodUnknown', currency: Currency } } | null | undefined };
+export type UpdateEntryDefaultValuesQuery = { __typename?: 'Query', entry?: { __typename: 'Entry', id: string, date: string, description?: string | null | undefined, reconciled: boolean, total: string, dateOfRecord?: { __typename?: 'EntryDateOfRecord', date: string } | null | undefined, category: { __typename: 'Category', id: string, name: string, type: EntryType, ancestors: Array<{ __typename: 'Category', id: string, name: string, type: EntryType, children: Array<{ __typename: 'Category', id: string }>, parent?: { __typename: 'Category', id: string } | null | undefined }>, children: Array<{ __typename: 'Category', id: string }>, parent?: { __typename: 'Category', id: string } | null | undefined }, department: { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Business' } | { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> }>, children: Array<{ __typename: 'Department', id: string }> }, source: { __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Department', id: string, name: string, ancestors: Array<{ __typename: 'Business', id: string, name: string, departments: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Department', id: string, name: string, children: Array<{ __typename: 'Department', id: string }> }>, children: Array<{ __typename: 'Department', id: string }> } | { __typename: 'Person', id: string, email?: string | null | undefined, phone?: string | null | undefined, personName: { __typename?: 'PersonName', first: string, last: string } }, paymentMethod: { __typename: 'PaymentMethodCard', currency: Currency, card: { __typename: 'AccountCard', trailingDigits: string, type: PaymentCardType, id: string, active: boolean } | { __typename: 'PaymentCard', trailingDigits: string, type: PaymentCardType } } | { __typename: 'PaymentMethodCash', currency: Currency } | { __typename: 'PaymentMethodCheck', currency: Currency, check: { __typename: 'AccountCheck', checkNumber: string, account: { __typename: 'AccountChecking', id: string, accountNumber: string, active: boolean, name: string, cards: Array<{ __typename: 'AccountCard', id: string, active: boolean, type: PaymentCardType, trailingDigits: string }>, owner: { __typename: 'Business', id: string, name: string } | { __typename: 'Department', id: string, name: string } | { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } } } } | { __typename: 'PaymentCheck', checkNumber: string } } | { __typename: 'PaymentMethodCombination', currency: Currency } | { __typename: 'PaymentMethodOnline', currency: Currency } | { __typename: 'PaymentMethodUnknown', currency: Currency } } | null | undefined };
 
 export type UpdateRefundDefaultValuesFragment = { __typename: 'EntryRefund', id: string, date: string, deleted: boolean, description?: string | null | undefined, reconciled: boolean, total: string, paymentMethod: { __typename: 'PaymentMethodCard', currency: Currency, card: { __typename: 'AccountCard', trailingDigits: string, type: PaymentCardType, id: string, active: boolean } | { __typename: 'PaymentCard', trailingDigits: string, type: PaymentCardType } } | { __typename: 'PaymentMethodCash', currency: Currency } | { __typename: 'PaymentMethodCheck', currency: Currency, check: { __typename: 'AccountCheck', checkNumber: string, account: { __typename: 'AccountChecking', id: string, accountNumber: string, active: boolean, name: string, cards: Array<{ __typename: 'AccountCard', id: string, active: boolean, type: PaymentCardType, trailingDigits: string }>, owner: { __typename: 'Business', id: string, name: string } | { __typename: 'Department', id: string, name: string } | { __typename: 'Person', id: string, personName: { __typename?: 'PersonName', first: string, last: string } } } } | { __typename: 'PaymentCheck', checkNumber: string } } | { __typename: 'PaymentMethodCombination', currency: Currency } | { __typename: 'PaymentMethodOnline', currency: Currency } | { __typename: 'PaymentMethodUnknown', currency: Currency } };
 
@@ -1868,8 +1870,10 @@ export type PaymentMethodUnknownResolvers<ContextType = Context, ParentType exte
 };
 
 export type PersonResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Person'] = ResolversParentTypes['Person']> = {
+  email?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['PersonName'], ParentType, ContextType>;
+  phone?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 

@@ -39,10 +39,11 @@ export const validatePerson = {
       throw new UserInputError(`"NewPerson.name.last" is too short.`);
     }
 
+    /* Keep the following code for future use.
     if (!(newPerson.email || newPerson.phone)) {
       throw new UserInputError(
         `"NewPerson.email" or "NewPerson.phone" is required.`
       );
-    }
+    } */
   },
 } as const;

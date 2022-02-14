@@ -9,10 +9,12 @@ export interface PersonDbRecord {
     first: string;
     last: string;
   };
+  email?: string;
+  phone?: string;
 }
 
 const PersonResolver: PersonResolvers<Context, PersonDbRecord> = {
   id: ({ _id }) => _id.toString(),
 };
 
-export const Person = (PersonResolver as unknown) as PersonResolvers;
+export const Person = PersonResolver as unknown as PersonResolvers;

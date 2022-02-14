@@ -668,8 +668,10 @@ export type PeopleWhere = {
 
 export type Person = {
   __typename?: 'Person';
+  email?: Maybe<Scalars['String']>;
   id: Scalars['ID'];
   name: PersonName;
+  phone?: Maybe<Scalars['String']>;
 };
 
 export type PersonName = {
@@ -1581,8 +1583,10 @@ export type PaymentMethodUnknownResolvers<ContextType = Context, ParentType = Re
 };
 
 export type PersonResolvers<ContextType = Context, ParentType = ResolversParentTypes['Person']> = {
+  email?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['PersonName'], ParentType, ContextType>;
+  phone?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
