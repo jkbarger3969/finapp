@@ -10,12 +10,12 @@ import DateFnsUtils from "@date-io/date-fns";
 import { isEqual, isSameDay, startOfDay } from "date-fns";
 
 import {
-  availableFilterOperations,
   AvailableFilterOperations,
   AvailableRangeFilterOperations,
   getAvailableRangeOps,
   isRangeSelector,
   RangeFilterIcons,
+  availableFilterOperations,
 } from "../filters/rangeFilterUtils";
 import { TableFilterCellProps } from "../plugins";
 import { inlinePaddingWithSelector } from "./shared";
@@ -52,6 +52,9 @@ const defaultKeyboardDatePickerProps: Partial<KeyboardDatePickerProps> = {
   variant: "inline",
 };
 
+const dateFilterOperations: AvailableFilterOperations[] =
+  availableFilterOperations.filter((op) => op !== "notEqual");
+
 // Filter Cell
 export type DateFilterProps = TableFilterCellProps<
   Date,
@@ -73,7 +76,12 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 export const DateFilter = (props: DateFilterProps): JSX.Element => {
-  const { filteringEnabled, getMessage, filter, onFilter } = props;
+  const {
+    filteringEnabled,
+    getMessage: getMessageProp,
+    filter,
+    onFilter,
+  } = props;
 
   const columnName = props.column.name;
 
@@ -248,6 +256,28 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
     [columnName, date, dateSelector, onFilter, rangeDate, rangeDateSelector]
   );
 
+  const getMessage = useCallback<
+    TableFilterRow.FilterSelectorProps["getMessage"]
+  >(
+    (message) => {
+      switch (message as AvailableFilterOperations) {
+        case "equal":
+          return "On";
+        case "greaterThan":
+          return "After";
+        case "greaterThanOrEqual":
+          return "On or After";
+        case "lessThan":
+          return "Before";
+        case "lessThanOrEqual":
+          return "On or Before";
+        default:
+          return getMessageProp(message);
+      }
+    },
+    [getMessageProp]
+  );
+
   const isRangeOp = isRangeSelector(dateSelector);
 
   return (
@@ -259,15 +289,14 @@ export const DateFilter = (props: DateFilterProps): JSX.Element => {
         <Box display="flex" alignItems="end" justifyItems="flex-start">
           <MuiPickersUtilsProvider utils={DateFnsUtils}>
             <TableFilterRow.FilterSelector
-              availableValues={
-                availableFilterOperations as AvailableFilterOperations[]
-              }
+              availableValues={dateFilterOperations}
               disabled={!filteringEnabled}
               getMessage={getMessage}
               iconComponent={RangeFilterIcons}
               onChange={handleDateSelectorChange}
               toggleButtonComponent={TableFilterRow.ToggleButton}
               value={dateSelector}
+              get
             />
             <KeyboardDatePicker
               {...defaultKeyboardDatePickerProps}

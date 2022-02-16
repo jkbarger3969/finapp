@@ -6,6 +6,7 @@ import TreeSelect, {
   ValueNode,
   TreeSelectProps,
   TreeSelectValue,
+  DefaultOption,
 } from "mui-tree-select";
 import React, { forwardRef, Ref, useCallback, useMemo, useState } from "react";
 import { MarkOptional, MarkRequired } from "ts-essentials";
@@ -120,6 +121,8 @@ export const ENTITY_INPUT_OPT_FRAGMENTS = gql`
       first
       last
     }
+    email
+    phone
   }
 `;
 
@@ -444,6 +447,40 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
     [queryResult.error, renderInputProp, branch]
   );
 
+  const renderOption = useCallback<
+    NonNullable<
+      TreeSelectProps<
+        EntityInputOpt,
+        EntityBranchInputOpt,
+        Multiple,
+        DisableClearable,
+        FreeSolo
+      >["renderOption"]
+    >
+  >((props, option, state) => {
+    if (option instanceof ValueNode) {
+      const opt = option.valueOf();
+      if (
+        typeof opt !== "string" &&
+        opt.__typename === "Person" &&
+        (opt.email || opt.phone)
+      ) {
+        return (
+          <DefaultOption
+            props={props}
+            option={option}
+            state={state}
+            ListItemTextProps={{
+              secondary: opt.email || opt.phone,
+            }}
+          />
+        );
+      }
+    }
+
+    return <DefaultOption props={props} option={option} state={state} />;
+  }, []);
+
   const options = useMemo<EntityTreeSelectProps["options"]>(() => {
     const options: EntityTreeSelectProps["options"] = [];
 
@@ -502,6 +539,7 @@ export const EntityInputBase = forwardRef(function EntityInputBase<
       branch={branch}
       loading={queryResult.loading || loading}
       renderInput={renderInput}
+      renderOption={renderOption}
       inputValue={inputValue}
       onInputChange={onInputChange}
       options={options}

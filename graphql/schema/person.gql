@@ -21,6 +21,8 @@ type AddNewPersonPayload {
 type Person {
   id: ID!
   name: PersonName!
+  email: String
+  phone: String
 }
 
 input PeopleNameWhere {
