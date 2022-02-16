@@ -579,8 +579,10 @@ export declare type PeopleWhere = {
 };
 export declare type Person = {
     __typename?: 'Person';
+    email?: Maybe<Scalars['String']>;
     id: Scalars['ID'];
     name: PersonName;
+    phone?: Maybe<Scalars['String']>;
 };
 export declare type PersonName = {
     __typename?: 'PersonName';
@@ -1388,8 +1390,10 @@ export declare type PaymentMethodUnknownResolvers<ContextType = Context, ParentT
     __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 export declare type PersonResolvers<ContextType = Context, ParentType = ResolversParentTypes['Person']> = {
+    email?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
     id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
     name?: Resolver<ResolversTypes['PersonName'], ParentType, ContextType>;
+    phone?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
     __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 export declare type PersonNameResolvers<ContextType = Context, ParentType = ResolversParentTypes['PersonName']> = {

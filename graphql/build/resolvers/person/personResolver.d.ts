@@ -6,6 +6,8 @@ export interface PersonDbRecord {
         first: string;
         last: string;
     };
+    email?: string;
+    phone?: string;
 }
 export declare const Person: PersonResolvers<{
     dataSources: import("../../types").DataSources;
