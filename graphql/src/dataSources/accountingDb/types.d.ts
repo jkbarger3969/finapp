@@ -18,6 +18,11 @@ type PascalCase<T extends string> = T extends `${infer U}_${infer V}`
   : Capitalize<Lowercase<T>>;
 
 // Db Records
+export interface AliasTypeDbRecord extends NodeDbRecord {
+  _id: ObjectId;
+  name: string;
+}
+
 export type EntryTypeDbRecord = PascalCase<EntryType>;
 
 export type EntryItemDbRecord = HistoricalDoc<
@@ -146,7 +151,7 @@ export interface AccountDbRecord {
   active: boolean;
   currencyType: Currency;
   owner: EntityDbRecord;
-  cards: ObjectId[];
+  // cards: ObjectId[];
   type: Currency;
 }
 
@@ -200,6 +205,7 @@ export interface PersonDbRecord {
 
 export type CollectionSchemaMap = {
   accounts: AccountDbRecord;
+  aliases: AliasTypeDbRecord;
   budgets: BudgetDbRecord;
   businesses: BusinessDbRecord;
   categories: CategoryDbRecord;

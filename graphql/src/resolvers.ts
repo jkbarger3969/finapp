@@ -1,5 +1,4 @@
 import { Resolvers } from "./graphTypes";
-import { alias, aliases, Alias, AliasTarget } from "./resolvers/alias";
 import {
   account,
   accounts,
@@ -51,6 +50,7 @@ import { fiscalYear, fiscalYears, FiscalYear } from "./resolvers/fiscalYear";
 import { User } from "./resolvers/user";
 
 import { dateScalar, rationalScalar } from "./resolvers/scalars";
+import { Alias } from "./resolvers/alias";
 
 const resolvers: Resolvers = {
   AccountInterface,
@@ -60,7 +60,6 @@ const resolvers: Resolvers = {
   AccountChecking,
   AccountCreditCard,
   Alias,
-  AliasTarget,
   Date: dateScalar,
   Rational: rationalScalar,
   Budget,
@@ -86,8 +85,6 @@ const resolvers: Resolvers = {
     accounts,
     accountCard,
     accountCards,
-    alias,
-    aliases,
     budget,
     businesses,
     business,

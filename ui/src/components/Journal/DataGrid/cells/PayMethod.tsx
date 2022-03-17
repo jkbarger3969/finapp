@@ -19,20 +19,25 @@ import {
   inlinePadding,
   renderFilterInput,
 } from "./shared";
-import { getCardTypeAbbreviation } from "../../../Inputs/PaymentMethod";
 import { AvailableFilterOperations } from "../filters/rangeFilterUtils";
+import { toString as toStringCardType } from "../../../../apollo/typeUtils/paymentCardType";
+import { toString as toStringAccountCard } from "../../../../apollo/typeUtils/accountCard";
 
 export const payMethodToStr = (
   payMethod: GridPaymentMethodFragment
 ): string => {
   switch (payMethod.__typename) {
     case "PaymentMethodCard":
+      if (payMethod.card.__typename === "AccountCard") {
+        return toStringAccountCard(payMethod.card);
+      }
+
       switch (payMethod.card.type) {
         case PaymentCardType.Visa:
         case PaymentCardType.AmericanExpress:
         case PaymentCardType.MasterCard:
         case PaymentCardType.Discover:
-          return `${getCardTypeAbbreviation(payMethod.card.type)}-${
+          return `${toStringCardType(payMethod.card.type)}-${
             payMethod.card.trailingDigits
           }`;
         default:
@@ -339,7 +344,11 @@ export const PayMethodFilter = (props: PayMethodFilterProps): JSX.Element => {
       const opt = option.valueOf();
       switch (opt.__typename) {
         case "PaymentMethodCard":
-          return `${getCardTypeAbbreviation(opt.card.type)}-${
+          if (opt.card.__typename === "AccountCard") {
+            return toStringAccountCard(opt.card);
+          }
+
+          return `${toStringCardType(opt.card.type)}-${
             opt.card.trailingDigits
           }`;
         case "PaymentMethodCheck":

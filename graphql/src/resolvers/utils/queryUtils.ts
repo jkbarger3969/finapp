@@ -27,8 +27,8 @@ export interface NodeDbRecord<T extends string = string> {
   id: ObjectId;
 }
 
-export const whereId = (whereId: WhereId): QuerySelector<unknown> => {
-  const querySelector: QuerySelector<unknown> = {};
+export const whereId = (whereId: WhereId): QuerySelector<ObjectId> => {
+  const querySelector: QuerySelector<ObjectId> = {};
   for (const idKey of iterateOwnKeys(whereId)) {
     switch (idKey) {
       case "eq":

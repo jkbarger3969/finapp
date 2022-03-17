@@ -1,3 +1,2 @@
-export { alias } from "./alias";
-export { aliases } from "./aliases";
-export { Alias, AliasTarget, AliasDbRecord } from "./aliasResolvers";
+export { Alias } from "./aliasResolvers";
+export { getAliasableResolvers } from "./aliasable";
