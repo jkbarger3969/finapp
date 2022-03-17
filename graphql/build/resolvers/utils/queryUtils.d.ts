@@ -5,7 +5,7 @@ export interface NodeDbRecord<T extends string = string> {
     type: T;
     id: ObjectId;
 }
-export declare const whereId: (whereId: WhereId) => QuerySelector<unknown>;
+export declare const whereId: (whereId: WhereId) => QuerySelector<ObjectId>;
 export declare const whereTreeId: (whereTreeId: WhereTreeId, getRangeIds: (rangeOp: "gt" | "gte" | "lt" | "lte", id: ObjectId) => Promise<ObjectId[]> | ObjectId[]) => Promise<QuerySelector<unknown>> | QuerySelector<unknown>;
 /**
  * @returns Mongodb "$and" logic operator expression.

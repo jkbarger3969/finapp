@@ -5,7 +5,7 @@ import { PersonDbRecord } from "../person";
 import { NodeDbRecord } from "../utils/queryUtils";
 export declare type EntityTypename = "Person" | "Business" | "Department";
 export declare type EntityDbRecord = NodeDbRecord<EntityTypename>;
-export declare const getEntity: (node: EntityDbRecord, db: Db) => Promise<Pick<BusinessDbRecord, "name" | "budget" | "vendor"> & {
+export declare const getEntity: (node: EntityDbRecord, db: Db) => Promise<Pick<BusinessDbRecord, "name" | "vendor" | "budget"> & {
     _id: import("bson").ObjectID;
 } & {
     __typename: "Business";
@@ -18,7 +18,7 @@ export declare const getEntity: (node: EntityDbRecord, db: Db) => Promise<Pick<B
 } & {
     __typename: "Person";
 }>;
-export declare const getEntities: (nodes: EntityDbRecord[], db: Db) => Promise<((Pick<BusinessDbRecord, "name" | "budget" | "vendor"> & {
+export declare const getEntities: (nodes: EntityDbRecord[], db: Db) => Promise<((Pick<BusinessDbRecord, "name" | "vendor" | "budget"> & {
     _id: import("bson").ObjectID;
 } & {
     __typename: "Business";
