@@ -46,6 +46,9 @@ export const PAYMENT_METHOD = gql`
         }
         trailingDigits
         type
+        aliases {
+          name
+        }
       }
       ... on PaymentCard {
         trailingDigits

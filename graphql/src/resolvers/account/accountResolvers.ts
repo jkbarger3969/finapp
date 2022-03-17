@@ -13,12 +13,13 @@ import { Context } from "../../types";
 import { PaymentCardTypeDbRecord } from "../paymentMethod";
 import { EntityDbRecord, getEntity, getEntities } from "../entity";
 import { serializeGQLEnum } from "../utils/gqlEnums";
+import { getAliasableResolvers } from "../alias";
 
 export interface AccountCreditCardDbRecord {
   _id: ObjectId;
   accountType: "CreditCard";
   active: boolean;
-  cards?: ObjectId[];
+  // cards?: ObjectId[];
   currency: Currency;
   name: string;
   owner: EntityDbRecord;
@@ -29,7 +30,7 @@ export interface AccountCheckingDbRecord {
   accountNumber: string;
   accountType: "Checking";
   active: boolean;
-  cards?: ObjectId[];
+  // cards?: ObjectId[];
   currency: Currency;
   name: string;
   owner: EntityDbRecord;
@@ -79,6 +80,7 @@ const AccountCardResolver: AccountCardResolvers<Context, AccountCardDbRecord> =
     authorizedUsers: ({ authorizedUsers }, _, { db }) =>
       getEntities(authorizedUsers, db),
     type: ({ type }) => serializeGQLEnum(type) as PaymentCardType,
+    ...getAliasableResolvers("AccountCard"),
   };
 
 export const AccountCard =
@@ -130,13 +132,11 @@ const AccountCreditCardResolver: AccountCreditCardResolvers<
   AccountCreditCardDbRecord
 > = {
   id: ({ _id }) => _id.toString(),
-  cards: ({ cards }, _, { dataSources: { accountingDb } }) =>
-    cards
-      ? accountingDb.find({
-          collection: "paymentCards",
-          filter: { _id: { $in: cards } },
-        })
-      : [],
+  cards: ({ _id }, _, { dataSources: { accountingDb } }) =>
+    accountingDb.find({
+      collection: "paymentCards",
+      filter: { account: _id },
+    }),
   owner: ({ owner }, _, { db }) => getEntity(owner, db),
 };
 
@@ -148,13 +148,11 @@ const AccountCheckingResolver: AccountCheckingResolvers<
   AccountCheckingDbRecord
 > = {
   id: ({ _id }) => _id.toString(),
-  cards: ({ cards }, _, { dataSources: { accountingDb } }) =>
-    cards
-      ? accountingDb.find({
-          collection: "paymentCards",
-          filter: { _id: { $in: cards } },
-        })
-      : [],
+  cards: ({ _id }, _, { dataSources: { accountingDb } }) =>
+    accountingDb.find({
+      collection: "paymentCards",
+      filter: { account: _id },
+    }),
   owner: ({ owner }, _, { db }) => getEntity(owner, db),
 };
 

@@ -35,6 +35,7 @@ import {
   UseFieldOptions,
   useFormContext,
 } from "../../useKISSForm/form";
+import { toString as toStringAccountCard } from "../../apollo/typeUtils/accountCard";
 
 const NULLISH = Symbol("NULLISH");
 
@@ -66,6 +67,9 @@ const ACCOUNT_CARD_PAY_METHOD_INPUT_OPT = gql`
     active
     type
     trailingDigits
+    aliases {
+      name
+    }
   }
 `;
 
@@ -426,7 +430,7 @@ export const getOptionLabel: NonNullable<
   } else if (opt.__typename === "AccountChecking") {
     return `Acct# ...${opt.accountNumber?.slice(-4)}`;
   } else {
-    return opt.trailingDigits;
+    return toStringAccountCard(opt);
   }
 };
 
@@ -462,7 +466,7 @@ export const getOptionLabelWithPrefixes: NonNullable<
   if (typeof opt === "string" || opt.__typename === "AccountChecking") {
     return optStr;
   } else {
-    return `${getCardTypeAbbreviation(opt.type)}-${optStr}`;
+    return optStr;
   }
 };
 
@@ -789,11 +793,17 @@ export const PaymentMethodInputBase = forwardRef(
                       entryType === EntryType.Credit && !isRefund
                         ? "Last 4 Digits"
                         : undefined,
-                    InputProps: mergeInputStartAdornment(
-                      "append",
-                      `${getCardTypeAbbreviation(curBranch)}-`,
-                      inputProps.InputProps || {}
-                    ),
+                    InputProps: (() => {
+                      if (entryType === EntryType.Debit) {
+                        return inputProps.InputProps || {};
+                      }
+
+                      return mergeInputStartAdornment(
+                        "append",
+                        `${getCardTypeAbbreviation(curBranch)}-`,
+                        inputProps.InputProps || {}
+                      );
+                    })(),
                     ...error,
                   };
               }

@@ -21,6 +21,7 @@
           "EntryItem": "./dataSources/accountingDb/types#EntryItemDbRecord",
           "FiscalYear": "./dataSources/accountingDb/types#FiscalYearDbRecord",
           "NewEntryRefund": "./dataSources/accountingDb/types#EntryRefundDbRecord",
+          "Alias": "./dataSources/accountingDb/types#AliasTypeDbRecord",
 
           "Person": "./dataSources/accountingDb/types#PersonDbRecord"
         },

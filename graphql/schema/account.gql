@@ -6,13 +6,14 @@ interface AccountInterface {
   owner: Entity!
 }
 
-type AccountCard implements PaymentCardInterface {
+type AccountCard implements PaymentCardInterface & Aliasable {
   id: ID!
   account: AccountWithCardsInterface!
   active: Boolean!
   authorizedUsers: [Entity!]!
   trailingDigits: String!
   type: PaymentCardType!
+  aliases(where: AliasesWhere): [Alias!]!
 }
 
 interface AccountWithCardsInterface implements AccountInterface {

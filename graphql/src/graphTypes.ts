@@ -1,6 +1,6 @@
 import Fraction from 'fraction.js';
 import { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
-import { PaymentCardDbRecord, AccountDbRecord, BudgetDbRecord, BusinessDbRecord, CategoryDbRecord, DepartmentDbRecord, EntryDbRecord, EntryRefundDbRecord, EntryItemDbRecord, FiscalYearDbRecord, PersonDbRecord } from './dataSources/accountingDb/types';
+import { PaymentCardDbRecord, AccountDbRecord, BudgetDbRecord, BusinessDbRecord, CategoryDbRecord, DepartmentDbRecord, EntryDbRecord, EntryRefundDbRecord, EntryItemDbRecord, FiscalYearDbRecord, AliasTypeDbRecord, PersonDbRecord } from './dataSources/accountingDb/types';
 import { Context } from './types';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -21,14 +21,20 @@ export type Scalars = {
   Rational: Fraction;
 };
 
-export type AccountCard = PaymentCardInterface & {
+export type AccountCard = Aliasable & PaymentCardInterface & {
   __typename?: 'AccountCard';
   account: AccountChecking | AccountCreditCard;
   active: Scalars['Boolean'];
+  aliases: Array<Alias>;
   authorizedUsers: Array<Entity>;
   id: Scalars['ID'];
   trailingDigits: Scalars['String'];
   type: PaymentCardType;
+};
+
+
+export type AccountCardAliasesArgs = {
+  where?: InputMaybe<AliasesWhere>;
 };
 
 export type AccountCardsWhere = {
@@ -130,26 +136,19 @@ export type Alias = {
   __typename?: 'Alias';
   id: Scalars['ID'];
   name: Scalars['String'];
-  target: AliasTarget;
-  type: AliasType;
 };
 
-export type AliasTarget = Category | Department;
+export type Aliasable = {
+  aliases: Array<Alias>;
+};
 
-export enum AliasType {
-  Alias = 'ALIAS',
-  PostfixDescendants = 'POSTFIX_DESCENDANTS',
-  PrefixDescendants = 'PREFIX_DESCENDANTS'
-}
+
+export type AliasableAliasesArgs = {
+  where?: InputMaybe<AliasesWhere>;
+};
 
 export type AliasesWhere = {
-  and?: InputMaybe<Array<AliasesWhere>>;
   id?: InputMaybe<WhereId>;
-  name?: InputMaybe<WhereRegex>;
-  nor?: InputMaybe<Array<AliasesWhere>>;
-  or?: InputMaybe<Array<AliasesWhere>>;
-  target?: InputMaybe<WhereNode>;
-  type?: InputMaybe<AliasType>;
 };
 
 export type Budget = {
@@ -492,6 +491,11 @@ export type MutationUpdateEntryRefundArgs = {
   input: UpdateEntryRefund;
 };
 
+export type NewAlias = {
+  name: Scalars['String'];
+  type: Scalars['String'];
+};
+
 export type NewBusiness = {
   name: Scalars['String'];
 };
@@ -691,8 +695,6 @@ export type Query = {
   accountCard: AccountCard;
   accountCards: Array<AccountCard>;
   accounts: Array<AccountChecking | AccountCreditCard>;
-  alias?: Maybe<Alias>;
-  aliases: Array<Alias>;
   budget: Budget;
   budgets: Array<Budget>;
   business: Business;
@@ -736,16 +738,6 @@ export type QueryAccountCardsArgs = {
 
 export type QueryAccountsArgs = {
   where?: InputMaybe<AccountsWhere>;
-};
-
-
-export type QueryAliasArgs = {
-  id: Scalars['ID'];
-};
-
-
-export type QueryAliasesArgs = {
-  where?: InputMaybe<AliasesWhere>;
 };
 
 
@@ -1095,9 +1087,8 @@ export type ResolversTypes = {
   AddNewEntryPayload: ResolverTypeWrapper<Omit<AddNewEntryPayload, 'newEntry'> & { newEntry: ResolversTypes['Entry'] }>;
   AddNewEntryRefundPayload: ResolverTypeWrapper<Omit<AddNewEntryRefundPayload, 'newEntryRefund'> & { newEntryRefund: ResolversTypes['EntryRefund'] }>;
   AddNewPersonPayload: ResolverTypeWrapper<Omit<AddNewPersonPayload, 'newPerson'> & { newPerson: ResolversTypes['Person'] }>;
-  Alias: ResolverTypeWrapper<Omit<Alias, 'target'> & { target: ResolversTypes['AliasTarget'] }>;
-  AliasTarget: ResolversTypes['Category'] | ResolversTypes['Department'];
-  AliasType: AliasType;
+  Alias: ResolverTypeWrapper<AliasTypeDbRecord>;
+  Aliasable: ResolversTypes['AccountCard'];
   AliasesWhere: AliasesWhere;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']>;
   Budget: ResolverTypeWrapper<BudgetDbRecord>;
@@ -1133,6 +1124,7 @@ export type ResolversTypes = {
   ID: ResolverTypeWrapper<Scalars['ID']>;
   Int: ResolverTypeWrapper<Scalars['Int']>;
   Mutation: ResolverTypeWrapper<{}>;
+  NewAlias: NewAlias;
   NewBusiness: NewBusiness;
   NewEntry: NewEntry;
   NewEntryDateOfRecord: NewEntryDateOfRecord;
@@ -1207,8 +1199,8 @@ export type ResolversParentTypes = {
   AddNewEntryPayload: Omit<AddNewEntryPayload, 'newEntry'> & { newEntry: ResolversParentTypes['Entry'] };
   AddNewEntryRefundPayload: Omit<AddNewEntryRefundPayload, 'newEntryRefund'> & { newEntryRefund: ResolversParentTypes['EntryRefund'] };
   AddNewPersonPayload: Omit<AddNewPersonPayload, 'newPerson'> & { newPerson: ResolversParentTypes['Person'] };
-  Alias: Omit<Alias, 'target'> & { target: ResolversParentTypes['AliasTarget'] };
-  AliasTarget: ResolversParentTypes['Category'] | ResolversParentTypes['Department'];
+  Alias: AliasTypeDbRecord;
+  Aliasable: ResolversParentTypes['AccountCard'];
   AliasesWhere: AliasesWhere;
   Boolean: Scalars['Boolean'];
   Budget: BudgetDbRecord;
@@ -1241,6 +1233,7 @@ export type ResolversParentTypes = {
   ID: Scalars['ID'];
   Int: Scalars['Int'];
   Mutation: {};
+  NewAlias: NewAlias;
   NewBusiness: NewBusiness;
   NewEntry: NewEntry;
   NewEntryDateOfRecord: NewEntryDateOfRecord;
@@ -1301,6 +1294,7 @@ export type ResolversParentTypes = {
 export type AccountCardResolvers<ContextType = Context, ParentType = ResolversParentTypes['AccountCard']> = {
   account?: Resolver<ResolversTypes['AccountWithCardsInterface'], ParentType, ContextType>;
   active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType, RequireFields<AccountCardAliasesArgs, never>>;
   authorizedUsers?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   trailingDigits?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -1372,13 +1366,12 @@ export type AddNewPersonPayloadResolvers<ContextType = Context, ParentType = Res
 export type AliasResolvers<ContextType = Context, ParentType = ResolversParentTypes['Alias']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  target?: Resolver<ResolversTypes['AliasTarget'], ParentType, ContextType>;
-  type?: Resolver<ResolversTypes['AliasType'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type AliasTargetResolvers<ContextType = Context, ParentType = ResolversParentTypes['AliasTarget']> = {
-  __resolveType?: TypeResolveFn<'Category' | 'Department', ParentType, ContextType>;
+export type AliasableResolvers<ContextType = Context, ParentType = ResolversParentTypes['Aliasable']> = {
+  __resolveType?: TypeResolveFn<'AccountCard', ParentType, ContextType>;
+  aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType, RequireFields<AliasableAliasesArgs, never>>;
 };
 
 export type BudgetResolvers<ContextType = Context, ParentType = ResolversParentTypes['Budget']> = {
@@ -1601,8 +1594,6 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   accountCard?: Resolver<ResolversTypes['AccountCard'], ParentType, ContextType, RequireFields<QueryAccountCardArgs, 'id'>>;
   accountCards?: Resolver<Array<ResolversTypes['AccountCard']>, ParentType, ContextType, RequireFields<QueryAccountCardsArgs, never>>;
   accounts?: Resolver<Array<ResolversTypes['AccountInterface']>, ParentType, ContextType, RequireFields<QueryAccountsArgs, never>>;
-  alias?: Resolver<Maybe<ResolversTypes['Alias']>, ParentType, ContextType, RequireFields<QueryAliasArgs, 'id'>>;
-  aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType, RequireFields<QueryAliasesArgs, never>>;
   budget?: Resolver<ResolversTypes['Budget'], ParentType, ContextType, RequireFields<QueryBudgetArgs, 'id'>>;
   budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType, RequireFields<QueryBudgetsArgs, never>>;
   business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>;
@@ -1677,7 +1668,7 @@ export type Resolvers<ContextType = Context> = {
   AddNewEntryRefundPayload?: AddNewEntryRefundPayloadResolvers<ContextType>;
   AddNewPersonPayload?: AddNewPersonPayloadResolvers<ContextType>;
   Alias?: AliasResolvers<ContextType>;
-  AliasTarget?: AliasTargetResolvers<ContextType>;
+  Aliasable?: AliasableResolvers<ContextType>;
   Budget?: BudgetResolvers<ContextType>;
   BudgetOwner?: BudgetOwnerResolvers<ContextType>;
   Business?: BusinessResolvers<ContextType>;
