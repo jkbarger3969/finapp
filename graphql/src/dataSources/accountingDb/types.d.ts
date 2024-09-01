@@ -183,6 +183,7 @@ export interface DepartmentDbRecord {
     type: "Business" | "Department";
     id: ObjectId;
   };
+  disable?: [ObjectId];
   virtualRoot?: boolean;
 }
 

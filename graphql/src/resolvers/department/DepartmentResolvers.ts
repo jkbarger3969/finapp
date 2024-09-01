@@ -194,6 +194,21 @@ const descendants: DepartmentResolvers["descendants"] = async (
   return descendants;
 };
 
+const disable: DepartmentResolvers["disable"] = (
+  { disable },
+  _,
+  { dataSources: { accountingDb } }
+) => {
+  return disable
+    ? accountingDb.find({
+        collection: "fiscalYears",
+        filter: {
+          _id: { $in: disable },
+        },
+      })
+    : [];
+};
+
 const DepartmentAncestorResolver: DepartmentAncestorResolvers<
   Context,
   | (DepartmentDbRecord & { __typename: "Department" })
@@ -211,6 +226,7 @@ const DepartmentResolver: DepartmentResolvers<Context, DepartmentDbRecord> = {
   budgets,
   business,
   parent,
+  disable,
   children,
   ancestors,
   descendants,

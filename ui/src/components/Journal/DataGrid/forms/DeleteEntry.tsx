@@ -13,7 +13,7 @@ import {
 import { Delete as DeleteIcon } from "@material-ui/icons";
 import { gql, useMutation, useQuery } from "@apollo/client";
 
-import { AsyncButton } from "../../../utils/AsyncButton";
+import { AsyncButton } from "../../../Utils/AsyncButton";
 import {
   DeleteEntryStateQuery as DeleteEntryState,
   DeleteEntryStateQueryVariables as DeleteEntryStateVars,
@@ -24,7 +24,7 @@ import {
   DeleteEntryRefundMutation,
   DeleteEntryRefundMutationVariables as DeleteEntryRefundMutationVars,
 } from "../../../../apollo/graphTypes";
-import OverlayLoading from "../../../utils/OverlayLoading";
+import OverlayLoading from "../../../Utils/OverlayLoading";
 import { deserializeRational } from "../../../../apollo/scalars";
 import { ENTRY, REFUND } from "../Grid.gql";
 import { GraphQLError } from "graphql";

@@ -5,6 +5,9 @@ export const GET_REPORT_DATA_DEPT_FRAGMENT = gql`
     __typename
     id
     name
+    disable {
+      id
+    }
     budgets {
       id
       __typename
@@ -142,6 +145,17 @@ export const GET_REPORT_DATA = gql`
   ${GET_REPORT_DATA_DEPT_FRAGMENT},
   ${GET_REPORT_DATA_ENTRY_FRAGMENT}
   ${REPORT_DATA_OTHER_ENTRY_REFUND}
+`;
+
+export const GET_FISCAL_YEAR = gql`
+  query GetFiscalYears($where: FiscalYearsWhere) {
+    fiscalYears(where: $where) {
+      __typename
+      id
+      begin
+      end
+    }
+  }
 `;
 
 export const JOURNAL_ENTRY_ADDED_SUB = gql`

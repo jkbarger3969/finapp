@@ -58,10 +58,10 @@ import {
 } from "../../../apollo/graphTypes";
 import { deserializeDate, deserializeRational } from "../../../apollo/scalars";
 import { GRID_ENTRIES, GRID_ENTRY_REFUNDS } from "./Grid.gql";
-import OverlayLoading from "../../utils/OverlayLoading";
+import OverlayLoading from "../../Utils/OverlayLoading";
 import useLocalStorage, {
   UseLocalStorageArg,
-} from "../../utils/useLocalStorage";
+} from "../../Utils/useLocalStorage";
 import {
   FilteringState,
   FiltersDef,
@@ -451,6 +451,7 @@ export type GridRefundsWhere = {
 };
 
 export type Props = {
+  fiscalYear?: string;
   title?: string;
   loading?: boolean;
   reconcileMode?: boolean;
@@ -462,6 +463,8 @@ export type Props = {
 };
 const JournalGrid: React.FC<Props> = (props: Props) => {
   const classes = useStyles();
+
+  const fiscalYear = props.fiscalYear;
 
   const entryVariables = useMemo<GridEntriesQueryVariables>(
     () => ({
@@ -573,7 +576,10 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
     for (const row of rows) {
       const { department, category, source, paymentMethod } = row;
 
-      if (!deptFilterOpts.has(department.id)) {
+      if (
+        !deptFilterOpts.has(department.id) &&
+        department.disable.every(({ id }) => id !== fiscalYear)
+      ) {
         deptFilterOpts.set(department.id, department as DepartmentInputOpt);
       }
 
@@ -640,7 +646,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
         } as RationalFilterProps,
       },
     };
-  }, [rows]);
+  }, [rows, fiscalYear]);
 
   const [columnOrder, setColumnOrder] = useLocalStorage({
     defaultValue: defaultColumnOrder,
@@ -770,6 +776,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
           paymentMethod: { accounts: props.selectableAccounts },
           department: {
             root: props.selectableDepts,
+            fyID: fiscalYear,
           },
         },
         refetchQueries: {
@@ -825,6 +832,7 @@ const JournalGrid: React.FC<Props> = (props: Props) => {
       props.selectableDepts,
       entryVariables,
       entryRefundVariables,
+      fiscalYear,
     ]
   );
 

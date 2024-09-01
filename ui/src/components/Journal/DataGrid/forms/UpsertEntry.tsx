@@ -49,8 +49,8 @@ import {
   useWatcher,
   UseDefaultValuesOptions,
 } from "../../../../useKISSForm/form";
-import { AsyncButton } from "../../../utils/AsyncButton";
-import OverlayLoading from "../../../utils/OverlayLoading";
+import { AsyncButton } from "../../../Utils/AsyncButton";
+import OverlayLoading from "../../../Utils/OverlayLoading";
 import { ENTRY } from "../Grid.gql";
 import {
   NewEntryMutation,

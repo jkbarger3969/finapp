@@ -8,6 +8,7 @@ type Department {
   business: Business!
   parent: DepartmentAncestor!
   children: [Department!]!
+  disable: [FiscalYear!]!
   ancestors(
     """
     Set an alterative root for the `ancestor` path.

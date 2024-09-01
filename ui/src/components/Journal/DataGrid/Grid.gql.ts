@@ -115,6 +115,10 @@ export const ENTRY_SANS_REFUNDS = gql`
       __typename
       id
       name
+      disable {
+        __typename
+        id
+      }
     }
     category {
       __typename

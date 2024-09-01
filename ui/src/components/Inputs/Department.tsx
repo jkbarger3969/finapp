@@ -23,6 +23,8 @@ import {
   DepartmentInputOptFragment,
   DepartmentInputDefaultValueFragment,
   DepartmentsWhere,
+  DepartmentInputFiscalYearQuery,
+  DepartmentInputFiscalYearQueryVariables,
 } from "../../apollo/graphTypes";
 import { LoadingDefaultBlank, sortBranchesToTop } from "./shared";
 import {
@@ -45,6 +47,10 @@ export const DEPARTMENT_INPUT_OPT_FRAGMENT = gql`
     id
     name
     children {
+      __typename
+      id
+    }
+    disable {
       __typename
       id
     }
@@ -82,6 +88,15 @@ export const DEPARTMENT_INPUT_OPTS = gql`
     }
   }
   ${DEPARTMENT_INPUT_OPT_FRAGMENT}
+`;
+
+export const DEPARTMENT_INPUT_FISCAL_YEAR = gql`
+  query DepartmentInputFiscalYear($where: FiscalYearsWhere) {
+    fiscalYears(where: $where) {
+      __typename
+      id
+    }
+  }
 `;
 
 export const useDepartmentDefaultValue = (
@@ -204,6 +219,7 @@ export type DepartmentInputBaseProps<
   "branch" | "onBranchChange"
 > & {
   root: DepartmentsWhere;
+  fyID?: string;
 };
 
 export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
@@ -220,6 +236,7 @@ export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
     branch: branchProp,
     onBranchChange: onBranchChangeProp,
     loading,
+    fyID,
     ...rest
   } = props;
 
@@ -313,11 +330,12 @@ export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
       (branch ? queryResult.data?.departments : rootResult.data?.departments) ||
       []
     )
-      .reduce((options, category) => {
-        if (category.children.length) {
-          options.push(new BranchNode(category, branch));
+      .filter(({ disable }) => disable.every(({ id }) => id !== fyID))
+      .reduce((options, department) => {
+        if (department.children.length) {
+          options.push(new BranchNode(department, branch));
         }
-        options.push(category);
+        options.push(department);
 
         return options;
       }, options)
@@ -327,6 +345,7 @@ export const DepartmentInputBase = forwardRef(function DepartmentInputBase<
     rootResult.data?.departments,
     branch,
     queryResult.data?.departments,
+    fyID,
   ]);
 
   if (rootResult.loading) {

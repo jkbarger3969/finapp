@@ -139,6 +139,7 @@ const GridParent = ({
 
   return (
     <Grid
+      fiscalYear={fiscalYear}
       title={data?.department?.name}
       reconcileMode={reconcileMode}
       loading={loading}
