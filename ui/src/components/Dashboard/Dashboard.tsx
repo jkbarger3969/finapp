@@ -25,17 +25,18 @@ import {
   GetReportDataQueryVariables,
   EntryType,
   GetReportDataDeptFragment as DepartmentFragment,
-  FiscalYear,
   DepartmentsWhere,
   AccountsWhere,
   ReportDataOtherEntryRefundFragment,
+  GetFiscalYearsQuery,
+  GetFiscalYearsQueryVariables,
 } from "../../apollo/graphTypes";
 import {
   deserializeDate,
   deserializeRational,
   serializeDate,
 } from "../../apollo/scalars";
-import { GET_REPORT_DATA } from "./ReportData.gql";
+import { GET_FISCAL_YEAR, GET_REPORT_DATA } from "./ReportData.gql";
 import {
   UpsertEntry,
   UpsertEntryProps,
@@ -87,14 +88,33 @@ const Dashboard = (props: {
   const [addEntryOpen, setAddEntryOpen] = useState<boolean>(false);
 
   const [year, setYear] = useState<Date>(new Date(new Date().toDateString()));
+
+  const {
+    loading: fyLoading,
+    error: fyError,
+    data: fyData,
+  } = useQuery<GetFiscalYearsQuery, GetFiscalYearsQueryVariables>(
+    GET_FISCAL_YEAR,
+    {
+      variables: {
+        where: {
+          date: {
+            eq: serializeDate(year),
+          },
+        },
+      },
+      fetchPolicy: "cache-and-network",
+    }
+  );
+
+  const fiscalYear = fyData?.fiscalYears?.[0];
+
   const variables = useMemo<GetReportDataQueryVariables>(
     () => ({
       deptId,
       where: {
         fiscalYear: {
-          date: {
-            eq: serializeDate(year),
-          },
+          id: { eq: fiscalYear?.id },
         },
         department: {
           id: {
@@ -105,9 +125,7 @@ const Dashboard = (props: {
       },
       whereRefunds: {
         fiscalYear: {
-          date: {
-            eq: serializeDate(year),
-          },
+          id: { eq: fiscalYear?.id },
         },
         deleted: false,
       },
@@ -120,9 +138,7 @@ const Dashboard = (props: {
         fiscalYear: {
           nor: [
             {
-              date: {
-                eq: serializeDate(year),
-              },
+              id: { eq: fiscalYear?.id },
             },
           ],
         },
@@ -130,7 +146,7 @@ const Dashboard = (props: {
       },
       filterRefunds: true,
     }),
-    [deptId, year]
+    [deptId, fiscalYear?.id]
   );
 
   const { loading, error, data } = useQuery<
@@ -139,21 +155,10 @@ const Dashboard = (props: {
   >(GET_REPORT_DATA, {
     variables,
     fetchPolicy: "cache-and-network",
+    skip: fyLoading,
   });
 
-  const isLoading = loading && !data?.entries;
-
-  const fiscalYear = useMemo<null | FiscalYear>(() => {
-    for (const fiscalYear of data?.fiscalYears || []) {
-      if (
-        year >= new Date(fiscalYear.begin) &&
-        year < new Date(fiscalYear.end)
-      ) {
-        return fiscalYear;
-      }
-    }
-    return null;
-  }, [year, data]);
+  const isLoading = fyLoading || loading;
 
   const entries = useMemo(() => {
     return data?.entries || [];
@@ -186,9 +191,17 @@ const Dashboard = (props: {
       const depts: (GetReportDataQuery["department"] | DepartmentFragment)[] =
         [];
 
-      if (department) {
+      if (department?.disable.every(({ id }) => id !== fiscalYear?.id)) {
         const budgetsAccountedFor = new Set<string>();
-        depts.push(department, ...department.descendants);
+        depts.push(
+          ...[
+            department,
+            ...department.descendants.filter(({ disable }) =>
+              disable.every(({ id }) => id !== fiscalYear?.id)
+            ),
+          ]
+        );
+
         for (const dept of depts) {
           const budgetFound =
             dept.budgets.find(
@@ -227,7 +240,11 @@ const Dashboard = (props: {
         if (entry.deleted) {
           continue;
         }
-        const deptReport = deptReports.get(entry.department.id) as DeptReport;
+        const deptReport = deptReports.get(entry.department.id);
+
+        if (!deptReport) {
+          continue;
+        }
 
         let entryTotal = deserializeRational(entry.total);
 
@@ -258,7 +275,6 @@ const Dashboard = (props: {
             entryTotal = entryTotal.sub(deserializeRational(item.total));
           }
         }
-
         if (entry.category.type === EntryType.Credit) {
           uSpent = uSpent.sub(entryTotal);
           deptReport.spent = deptReport.spent.sub(entryTotal);
@@ -435,6 +451,7 @@ const Dashboard = (props: {
         paymentMethod: { accounts: selectableAccounts },
         department: {
           root: selectableDepts,
+          fyID: fiscalYear?.id,
         },
       },
       refetchQueries: {
@@ -446,13 +463,19 @@ const Dashboard = (props: {
         ],
       },
     }),
-    [addEntryOpen, selectableAccounts, selectableDepts, variables]
+    [
+      addEntryOpen,
+      selectableAccounts,
+      fiscalYear?.id,
+      selectableDepts,
+      variables,
+    ]
   );
 
   if (isLoading) {
     return <p>Loading...</p>;
-  } else if (error) {
-    return <p>{error.message}</p>;
+  } else if (error || fyError) {
+    return <p>{error?.message || fyError?.message}</p>;
   }
 
   return (

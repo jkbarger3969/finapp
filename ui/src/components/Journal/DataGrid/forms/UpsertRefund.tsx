@@ -41,8 +41,8 @@ import {
   inputGridItemProps,
   useSharedDialogInputProps,
 } from "./shared";
-import { AsyncButton } from "../../../utils/AsyncButton";
-import OverlayLoading from "../../../utils/OverlayLoading";
+import { AsyncButton } from "../../../Utils/AsyncButton";
+import OverlayLoading from "../../../Utils/OverlayLoading";
 import { REFUND, ENTRY } from "../Grid.gql";
 import {
   NewEntryRefund,

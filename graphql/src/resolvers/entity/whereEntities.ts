@@ -51,6 +51,7 @@ export const whereEntities = async (
         promises.push(
           (async () => {
             const result = whereDepartments(entitiesWhere[whereKey], db);
+
             const query = result instanceof Promise ? await result : result;
 
             const results = (

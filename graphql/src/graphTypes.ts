@@ -245,6 +245,7 @@ export type Department = {
   children: Array<Department>;
   code?: Maybe<Scalars['String']>;
   descendants: Array<Department>;
+  disable: Array<FiscalYear>;
   id: Scalars['ID'];
   name: Scalars['String'];
   parent: DepartmentAncestor;
@@ -1429,6 +1430,7 @@ export type DepartmentResolvers<ContextType = Context, ParentType = ResolversPar
   children?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>;
   code?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   descendants?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType>;
+  disable?: Resolver<Array<ResolversTypes['FiscalYear']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   parent?: Resolver<ResolversTypes['DepartmentAncestor'], ParentType, ContextType>;
