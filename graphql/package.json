@@ -41,7 +41,7 @@
     "google-auth-library": "^10.5.0",
     "graphql": "^16.2.0",
     "graphql-type-json": "^0.3.2",
-    "graphql-upload": "^16.0.2",
+    "graphql-upload-minimal": "^1.6.4",
     "jsonwebtoken": "^9.0.3",
     "koa": "^2.13.1",
     "mongodb": "^4.2.2",

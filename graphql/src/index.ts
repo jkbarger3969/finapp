@@ -6,7 +6,7 @@ import { ApolloServer } from "apollo-server-koa";
 import { ApolloServerPluginDrainHttpServer } from "apollo-server-core";
 import Koa from "koa";
 import * as http from "http";
-import graphqlUploadKoa from "graphql-upload/graphqlUploadKoa.mjs";
+import { graphqlUploadKoa } from "graphql-upload-minimal";
 
 import resolvers from "./resolvers";
 import { Context, DataSources } from "./types";

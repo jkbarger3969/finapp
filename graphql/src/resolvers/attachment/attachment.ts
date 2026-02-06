@@ -1,7 +1,7 @@
 import { Storage } from "@google-cloud/storage";
 import { GraphQLError } from "graphql";
 import { ObjectId } from "mongodb";
-import { GraphQLUpload } from "graphql-upload";
+import { GraphQLUpload } from "graphql-upload-minimal";
 import { MutationResolvers, Resolvers } from "../../graphTypes";
 import { AttachmentDbRecord } from "../../dataSources/accountingDb/types";
 
