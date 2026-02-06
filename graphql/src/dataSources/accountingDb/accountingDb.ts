@@ -6,6 +6,7 @@ import {
   Filter as FilterQuery,
   OptionalId,
   UpdateFilter as UpdateQuery,
+  InsertOneResult,
 } from "mongodb";
 
 import { Context } from "../../types";
@@ -59,7 +60,7 @@ export class AccountingDb extends DataSource<Context> {
   }: {
     collection: TCollection;
     doc: OptionalId<CollectionSchemaMap[TCollection]>;
-  }) {
+  }): Promise<InsertOneResult<CollectionSchemaMap[TCollection]>> {
     return this.#db
       .collection<CollectionSchemaMap[TCollection]>(collection)
       .insertOne(

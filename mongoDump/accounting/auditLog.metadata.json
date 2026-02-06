@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"userId":{"$numberInt":"1"}},"name":"userId_1"},{"v":{"$numberInt":"2"},"key":{"timestamp":{"$numberInt":"-1"}},"name":"timestamp_-1"}],"uuid":"f72d0cabd750454da4830e210d349900","collectionName":"auditLog","type":"collection"}
