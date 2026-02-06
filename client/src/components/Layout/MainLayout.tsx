@@ -69,9 +69,9 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
         transition: theme.transitions.create("width"),
         width: "100%",
         [theme.breakpoints.up("md")]: {
-            width: "400px",
+            width: "250px",
             "&:focus": {
-                width: "500px",
+                width: "350px",
             },
         },
     },
@@ -238,7 +238,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
                                 boxShadow: '0 4px 14px 0 rgba(0, 229, 255, 0.3)',
                                 '&:hover': {
                                     boxShadow: '0 6px 20px 0 rgba(0, 229, 255, 0.5)',
-                                }
+                                },
+                                whiteSpace: 'nowrap',
                             }}
                         >
                             New Entry

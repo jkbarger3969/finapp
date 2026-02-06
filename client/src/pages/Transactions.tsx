@@ -278,11 +278,20 @@ export default function Transactions() {
                 if (params.row.isRefund) {
                     return (
                         <Box>
-                            <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                            <Typography variant="body2" fontWeight="bold">
                                 {params.value}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                                ↳ Refund for original transaction
+                            <Typography variant="caption" color="primary.main">
+                                ↳ Refund Item
+                            </Typography>
+                        </Box>
+                    );
+                }
+                if (params.row.isOriginalForRefund) {
+                    return (
+                        <Box sx={{ pl: 2, borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
+                            <Typography variant="body2" color="text.secondary">
+                                Original: {params.value}
                             </Typography>
                         </Box>
                     );
@@ -462,21 +471,12 @@ export default function Transactions() {
 
             data.entries.forEach((entry: any) => {
                 if (entry.refunds && entry.refunds.length > 0) {
-                    // Add the original entry (debit)
-                    matchingRows.push({
-                        ...entry,
-                        id: entry.id,
-                        isRefund: false,
-                        parentEntryId: null,
-                        rowType: 'DEBIT',
-                    });
-
-                    // Add each refund as a separate row (credit)
+                    // 1. Add each refund as a primary row
                     entry.refunds.forEach((refund: any) => {
                         matchingRows.push({
                             id: `refund-${refund.id}`,
                             refundId: refund.id,
-                            description: refund.description || `Refund for: ${entry.description}`,
+                            description: refund.description || `Refund`,
                             date: refund.date,
                             reconciled: refund.reconciled,
                             total: refund.total,
@@ -486,9 +486,17 @@ export default function Transactions() {
                             attachments: [],
                             isRefund: true,
                             parentEntryId: entry.id,
-                            parentDescription: entry.description,
                             rowType: 'CREDIT',
                         });
+                    });
+
+                    // 2. Add the original entry as the "Reference" row underneath
+                    matchingRows.push({
+                        ...entry,
+                        id: entry.id,
+                        isRefund: false,
+                        isOriginalForRefund: true, // Flag for styling
+                        rowType: 'DEBIT',
                     });
                 }
             });
@@ -771,6 +779,7 @@ export default function Transactions() {
                                         },
                                     }}
                                     checkboxSelection
+                                    isRowSelectable={(params) => !params.row.reconciled}
                                     rowSelectionModel={rowSelectionModel}
                                     onRowSelectionModelChange={(newModel) => setRowSelectionModel(newModel)}
                                     slots={{ toolbar: GridToolbar }}
