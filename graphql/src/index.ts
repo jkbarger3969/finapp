@@ -6,7 +6,7 @@ import { ApolloServer } from "apollo-server-koa";
 import { ApolloServerPluginDrainHttpServer } from "apollo-server-core";
 import Koa from "koa";
 import * as http from "http";
-import { graphqlUploadKoa } from "graphql-upload";
+import graphqlUploadKoa from "graphql-upload/graphqlUploadKoa.mjs";
 
 import resolvers from "./resolvers";
 import { Context, DataSources } from "./types";
@@ -41,8 +41,8 @@ const PORT = process.env.PORT || 4000;
     await db.collection("auditLog").createIndex({ userId: 1 });
     await db.collection("auditLog").createIndex({ timestamp: -1 });
 
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
-      (process.env.NODE_ENV === "production" 
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI ||
+      (process.env.NODE_ENV === "production"
         ? "https://yourdomain.com/login"
         : "http://localhost:5173/login");
 
