@@ -24,7 +24,6 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
-import CancelIcon from '@mui/icons-material/Cancel';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import AddIcon from '@mui/icons-material/Add';
@@ -139,15 +138,15 @@ export default function BudgetAllocationTab() {
     const [result, reexecuteQuery] = useQuery({ query: GET_BUDGET_DATA });
     const [, upsertBudget] = useMutation(UPSERT_BUDGET);
     const [, createFiscalYear] = useMutation(CREATE_FISCAL_YEAR);
-    
+
     const [selectedFiscalYear, setSelectedFiscalYear] = useState<string>('');
     const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
-    
+
     const [editingDept, setEditingDept] = useState<DepartmentNode | null>(null);
     const [editAmounts, setEditAmounts] = useState<Record<string, string>>({});
-    
+
     const [fyDialogOpen, setFyDialogOpen] = useState(false);
     const [newFyYear, setNewFyYear] = useState<number>(() => {
         const currentFY = getCurrentFiscalYear();
@@ -178,7 +177,7 @@ export default function BudgetAllocationTab() {
         }
     }, [data?.fiscalYears, selectedFiscalYear]);
 
-    const { topLevelDepts, deptMap } = useMemo(() => {
+    const { topLevelDepts } = useMemo(() => {
         if (!data?.departments || !data?.budgets || !selectedFiscalYear) {
             return { topLevelDepts: [], deptMap: new Map() };
         }
@@ -216,7 +215,7 @@ export default function BudgetAllocationTab() {
         data.departments.forEach((dept: any) => {
             const node = map.get(dept.id)!;
             const deptAncestors = dept.ancestors?.filter((a: any) => a.__typename === 'Department') || [];
-            
+
             if (deptAncestors.length === 0) {
                 rootDepts.push(node);
             } else {
@@ -230,7 +229,7 @@ export default function BudgetAllocationTab() {
             }
         });
 
-        return { topLevelDepts: rootDepts, deptMap: map };
+        return { topLevelDepts: rootDepts };
     }, [data, selectedFiscalYear]);
 
     const calcSubtotal = (dept: DepartmentNode): number => {
@@ -370,7 +369,6 @@ export default function BudgetAllocationTab() {
         const isExpanded = expandedDepts.has(dept.id);
         const subtotal = calcSubtotal(dept);
         const childrenTotal = dept.children.reduce((sum, child) => sum + calcSubtotal(child), 0);
-        const isEditing = editingDept?.id === dept.id;
 
         return (
             <Box key={dept.id} sx={{ mb: 2 }}>
@@ -448,7 +446,7 @@ export default function BudgetAllocationTab() {
                                             <Collapse in={childIsExpanded}>
                                                 <Box sx={{ pl: 3, mt: 0.5, borderLeft: '1px dashed', borderColor: 'divider', ml: 1 }}>
                                                     {child.children.map(grandChild => (
-                                                        <Paper 
+                                                        <Paper
                                                             key={grandChild.id}
                                                             variant="outlined"
                                                             sx={{ p: 1, mb: 0.5, display: 'flex', justifyContent: 'space-between' }}
@@ -582,7 +580,7 @@ export default function BudgetAllocationTab() {
                                 ))}
 
                                 <Divider />
-                                
+
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <Typography>Subdepartments Total:</Typography>
                                     <Typography fontWeight="bold" color={isOverBudget() ? 'error.main' : 'primary.main'}>
@@ -600,8 +598,8 @@ export default function BudgetAllocationTab() {
                                     <Typography variant="caption" color="text.secondary">
                                         Budget allocation progress
                                     </Typography>
-                                    <LinearProgress 
-                                        variant="determinate" 
+                                    <LinearProgress
+                                        variant="determinate"
                                         value={Math.min((getChildrenTotal() / (getParentBudget() || 1)) * 100, 100)}
                                         color={isOverBudget() ? 'error' : 'primary'}
                                         sx={{ height: 8, borderRadius: 4, mt: 0.5 }}
@@ -624,9 +622,9 @@ export default function BudgetAllocationTab() {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={cancelEditing}>Cancel</Button>
-                    <Button 
-                        variant="contained" 
-                        onClick={handleSaveEdits} 
+                    <Button
+                        variant="contained"
+                        onClick={handleSaveEdits}
                         disabled={saving}
                         startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
                     >
@@ -643,7 +641,7 @@ export default function BudgetAllocationTab() {
                             Fiscal year runs from September 1 to August 31.
                             Select the ending year to auto-populate dates.
                         </Alert>
-                        
+
                         <TextField
                             label="Fiscal Year Ending"
                             type="number"
@@ -653,7 +651,7 @@ export default function BudgetAllocationTab() {
                             helperText={`Will be displayed as: ${newFyYear - 1}-${newFyYear}`}
                             inputProps={{ min: 2020, max: 2100 }}
                         />
-                        
+
                         <TextField
                             label="Start Date (Sept 1)"
                             type="date"

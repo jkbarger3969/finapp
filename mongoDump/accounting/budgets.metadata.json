@@ -1,1 +1,1 @@
-{"options":{},"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_","ns":"accounting.budgets"}],"uuid":"125ae1edbc1f46e7b6bfb7ee7fe3456a"}
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"574323e35e5b4242a53496b014ee5a38","collectionName":"budgets","type":"collection"}

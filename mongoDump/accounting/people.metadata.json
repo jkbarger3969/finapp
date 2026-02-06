@@ -1,1 +1,1 @@
-{"options":{},"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_","ns":"accounting.people"}],"uuid":"64d47c9f472942a39d8ffd5e840717ae"}
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"4ce3972e90d9421490bbae1458442cc1","collectionName":"people","type":"collection"}

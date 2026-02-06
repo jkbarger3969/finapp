@@ -137,7 +137,7 @@ export default function Login() {
                         component="h1"
                         gutterBottom
                         sx={{
-                            background: theme => theme.device?.linearGradient || 'linear-gradient(135deg, #6C5DD3 0%, #00E5FF 100%)',
+                            background: (theme: any) => theme.device?.linearGradient || 'linear-gradient(135deg, #6C5DD3 0%, #00E5FF 100%)',
                             backgroundClip: 'text',
                             textFillColor: 'transparent',
                             WebkitBackgroundClip: 'text',

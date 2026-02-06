@@ -1,10 +1,10 @@
 import { useQuery } from "urql";
-import { 
-    Box, 
-    Typography, 
-    Paper, 
-    Grid, 
-    CircularProgress, 
+import {
+    Box,
+    Typography,
+    Paper,
+    Grid,
+    CircularProgress,
     Alert,
     LinearProgress,
     Chip,
@@ -63,15 +63,7 @@ const GET_BUDGET_DATA = `
     }
 `;
 
-function parseRational(rational: any): number {
-    if (!rational) return 0;
-    try {
-        const r = typeof rational === 'string' ? JSON.parse(rational) : rational;
-        return (r.s * r.n) / r.d;
-    } catch {
-        return 0;
-    }
-}
+
 
 interface DeptNode {
     id: string;
@@ -89,7 +81,7 @@ export default function Budget() {
 
     const entriesWhere: any = { deleted: false };
     const budgetsWhere: any = {};
-    
+
     if (fiscalYearId) {
         entriesWhere.fiscalYear = {
             id: { eq: fiscalYearId },
@@ -107,9 +99,9 @@ export default function Budget() {
 
     const { data, fetching, error } = result;
 
-    const userDepartments = user?.permissions
-        ?.filter((p: any) => p.departmentId)
-        ?.map((p: any) => p.departmentId) || [];
+    const userDepartments = (user as any)?.departments
+        ?.map((p: any) => p.department?.id)
+        .filter(Boolean) || [];
     const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
     const { topLevelDepts, totalBudget, totalSpent } = (() => {
@@ -151,7 +143,7 @@ export default function Budget() {
         data.departments.forEach((dept: any) => {
             const node = deptMap.get(dept.id)!;
             const deptAncestors = dept.ancestors?.filter((a: any) => a.__typename === 'Department') || [];
-            
+
             if (deptAncestors.length === 0) {
                 rootDepts.push(node);
             } else {
@@ -167,7 +159,7 @@ export default function Budget() {
             if (isSuperAdmin) return true;
             if (userDepartments.length === 0) return true;
             if (userDepartments.includes(deptId)) return true;
-            
+
             const dept = data.departments.find((d: any) => d.id === deptId);
             const ancestors = dept?.ancestors?.filter((a: any) => a.__typename === 'Department')?.map((a: any) => a.id) || [];
             return ancestors.some((ancestorId: string) => userDepartments.includes(ancestorId));
@@ -198,10 +190,10 @@ export default function Budget() {
 
         const totals = calcTotals(filteredDepts);
 
-        return { 
-            topLevelDepts: filteredDepts, 
-            totalBudget: totals.budget, 
-            totalSpent: totals.spent 
+        return {
+            topLevelDepts: filteredDepts,
+            totalBudget: totals.budget,
+            totalSpent: totals.spent
         };
     })();
 
@@ -239,8 +231,8 @@ export default function Budget() {
 
         return (
             <Box key={dept.id} sx={{ mb: 2 }}>
-                <Paper 
-                    sx={{ 
+                <Paper
+                    sx={{
                         p: 2,
                         borderLeft: 4,
                         borderColor: percentUsed > 100 ? 'error.main' : percentUsed > 80 ? 'warning.main' : 'success.main',
@@ -257,13 +249,13 @@ export default function Budget() {
                                 {dept.name}
                             </Typography>
                         </Box>
-                        <Chip 
+                        <Chip
                             label={`${Math.round(percentUsed)}%`}
                             size="small"
                             color={percentUsed > 100 ? 'error' : percentUsed > 80 ? 'warning' : 'success'}
                         />
                     </Box>
-                    
+
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 4 }}>
                             <Typography variant="body2" color="text.secondary">Budget</Typography>
@@ -281,8 +273,8 @@ export default function Budget() {
                         </Grid>
                     </Grid>
 
-                    <LinearProgress 
-                        variant="determinate" 
+                    <LinearProgress
+                        variant="determinate"
                         value={Math.min(percentUsed, 100)}
                         color={percentUsed > 100 ? 'error' : percentUsed > 80 ? 'warning' : 'success'}
                         sx={{ height: 8, borderRadius: 4, mt: 2 }}
@@ -301,10 +293,10 @@ export default function Budget() {
 
                                 return (
                                     <Box key={child.id} sx={{ mb: 1 }}>
-                                        <Paper 
+                                        <Paper
                                             variant="outlined"
-                                            sx={{ 
-                                                p: 1.5, 
+                                            sx={{
+                                                p: 1.5,
                                                 borderLeft: 3,
                                                 borderColor: childPercent > 100 ? 'error.main' : childPercent > 80 ? 'warning.main' : 'success.main',
                                             }}
@@ -333,7 +325,7 @@ export default function Budget() {
                                                             {formatCurrency(childRemaining)}
                                                         </Typography>
                                                     </Box>
-                                                    <Chip 
+                                                    <Chip
                                                         label={`${Math.round(childPercent)}%`}
                                                         size="small"
                                                         color={childPercent > 100 ? 'error' : childPercent > 80 ? 'warning' : 'success'}
@@ -351,7 +343,7 @@ export default function Budget() {
                                                         const gcPercent = gcBudget > 0 ? (gcSpent / gcBudget) * 100 : 0;
 
                                                         return (
-                                                            <Paper 
+                                                            <Paper
                                                                 key={grandChild.id}
                                                                 variant="outlined"
                                                                 sx={{ p: 1, mb: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
@@ -360,7 +352,7 @@ export default function Budget() {
                                                                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                                                                     <Typography variant="body2">{formatCurrency(gcBudget)}</Typography>
                                                                     <Typography variant="body2" color="error.main">{formatCurrency(gcSpent)}</Typography>
-                                                                    <Chip 
+                                                                    <Chip
                                                                         label={`${Math.round(gcPercent)}%`}
                                                                         size="small"
                                                                         variant="outlined"
@@ -436,8 +428,8 @@ export default function Budget() {
                             <Grid size={{ xs: 12, md: 4 }}>
                                 <Box sx={{ textAlign: 'center' }}>
                                     <Typography variant="overline" color="text.secondary">Remaining</Typography>
-                                    <Typography 
-                                        variant="h4" 
+                                    <Typography
+                                        variant="h4"
                                         color={totalRemaining < 0 ? 'error.main' : 'success.main'}
                                     >
                                         {formatCurrency(totalRemaining)}
@@ -450,8 +442,8 @@ export default function Budget() {
                                         <Typography variant="body2">Budget Used</Typography>
                                         <Typography variant="body2">{Math.round(totalPercentUsed)}%</Typography>
                                     </Box>
-                                    <LinearProgress 
-                                        variant="determinate" 
+                                    <LinearProgress
+                                        variant="determinate"
                                         value={Math.min(totalPercentUsed, 100)}
                                         color={totalPercentUsed > 100 ? 'error' : totalPercentUsed > 80 ? 'warning' : 'primary'}
                                         sx={{ height: 12, borderRadius: 6 }}
@@ -472,7 +464,7 @@ export default function Budget() {
                 </>
             ) : (
                 <Alert severity="info">
-                    No budgets have been allocated for the selected fiscal year. 
+                    No budgets have been allocated for the selected fiscal year.
                     {(user?.role === 'SUPER_ADMIN') && (
                         <> Go to Admin &gt; Budget Allocation to set up budgets.</>
                     )}

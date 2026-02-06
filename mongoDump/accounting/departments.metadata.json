@@ -1,1 +1,1 @@
-{"options":{},"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_","ns":"accounting.departments"},{"v":{"$numberInt":"2"},"key":{"budget.node":{"$numberDouble":"1.0"}},"name":"budget.node_1","ns":"accounting.departments"}],"uuid":"b18771f4703a46038bbd68a3adb0933d"}
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"budget.node":{"$numberDouble":"1.0"}},"name":"budget.node_1"}],"uuid":"c154b921e66d42149f6580e4709c0cad","collectionName":"departments","type":"collection"}

@@ -1,1 +1,1 @@
-{"options":{},"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_","ns":"accounting.users"}],"uuid":"e252e12c3fb84ff5ac3847a58514e800"}
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"email":{"$numberInt":"1"}},"name":"email_1","unique":true},{"v":{"$numberInt":"2"},"key":{"googleId":{"$numberInt":"1"}},"name":"googleId_1","sparse":true}],"uuid":"f0b3b6fdae40454f923017239063c47a","collectionName":"users","type":"collection"}

@@ -154,13 +154,13 @@ export default function UsersTab() {
     const [editRole, setEditRole] = useState<'SUPER_ADMIN' | 'DEPT_ADMIN' | 'USER'>('USER');
     const [permissionUser, setPermissionUser] = useState<User | null>(null);
     const [newPermission, setNewPermission] = useState<{ departmentId: string; accessLevel: 'VIEW' | 'EDIT' | 'ADMIN' }>({ departmentId: '', accessLevel: 'VIEW' });
-    const [inviteForm, setInviteForm] = useState<{ 
-        email: string; 
-        name: string; 
+    const [inviteForm, setInviteForm] = useState<{
+        email: string;
+        name: string;
         role: 'SUPER_ADMIN' | 'DEPT_ADMIN' | 'USER';
         departments: { departmentId: string; accessLevel: 'VIEW' | 'EDIT' | 'ADMIN' }[];
     }>({ email: '', name: '', role: 'USER', departments: [] });
-    const [inviteDeptSelection, setInviteDeptSelection] = useState<{ departmentId: string; accessLevel: 'VIEW' | 'EDIT' | 'ADMIN' }>({ departmentId: '', accessLevel: 'EDIT' });
+
     const [error, setError] = useState<string | null>(null);
 
     const [{ data: usersData, fetching: usersFetching }, refetchUsers] = useQuery({ query: USERS_QUERY });
@@ -185,7 +185,7 @@ export default function UsersTab() {
             setError(result.error.message);
             return;
         }
-        
+
         const newUserId = result.data?.inviteUser?.id;
         if (newUserId && inviteForm.departments.length > 0) {
             for (const dept of inviteForm.departments) {
@@ -198,22 +198,13 @@ export default function UsersTab() {
                 });
             }
         }
-        
+
         setInviteOpen(false);
         setInviteForm({ email: '', name: '', role: 'USER', departments: [] });
-        setInviteDeptSelection({ departmentId: '', accessLevel: 'EDIT' });
         refetchUsers();
     };
 
-    const addDepartmentToInvite = () => {
-        if (!inviteDeptSelection.departmentId) return;
-        if (inviteForm.departments.some(d => d.departmentId === inviteDeptSelection.departmentId)) return;
-        setInviteForm({
-            ...inviteForm,
-            departments: [...inviteForm.departments, { ...inviteDeptSelection }]
-        });
-        setInviteDeptSelection({ departmentId: '', accessLevel: 'EDIT' });
-    };
+
 
     const removeDepartmentFromInvite = (departmentId: string) => {
         setInviteForm({
@@ -487,7 +478,7 @@ export default function UsersTab() {
                     {inviteForm.role !== 'SUPER_ADMIN' && (
                         <>
                             <Divider sx={{ my: 2 }} />
-                            
+
                             {inviteForm.role === 'DEPT_ADMIN' ? (
                                 <>
                                     <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -501,7 +492,7 @@ export default function UsersTab() {
                                         {topLevelDepartments.map((topDept) => {
                                             const subdepts = getSubdepartments(topDept.id);
                                             const isSelected = inviteForm.departments.some(d => d.departmentId === topDept.id);
-                                            
+
                                             return (
                                                 <Box key={topDept.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 1.5, pb: 1.5, borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { mb: 0, pb: 0, border: 'none' } }}>
                                                     <Button
@@ -542,7 +533,7 @@ export default function UsersTab() {
                                     <Typography variant="subtitle2" sx={{ mb: 2 }}>
                                         Department Access
                                     </Typography>
-                            
+
                                     {inviteForm.departments.length > 0 && (
                                         <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
                                             <Table size="small">
@@ -556,8 +547,8 @@ export default function UsersTab() {
                                                 <TableBody>
                                                     {inviteForm.departments.map((dept) => {
                                                         const deptInfo = departments.find(d => d.id === dept.departmentId);
-                                                        const parentName = deptInfo?.parent?.__typename === 'Department' 
-                                                            ? getDepartmentName(deptInfo.parent.id) 
+                                                        const parentName = deptInfo?.parent?.__typename === 'Department'
+                                                            ? getDepartmentName(deptInfo.parent.id)
                                                             : null;
                                                         return (
                                                             <TableRow key={dept.departmentId}>
@@ -592,11 +583,11 @@ export default function UsersTab() {
                                         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                                             Select departments to grant access:
                                         </Typography>
-                                        
+
                                         {topLevelDepartments.map((topDept) => {
                                             const subdepts = getSubdepartments(topDept.id);
                                             const isTopSelected = inviteForm.departments.some(d => d.departmentId === topDept.id);
-                                            
+
                                             return (
                                                 <Box key={topDept.id} sx={{ mb: 2 }}>
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -605,8 +596,8 @@ export default function UsersTab() {
                                                         </Typography>
                                                         {!isTopSelected ? (
                                                             <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                                                <Button 
-                                                                    size="small" 
+                                                                <Button
+                                                                    size="small"
                                                                     variant="outlined"
                                                                     onClick={() => setInviteForm({
                                                                         ...inviteForm,
@@ -615,8 +606,8 @@ export default function UsersTab() {
                                                                 >
                                                                     +View
                                                                 </Button>
-                                                                <Button 
-                                                                    size="small" 
+                                                                <Button
+                                                                    size="small"
                                                                     variant="outlined"
                                                                     onClick={() => setInviteForm({
                                                                         ...inviteForm,
@@ -627,7 +618,7 @@ export default function UsersTab() {
                                                                 </Button>
                                                             </Box>
                                                         ) : (
-                                                            <Chip 
+                                                            <Chip
                                                                 label={inviteForm.departments.find(d => d.departmentId === topDept.id)?.accessLevel}
                                                                 size="small"
                                                                 color="primary"
@@ -635,7 +626,7 @@ export default function UsersTab() {
                                                             />
                                                         )}
                                                     </Box>
-                                                    
+
                                                     {subdepts.length > 0 && (
                                                         <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider' }}>
                                                             {subdepts.map((subDept) => {
@@ -647,8 +638,8 @@ export default function UsersTab() {
                                                                         </Typography>
                                                                         {!isSubSelected ? (
                                                                             <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                                                                <Button 
-                                                                                    size="small" 
+                                                                                <Button
+                                                                                    size="small"
                                                                                     variant="text"
                                                                                     onClick={() => setInviteForm({
                                                                                         ...inviteForm,
@@ -658,8 +649,8 @@ export default function UsersTab() {
                                                                                 >
                                                                                     +View
                                                                                 </Button>
-                                                                                <Button 
-                                                                                    size="small" 
+                                                                                <Button
+                                                                                    size="small"
                                                                                     variant="text"
                                                                                     onClick={() => setInviteForm({
                                                                                         ...inviteForm,
@@ -671,7 +662,7 @@ export default function UsersTab() {
                                                                                 </Button>
                                                                             </Box>
                                                                         ) : (
-                                                                            <Chip 
+                                                                            <Chip
                                                                                 label={inviteForm.departments.find(d => d.departmentId === subDept.id)?.accessLevel}
                                                                                 size="small"
                                                                                 color="primary"
@@ -708,10 +699,9 @@ export default function UsersTab() {
                     <Button onClick={() => {
                         setInviteOpen(false);
                         setInviteForm({ email: '', name: '', role: 'USER', departments: [] });
-                        setInviteDeptSelection({ departmentId: '', accessLevel: 'EDIT' });
                     }}>Cancel</Button>
-                    <Button 
-                        onClick={handleInvite} 
+                    <Button
+                        onClick={handleInvite}
                         variant="contained"
                         disabled={!inviteForm.email || !inviteForm.name || (inviteForm.role !== 'SUPER_ADMIN' && inviteForm.departments.length === 0)}
                     >
@@ -772,8 +762,8 @@ export default function UsersTab() {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setEditUser(null)}>Cancel</Button>
-                    <Button 
-                        onClick={handleUpdateRole} 
+                    <Button
+                        onClick={handleUpdateRole}
                         variant="contained"
                         disabled={editRole === editUser?.role}
                     >

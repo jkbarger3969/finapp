@@ -1,1 +1,1 @@
-{"options":{},"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_","ns":"accounting.journalEntryCategories"}],"uuid":"ed38e99ebfd14bad85efaa6e1a2dc420"}
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"808a07e06ec942bb9bf2d456c4707eb1","collectionName":"journalEntryCategories","type":"collection"}

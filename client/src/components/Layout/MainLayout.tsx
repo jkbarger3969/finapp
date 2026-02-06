@@ -18,13 +18,8 @@ import {
     Menu,
     MenuItem,
     Button,
-    Tooltip,
 } from "@mui/material";
 import {
-    Dashboard as DashboardIcon,
-    Receipt as ReceiptIcon,
-    PieChart as PieChartIcon,
-    Settings as SettingsIcon,
     Search as SearchIcon,
     Add as AddIcon,
     Logout as LogoutIcon,

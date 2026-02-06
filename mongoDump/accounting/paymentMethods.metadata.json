@@ -1,1 +1,1 @@
-{"options":{},"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_","ns":"accounting.paymentMethods"}],"uuid":"62109b7f2d0c41f88da8492da55c9bda"}
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"d4c668a3a65343fa900e65d91147f5a1","collectionName":"paymentMethods","type":"collection"}
