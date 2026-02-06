@@ -1,0 +1,12 @@
+{
+  "name": "finapp",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:graphql\" \"npm run dev:client\"",
+    "dev:graphql": "cd graphql && npm start",
+    "dev:client": "cd client && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

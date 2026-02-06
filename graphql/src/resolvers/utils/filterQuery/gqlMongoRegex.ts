@@ -1,37 +1,31 @@
-import { WhereRegexInput, RegexOptions } from "../../../graphTypes";
+import { WhereRegex, RegexFlags } from "../../../graphTypes";
 
 const parseGQLMongoRegex = (
-  whereRegex: WhereRegexInput
+  whereRegex: WhereRegex
 ): { $regex: string; $options?: string } => {
   const condition: { $regex: string; $options?: string } = {
     $regex: whereRegex.pattern,
   };
 
-  if (whereRegex.options) {
+  if (whereRegex.flags) {
     condition.$options = Array.from(
-      whereRegex.options.reduce(
-        (optSet, option) => {
-          switch (option) {
-            case RegexOptions.CaseInsensitive:
-            case RegexOptions.I:
+      whereRegex.flags.reduce(
+        (optSet, flag) => {
+          switch (flag) {
+            case RegexFlags.I:
               optSet.add("i");
               break;
-            case RegexOptions.Multiline:
-            case RegexOptions.M:
+            case RegexFlags.M:
               optSet.add("m");
               break;
-            case RegexOptions.Extended:
-            case RegexOptions.X:
-              optSet.add("x");
-              break;
-            case RegexOptions.DotAll:
-            case RegexOptions.S:
+            case RegexFlags.S:
               optSet.add("s");
               break;
+            // 'x' not supported in standard Mongo regex options via this enum usually, or mapped differently?
+            // Schema only has G, I, M, S.
           }
           return optSet;
         },
-        // Insure no duplicate options
         new Set<"i" | "m" | "x" | "s">()
       )
     ).join("");

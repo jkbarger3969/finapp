@@ -4,6 +4,9 @@ import {
   accounts,
   accountCard,
   accountCards,
+  createAccountCard,
+  updateAccountCard,
+  deleteAccountCard,
   AccountInterface,
   AccountWithCardsInterface,
   AccountCard,
@@ -11,7 +14,7 @@ import {
   AccountChecking,
   AccountCreditCard,
 } from "./resolvers/account";
-import { budget, budgets, Budget, BudgetOwner } from "./resolvers/budget";
+import { budget, budgets, Budget, BudgetOwner, upsertBudget, deleteBudget } from "./resolvers/budget";
 import { business, businesses, Business } from "./resolvers/business";
 import {
   department,
@@ -46,13 +49,15 @@ import {
 import { sources } from "./resolvers/entrySource";
 import { Category, category, categories } from "./resolvers/category/index";
 import { people, person, Person } from "./resolvers/person";
-import { fiscalYear, fiscalYears, FiscalYear } from "./resolvers/fiscalYear";
+import { fiscalYear, fiscalYears, FiscalYear, createFiscalYear } from "./resolvers/fiscalYear";
 import { User } from "./resolvers/user";
+import { attachmentResolvers } from "./resolvers/attachment";
+import { authResolvers } from "./resolvers/auth/authResolvers";
 
-import { dateScalar, rationalScalar } from "./resolvers/scalars";
+import { dateScalar, rationalScalar, jsonScalar } from "./resolvers/scalars";
 import { Alias } from "./resolvers/alias";
 
-const resolvers: Resolvers = {
+const initialResolvers: Resolvers = {
   AccountInterface,
   AccountWithCardsInterface,
   AccountCard,
@@ -62,6 +67,7 @@ const resolvers: Resolvers = {
   Alias,
   Date: dateScalar,
   Rational: rationalScalar,
+  JSON: jsonScalar,
   Budget,
   BudgetOwner,
   Business,
@@ -112,9 +118,36 @@ const resolvers: Resolvers = {
     updateEntry,
     updateEntryRefund,
     reconcileEntries,
+    createAccountCard: createAccountCard as any,
+    updateAccountCard: updateAccountCard as any,
+    deleteAccountCard: deleteAccountCard as any,
+    upsertBudget,
+    deleteBudget,
+    createFiscalYear,
   },
   Subscription: {
     // entryUpserted,
+  },
+};
+
+const resolvers = {
+  ...initialResolvers,
+  Upload: attachmentResolvers.Upload,
+  AuthUser: authResolvers.AuthUser,
+  UserPermission: authResolvers.UserPermission,
+  AuditLogEntry: authResolvers.AuditLogEntry,
+  Entry: {
+    ...initialResolvers.Entry,
+    ...attachmentResolvers.Entry,
+  },
+  Query: {
+    ...initialResolvers.Query,
+    ...authResolvers.Query,
+  },
+  Mutation: {
+    ...initialResolvers.Mutation,
+    ...attachmentResolvers.Mutation,
+    ...authResolvers.Mutation,
   },
 };
 

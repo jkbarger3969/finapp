@@ -1,5 +1,5 @@
 import { Filter, ObjectId } from "mongodb";
 import { AliasTypeDbRecord } from "../../dataSources/accountingDb/types";
-import { AliasableResolvers, AliasesWhere } from "../../graphTypes";
+import { AliasesWhere } from "../../graphTypes";
 export declare const whereAliases: (instanceId: ObjectId, type: string, where: AliasesWhere) => Filter<AliasTypeDbRecord>;
-export declare const getAliasableResolvers: (type: string) => AliasableResolvers;
+export declare const getAliasableResolvers: (type: string) => any;

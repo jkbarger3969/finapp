@@ -1,0 +1,136 @@
+enum UserRole {
+  SUPER_ADMIN
+  DEPT_ADMIN
+  USER
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  DISABLED
+}
+
+enum AccessLevel {
+  VIEW
+  EDIT
+  ADMIN
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  ENTRY_CREATE
+  ENTRY_UPDATE
+  ENTRY_DELETE
+  REFUND_CREATE
+  REFUND_UPDATE
+  REFUND_DELETE
+  RECONCILE
+  USER_INVITE
+  USER_UPDATE
+  USER_DISABLE
+  PERMISSION_GRANT
+  PERMISSION_REVOKE
+  RECEIPT_UPLOAD
+  RECEIPT_DELETE
+}
+
+type AuthUser {
+  id: ID!
+  email: String!
+  googleId: String
+  name: String!
+  picture: String
+  role: UserRole!
+  status: UserStatus!
+  departments: [UserPermission!]!
+  invitedBy: AuthUser
+  invitedAt: Date
+  lastLoginAt: Date
+  createdAt: Date!
+}
+
+type UserPermission {
+  id: ID!
+  user: AuthUser!
+  department: Department!
+  accessLevel: AccessLevel!
+  grantedBy: AuthUser!
+  grantedAt: Date!
+}
+
+type AuditLogEntry {
+  id: ID!
+  user: AuthUser!
+  action: AuditAction!
+  resourceType: String
+  resourceId: ID
+  details: JSON
+  ipAddress: String
+  userAgent: String
+  timestamp: Date!
+}
+
+type AuthPayload {
+  token: String!
+  user: AuthUser!
+}
+
+type GoogleAuthUrl {
+  url: String!
+}
+
+input InviteUserInput {
+  email: String!
+  name: String!
+  role: UserRole
+}
+
+input UpdateUserInput {
+  name: String
+  role: UserRole
+  status: UserStatus
+}
+
+input GrantPermissionInput {
+  userId: ID!
+  departmentId: ID!
+  accessLevel: AccessLevel!
+}
+
+input RevokePermissionInput {
+  userId: ID!
+  departmentId: ID!
+}
+
+input UsersWhere {
+  id: WhereId
+  email: WhereRegex
+  role: UserRole
+  status: UserStatus
+}
+
+input AuditLogWhere {
+  userId: WhereId
+  action: AuditAction
+  resourceType: String
+  resourceId: WhereId
+  timestamp: WhereDate
+}
+
+extend type Query {
+  me: AuthUser
+  users(where: UsersWhere): [AuthUser!]!
+  user(id: ID!): AuthUser
+  auditLog(where: AuditLogWhere, limit: Int, offset: Int): [AuditLogEntry!]!
+  googleAuthUrl: GoogleAuthUrl!
+}
+
+extend type Mutation {
+  googleAuth(code: String!): AuthPayload!
+  logout: Boolean!
+  inviteUser(input: InviteUserInput!): AuthUser!
+  updateUser(id: ID!, input: UpdateUserInput!): AuthUser!
+  grantPermission(input: GrantPermissionInput!): UserPermission!
+  revokePermission(input: RevokePermissionInput!): Boolean!
+}

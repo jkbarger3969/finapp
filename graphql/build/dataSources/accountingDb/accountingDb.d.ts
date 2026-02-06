@@ -12,7 +12,11 @@ export declare class AccountingDb extends DataSource<Context> {
     get db(): Db;
     getCollection<TCollection extends keyof CollectionSchemaMap>(collection: TCollection): import("mongodb").Collection<CollectionSchemaMap[TCollection]>;
     /**
-     * Handles the session, and nested calls to withTransaction,
+     * Handles the session, and nested calls to withTransaction.
+     *
+     * NOTE: Transactions are disabled for local development.
+     * MongoDB transactions require a replica set, which is complex to set up locally.
+     * For production, configure MongoDB as a replica set and remove this bypass.
      */
     withTransaction<TReturn = unknown>(cb: (arg: {
         session: ClientSession;

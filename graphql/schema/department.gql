@@ -6,7 +6,7 @@ type Department {
   code: String
   budgets: [Budget!]!
   business: Business!
-  parent: DepartmentAncestor!
+  parent: DepartmentAncestor
   children: [Department!]!
   disable: [FiscalYear!]!
   ancestors(

@@ -5,32 +5,25 @@ const parseGQLMongoRegex = (whereRegex) => {
     const condition = {
         $regex: whereRegex.pattern,
     };
-    if (whereRegex.options) {
-        condition.$options = Array.from(whereRegex.options.reduce((optSet, option) => {
-            switch (option) {
-                case graphTypes_1.RegexOptions.CaseInsensitive:
-                case graphTypes_1.RegexOptions.I:
+    if (whereRegex.flags) {
+        condition.$options = Array.from(whereRegex.flags.reduce((optSet, flag) => {
+            switch (flag) {
+                case graphTypes_1.RegexFlags.I:
                     optSet.add("i");
                     break;
-                case graphTypes_1.RegexOptions.Multiline:
-                case graphTypes_1.RegexOptions.M:
+                case graphTypes_1.RegexFlags.M:
                     optSet.add("m");
                     break;
-                case graphTypes_1.RegexOptions.Extended:
-                case graphTypes_1.RegexOptions.X:
-                    optSet.add("x");
-                    break;
-                case graphTypes_1.RegexOptions.DotAll:
-                case graphTypes_1.RegexOptions.S:
+                case graphTypes_1.RegexFlags.S:
                     optSet.add("s");
                     break;
+                // 'x' not supported in standard Mongo regex options via this enum usually, or mapped differently?
+                // Schema only has G, I, M, S.
             }
             return optSet;
-        }, 
-        // Insure no duplicate options
-        new Set())).join("");
+        }, new Set())).join("");
     }
     return condition;
 };
 exports.default = parseGQLMongoRegex;
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiZ3FsTW9uZ29SZWdleC5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uLy4uLy4uL3NyYy9yZXNvbHZlcnMvdXRpbHMvZmlsdGVyUXVlcnkvZ3FsTW9uZ29SZWdleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOztBQUFBLG9EQUFvRTtBQUVwRSxNQUFNLGtCQUFrQixHQUFHLENBQ3pCLFVBQTJCLEVBQ1ksRUFBRTtJQUN6QyxNQUFNLFNBQVMsR0FBMEM7UUFDdkQsTUFBTSxFQUFFLFVBQVUsQ0FBQyxPQUFPO0tBQzNCLENBQUM7SUFFRixJQUFJLFVBQVUsQ0FBQyxPQUFPLEVBQUU7UUFDdEIsU0FBUyxDQUFDLFFBQVEsR0FBRyxLQUFLLENBQUMsSUFBSSxDQUM3QixVQUFVLENBQUMsT0FBTyxDQUFDLE1BQU0sQ0FDdkIsQ0FBQyxNQUFNLEVBQUUsTUFBTSxFQUFFLEVBQUU7WUFDakIsUUFBUSxNQUFNLEVBQUU7Z0JBQ2QsS0FBSyx5QkFBWSxDQUFDLGVBQWUsQ0FBQztnQkFDbEMsS0FBSyx5QkFBWSxDQUFDLENBQUM7b0JBQ2pCLE1BQU0sQ0FBQyxHQUFHLENBQUMsR0FBRyxDQUFDLENBQUM7b0JBQ2hCLE1BQU07Z0JBQ1IsS0FBSyx5QkFBWSxDQUFDLFNBQVMsQ0FBQztnQkFDNUIsS0FBSyx5QkFBWSxDQUFDLENBQUM7b0JBQ2pCLE1BQU0sQ0FBQyxHQUFHLENBQUMsR0FBRyxDQUFDLENBQUM7b0JBQ2hCLE1BQU07Z0JBQ1IsS0FBSyx5QkFBWSxDQUFDLFFBQVEsQ0FBQztnQkFDM0IsS0FBSyx5QkFBWSxDQUFDLENBQUM7b0JBQ2pCLE1BQU0sQ0FBQyxHQUFHLENBQUMsR0FBRyxDQUFDLENBQUM7b0JBQ2hCLE1BQU07Z0JBQ1IsS0FBSyx5QkFBWSxDQUFDLE1BQU0sQ0FBQztnQkFDekIsS0FBSyx5QkFBWSxDQUFDLENBQUM7b0JBQ2pCLE1BQU0sQ0FBQyxHQUFHLENBQUMsR0FBRyxDQUFDLENBQUM7b0JBQ2hCLE1BQU07YUFDVDtZQUNELE9BQU8sTUFBTSxDQUFDO1FBQ2hCLENBQUM7UUFDRCw4QkFBOEI7UUFDOUIsSUFBSSxHQUFHLEVBQXlCLENBQ2pDLENBQ0YsQ0FBQyxJQUFJLENBQUMsRUFBRSxDQUFDLENBQUM7S0FDWjtJQUVELE9BQU8sU0FBUyxDQUFDO0FBQ25CLENBQUMsQ0FBQztBQUVGLGtCQUFlLGtCQUFrQixDQUFDIn0=
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiZ3FsTW9uZ29SZWdleC5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uLy4uLy4uL3NyYy9yZXNvbHZlcnMvdXRpbHMvZmlsdGVyUXVlcnkvZ3FsTW9uZ29SZWdleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOztBQUFBLG9EQUE2RDtBQUU3RCxNQUFNLGtCQUFrQixHQUFHLENBQ3pCLFVBQXNCLEVBQ2lCLEVBQUU7SUFDekMsTUFBTSxTQUFTLEdBQTBDO1FBQ3ZELE1BQU0sRUFBRSxVQUFVLENBQUMsT0FBTztLQUMzQixDQUFDO0lBRUYsSUFBSSxVQUFVLENBQUMsS0FBSyxFQUFFO1FBQ3BCLFNBQVMsQ0FBQyxRQUFRLEdBQUcsS0FBSyxDQUFDLElBQUksQ0FDN0IsVUFBVSxDQUFDLEtBQUssQ0FBQyxNQUFNLENBQ3JCLENBQUMsTUFBTSxFQUFFLElBQUksRUFBRSxFQUFFO1lBQ2YsUUFBUSxJQUFJLEVBQUU7Z0JBQ1osS0FBSyx1QkFBVSxDQUFDLENBQUM7b0JBQ2YsTUFBTSxDQUFDLEdBQUcsQ0FBQyxHQUFHLENBQUMsQ0FBQztvQkFDaEIsTUFBTTtnQkFDUixLQUFLLHVCQUFVLENBQUMsQ0FBQztvQkFDZixNQUFNLENBQUMsR0FBRyxDQUFDLEdBQUcsQ0FBQyxDQUFDO29CQUNoQixNQUFNO2dCQUNSLEtBQUssdUJBQVUsQ0FBQyxDQUFDO29CQUNmLE1BQU0sQ0FBQyxHQUFHLENBQUMsR0FBRyxDQUFDLENBQUM7b0JBQ2hCLE1BQU07Z0JBQ1Isa0dBQWtHO2dCQUNsRyw4QkFBOEI7YUFDL0I7WUFDRCxPQUFPLE1BQU0sQ0FBQztRQUNoQixDQUFDLEVBQ0QsSUFBSSxHQUFHLEVBQXlCLENBQ2pDLENBQ0YsQ0FBQyxJQUFJLENBQUMsRUFBRSxDQUFDLENBQUM7S0FDWjtJQUVELE9BQU8sU0FBUyxDQUFDO0FBQ25CLENBQUMsQ0FBQztBQUVGLGtCQUFlLGtCQUFrQixDQUFDIn0=

@@ -27,6 +27,23 @@ type Entry {
   refunds: [EntryRefund!]!
   source: Entity!
   total: Rational!
+  """
+  File attachments (receipts, documents, etc.) associated with this entry
+  """
+  attachments: [Attachment!]!
+  """
+  Audit log of changes made to this entry
+  """
+  editHistory: [EditHistoryEntry!]!
+  lastEditedAt: Date
+  lastEditedBy: String
+}
+
+type EditHistoryEntry {
+  id: ID!
+  editedAt: Date!
+  editedBy: String!
+  changes: JSON!
 }
 
 # Entry Queries

@@ -101,3 +101,22 @@ extend type Query {
   accountCards(where: AccountCardsWhere): [AccountCard!]!
   accountCard(id: ID!): AccountCard!
 }
+
+extend type Mutation {
+  createAccountCard(input: CreateAccountCardInput!): AccountCard!
+  updateAccountCard(id: ID!, input: UpdateAccountCardInput!): AccountCard!
+  deleteAccountCard(id: ID!): Boolean!
+}
+
+input CreateAccountCardInput {
+  accountId: ID!
+  type: PaymentCardType!
+  trailingDigits: String!
+  active: Boolean
+}
+
+input UpdateAccountCardInput {
+  trailingDigits: String
+  type: PaymentCardType
+  active: Boolean
+}

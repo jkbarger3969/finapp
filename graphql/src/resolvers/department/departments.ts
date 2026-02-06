@@ -2,6 +2,7 @@ import { Db, Filter as FilterQuery, ObjectId } from "mongodb";
 
 import { QueryResolvers, DepartmentsWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";
+import { Context } from "../../types";
 
 import { whereRegex, whereTreeId, whereNode } from "../utils/queryUtils";
 
@@ -276,11 +277,76 @@ export const whereDepartments = (
 export const departments: QueryResolvers["departments"] = async (
   _,
   { where },
-  { dataSources: { accountingDb } }
-) =>
-  accountingDb.find({
+  context
+) => {
+  const { dataSources: { accountingDb }, authService, user } = context as Context;
+
+  let baseFilter = where ? await whereDepartments(where, accountingDb.db) : {};
+
+  if (authService && user?.id) {
+    const authUser = await authService.getUserById(user.id);
+
+    if (authUser && authUser.role !== "SUPER_ADMIN") {
+      const accessibleDeptIds = await authService.getAccessibleDepartmentIds(user.id);
+
+      if (accessibleDeptIds.length === 0) {
+        return [];
+      }
+
+      const allAccessibleIds = new Set<string>();
+      for (const deptId of accessibleDeptIds) {
+        allAccessibleIds.add(deptId.toString());
+
+        const dept = await accountingDb.findOne({
+          collection: "departments",
+          filter: { _id: deptId },
+        });
+
+        if (dept) {
+          const descendants = await getDescendantIds(deptId, accountingDb.db);
+          descendants.forEach((id) => allAccessibleIds.add(id.toString()));
+        }
+      }
+
+      const permittedIds = Array.from(allAccessibleIds).map((id) => new ObjectId(id));
+
+      if (baseFilter._id) {
+        baseFilter = {
+          $and: [
+            baseFilter,
+            { _id: { $in: permittedIds } },
+          ],
+        };
+      } else {
+        baseFilter._id = { $in: permittedIds };
+      }
+    }
+  }
+
+  return accountingDb.find({
     collection: "departments",
-    filter: where ? await whereDepartments(where, accountingDb.db) : {},
+    filter: baseFilter,
   });
+};
+
+async function getDescendantIds(parentId: ObjectId, db: Db): Promise<ObjectId[]> {
+  const descendants: ObjectId[] = [];
+  const queue: ObjectId[] = [parentId];
+
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    const children = await db
+      .collection("departments")
+      .find({ "parent.type": "Department", "parent.id": currentId }, { projection: { _id: 1 } })
+      .toArray();
+
+    for (const child of children) {
+      descendants.push(child._id);
+      queue.push(child._id);
+    }
+  }
+
+  return descendants;
+}
 
 export default departments;

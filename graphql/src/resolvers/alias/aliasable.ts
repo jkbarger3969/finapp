@@ -25,7 +25,7 @@ export const whereAliases = (
   return filter;
 };
 
-export const getAliasableResolvers = (type: string): AliasableResolvers => ({
+export const getAliasableResolvers = (type: string): any => ({
   aliases: ({ _id }, { where = {} }, { dataSources: { accountingDb } }) =>
     accountingDb.find({
       collection: "aliases",

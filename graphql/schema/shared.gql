@@ -71,3 +71,14 @@ input WhereDate {
   lt: Date
   lte: Date
 }
+
+"""
+The Upload scalar type represents a file upload.
+Used with graphql-upload for handling multipart file uploads.
+"""
+scalar Upload
+
+"""
+The JSON scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON

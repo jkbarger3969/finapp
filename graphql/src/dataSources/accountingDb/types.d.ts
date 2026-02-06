@@ -62,6 +62,20 @@ export type EntryRefundDbRecord = HistoricalDoc<
   false
 >;
 
+export interface AttachmentDbRecord {
+  id: string;
+  filename: string;
+  gcsUrl: string;
+  gcsBucket: string;
+  gcsPath: string;
+  uploadedAt: Date;
+  uploadedBy: string;
+  fileSize: number;
+  mimeType: string;
+  thumbnailUrl?: string;
+  deleted: boolean;
+}
+
 export type EntityTypeDbRecord = PascalCase<EntityType>;
 
 export type EntityDbRecord = NodeDbRecord<EntityTypeDbRecord>;
@@ -86,6 +100,7 @@ export type EntryDbRecord = HistoricalDoc<
     dateOfRecord?: DateOfRecordDbRecord;
     items?: EntryItemDbRecord[];
     refunds?: EntryRefundDbRecord[];
+    attachments?: AttachmentDbRecord[];
   }
 >;
 
@@ -105,11 +120,11 @@ export type PaymentCardTypeDbRecord = PascalCase<PaymentCardType>;
 export interface PaymentMethodCardDBRecord {
   currency: Currency;
   card:
-    | ObjectId
-    | {
-        trailingDigits: string;
-        type: PaymentCardTypeDbRecord;
-      };
+  | ObjectId
+  | {
+    trailingDigits: string;
+    type: PaymentCardTypeDbRecord;
+  };
   type: "Card";
 }
 

@@ -5,7 +5,7 @@ import { iterateOwnKeys } from "../../utils/iterableFns";
 import { whereEntities } from "../entity";
 import { deserializeGQLEnum } from "../utils/gqlEnums";
 import { whereId, whereRegex } from "../utils/queryUtils";
-import { whereAccountCards } from "./accountCards";
+
 
 export const whereAccounts = (accountsWhere: AccountsWhere, db: Db) => {
   const filterQuery: FilterQuery<any> = {};
@@ -31,6 +31,8 @@ export const whereAccounts = (accountsWhere: AccountsWhere, db: Db) => {
       case "cards":
         promises.push(
           (async () => {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const { whereAccountCards } = require("./accountCards");
             const result = whereAccountCards(accountsWhere[whereKey], db);
 
             const query = result instanceof Promise ? await result : result;

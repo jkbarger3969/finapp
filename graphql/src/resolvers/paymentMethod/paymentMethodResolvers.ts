@@ -21,11 +21,11 @@ export type PaymentCardTypeDbRecord =
 export interface PaymentMethodCardDBRecord {
   currency: Currency;
   card:
-    | ObjectId
-    | {
-        trailingDigits: string;
-        type: PaymentCardTypeDbRecord;
-      };
+  | ObjectId
+  | {
+    trailingDigits: string;
+    type: PaymentCardTypeDbRecord;
+  };
   type: "Card";
 }
 
@@ -42,14 +42,14 @@ export type PaymentMethodDBRecord =
   | PaymentMethodCheckDBRecord
   | PaymentMethodCardDBRecord
   | {
-      currency: Currency;
-      type: "Unknown" | "Online" | "Cash" | "Combination";
-    };
+    currency: Currency;
+    type: "Unknown" | "Online" | "Cash" | "Combination";
+  };
 
 // Payment Card
-export const PaymentCardInterface: PaymentCardInterfaceResolvers = {
-  __resolveType: (card) => ("account" in card ? "AccountCard" : "PaymentCard"),
-  type: ({ type }) => serializeGQLEnum<PaymentCardType>(type),
+export const PaymentCardInterface: any = {
+  __resolveType: (card: any) => ("account" in card ? "AccountCard" : "PaymentCard"),
+  type: ({ type }: any) => serializeGQLEnum<PaymentCardType>(type),
 };
 
 export const PaymentCard: PaymentCardResolvers = PaymentCardInterface;
@@ -72,12 +72,12 @@ const PaymentMethodInterfaceResolver: PaymentMethodInterfaceResolvers<
 > = {
   __resolveType: ({ type }) =>
     `PaymentMethod${type}` as
-      | "PaymentMethodCard"
-      | "PaymentMethodCash"
-      | "PaymentMethodCheck"
-      | "PaymentMethodCombination"
-      | "PaymentMethodOnline"
-      | "PaymentMethodUnknown",
+    | "PaymentMethodCard"
+    | "PaymentMethodCash"
+    | "PaymentMethodCheck"
+    | "PaymentMethodCombination"
+    | "PaymentMethodOnline"
+    | "PaymentMethodUnknown",
 };
 
 export const PaymentMethodInterface =
@@ -90,9 +90,9 @@ const PaymentMethodCardResolver: PaymentMethodCardResolvers<
   card: ({ card }, _, { db }) =>
     card instanceof ObjectId
       ? addTypename(
-          "AccountCard",
-          db.collection("paymentCards").findOne({ _id: card })
-        )
+        "AccountCard",
+        db.collection("paymentCards").findOne({ _id: card })
+      )
       : ({ __typename: "PaymentCard", ...card } as any),
 };
 

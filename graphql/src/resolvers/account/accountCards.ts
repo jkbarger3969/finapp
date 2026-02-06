@@ -5,7 +5,6 @@ import { QueryResolvers, AccountCardsWhere } from "../../graphTypes";
 import { iterateOwnKeys } from "../../utils/iterableFns";
 import { whereId, whereRegex } from "../utils/queryUtils";
 import { whereEntities } from "../entity";
-import { whereAccounts } from "./accounts";
 
 export const whereAccountCards = (
   accountCardsWhere: AccountCardsWhere,
@@ -25,7 +24,10 @@ export const whereAccountCards = (
       case "account":
         promises.push(
           (async () => {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const { whereAccounts } = require("./accounts");
             const result = whereAccounts(accountCardsWhere[whereKey], db);
+
 
             const results = (
               await db
@@ -180,5 +182,75 @@ export const accountCards: QueryResolvers["accountCards"] = async (
     collection: "paymentCards",
     filter: where
       ? await whereAccountCards(where, accountingDb.db)
-      : { account: { $exists: true } },
+      : {},
   });
+
+export const createAccountCard: any = async (
+  _: any,
+  { input }: { input: any },
+  { dataSources: { accountingDb } }: any
+) => {
+  console.log("createAccountCard input:", JSON.stringify(input, null, 2));
+  const { accountId, ...rest } = input;
+  try {
+    const result = await accountingDb.insertOne({
+      collection: "paymentCards",
+      doc: {
+        account: new ObjectId(accountId),
+        ...rest,
+        active: input.active ?? true,
+      },
+    });
+    console.log("createAccountCard result:", result);
+    // Fetch and return the created document to match AccountCard type
+    const created = await accountingDb.findOne({
+      collection: "paymentCards",
+      filter: { _id: result.insertedId },
+    });
+    console.log("createAccountCard created doc:", created);
+    return created;
+  } catch (e) {
+    console.error("createAccountCard ERROR:", e);
+    throw e;
+  }
+};
+
+export const updateAccountCard: any = async (
+  _: any,
+  { id, input }: { id: string; input: any },
+  { dataSources: { accountingDb } }: any
+) => {
+  console.log("updateAccountCard id:", id, "input:", input);
+  await accountingDb.updateOne({
+    collection: "paymentCards",
+    filter: { _id: new ObjectId(id) },
+    update: {
+      $set: input,
+    },
+  });
+  return accountingDb.findOne({
+    collection: "paymentCards",
+    filter: { _id: new ObjectId(id) },
+  });
+};
+
+export const deleteAccountCard: any = async (
+  _: any,
+  { id }: { id: string },
+  { dataSources: { accountingDb } }: any
+) => {
+  console.log("deleteAccountCard id:", id);
+  try {
+    await accountingDb.updateOne({
+      collection: "paymentCards",
+      filter: { _id: new ObjectId(id) },
+      update: {
+        $set: { active: false },
+      },
+    });
+    return true;
+  } catch (e) {
+    console.error("deleteAccountCard ERROR:", e);
+    throw e;
+  }
+};

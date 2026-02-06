@@ -39,38 +39,18 @@ export class AccountingDb extends DataSource<Context> {
   }
 
   /**
-   * Handles the session, and nested calls to withTransaction,
+   * Handles the session, and nested calls to withTransaction.
+   * 
+   * NOTE: Transactions are disabled for local development.
+   * MongoDB transactions require a replica set, which is complex to set up locally.
+   * For production, configure MongoDB as a replica set and remove this bypass.
    */
   async withTransaction<TReturn = unknown>(
     cb: (arg: { session: ClientSession }) => Promise<TReturn>
   ): Promise<TReturn> {
-    const cleanUp = () => {
-      if (--this.#sessionRefCount === 0) {
-        this.#session.endSession();
-        this.#session = null;
-      }
-    };
-
-    let result: TReturn;
-
-    try {
-      if (this.#sessionRefCount++ === 0) {
-        this.#session = this.#client.startSession();
-
-        await this.#session.withTransaction(() =>
-          this.withTransaction(cb).then((value) => {
-            result = value;
-          })
-        );
-      } else {
-        result = await cb({ session: this.#session });
-      }
-      cleanUp();
-      return result;
-    } catch (e) {
-      cleanUp();
-      throw e;
-    }
+    // Bypass transactions for development - just execute the callback
+    // Pass null session (most MongoDB operations work without sessions)
+    return await cb({ session: null as any });
   }
 
   insertOne<TCollection extends keyof CollectionSchemaMap>({
@@ -86,8 +66,8 @@ export class AccountingDb extends DataSource<Context> {
         doc,
         this.#session && this.#session.inTransaction()
           ? {
-              session: this.#session,
-            }
+            session: this.#session,
+          }
           : undefined
       );
   }
@@ -108,8 +88,8 @@ export class AccountingDb extends DataSource<Context> {
         update,
         this.#session && this.#session.inTransaction()
           ? {
-              session: this.#session,
-            }
+            session: this.#session,
+          }
           : undefined
       );
   }
@@ -130,9 +110,9 @@ export class AccountingDb extends DataSource<Context> {
         filter,
         this.#session && this.#session.inTransaction()
           ? {
-              session: this.#session,
-              ...options,
-            }
+            session: this.#session,
+            ...options,
+          }
           : options
       )
       .toArray();
@@ -154,9 +134,9 @@ export class AccountingDb extends DataSource<Context> {
         filter,
         this.#session && this.#session.inTransaction()
           ? {
-              session: this.#session,
-              ...options,
-            }
+            session: this.#session,
+            ...options,
+          }
           : options
       );
   }

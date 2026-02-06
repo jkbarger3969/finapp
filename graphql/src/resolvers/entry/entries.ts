@@ -20,6 +20,7 @@ import { whereBusiness } from "../business";
 import { wherePeople } from "../person/people";
 import { whereFiscalYear, FiscalYearDbRecord } from "../fiscalYear";
 import { EntryDbRecord } from "../../dataSources/accountingDb/types";
+import { Context } from "../../types";
 
 const refundDateOfRecordCondition = (
   $and: FilterQuery<unknown>[],
@@ -656,18 +657,22 @@ export const whereEntries = (
               filterQuery.$and = [];
             }
 
-            filterQuery.$and.push({
-              $or: [
-                {
-                  "dateOfRecord.overrideFiscalYear.0.value": { $ne: true },
-                  $or: dateOr,
-                },
-                {
-                  "dateOfRecord.overrideFiscalYear.0.value": true,
-                  $or: dateOfRecordOr,
-                },
-              ],
-            });
+            if (dateOr.length > 0) {
+              filterQuery.$and.push({
+                $or: [
+                  {
+                    "dateOfRecord.overrideFiscalYear.0.value": { $ne: true },
+                    $or: dateOr,
+                  },
+                  {
+                    "dateOfRecord.overrideFiscalYear.0.value": true,
+                    $or: dateOfRecordOr,
+                  },
+                ],
+              });
+            } else {
+              filterQuery.$and.push({ _id: { $in: [] } });
+            }
           })()
         );
         break;
@@ -834,17 +839,21 @@ export const whereEntries = (
           if (hasPromise) {
             promises.push(
               Promise.all($and).then(($and) => {
-                if (!("$and" in filterQuery)) {
-                  filterQuery.$and = [];
+                if ($and.length > 0) {
+                  if (!("$and" in filterQuery)) {
+                    filterQuery.$and = [];
+                  }
+                  filterQuery.$and.push(...$and);
                 }
-                filterQuery.$and.push(...$and);
               })
             );
           } else {
-            if (!("$and" in filterQuery)) {
-              filterQuery.$and = [];
+            if ($and.length > 0) {
+              if (!("$and" in filterQuery)) {
+                filterQuery.$and = [];
+              }
+              filterQuery.$and.push(...($and as FilterQuery<unknown>[]));
             }
-            filterQuery.$and.push(...($and as FilterQuery<unknown>[]));
           }
         }
         break;
@@ -863,17 +872,21 @@ export const whereEntries = (
           if (hasPromise) {
             promises.push(
               Promise.all($or).then(($or) => {
-                if (!("$or" in filterQuery)) {
-                  filterQuery.$or = [];
+                if ($or.length > 0) {
+                  if (!("$or" in filterQuery)) {
+                    filterQuery.$or = [];
+                  }
+                  filterQuery.$or.push(...$or);
                 }
-                filterQuery.$or.push(...$or);
               })
             );
           } else {
-            if (!("$or" in filterQuery)) {
-              filterQuery.$or = [];
+            if ($or.length > 0) {
+              if (!("$or" in filterQuery)) {
+                filterQuery.$or = [];
+              }
+              filterQuery.$or.push(...($or as FilterQuery<unknown>[]));
             }
-            filterQuery.$or.push(...($or as FilterQuery<unknown>[]));
           }
         }
         break;
@@ -892,17 +905,21 @@ export const whereEntries = (
           if (hasPromise) {
             promises.push(
               Promise.all($nor).then(($nor) => {
-                if (!("$nor" in filterQuery)) {
-                  filterQuery.$nor = [];
+                if ($nor.length > 0) {
+                  if (!("$nor" in filterQuery)) {
+                    filterQuery.$nor = [];
+                  }
+                  filterQuery.$nor.push(...$nor);
                 }
-                filterQuery.$nor.push(...$nor);
               })
             );
           } else {
-            if (!("$nor" in filterQuery)) {
-              filterQuery.$nor = [];
+            if ($nor.length > 0) {
+              if (!("$nor" in filterQuery)) {
+                filterQuery.$nor = [];
+              }
+              filterQuery.$nor.push(...($nor as FilterQuery<unknown>[]));
             }
-            filterQuery.$nor.push(...($nor as FilterQuery<unknown>[]));
           }
         }
         break;
@@ -919,9 +936,40 @@ export const whereEntries = (
 export const entries: QueryResolvers["entries"] = async (
   _,
   { where, filterRefunds },
-  { dataSources: { accountingDb } }
+  context
 ) => {
+  const { dataSources: { accountingDb }, authService, user } = context as Context;
+
   const pipeline: object[] = [];
+
+  if (authService && user?.id) {
+    const authUser = await authService.getUserById(user.id);
+
+    if (authUser && authUser.role !== "SUPER_ADMIN") {
+      const accessibleDeptIds = await authService.getAccessibleDepartmentIds(user.id);
+
+      if (accessibleDeptIds.length === 0) {
+        return [];
+      }
+
+      const allAccessibleIds = new Set<string>();
+      for (const deptId of accessibleDeptIds) {
+        allAccessibleIds.add(deptId.toString());
+
+        const descendants = await getDescendantDeptIds(deptId, accountingDb.db);
+        descendants.forEach((id) => allAccessibleIds.add(id.toString()));
+      }
+
+      const permittedDeptIds = Array.from(allAccessibleIds).map((id) => new ObjectId(id));
+
+      pipeline.push({
+        $match: {
+          "department.0.value": { $in: permittedDeptIds },
+        },
+      });
+    }
+  }
+
   if (where) {
     pipeline.push({
       $match: await whereEntries(where, accountingDb.db),
@@ -942,7 +990,6 @@ export const entries: QueryResolvers["entries"] = async (
             ],
             refunds: [
               { $unwind: "$refunds" },
-              // Map refunds on entry NOTE: a refund is a subset of an entry.
               {
                 $replaceRoot: {
                   newRoot: { $mergeObjects: ["$$CURRENT", "$refunds"] },
@@ -974,3 +1021,23 @@ export const entries: QueryResolvers["entries"] = async (
     .aggregate<EntryDbRecord>(pipeline)
     .toArray();
 };
+
+async function getDescendantDeptIds(parentId: ObjectId, db: Db): Promise<ObjectId[]> {
+  const descendants: ObjectId[] = [];
+  const queue: ObjectId[] = [parentId];
+
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    const children = await db
+      .collection("departments")
+      .find({ "parent.type": "Department", "parent.id": currentId }, { projection: { _id: 1 } })
+      .toArray();
+
+    for (const child of children) {
+      descendants.push(child._id);
+      queue.push(child._id);
+    }
+  }
+
+  return descendants;
+}

@@ -15,13 +15,13 @@ app.use(
 );
 
 app.use(
-  serveStatic(path.join(__dirname, "../ui/dist"), {
+  serveStatic(path.join(__dirname, "../client/dist"), {
     index: ["index.html"],
   })
 );
 
 app.get("/*", function (req, res) {
-  res.sendFile(path.join(__dirname, "../ui/dist/index.html"));
+  res.sendFile(path.join(__dirname, "../client/dist/index.html"));
 });
 
 const server = app.listen(PORT);

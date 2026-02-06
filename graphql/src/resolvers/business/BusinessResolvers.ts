@@ -50,6 +50,7 @@ const departments: BusinessResolvers["departments"] = async (
 };
 
 export const Business: BusinessResolvers = {
+  __isTypeOf: (obj) => !("parent" in obj),
   id: ({ _id }) => _id.toString(),
   budgets,
   departments,

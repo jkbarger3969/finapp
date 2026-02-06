@@ -1,6 +1,7 @@
 import { MongoClient, Db, ObjectId, ClientSession } from "mongodb";
 
 import { AccountingDb } from "./dataSources/accountingDb/accountingDb";
+import { AuthService } from "./services/authService";
 
 export interface NodeValue<Type extends string = string> {
   type: Type;
@@ -25,11 +26,14 @@ interface ContextBase {
     id: ObjectId;
   };
   reqDateTime: Date;
-  // pubSub: PubSub;
+  authService?: AuthService;
+  ipAddress?: string;
+  userAgent?: string;
   ephemeral?: {
     docHistoryDate?: Date;
     session?: ClientSession;
   };
+  loaders: import("./loaders").Loaders;
 }
 
 export type Context<TDataSources = DataSources> = TDataSources extends

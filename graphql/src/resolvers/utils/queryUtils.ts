@@ -141,20 +141,24 @@ export const whereNode = (
         }
         break;
       case "in":
-        $and.push({
-          $or: whereNode[idKey].map(({ id, type }) => ({
-            [`${getNodeFieldPath(type)}.type`]: type,
-            [`${getNodeFieldPath(type)}.id`]: new ObjectId(id),
-          })),
-        });
+        if (whereNode[idKey].length > 0) {
+          $and.push({
+            $or: whereNode[idKey].map(({ id, type }) => ({
+              [`${getNodeFieldPath(type)}.type`]: type,
+              [`${getNodeFieldPath(type)}.id`]: new ObjectId(id),
+            })),
+          });
+        }
         break;
       case "nin":
-        $and.push({
-          $nor: whereNode[idKey].map(({ id, type }) => ({
-            [`${getNodeFieldPath(type)}.type`]: type,
-            [`${getNodeFieldPath(type)}.id`]: new ObjectId(id),
-          })),
-        });
+        if (whereNode[idKey].length > 0) {
+          $and.push({
+            $nor: whereNode[idKey].map(({ id, type }) => ({
+              [`${getNodeFieldPath(type)}.type`]: type,
+              [`${getNodeFieldPath(type)}.id`]: new ObjectId(id),
+            })),
+          });
+        }
         break;
     }
   }
@@ -203,6 +207,10 @@ export const addTypename = async <T extends keyof Resolvers, U>(
   U extends Array<infer V> ? (V & { __typename: T })[] : U & { __typename: T }
 > => {
   const result = await query;
+
+  if (!result) {
+    return result as any;
+  }
 
   if (Array.isArray(result)) {
     return (result as any[]).map((doc) => {

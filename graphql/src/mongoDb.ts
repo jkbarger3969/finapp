@@ -1,4 +1,4 @@
-import * as exitHook from "async-exit-hook";
+import exitHook from "async-exit-hook";
 import { MongoClient, Db } from "mongodb";
 
 const clients = new Map<string, { name: string; client: MongoClient }>();

@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { Currency, PaymentCardInterfaceResolvers, PaymentCheckInterfaceResolvers, PaymentMethodInterfaceResolvers, PaymentMethodCardResolvers, PaymentCardResolvers } from "../../graphTypes";
+import { Currency, PaymentCheckInterfaceResolvers, PaymentMethodInterfaceResolvers, PaymentMethodCardResolvers, PaymentCardResolvers } from "../../graphTypes";
 export declare type PaymentCardTypeDbRecord = "Visa" | "MasterCard" | "AmericanExpress" | "Discover";
 export interface PaymentMethodCardDBRecord {
     currency: Currency;
@@ -21,7 +21,7 @@ export declare type PaymentMethodDBRecord = PaymentMethodCheckDBRecord | Payment
     currency: Currency;
     type: "Unknown" | "Online" | "Cash" | "Combination";
 };
-export declare const PaymentCardInterface: PaymentCardInterfaceResolvers;
+export declare const PaymentCardInterface: any;
 export declare const PaymentCard: PaymentCardResolvers;
 export declare const PaymentCheckInterface: PaymentCheckInterfaceResolvers<{
     dataSources: import("../../types").DataSources;
@@ -30,7 +30,15 @@ export declare const PaymentCheckInterface: PaymentCheckInterfaceResolvers<{
 })>;
 export declare const PaymentMethodInterface: PaymentMethodInterfaceResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, import("../../graphTypes").PaymentMethodCard | import("../../graphTypes").PaymentMethodCash | import("../../graphTypes").PaymentMethodCheck | import("../../graphTypes").PaymentMethodCombination | import("../../graphTypes").PaymentMethodOnline | import("../../graphTypes").PaymentMethodUnknown>;
+} & import("../../types").ContextBase, import("../../graphTypes").PaymentMethodCash | import("../../graphTypes").PaymentMethodCombination | import("../../graphTypes").PaymentMethodOnline | import("../../graphTypes").PaymentMethodUnknown | (import("../../graphTypes").Omit<import("../../graphTypes").PaymentMethodCard, "card"> & {
+    card: import("../../dataSources/accountingDb/types").PaymentCardDbRecord | import("../../graphTypes").PaymentCard;
+}) | (import("../../graphTypes").Omit<import("../../graphTypes").PaymentMethodCheck, "check"> & {
+    check: import("../../graphTypes").PaymentCheck | (import("../../graphTypes").Omit<import("../../graphTypes").AccountCheck, "account"> & {
+        account: import("../../dataSources/accountingDb/types").AccountDbRecord;
+    });
+})>;
 export declare const PaymentMethodCard: PaymentMethodCardResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, import("../../graphTypes").PaymentMethodCard>;
+} & import("../../types").ContextBase, import("../../graphTypes").Omit<import("../../graphTypes").PaymentMethodCard, "card"> & {
+    card: import("../../dataSources/accountingDb/types").PaymentCardDbRecord | import("../../graphTypes").PaymentCard;
+}>;

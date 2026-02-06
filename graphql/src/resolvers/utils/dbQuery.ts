@@ -1,8 +1,8 @@
 import {
   Db,
-  FilterQuery,
-  FindOneOptions,
-  CollectionAggregationOptions,
+  Filter,
+  FindOptions,
+  AggregateOptions,
 } from "mongodb";
 
 interface CollectionTypeNames {
@@ -41,8 +41,8 @@ export const find = async <
 >(
   db: Db,
   collection: U,
-  filter: FilterQuery<T>,
-  options?: FindOneOptions<T>
+  filter: Filter<T>,
+  options?: FindOptions<T>
 ): Promise<(T & { __typename: CollectionTypeNames[U] })[]> => {
   return (
     await db
@@ -50,9 +50,10 @@ export const find = async <
       .find(filter, options as unknown)
       .toArray()
   ).map<T & { __typename: CollectionTypeNames[U] }>(
-    (doc: T & { __typename: CollectionTypeNames[U] }) => {
-      doc.__typename = COLLECTION_TYPE_NAMES_MAP[collection];
-      return doc;
+    (doc) => {
+      const result = doc as unknown as T & { __typename: CollectionTypeNames[U] };
+      result.__typename = COLLECTION_TYPE_NAMES_MAP[collection];
+      return result;
     }
   );
 };
@@ -67,14 +68,14 @@ export const findOne = async <
 >(
   db: Db,
   collection: U,
-  filter: FilterQuery<T>,
-  options?: FindOneOptions<T>
+  filter: Filter<T>,
+  options?: FindOptions<T>
 ): Promise<T & { __typename: CollectionTypeNames[U] }> => {
   const doc = (await db
     .collection<T>(collection)
-    .findOne(filter, options as unknown)) as T & {
-    __typename: CollectionTypeNames[U];
-  };
+    .findOne(filter, options as unknown)) as unknown as T & {
+      __typename: CollectionTypeNames[U];
+    };
 
   doc.__typename = COLLECTION_TYPE_NAMES_MAP[collection];
 
@@ -92,7 +93,7 @@ export const aggregate = async <
   db: Db,
   collection: U,
   pipeline: Record<string, unknown>[],
-  options?: CollectionAggregationOptions
+  options?: AggregateOptions
 ): Promise<(T & { __typename: CollectionTypeNames[U] })[]> => {
   return (
     await db

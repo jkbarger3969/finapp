@@ -26,7 +26,21 @@ input FiscalYearsWhere {
   nor: [FiscalYearsWhere!]
 }
 
+input CreateFiscalYearInput {
+  name: String!
+  begin: Date!
+  end: Date!
+}
+
+type CreateFiscalYearPayload {
+  fiscalYear: FiscalYear!
+}
+
 extend type Query {
   fiscalYears(where: FiscalYearsWhere): [FiscalYear!]!
   fiscalYear(id: ID!): FiscalYear!
+}
+
+extend type Mutation {
+  createFiscalYear(input: CreateFiscalYearInput!): CreateFiscalYearPayload!
 }

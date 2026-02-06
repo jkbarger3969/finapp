@@ -20,7 +20,31 @@ input BudgetsWhere {
   nor: [BudgetsWhere!]
 }
 
+input UpsertBudget {
+  id: ID
+  amount: Rational!
+  owner: NodeInput!
+  fiscalYear: ID!
+}
+
+input DeleteBudgetInput {
+  id: ID!
+}
+
+type UpsertBudgetResult {
+  budget: Budget!
+}
+
+type DeleteBudgetResult {
+  deletedId: ID!
+}
+
 extend type Query {
   budgets(where: BudgetsWhere): [Budget!]!
   budget(id: ID!): Budget!
+}
+
+extend type Mutation {
+  upsertBudget(input: UpsertBudget!): UpsertBudgetResult!
+  deleteBudget(input: DeleteBudgetInput!): DeleteBudgetResult!
 }

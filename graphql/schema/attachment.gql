@@ -1,0 +1,90 @@
+"""
+Attachment represents a file (receipt, document, etc.) attached to an Entry.
+Files are stored in Google Cloud Storage.
+"""
+type Attachment {
+  id: ID!
+  filename: String!
+  """
+  Google Cloud Storage URL for accessing the file
+  """
+  gcsUrl: String!
+  """
+  GCS bucket name where the file is stored
+  """
+  gcsBucket: String!
+  """
+  Path within the GCS bucket
+  """
+  gcsPath: String!
+  """
+  When the file was uploaded
+  """
+  uploadedAt: Date!
+  """
+  Email of the user who uploaded the file
+  """
+  uploadedBy: String!
+  """
+  File size in bytes
+  """
+  fileSize: Int!
+  """
+  MIME type of the file (e.g., image/jpeg, application/pdf)
+  """
+  mimeType: String!
+  """
+  Optional thumbnail URL for image previews
+  """
+  thumbnailUrl: String
+  """
+  Whether this attachment has been deleted
+  """
+  deleted: Boolean!
+}
+
+input AttachmentsWhere {
+  id: WhereId
+  filename: WhereRegex
+  mimeType: WhereRegex
+  uploadedBy: WhereRegex
+  uploadedAt: WhereDate
+  deleted: Boolean
+  
+  # Logic
+  and: [AttachmentsWhere!]
+  or: [AttachmentsWhere!]
+  nor: [AttachmentsWhere!]
+}
+
+type Query {
+  attachment(id: ID!): Attachment
+  attachments(where: AttachmentsWhere): [Attachment!]!
+}
+
+type UploadReceiptPayload {
+  attachment: Attachment!
+}
+
+type DeleteAttachmentPayload {
+  deletedAttachment: Attachment!
+}
+
+type Mutation {
+  """
+  Upload a receipt file to an entry.
+  The file will be stored in Google Cloud Storage.
+  """
+  uploadReceipt(
+    entryId: ID!
+    file: Upload!
+  ): UploadReceiptPayload!
+  
+  """
+  Delete an attachment from an entry.
+  This marks the attachment as deleted and removes it from GCS.
+  """
+  deleteAttachment(
+    id: ID!
+  ): DeleteAttachmentPayload!
+}

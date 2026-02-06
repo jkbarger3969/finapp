@@ -201,27 +201,31 @@ const disable: DepartmentResolvers["disable"] = (
 ) => {
   return disable
     ? accountingDb.find({
-        collection: "fiscalYears",
-        filter: {
-          _id: { $in: disable },
-        },
-      })
+      collection: "fiscalYears",
+      filter: {
+        _id: { $in: disable },
+      },
+    })
     : [];
 };
 
 const DepartmentAncestorResolver: DepartmentAncestorResolvers<
   Context,
-  | (DepartmentDbRecord & { __typename: "Department" })
-  | (BusinessDbRecord & { __typename: "Business" })
+  DepartmentDbRecord | BusinessDbRecord
 > = {
-  // Using addTypename on all resolvers returning DepartmentAncestor
-  __resolveType: ({ __typename }) => __typename,
+  __resolveType: (obj) => {
+    if ("parent" in obj) {
+      return "Department";
+    }
+    return "Business";
+  },
 };
 
 export const DepartmentAncestor =
   DepartmentAncestorResolver as unknown as DepartmentAncestorResolvers;
 
 const DepartmentResolver: DepartmentResolvers<Context, DepartmentDbRecord> = {
+  __isTypeOf: (obj) => "parent" in obj,
   id: ({ _id }) => _id.toString(),
   budgets,
   business,

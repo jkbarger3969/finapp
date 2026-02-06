@@ -1,7 +1,7 @@
 export { account } from "./account";
 export { accounts } from "./accounts";
 export { accountCard } from "./accountCard";
-export { accountCards } from "./accountCards";
+export { accountCards, createAccountCard, updateAccountCard, deleteAccountCard } from "./accountCards";
 export {
   AccountInterface,
   AccountWithCardsInterface,
