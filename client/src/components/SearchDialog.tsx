@@ -60,11 +60,12 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
 
     // Focus input when dialog opens
     useEffect(() => {
-        if (open && inputRef.current) {
+        if (open) {
             // Small delay to ensure dialog is fully rendered
-            setTimeout(() => {
+            const timer = setTimeout(() => {
                 inputRef.current?.focus();
-            }, 100);
+            }, 50);
+            return () => clearTimeout(timer);
         }
     }, [open]);
 
@@ -118,7 +119,9 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
     };
 
     const handleSelectResult = (_entry: any) => {
-        navigate('/transactions');
+        // Pass the search query so Transactions page can filter all matching results
+        // Also signal to clear restrictive filters like fiscal year
+        navigate('/transactions', { state: { searchQuery: searchQuery, clearFilters: true } });
         onClose();
     };
 
@@ -149,14 +152,11 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
                     InputProps={{
                         startAdornment: (
                             <InputAdornment position="start">
-                                <SearchIcon />
+                                <SearchIcon color="action" />
                             </InputAdornment>
                         ),
                     }}
                     sx={{
-                        '& .MuiOutlinedInput-root': {
-                            '& fieldset': { border: 'none' },
-                        },
                         '& .MuiInputBase-input': {
                             p: 2,
                             fontSize: '1.1rem',

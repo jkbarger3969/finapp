@@ -17,6 +17,7 @@ import { useState } from "react";
 import { useDepartment } from "../context/DepartmentContext";
 import { useAuth } from "../context/AuthContext";
 import { formatCurrency, parseRational } from "../utils/currency";
+import PageHeader from "../components/PageHeader";
 
 const GET_BUDGET_DATA = `
     query GetBudgetData($entriesWhere: EntriesWhere, $budgetsWhere: BudgetsWhere) {
@@ -230,25 +231,21 @@ export default function Budget() {
         const remaining = subtotals.budget - subtotals.spent;
 
         return (
-            <Box key={dept.id} sx={{ mb: 2 }}>
+            <Grid size={{ xs: 12, md: 6, lg: 4 }} key={dept.id}>
                 <Paper
                     sx={{
                         p: 2,
-                        borderLeft: 4,
+                        height: '100%',
+                        borderTop: 4,
                         borderColor: percentUsed > 100 ? 'error.main' : percentUsed > 80 ? 'warning.main' : 'success.main',
+                        display: 'flex',
+                        flexDirection: 'column',
                     }}
                 >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {hasChildren && (
-                                <IconButton size="small" onClick={() => toggleExpand(dept.id)}>
-                                    {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                                </IconButton>
-                            )}
-                            <Typography variant="h6" fontWeight="bold">
-                                {dept.name}
-                            </Typography>
-                        </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                        <Typography variant="h6" fontWeight="bold" noWrap title={dept.name} sx={{ maxWidth: '70%' }}>
+                            {dept.name}
+                        </Typography>
                         <Chip
                             label={`${Math.round(percentUsed)}%`}
                             size="small"
@@ -256,122 +253,74 @@ export default function Budget() {
                         />
                     </Box>
 
-                    <Grid container spacing={2}>
-                        <Grid size={{ xs: 4 }}>
-                            <Typography variant="body2" color="text.secondary">Budget</Typography>
-                            <Typography variant="h6">{formatCurrency(subtotals.budget)}</Typography>
-                        </Grid>
-                        <Grid size={{ xs: 4 }}>
-                            <Typography variant="body2" color="text.secondary">Spent</Typography>
-                            <Typography variant="h6" color="error.main">{formatCurrency(subtotals.spent)}</Typography>
-                        </Grid>
-                        <Grid size={{ xs: 4 }}>
-                            <Typography variant="body2" color="text.secondary">Remaining</Typography>
-                            <Typography variant="h6" color={remaining < 0 ? 'error.main' : 'success.main'}>
-                                {formatCurrency(remaining)}
-                            </Typography>
-                        </Grid>
-                    </Grid>
-
                     <LinearProgress
                         variant="determinate"
                         value={Math.min(percentUsed, 100)}
                         color={percentUsed > 100 ? 'error' : percentUsed > 80 ? 'warning' : 'success'}
-                        sx={{ height: 8, borderRadius: 4, mt: 2 }}
+                        sx={{ height: 6, borderRadius: 3, mb: 2 }}
                     />
-                </Paper>
 
-                {hasChildren && (
-                    <Collapse in={isExpanded}>
-                        <Box sx={{ pl: 4, mt: 1, borderLeft: '2px dashed', borderColor: 'divider', ml: 2 }}>
-                            {dept.children.map(child => {
-                                const childSubtotals = calcSubtotals(child);
-                                const childPercent = childSubtotals.budget > 0 ? (childSubtotals.spent / childSubtotals.budget) * 100 : 0;
-                                const childRemaining = childSubtotals.budget - childSubtotals.spent;
-                                const childHasChildren = child.children.length > 0;
-                                const childIsExpanded = expandedDepts.has(child.id);
-
-                                return (
-                                    <Box key={child.id} sx={{ mb: 1 }}>
-                                        <Paper
-                                            variant="outlined"
-                                            sx={{
-                                                p: 1.5,
-                                                borderLeft: 3,
-                                                borderColor: childPercent > 100 ? 'error.main' : childPercent > 80 ? 'warning.main' : 'success.main',
-                                            }}
-                                        >
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    {childHasChildren && (
-                                                        <IconButton size="small" onClick={() => toggleExpand(child.id)}>
-                                                            {childIsExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                                                        </IconButton>
-                                                    )}
-                                                    <Typography fontWeight="medium">{child.name}</Typography>
-                                                </Box>
-                                                <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                                                    <Box sx={{ textAlign: 'right' }}>
-                                                        <Typography variant="caption" color="text.secondary">Budget</Typography>
-                                                        <Typography variant="body2">{formatCurrency(childSubtotals.budget)}</Typography>
-                                                    </Box>
-                                                    <Box sx={{ textAlign: 'right' }}>
-                                                        <Typography variant="caption" color="text.secondary">Spent</Typography>
-                                                        <Typography variant="body2" color="error.main">{formatCurrency(childSubtotals.spent)}</Typography>
-                                                    </Box>
-                                                    <Box sx={{ textAlign: 'right' }}>
-                                                        <Typography variant="caption" color="text.secondary">Remaining</Typography>
-                                                        <Typography variant="body2" color={childRemaining < 0 ? 'error.main' : 'success.main'}>
-                                                            {formatCurrency(childRemaining)}
-                                                        </Typography>
-                                                    </Box>
-                                                    <Chip
-                                                        label={`${Math.round(childPercent)}%`}
-                                                        size="small"
-                                                        color={childPercent > 100 ? 'error' : childPercent > 80 ? 'warning' : 'success'}
-                                                    />
-                                                </Box>
-                                            </Box>
-                                        </Paper>
-
-                                        {childHasChildren && (
-                                            <Collapse in={childIsExpanded}>
-                                                <Box sx={{ pl: 3, mt: 0.5, borderLeft: '1px dashed', borderColor: 'divider', ml: 1 }}>
-                                                    {child.children.map(grandChild => {
-                                                        const gcSpent = grandChild.spent;
-                                                        const gcBudget = grandChild.budget;
-                                                        const gcPercent = gcBudget > 0 ? (gcSpent / gcBudget) * 100 : 0;
-
-                                                        return (
-                                                            <Paper
-                                                                key={grandChild.id}
-                                                                variant="outlined"
-                                                                sx={{ p: 1, mb: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                                                            >
-                                                                <Typography variant="body2">{grandChild.name}</Typography>
-                                                                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                                                                    <Typography variant="body2">{formatCurrency(gcBudget)}</Typography>
-                                                                    <Typography variant="body2" color="error.main">{formatCurrency(gcSpent)}</Typography>
-                                                                    <Chip
-                                                                        label={`${Math.round(gcPercent)}%`}
-                                                                        size="small"
-                                                                        variant="outlined"
-                                                                        color={gcPercent > 100 ? 'error' : gcPercent > 80 ? 'warning' : 'success'}
-                                                                    />
-                                                                </Box>
-                                                            </Paper>
-                                                        );
-                                                    })}
-                                                </Box>
-                                            </Collapse>
-                                        )}
-                                    </Box>
-                                );
-                            })}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+                        <Box>
+                            <Typography variant="caption" color="text.secondary">Budget</Typography>
+                            <Typography variant="subtitle1" fontWeight="medium">{formatCurrency(subtotals.budget)}</Typography>
                         </Box>
-                    </Collapse>
-                )}
-            </Box>
+                        <Box sx={{ textAlign: 'right' }}>
+                            <Typography variant="caption" color="text.secondary">Spent</Typography>
+                            <Typography variant="subtitle1" color="error.main">{formatCurrency(subtotals.spent)}</Typography>
+                        </Box>
+                    </Box>
+
+                    <Box sx={{ mt: 'auto', pt: 1, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" color="text.secondary">Remaining</Typography>
+                        <Typography variant="body1" fontWeight="bold" color={remaining < 0 ? 'error.main' : 'success.main'}>
+                            {formatCurrency(remaining)}
+                        </Typography>
+                    </Box>
+
+                    {hasChildren && (
+                        <Box sx={{ mt: 2 }}>
+                            <IconButton
+                                size="small"
+                                onClick={() => toggleExpand(dept.id)}
+                                sx={{ width: '100%', borderRadius: 1, justifyContent: 'center', fontSize: '0.875rem' }}
+                            >
+                                {isExpanded ? <ExpandLessIcon fontSize="small" sx={{ mr: 1 }} /> : <ExpandMoreIcon fontSize="small" sx={{ mr: 1 }} />}
+                                {isExpanded ? 'Hide Subdepartments' : 'View Subdepartments'}
+                            </IconButton>
+                            <Collapse in={isExpanded}>
+                                <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    {dept.children.map(child => {
+                                        const childSubtotals = calcSubtotals(child);
+                                        const cPercent = childSubtotals.budget > 0 ? (childSubtotals.spent / childSubtotals.budget) * 100 : 0;
+
+                                        return (
+                                            <Paper key={child.id} variant="outlined" sx={{ p: 1 }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                                    <Typography variant="body2" fontWeight="medium">{child.name}</Typography>
+                                                    <Typography variant="caption" fontWeight="bold" color={cPercent > 100 ? 'error.main' : 'text.primary'}>
+                                                        {Math.round(cPercent)}%
+                                                    </Typography>
+                                                </Box>
+                                                <LinearProgress
+                                                    variant="determinate"
+                                                    value={Math.min(cPercent, 100)}
+                                                    color={cPercent > 100 ? 'error' : cPercent > 80 ? 'warning' : 'success'}
+                                                    sx={{ height: 4, borderRadius: 2 }}
+                                                />
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                                                    <Typography variant="caption" color="text.secondary">{formatCurrency(childSubtotals.spent)} spent</Typography>
+                                                    <Typography variant="caption" color="text.secondary">of {formatCurrency(childSubtotals.budget)}</Typography>
+                                                </Box>
+                                            </Paper>
+                                        );
+                                    })}
+                                </Box>
+                            </Collapse>
+                        </Box>
+                    )}
+                </Paper>
+            </Grid>
         );
     };
 
@@ -404,7 +353,10 @@ export default function Budget() {
 
     return (
         <Box>
-            <Typography variant="h4" gutterBottom>Budget Overview</Typography>
+            <PageHeader
+                title="Budget Overview"
+                subtitle="Track spending against department budgets"
+            />
 
             {totalBudget > 0 ? (
                 <>
@@ -454,7 +406,9 @@ export default function Budget() {
                     </Paper>
 
                     <Typography variant="h6" gutterBottom>Department Budgets</Typography>
-                    {topLevelDepts.map(dept => renderDeptCard(dept))}
+                    <Grid container spacing={3}>
+                        {topLevelDepts.map(dept => renderDeptCard(dept))}
+                    </Grid>
 
                     {topLevelDepts.length === 0 && (
                         <Alert severity="info" sx={{ mt: 2 }}>

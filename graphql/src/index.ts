@@ -7,6 +7,8 @@ import { ApolloServerPluginDrainHttpServer } from "apollo-server-core";
 import Koa from "koa";
 import * as http from "http";
 import { graphqlUploadKoa } from "graphql-upload-minimal";
+import serve from "koa-static";
+import mount from "koa-mount";
 
 import resolvers from "./resolvers";
 import { Context, DataSources } from "./types";
@@ -20,6 +22,7 @@ import { createLoaders } from "./loaders";
 import { AuthService } from "./services/authService";
 
 const PORT = process.env.PORT || 4000;
+const RECEIPT_STORAGE_PATH = process.env.RECEIPT_STORAGE_PATH;
 
 (async () => {
   try {
@@ -102,6 +105,14 @@ const PORT = process.env.PORT || 4000;
     const app = new Koa();
 
     app.use(graphqlUploadKoa({ maxFileSize: 10000000, maxFiles: 10 }));
+
+    // Serve receipt files from storage directory
+    if (RECEIPT_STORAGE_PATH) {
+      app.use(mount("/receipts", serve(RECEIPT_STORAGE_PATH)));
+      console.log(`📁 Serving receipts from: ${RECEIPT_STORAGE_PATH}`);
+    } else {
+      console.warn("Warning: RECEIPT_STORAGE_PATH not configured. Receipt serving disabled.");
+    }
 
     server.applyMiddleware({ app });
 

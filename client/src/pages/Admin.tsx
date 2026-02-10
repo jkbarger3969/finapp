@@ -56,22 +56,22 @@ export default function Admin() {
             <Paper sx={{ width: '100%', mb: 2 }}>
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                     <Tabs value={value} onChange={handleChange} aria-label="admin tabs">
-                        <Tab label="Payment Cards" />
                         <Tab label="User Access" disabled={!isSuperAdmin} />
                         <Tab label="Budget Allocation" disabled={!isSuperAdmin} />
+                        <Tab label="Payment Cards" />
                         <Tab label="Audit Log" disabled={!isSuperAdmin} />
                     </Tabs>
                 </Box>
             </Paper>
 
             <CustomTabPanel value={value} index={0}>
-                <PaymentCardsTab />
-            </CustomTabPanel>
-            <CustomTabPanel value={value} index={1}>
                 {isSuperAdmin && <UsersTab />}
             </CustomTabPanel>
-            <CustomTabPanel value={value} index={2}>
+            <CustomTabPanel value={value} index={1}>
                 {isSuperAdmin && <BudgetAllocationTab />}
+            </CustomTabPanel>
+            <CustomTabPanel value={value} index={2}>
+                <PaymentCardsTab />
             </CustomTabPanel>
             <CustomTabPanel value={value} index={3}>
                 Audit Log (Coming Soon)

@@ -139,7 +139,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [debouncedAmount, setDebouncedAmount] = useState('');
     const [selectedEntry, setSelectedEntry] = useState<any>(initialSelectedEntry || null);
-    
+
     const [formData, setFormData] = useState({
         description: '',
         date: new Date().toISOString().split('T')[0],
@@ -187,13 +187,13 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
     // Build search where clause
     const buildSearchWhere = () => {
         const conditions: any[] = [];
-        
+
         if (debouncedSearch.length >= 2) {
             conditions.push({
                 description: { pattern: debouncedSearch, flags: ['I'] }
             });
         }
-        
+
         if (debouncedAmount) {
             const amountNum = parseFloat(debouncedAmount);
             if (!isNaN(amountNum)) {
@@ -201,15 +201,15 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                 conditions.push({ total: { eq: rational } });
             }
         }
-        
+
         if (conditions.length === 0) {
             return null;
         }
-        
+
         if (conditions.length === 1) {
             return conditions[0];
         }
-        
+
         return { or: conditions };
     };
 
@@ -217,13 +217,13 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
     const shouldSearch = searchWhere !== null;
 
     const [result] = useQuery({ query: GET_FORM_DATA });
-    const [searchResult] = useQuery({ 
-        query: SEARCH_ENTRIES, 
+    const [searchResult] = useQuery({
+        query: SEARCH_ENTRIES,
         variables: { where: searchWhere || {} },
         pause: !shouldSearch,
         requestPolicy: 'network-only',
     });
-    
+
     const [, addEntry] = useMutation(ADD_ENTRY_MUTATION);
     const [, addRefund] = useMutation(ADD_REFUND_MUTATION);
     const [error, setError] = useState<string | null>(null);
@@ -263,95 +263,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
         return Math.abs(total) - refundedAmount;
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError(null);
 
-        try {
-            const amountFloat = parseFloat(formData.amount);
-            if (isNaN(amountFloat) || amountFloat <= 0) {
-                setError('Invalid amount - must be greater than zero');
-                return;
-            }
-
-            if (entryType === 'refund') {
-                if (!selectedEntry) {
-                    setError('Please select an original transaction for this refund');
-                    return;
-                }
-
-                const remaining = calculateRemainingRefund(selectedEntry);
-                if (amountFloat > remaining) {
-                    setError(`Refund amount exceeds remaining balance of ${formatCurrency(remaining)}`);
-                    return;
-                }
-
-                const rational = JSON.stringify({
-                    s: 1,
-                    n: Math.round(amountFloat * 100),
-                    d: 100,
-                });
-
-                const refundInput = {
-                    entry: selectedEntry.id,
-                    date: formData.date,
-                    description: formData.description || `Refund for: ${selectedEntry.description}`,
-                    total: rational,
-                    reconciled: formData.reconciled,
-                    paymentMethod: buildPaymentMethod(),
-                    ...(formData.hasDifferentPostedDate && formData.postedDate && {
-                        dateOfRecord: {
-                            date: formData.postedDate,
-                            overrideFiscalYear: formData.usePostedDateForFiscalYear,
-                        },
-                    }),
-                };
-
-                const response = await addRefund({ input: refundInput });
-
-                if (response.error) {
-                    setError(response.error.message);
-                } else {
-                    onSuccess();
-                    handleClose();
-                }
-            } else {
-                const rational = JSON.stringify({
-                    s: 1,
-                    n: Math.round(amountFloat * 100),
-                    d: 100,
-                });
-
-                const input = {
-                    description: formData.description,
-                    date: formData.date,
-                    category: formData.categoryId,
-                    department: formData.departmentId,
-                    total: rational,
-                    reconciled: formData.reconciled,
-                    paymentMethod: buildPaymentMethod(),
-                    source: buildSource(),
-                    ...(formData.hasDifferentPostedDate && formData.postedDate && {
-                        dateOfRecord: {
-                            date: formData.postedDate,
-                            overrideFiscalYear: formData.usePostedDateForFiscalYear,
-                        },
-                    }),
-                };
-
-                const response = await addEntry({ input });
-
-                if (response.error) {
-                    setError(response.error.message);
-                } else {
-                    onSuccess();
-                    handleClose();
-                }
-            }
-        } catch (err: any) {
-            setError(err.message || 'Failed to create entry');
-        }
-    };
 
     const buildPaymentMethod = () => {
         return {
@@ -413,15 +325,15 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
         };
     };
 
-    const handleClose = () => {
-        setFormData({
+    const resetForm = (keepDate: boolean = false) => {
+        setFormData(prev => ({
             description: '',
-            date: new Date().toISOString().split('T')[0],
+            date: keepDate ? prev.date : new Date().toISOString().split('T')[0],
             hasDifferentPostedDate: false,
             postedDate: '',
             usePostedDateForFiscalYear: false,
             categoryId: '',
-            departmentId: '',
+            departmentId: prev.departmentId, // Keep department for convenience
             amount: '',
             reconciled: false,
             paymentType: 'CASH',
@@ -435,7 +347,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
             newPersonFirst: '',
             newPersonLast: '',
             newBusinessName: '',
-        });
+        }));
         setEntryType('transaction');
         setSelectedEntry(null);
         setSearchTerm('');
@@ -443,7 +355,118 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
         setDebouncedSearch('');
         setDebouncedAmount('');
         setError(null);
+    };
+
+    const handleClose = () => {
+        resetForm();
         onClose();
+    };
+
+    // State to track if we should close or keep open
+    const [keepOpen, setKeepOpen] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+
+        try {
+            const amountFloat = parseFloat(formData.amount);
+            if (isNaN(amountFloat) || amountFloat <= 0) {
+                setError('Invalid amount - must be greater than zero');
+                return;
+            }
+
+            if (entryType === 'refund') {
+                if (!selectedEntry) {
+                    setError('Please select an original transaction for this refund');
+                    return;
+                }
+
+                const remaining = calculateRemainingRefund(selectedEntry);
+                if (amountFloat > remaining) {
+                    setError(`Refund amount exceeds remaining balance of ${formatCurrency(remaining)}`);
+                    return;
+                }
+
+                const rational = JSON.stringify({
+                    s: 1,
+                    n: Math.round(amountFloat * 100),
+                    d: 100,
+                });
+
+                const refundInput = {
+                    entry: selectedEntry.id,
+                    date: formData.date,
+                    description: formData.description || `Refund for: ${selectedEntry.description}`,
+                    total: rational,
+                    reconciled: formData.reconciled,
+                    paymentMethod: buildPaymentMethod(),
+                    ...(formData.hasDifferentPostedDate && formData.postedDate && {
+                        dateOfRecord: {
+                            date: formData.postedDate,
+                            overrideFiscalYear: formData.usePostedDateForFiscalYear,
+                        },
+                    }),
+                };
+
+                const response = await addRefund({ input: refundInput });
+
+                if (response.error) {
+                    setError(response.error.message);
+                } else {
+                    onSuccess();
+                    if (keepOpen) {
+                        resetForm(true); // Keep date
+                        setError(null); // Clear any errors
+                        // Maybe show success toast?
+                    } else {
+                        handleClose();
+                    }
+                }
+            } else {
+                const rational = JSON.stringify({
+                    s: 1,
+                    n: Math.round(amountFloat * 100),
+                    d: 100,
+                });
+
+                const input = {
+                    description: formData.description,
+                    date: formData.date,
+                    category: formData.categoryId,
+                    department: formData.departmentId,
+                    total: rational,
+                    reconciled: formData.reconciled,
+                    paymentMethod: buildPaymentMethod(),
+                    source: buildSource(),
+                    ...(formData.hasDifferentPostedDate && formData.postedDate && {
+                        dateOfRecord: {
+                            date: formData.postedDate,
+                            overrideFiscalYear: formData.usePostedDateForFiscalYear,
+                        },
+                    }),
+                };
+
+                const response = await addEntry({ input });
+
+                if (response.error) {
+                    setError(response.error.message);
+                } else {
+                    onSuccess();
+                    if (keepOpen) {
+                        resetForm(true); // Keep date
+                        setError(null);
+                    } else {
+                        handleClose();
+                    }
+                }
+            }
+        } catch (err: any) {
+            setError(err.message || 'Failed to create entry');
+        } finally {
+            // Reset the flag
+            setKeepOpen(false);
+        }
     };
 
     return (
@@ -476,7 +499,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                 <Typography variant="subtitle2" gutterBottom>
                                     Search for Original Transaction
                                 </Typography>
-                                
+
                                 <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                                     <TextField
                                         label="Search by description"
@@ -519,9 +542,9 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                             const remaining = calculateRemainingRefund(entry);
                                             const hasPartialRefund = remaining < total;
                                             const isSelected = selectedEntry?.id === entry.id;
-                                            
+
                                             return (
-                                                <Box 
+                                                <Box
                                                     key={entry.id}
                                                     onClick={() => {
                                                         setSelectedEntry(entry);
@@ -532,8 +555,8 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                                             departmentId: entry.department?.id || formData.departmentId,
                                                         });
                                                     }}
-                                                    sx={{ 
-                                                        p: 1.5, 
+                                                    sx={{
+                                                        p: 1.5,
                                                         cursor: 'pointer',
                                                         bgcolor: isSelected ? 'primary.light' : 'background.paper',
                                                         '&:hover': { bgcolor: isSelected ? 'primary.light' : 'action.hover' },
@@ -555,7 +578,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                                             {entry.date} - {entry.department?.name} - {entry.category?.name}
                                                         </Typography>
                                                         {hasPartialRefund && (
-                                                            <Chip 
+                                                            <Chip
                                                                 label={`${formatCurrency(remaining)} remaining`}
                                                                 size="small"
                                                                 color="warning"
@@ -610,8 +633,8 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                             control={
                                 <Checkbox
                                     checked={formData.hasDifferentPostedDate}
-                                    onChange={(e) => setFormData({ 
-                                        ...formData, 
+                                    onChange={(e) => setFormData({
+                                        ...formData,
                                         hasDifferentPostedDate: e.target.checked,
                                         postedDate: e.target.checked ? (formData.postedDate || formData.date) : '',
                                     })}
@@ -687,30 +710,30 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                     <RadioGroup
                                         row
                                         value={formData.sourceType}
-                                        onChange={(e) => setFormData({ 
-                                            ...formData, 
+                                        onChange={(e) => setFormData({
+                                            ...formData,
                                             sourceType: e.target.value as any,
                                             sourceId: '',
                                         })}
                                     >
-                                        <FormControlLabel 
-                                            value="person" 
-                                            control={<Radio size="small" />} 
+                                        <FormControlLabel
+                                            value="person"
+                                            control={<Radio size="small" />}
                                             label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><PersonIcon fontSize="small" /> Existing Person</Box>}
                                         />
-                                        <FormControlLabel 
-                                            value="business" 
-                                            control={<Radio size="small" />} 
+                                        <FormControlLabel
+                                            value="business"
+                                            control={<Radio size="small" />}
                                             label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><BusinessIcon fontSize="small" /> Existing Business</Box>}
                                         />
-                                        <FormControlLabel 
-                                            value="new_person" 
-                                            control={<Radio size="small" />} 
+                                        <FormControlLabel
+                                            value="new_person"
+                                            control={<Radio size="small" />}
                                             label="New Person"
                                         />
-                                        <FormControlLabel 
-                                            value="new_business" 
-                                            control={<Radio size="small" />} 
+                                        <FormControlLabel
+                                            value="new_business"
+                                            control={<Radio size="small" />}
                                             label="New Business"
                                         />
                                     </RadioGroup>
@@ -833,9 +856,9 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                             helperText={
                                 entryType === 'refund' && selectedEntry
                                     ? `Max refund: ${formatCurrency(calculateRemainingRefund(selectedEntry))}`
-                                    : entryType === 'transaction' 
-                                    ? "Enter amount (category type determines if income or expense)"
-                                    : undefined
+                                    : entryType === 'transaction'
+                                        ? "Enter amount (category type determines if income or expense)"
+                                        : undefined
                             }
                         />
 
@@ -933,13 +956,21 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleClose}>Cancel</Button>
-                    <Button 
-                        type="submit" 
-                        variant="contained" 
+                    <Button
+                        type="submit"
+                        disabled={fetching || (entryType === 'refund' && !selectedEntry)}
+                        onClick={() => setKeepOpen(true)}
+                    >
+                        Save & Add Another
+                    </Button>
+                    <Button
+                        type="submit"
+                        variant="contained"
                         disabled={fetching || (entryType === 'refund' && !selectedEntry)}
                         color={entryType === 'refund' ? 'success' : 'primary'}
+                        onClick={() => setKeepOpen(false)}
                     >
-                        {entryType === 'refund' ? 'Record Refund' : 'Create Entry'}
+                        {entryType === 'refund' ? 'Record Refund' : 'Save'}
                     </Button>
                 </DialogActions>
             </form>

@@ -1,4 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import './styles/tooltips.css';
+
 
 :root {
   font-family: 'Outfit', system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -12,6 +14,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   overflow-x: hidden;
+  background-color: #121212;
+  /* Ensure dark background */
 }
 
 /* Custom Scrollbar for Webkit */
@@ -50,4 +54,43 @@ button {
 #root {
   width: 100%;
   min-height: 100vh;
+}
+
+/* --- Professional UI Enhancements --- */
+
+/* Card Hover Effects - Subtle Lift */
+.MuiPaper-root.MuiPaper-elevation1,
+.MuiPaper-root.MuiPaper-elevation2 {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.MuiPaper-root.MuiPaper-elevation1:hover,
+.MuiPaper-root.MuiPaper-elevation2:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+  /* Using !important to override default elevation shadows slightly if needed */
+}
+
+/* DataGrid Row Interactions */
+.MuiDataGrid-row {
+  transition: background-color 0.2s ease;
+}
+
+.MuiDataGrid-row:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  cursor: pointer;
+}
+
+/* Button Hover Lift */
+button.MuiButton-contained {
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+button.MuiButton-contained:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+button.MuiButton-contained:active {
+  transform: translateY(0);
 }

@@ -20,7 +20,7 @@ const GET_ENTRY_ATTACHMENTS = `
        attachments {
          id
          filename
-         gcsUrl
+         url
          mimeType
          uploadedAt
        }

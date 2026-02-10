@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import EntryFormDialog from "../EntryFormDialog";
-import SearchDialog from "../SearchDialog";
-import DepartmentSelector from "../DepartmentSelector";
+
+
 import { useAuth } from "../../context/AuthContext";
+import { useLayout } from "../../context/LayoutContext";
+import { useThemeMode } from "../../context/ThemeModeContext";
 import {
     Box,
     AppBar,
@@ -13,69 +15,22 @@ import {
     IconButton,
     ListItemIcon,
     useTheme,
-    InputBase,
     Avatar,
     Menu,
     MenuItem,
     Button,
 } from "@mui/material";
 import {
-    Search as SearchIcon,
     Add as AddIcon,
     Logout as LogoutIcon,
     Person as PersonIcon,
+    Menu as MenuIcon,
+    LightMode as LightModeIcon,
+    DarkMode as DarkModeIcon,
 } from "@mui/icons-material";
-import { styled, alpha } from "@mui/material/styles";
+import { alpha } from "@mui/material/styles";
 
-// Removed drawerWidth as it is no longer needed
 
-// Main component definition moved to bottom
-
-const Search = styled("div")(({ theme }) => ({
-    position: "relative",
-    borderRadius: 24, // Pill shape
-    backgroundColor: alpha(theme.palette.common.white, 0.03),
-    border: `1px solid ${alpha(theme.palette.common.white, 0.1)}`,
-    "&:hover": {
-        backgroundColor: alpha(theme.palette.common.white, 0.08),
-        boxShadow: `0 0 0 1px ${theme.palette.primary.main}`,
-    },
-    marginRight: theme.spacing(2),
-    marginLeft: 0,
-    width: "100%",
-    transition: "all 0.2s ease-in-out",
-    [theme.breakpoints.up("sm")]: {
-        marginLeft: theme.spacing(3),
-        width: "auto",
-    },
-}));
-
-const SearchIconWrapper = styled("div")(({ theme }) => ({
-    padding: theme.spacing(0, 2),
-    height: "100%",
-    position: "absolute",
-    pointerEvents: "none",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: theme.palette.text.secondary,
-}));
-
-const StyledInputBase = styled(InputBase)(({ theme }) => ({
-    color: "inherit",
-    "& .MuiInputBase-input": {
-        padding: theme.spacing(1, 1, 1, 0),
-        paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-        transition: theme.transitions.create("width"),
-        width: "100%",
-        [theme.breakpoints.up("md")]: {
-            width: "250px",
-            "&:focus": {
-                width: "350px",
-            },
-        },
-    },
-}));
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -86,9 +41,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, logout, isSuperAdmin, isDeptAdmin } = useAuth();
+    const { isEntryDialogOpen, openEntryDialog, closeEntryDialog } = useLayout();
+    const { mode, toggleTheme } = useThemeMode();
     // const [open, setOpen] = useState(true); // Drawer state no longer needed
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [searchOpen, setSearchOpen] = useState(false);
+    // const [dialogOpen, setDialogOpen] = useState(false); // Moved to context
+
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const userMenuOpen = Boolean(anchorEl);
 
@@ -110,50 +67,72 @@ export default function MainLayout({ children }: MainLayoutProps) {
         navigate('/login');
     };
 
-    // Global keyboard shortcut for search (Cmd/Ctrl + K)
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                e.preventDefault();
-                setSearchOpen(true);
-            }
-        };
 
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
 
     const menuItems = [
         { text: "Dashboard", path: "/" },
         { text: "Transactions", path: "/transactions" },
         { text: "Budget", path: "/budget" },
+        { text: "Reports", path: "/reporting" },
         ...(isSuperAdmin || isDeptAdmin ? [{ text: "Admin", path: "/admin" }] : []),
     ];
 
+    const drawerWidth = 260; // Define drawer width
+
     return (
-        <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", bgcolor: "background.default" }}>
+        <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+            {/* Top App Bar - Simplified */}
             <AppBar
-                position="sticky"
-                elevation={0}
+                position="fixed"
                 sx={{
+                    width: { md: `calc(100% - ${drawerWidth}px)` },
+                    ml: { md: `${drawerWidth}px` },
                     zIndex: theme.zIndex.drawer + 1,
                     backdropFilter: "blur(20px)",
                     backgroundColor: alpha(theme.palette.background.default, 0.8),
                     borderBottom: `1px solid ${alpha(theme.palette.text.primary, 0.05)}`,
+                    boxShadow: 'none',
                 }}
             >
-                <Toolbar sx={{ justifyContent: "space-between", py: 0.5 }}>
-                    {/* Brand & Navigation */}
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <Toolbar sx={{ justifyContent: "space-between" }}>
+                    {/* Mobile Menu Button - Only visible on small screens */}
+                    <IconButton
+                        color="inherit"
+                        aria-label="open drawer"
+                        edge="start"
+                        onClick={() => { }} // Placeholder for mobile drawer toggle
+                        sx={{ mr: 2, display: { md: 'none' } }}
+                    >
+                        <MenuIcon />
+                    </IconButton>
+                </Toolbar>
+            </AppBar>
+
+            {/* Permanent Drawer for Desktop */}
+            <Box
+                component="nav"
+                sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
+            >
+                <Box
+                    sx={{
+                        width: drawerWidth,
+                        height: '100%',
+                        position: 'fixed',
+                        left: 0,
+                        top: 0,
+                        bgcolor: 'background.paper',
+                        borderRight: `1px solid ${alpha(theme.palette.text.primary, 0.05)}`,
+                        display: { xs: 'none', md: 'flex' },
+                        flexDirection: 'column',
+                        zIndex: theme.zIndex.drawer + 2, // Above AppBar backdrop? No, usually side-by-side. 
+                    }}
+                >
+                    {/* Logo Area */}
+                    <Box sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
                         <Typography
                             variant="h5"
-                            noWrap
-                            component="div"
-                            onClick={() => navigate('/')}
+                            fontWeight={800}
                             sx={{
-                                cursor: 'pointer',
-                                fontWeight: 800,
-                                letterSpacing: '-0.02em',
                                 background: theme => theme.palette.mode === 'dark' ? 'linear-gradient(135deg, #6C5DD3 0%, #00E5FF 100%)' : theme.palette.primary.main,
                                 backgroundClip: 'text',
                                 textFillColor: 'transparent',
@@ -163,174 +142,210 @@ export default function MainLayout({ children }: MainLayoutProps) {
                         >
                             FinApp
                         </Typography>
-
-                        {/* Top Navigation Links */}
-                        <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
-                            {menuItems.map((item) => {
-                                const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
-                                return (
-                                    <Box
-                                        key={item.text}
-                                        onClick={() => navigate(item.path)}
-                                        sx={{
-                                            position: 'relative',
-                                            px: 2,
-                                            py: 1,
-                                            cursor: 'pointer',
-                                            borderRadius: 2,
-                                            color: isActive ? 'text.primary' : 'text.secondary',
-                                            fontWeight: isActive ? 600 : 500,
-                                            transition: 'all 0.2s',
-                                            '&:hover': {
-                                                color: 'text.primary',
-                                                bgcolor: alpha(theme.palette.text.primary, 0.03),
-                                            },
-                                        }}
-                                    >
-                                        {item.text}
-                                        {isActive && (
-                                            <Box
-                                                sx={{
-                                                    position: 'absolute',
-                                                    bottom: 4,
-                                                    left: '50%',
-                                                    transform: 'translateX(-50%)',
-                                                    width: '20%',
-                                                    height: 3,
-                                                    borderRadius: 4,
-                                                    background: theme.palette.secondary.main,
-                                                    boxShadow: `0 0 8px ${theme.palette.secondary.main}`,
-                                                }}
-                                            />
-                                        )}
-                                    </Box>
-                                );
-                            })}
-                        </Box>
+                        <IconButton
+                            onClick={toggleTheme}
+                            size="small"
+                            data-tooltip={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                            data-tooltip-pos="right"
+                            sx={{
+                                color: 'text.primary',
+                                '&:hover': {
+                                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                }
+                            }}
+                        >
+                            {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+                        </IconButton>
                     </Box>
 
-                    {/* Search, Actions & Profile */}
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                        <Search onClick={() => setSearchOpen(true)} sx={{ cursor: 'pointer', display: { xs: 'none', md: 'block' } }}>
-                            <SearchIconWrapper>
-                                <SearchIcon color="action" />
-                            </SearchIconWrapper>
-                            <StyledInputBase
-                                placeholder="Search... (Cmd+K)"
-                                inputProps={{ "aria-label": "search" }}
-                                readOnly
-                            />
-                        </Search>
-
-                        <DepartmentSelector />
-
+                    {/* New Entry Button - Prominent in Sidebar */}
+                    <Box sx={{ px: 3, mb: 4 }}>
                         <Button
+                            fullWidth
                             variant="contained"
-                            color="primary"
+                            size="large"
                             startIcon={<AddIcon />}
-                            onClick={() => setDialogOpen(true)}
+                            onClick={openEntryDialog}
+                            data-tooltip="Create a new financial entry"
+                            data-tooltip-pos="right"
                             sx={{
-                                display: { xs: 'none', sm: 'flex' },
-                                fontWeight: 700,
-                                borderRadius: 10,
-                                px: 3,
+                                borderRadius: 3,
+                                py: 1.5,
                                 background: 'linear-gradient(135deg, #6C5DD3 0%, #00E5FF 100%)',
-                                boxShadow: '0 4px 14px 0 rgba(0, 229, 255, 0.3)',
-                                '&:hover': {
-                                    boxShadow: '0 6px 20px 0 rgba(0, 229, 255, 0.5)',
-                                },
-                                whiteSpace: 'nowrap',
+                                boxShadow: '0 4px 14px 0 rgba(108, 93, 211, 0.3)',
+                                textTransform: 'none',
+                                fontWeight: 700,
                             }}
                         >
                             New Entry
                         </Button>
+                    </Box>
 
-                        <IconButton onClick={() => setSearchOpen(true)} sx={{ display: { xs: 'flex', md: 'none' } }}>
-                            <SearchIcon />
-                        </IconButton>
+                    {/* Navigation Items */}
+                    <Box sx={{ px: 2, flex: 1 }}>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                px: 2,
+                                mb: 1,
+                                display: 'block',
+                                color: 'text.primary',
+                                fontWeight: 700,
+                                letterSpacing: '0.15em',
+                                fontSize: '0.65rem',
+                                opacity: 0.8,
+                                userSelect: 'none',
+                                cursor: 'default',
+                            }}
+                        >
+                            MENU
+                        </Typography>
+                        {menuItems.map((item) => {
+                            const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+                            return (
+                                <Box
+                                    key={item.text}
+                                    onClick={() => navigate(item.path)}
+                                    sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        px: 2,
+                                        py: 1.5,
+                                        mb: 0.5,
+                                        cursor: 'pointer',
+                                        borderRadius: 2,
+                                        borderLeft: '3px solid transparent',
+                                        color: isActive ? 'text.primary' : 'text.secondary',
+                                        bgcolor: isActive ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                                        transition: 'all 0.2s',
+                                        '&:hover': {
+                                            bgcolor: isActive ? alpha(theme.palette.primary.main, 0.15) : alpha(theme.palette.text.primary, 0.05),
+                                            color: 'text.primary',
+                                            borderLeft: `3px solid ${alpha(theme.palette.primary.main, 0.4)}`,
+                                            paddingLeft: '13px',
+                                        },
+                                        fontWeight: isActive ? 600 : 500,
+                                    }}
+                                >
+                                    <Typography variant="body2">{item.text}</Typography>
+                                </Box>
+                            );
+                        })}
+                    </Box>
 
-                        <IconButton
+                    {/* User Profile Mini - Bottom */}
+                    <Box sx={{
+                        p: 2,
+                        borderTop: `1px solid ${alpha(theme.palette.text.primary, 0.05)}`,
+                    }}>
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1.5,
+                                p: 1.5,
+                                borderRadius: 2,
+                                border: `2px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+                                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+                                transition: 'all 0.2s ease',
+                                cursor: 'pointer',
+                                '&:hover': {
+                                    bgcolor: alpha(theme.palette.primary.main, 0.15),
+                                    border: `2px solid ${alpha(theme.palette.primary.main, 0.5)}`,
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
+                                }
+                            }}
                             onClick={handleUserMenuClick}
-                            size="small"
+                            data-tooltip="Account settings and profile"
+                            data-tooltip-pos="right"
                         >
                             <Avatar
                                 src={user?.picture}
                                 sx={{
-                                    bgcolor: "primary.main",
-                                    color: "white",
-                                    width: 38,
-                                    height: 38,
-                                    border: `2px solid ${alpha(theme.palette.background.paper, 0.5)}`
+                                    width: 36,
+                                    height: 36,
+                                    bgcolor: 'primary.main',
+                                    border: `2px solid ${alpha(theme.palette.primary.main, 0.5)}`,
                                 }}
                             >
-                                {user?.name?.charAt(0) || 'U'}
+                                {user?.name?.charAt(0)}
                             </Avatar>
-                        </IconButton>
-                    </Box>
-
-                    <Menu
-                        id="user-menu"
-                        anchorEl={anchorEl}
-                        open={userMenuOpen}
-                        onClose={handleUserMenuClose}
-                        onClick={handleUserMenuClose}
-                        PaperProps={{
-                            elevation: 0,
-                            sx: {
-                                overflow: 'visible',
-                                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-                                mt: 1.5,
-                            },
-                        }}
-                        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                    >
-                        <MenuItem disabled sx={{ opacity: 1 }}>
-                            <Box>
-                                <Typography variant="subtitle2" fontWeight="bold">{user?.name}</Typography>
-                                <Typography variant="caption" color="text.secondary">{user?.email}</Typography>
+                            <Box sx={{ overflow: 'hidden', flex: 1 }}>
+                                <Typography variant="subtitle2" noWrap fontWeight={600}>{user?.name}</Typography>
+                                <Typography
+                                    variant="caption"
+                                    noWrap
+                                    sx={{
+                                        display: 'block',
+                                        color: 'primary.main',
+                                        fontWeight: 500,
+                                    }}
+                                >
+                                    View Profile
+                                </Typography>
                             </Box>
-                        </MenuItem>
-                        <Divider />
-                        <MenuItem onClick={() => { navigate('/admin'); }}>
-                            <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
-                            Profile
-                        </MenuItem>
-                        <MenuItem onClick={handleLogout}>
-                            <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
-                            Sign Out
-                        </MenuItem>
-                    </Menu>
-                </Toolbar>
-            </AppBar>
+                        </Box>
+                    </Box>
+                </Box>
+            </Box>
 
-            <Main>
-                {/* Removed top toolbar spacer since we are now sticky, not fixed covering content */}
-                {children}
-            </Main>
+            {/* Main Content Area */}
+            <Box
+                component="main"
+                sx={{
+                    flexGrow: 1,
+                    p: 3,
+                    width: { md: `calc(100% - ${drawerWidth}px)` },
+                    mt: 7, // Reduced from 8 - header is now simpler without user button
+                }}
+            >
+                <Box sx={{ maxWidth: '1600px', mx: 'auto' }}>
+                    {children}
+                </Box>
+            </Box>
 
             <EntryFormDialog
-                open={dialogOpen}
-                onClose={() => setDialogOpen(false)}
+                open={isEntryDialogOpen}
+                onClose={closeEntryDialog}
                 onSuccess={() => {
-                    // Re-fetch data if needed
                     window.location.reload();
                 }}
             />
 
-            <SearchDialog
-                open={searchOpen}
-                onClose={() => setSearchOpen(false)}
-            />
+
+            <Menu
+                anchorEl={anchorEl}
+                open={userMenuOpen}
+                onClose={handleUserMenuClose}
+                onClick={handleUserMenuClose}
+                PaperProps={{
+                    elevation: 0,
+                    sx: {
+                        overflow: 'visible',
+                        filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                        mt: 1.5,
+                    },
+                }}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            >
+                <MenuItem disabled sx={{ opacity: 1 }}>
+                    <Box>
+                        <Typography variant="subtitle2" fontWeight="bold">{user?.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">{user?.email}</Typography>
+                    </Box>
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={() => { navigate('/admin'); }}>
+                    <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
+                    Profile
+                </MenuItem>
+                <MenuItem onClick={handleLogout}>
+                    <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
+                    Sign Out
+                </MenuItem>
+            </Menu>
         </Box>
     );
 }
-
-// Remove the 'open' prop requirement from Main since we don't need drawer shifting anymore
-const Main = styled("main")(({ theme }) => ({
-    flexGrow: 1,
-    padding: theme.spacing(3, 3, 6, 3), // Add more bottom padding
-    width: '100%',
-    maxWidth: '1600px', // Limit max width for ultra-wide screens
-    margin: '0 auto',
-}));

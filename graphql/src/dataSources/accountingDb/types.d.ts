@@ -65,9 +65,9 @@ export type EntryRefundDbRecord = HistoricalDoc<
 export interface AttachmentDbRecord {
   id: string;
   filename: string;
-  gcsUrl: string;
-  gcsBucket: string;
-  gcsPath: string;
+  filePath: string;      // Relative path from STORAGE_PATH: "2024/02/timestamp-file.pdf"
+  fullPath: string;      // Absolute filesystem path: "/mnt/qnap/receipts/2024/02/..."
+  url: string;           // Public URL for download: "https://domain.com/receipts/2024/02/..."
   uploadedAt: Date;
   uploadedBy: string;
   fileSize: number;
@@ -75,6 +75,7 @@ export interface AttachmentDbRecord {
   thumbnailUrl?: string;
   deleted: boolean;
 }
+
 
 export type EntityTypeDbRecord = PascalCase<EntityType>;
 

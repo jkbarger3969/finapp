@@ -168,21 +168,17 @@ export type AliasesWhere = {
 
 /**
  * Attachment represents a file (receipt, document, etc.) attached to an Entry.
- * Files are stored in Google Cloud Storage.
+ * Files are stored on the filesystem (QNAP NAS mount).
  */
 export type Attachment = {
   __typename?: 'Attachment';
   /** Whether this attachment has been deleted */
   deleted: Scalars['Boolean']['output'];
+  /** Relative path from storage root (e.g., "2024/02/timestamp-file.pdf") */
+  filePath: Scalars['String']['output'];
   /** File size in bytes */
   fileSize: Scalars['Int']['output'];
   filename: Scalars['String']['output'];
-  /** GCS bucket name where the file is stored */
-  gcsBucket: Scalars['String']['output'];
-  /** Path within the GCS bucket */
-  gcsPath: Scalars['String']['output'];
-  /** Google Cloud Storage URL for accessing the file */
-  gcsUrl: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   /** MIME type of the file (e.g., image/jpeg, application/pdf) */
   mimeType: Scalars['String']['output'];
@@ -192,6 +188,8 @@ export type Attachment = {
   uploadedAt: Scalars['Date']['output'];
   /** Email of the user who uploaded the file */
   uploadedBy: Scalars['String']['output'];
+  /** Public URL for downloading the file */
+  url: Scalars['String']['output'];
 };
 
 export type AttachmentsWhere = {
@@ -625,7 +623,7 @@ export type Mutation = {
   deleteAccountCard: Scalars['Boolean']['output'];
   /**
    * Delete an attachment from an entry.
-   * This marks the attachment as deleted and removes it from GCS.
+   * This marks the attachment as deleted in the database.
    */
   deleteAttachment: DeleteAttachmentPayload;
   deleteBudget: DeleteBudgetResult;
@@ -643,7 +641,7 @@ export type Mutation = {
   updateUser: AuthUser;
   /**
    * Upload a receipt file to an entry.
-   * The file will be stored in Google Cloud Storage.
+   * The file will be stored on the filesystem (QNAP NAS).
    */
   uploadReceipt: UploadReceiptPayload;
   upsertBudget: UpsertBudgetResult;
@@ -1837,16 +1835,15 @@ export type AliasableResolvers<ContextType = Context, ParentType = ResolversPare
 
 export type AttachmentResolvers<ContextType = Context, ParentType = ResolversParentTypes['Attachment']> = {
   deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  filePath?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   fileSize?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   filename?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  gcsBucket?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  gcsPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  gcsUrl?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   mimeType?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   thumbnailUrl?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   uploadedAt?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
   uploadedBy?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
 export type AuditLogEntryResolvers<ContextType = Context, ParentType = ResolversParentTypes['AuditLogEntry']> = {

@@ -28,7 +28,7 @@ const DELETE_ATTACHMENT_MUTATION = `
 interface Attachment {
     id: string;
     filename: string;
-    gcsUrl: string;
+    url: string;
     mimeType: string;
 }
 
@@ -87,7 +87,7 @@ export const ReceiptViewer = ({
                         >
                             {isImage ? (
                                 <img
-                                    src={file.gcsUrl}
+                                    src={file.url}
                                     alt={file.filename}
                                     style={{
                                         width: "100%",
@@ -162,7 +162,7 @@ export const ReceiptViewer = ({
                                 <Tooltip title="Download">
                                     <IconButton
                                         component="a"
-                                        href={previewFile.gcsUrl}
+                                        href={previewFile.url}
                                         target="_blank"
                                         download
                                         onClick={(e) => e.stopPropagation()}
@@ -173,13 +173,13 @@ export const ReceiptViewer = ({
                             </Box>
                             {previewFile.mimeType.startsWith("image/") ? (
                                 <img
-                                    src={previewFile.gcsUrl}
+                                    src={previewFile.url}
                                     alt={previewFile.filename}
                                     style={{ maxWidth: "100%", maxHeight: "80vh" }}
                                 />
                             ) : (
                                 <iframe
-                                    src={previewFile.gcsUrl}
+                                    src={previewFile.url}
                                     title={previewFile.filename}
                                     style={{ width: "80vw", height: "80vh", border: "none" }}
                                 />

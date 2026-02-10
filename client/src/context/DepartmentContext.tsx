@@ -1,42 +1,75 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from 'urql';
 
 interface DepartmentContextType {
     departmentId: string | null;
     fiscalYearId: string;
-    setDepartment: (deptId: string, fyId: string) => void;
+    fiscalYears: any[];
+    setSelectedDepartment: (deptId: string | null) => void;
+    setFiscalYearId: (fyId: string) => void;
 }
 
 const DepartmentContext = createContext<DepartmentContextType | undefined>(undefined);
 
-export function DepartmentProvider({ children }: { children: ReactNode }) {
-    const navigate = useNavigate();
-    const location = useLocation();
+import { isDateInFiscalYear } from '../utils/fiscalYear';
 
+const GET_FISCAL_YEARS = `
+  query GetFiscalYears {
+    fiscalYears {
+      id
+      name
+      begin
+      end
+    }
+  }
+`;
+
+export function DepartmentProvider({ children }: { children: ReactNode }) {
     const [departmentId, setDepartmentId] = useState<string | null>(null);
     const [fiscalYearId, setFiscalYearId] = useState<string>('');
 
-    // Parse URL on mount and location changes
+    const [{ data }] = useQuery({
+        query: GET_FISCAL_YEARS,
+    });
+
+    // Set fiscal year based on current date
     useEffect(() => {
-        const pathParts = location.pathname.split('/');
-        if (pathParts[1] === 'transactions' && pathParts[2] && pathParts[3]) {
-            setDepartmentId(pathParts[2]);
-            setFiscalYearId(pathParts[3]);
-        }
-    }, [location]);
+        if (fiscalYearId || !data?.fiscalYears?.length) return;
 
-    const setDepartment = (deptId: string, fyId: string) => {
+        // Default to current fiscal year based on today's date
+        const today = new Date();
+        const currentFY = data.fiscalYears.find((fy: any) => {
+            const fyObj = {
+                ...fy,
+                startDate: new Date(fy.begin),
+                endDate: new Date(fy.end)
+            };
+            return isDateInFiscalYear(today, fyObj);
+        });
+
+        if (currentFY) {
+            setFiscalYearId(currentFY.id);
+        } else {
+            // Fallback to the most recent fiscal year
+            const sorted = [...data.fiscalYears].sort((a: any, b: any) =>
+                new Date(b.end).getTime() - new Date(a.end).getTime()
+            );
+            setFiscalYearId(sorted[0].id);
+        }
+    }, [data, fiscalYearId]);
+
+    const setSelectedDepartment = (deptId: string | null) => {
         setDepartmentId(deptId);
-        setFiscalYearId(fyId);
-
-        // Update URL if on transactions page
-        if (location.pathname.startsWith('/transactions')) {
-            navigate(`/transactions/${deptId}/${fyId}`);
-        }
     };
 
     return (
-        <DepartmentContext.Provider value={{ departmentId, fiscalYearId, setDepartment }}>
+        <DepartmentContext.Provider value={{
+            departmentId,
+            fiscalYearId,
+            fiscalYears: data?.fiscalYears || [],
+            setSelectedDepartment,
+            setFiscalYearId
+        }}>
             {children}
         </DepartmentContext.Provider>
     );

@@ -1,22 +1,18 @@
 """
 Attachment represents a file (receipt, document, etc.) attached to an Entry.
-Files are stored in Google Cloud Storage.
+Files are stored on the filesystem (QNAP NAS mount).
 """
 type Attachment {
   id: ID!
   filename: String!
   """
-  Google Cloud Storage URL for accessing the file
+  Relative path from storage root (e.g., "2024/02/timestamp-file.pdf")
   """
-  gcsUrl: String!
+  filePath: String!
   """
-  GCS bucket name where the file is stored
+  Public URL for downloading the file
   """
-  gcsBucket: String!
-  """
-  Path within the GCS bucket
-  """
-  gcsPath: String!
+  url: String!
   """
   When the file was uploaded
   """
@@ -73,7 +69,7 @@ type DeleteAttachmentPayload {
 type Mutation {
   """
   Upload a receipt file to an entry.
-  The file will be stored in Google Cloud Storage.
+  The file will be stored on the filesystem (QNAP NAS).
   """
   uploadReceipt(
     entryId: ID!
@@ -82,7 +78,7 @@ type Mutation {
   
   """
   Delete an attachment from an entry.
-  This marks the attachment as deleted and removes it from GCS.
+  This marks the attachment as deleted in the database.
   """
   deleteAttachment(
     id: ID!

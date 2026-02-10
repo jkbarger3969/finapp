@@ -1,0 +1,48 @@
+@media print {
+
+    /* Hide everything by default */
+    body * {
+        visibility: hidden;
+    }
+
+    /* Show only the printable area */
+    #printable-area,
+    #printable-area * {
+        visibility: visible;
+    }
+
+    #printable-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 20px;
+        background: white !important;
+        color: black !important;
+    }
+
+    /* Reset background colors for printing clarity */
+    .MuiPaper-root {
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+        background: white !important;
+        color: black !important;
+    }
+
+    /* Ensure text is dark and readable */
+    .MuiTypography-root {
+        color: black !important;
+        -webkit-text-fill-color: black !important;
+    }
+
+    /* Hide charts if they are too complex to print well, or style them simply */
+    .recharts-wrapper {
+        filter: grayscale(1) contrast(200%);
+    }
+
+    /* Force page breaks if needed */
+    .page-break {
+        page-break-before: always;
+    }
+}

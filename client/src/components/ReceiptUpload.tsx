@@ -15,7 +15,7 @@ const UPLOAD_RECEIPT_MUTATION = `
       attachment {
         id
         filename
-        gcsUrl
+        url
         uploadedAt
       }
     }
