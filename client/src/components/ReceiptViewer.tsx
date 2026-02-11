@@ -11,6 +11,7 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DownloadIcon from "@mui/icons-material/Download";
+import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import { useMutation } from "urql";
 
@@ -158,19 +159,36 @@ export const ReceiptViewer = ({
                 <DialogContent sx={{ p: 0, position: 'relative', minWidth: 300, minHeight: 200, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                     {previewFile && (
                         <>
-                            <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 10, bgcolor: 'rgba(255,255,255,0.8)', borderRadius: '50%' }}>
-                                <Tooltip title="Download">
+                            {/* Close button - top right */}
+                            <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 10, bgcolor: 'rgba(255,255,255,0.9)', borderRadius: '50%' }}>
+                                <Tooltip title="Close">
                                     <IconButton
-                                        component="a"
-                                        href={previewFile.url}
-                                        target="_blank"
-                                        download
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={() => setPreviewFile(null)}
+                                        size="small"
                                     >
-                                        <DownloadIcon />
+                                        <CloseIcon />
                                     </IconButton>
                                 </Tooltip>
                             </Box>
+                            
+                            {/* Download button - top left (only for images since PDFs have built-in controls) */}
+                            {previewFile.mimeType.startsWith("image/") && (
+                                <Box sx={{ position: 'absolute', top: 8, left: 8, zIndex: 10, bgcolor: 'rgba(255,255,255,0.9)', borderRadius: '50%' }}>
+                                    <Tooltip title="Download">
+                                        <IconButton
+                                            component="a"
+                                            href={previewFile.url}
+                                            target="_blank"
+                                            download
+                                            size="small"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <DownloadIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                </Box>
+                            )}
+                            
                             {previewFile.mimeType.startsWith("image/") ? (
                                 <img
                                     src={previewFile.url}

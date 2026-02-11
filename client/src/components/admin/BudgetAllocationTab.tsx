@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
     Box,
     Typography,
@@ -21,6 +21,14 @@ import {
     Stack,
     Collapse,
     LinearProgress,
+    ToggleButton,
+    ToggleButtonGroup,
+    InputAdornment,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableRow,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -28,9 +36,12 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import AddIcon from '@mui/icons-material/Add';
 import WarningIcon from '@mui/icons-material/Warning';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import PercentIcon from '@mui/icons-material/Percent';
 import { useQuery, useMutation } from 'urql';
 import { formatFiscalYearFromDates, getSuggestedFiscalYearDates, getCurrentFiscalYear } from '../../utils/fiscalYear';
 import { formatCurrency } from '../../utils/currency';
+import { useAuth } from '../../context/AuthContext';
 
 const GET_BUDGET_DATA = `
     query GetBudgetData {
@@ -134,7 +145,10 @@ interface DepartmentNode {
     level: number;
 }
 
+type InputMode = 'dollar' | 'percent';
+
 export default function BudgetAllocationTab() {
+    const { user, isSuperAdmin } = useAuth();
     const [result, reexecuteQuery] = useQuery({ query: GET_BUDGET_DATA });
     const [, upsertBudget] = useMutation(UPSERT_BUDGET);
     const [, createFiscalYear] = useMutation(CREATE_FISCAL_YEAR);
@@ -145,7 +159,9 @@ export default function BudgetAllocationTab() {
     const [saving, setSaving] = useState(false);
 
     const [editingDept, setEditingDept] = useState<DepartmentNode | null>(null);
+    const [editParentBudget, setEditParentBudget] = useState<string>('0');
     const [editAmounts, setEditAmounts] = useState<Record<string, string>>({});
+    const [inputMode, setInputMode] = useState<InputMode>('dollar');
 
     const [fyDialogOpen, setFyDialogOpen] = useState(false);
     const [newFyYear, setNewFyYear] = useState<number>(() => {
@@ -154,6 +170,12 @@ export default function BudgetAllocationTab() {
     });
     const [newFyBegin, setNewFyBegin] = useState('');
     const [newFyEnd, setNewFyEnd] = useState('');
+
+    const hasAdminAccess = useCallback((deptId: string): boolean => {
+        if (isSuperAdmin) return true;
+        const perm = user?.departments.find(d => d.departmentId === deptId);
+        return perm?.accessLevel === 'ADMIN';
+    }, [user, isSuperAdmin]);
 
     useEffect(() => {
         if (fyDialogOpen && newFyYear) {
@@ -177,7 +199,7 @@ export default function BudgetAllocationTab() {
         }
     }, [data?.fiscalYears, selectedFiscalYear]);
 
-    const { topLevelDepts } = useMemo(() => {
+    const { topLevelDepts, deptMap } = useMemo(() => {
         if (!data?.departments || !data?.budgets || !selectedFiscalYear) {
             return { topLevelDepts: [], deptMap: new Map() };
         }
@@ -192,8 +214,9 @@ export default function BudgetAllocationTab() {
         const budgetByDeptId = new Map<string, { amount: number; id: string }>();
         budgetsForFY.forEach((b: any) => {
             if (b.owner?.id) {
+                const parsedAmount = parseRational(b.amount);
                 budgetByDeptId.set(b.owner.id, {
-                    amount: parseRational(b.amount),
+                    amount: parsedAmount,
                     id: b.id,
                 });
             }
@@ -229,8 +252,12 @@ export default function BudgetAllocationTab() {
             }
         });
 
-        return { topLevelDepts: rootDepts };
-    }, [data, selectedFiscalYear]);
+        const accessibleRootDepts = isSuperAdmin 
+            ? rootDepts 
+            : rootDepts.filter(dept => hasAdminAccess(dept.id));
+
+        return { topLevelDepts: accessibleRootDepts, deptMap: map };
+    }, [data, selectedFiscalYear, isSuperAdmin, hasAdminAccess]);
 
     const calcSubtotal = (dept: DepartmentNode): number => {
         return dept.budget + dept.children.reduce((sum, child) => sum + calcSubtotal(child), 0);
@@ -252,22 +279,26 @@ export default function BudgetAllocationTab() {
 
     const startEditing = (dept: DepartmentNode) => {
         setEditingDept(dept);
+        const childrenTotal = dept.children.reduce((sum, child) => sum + calcSubtotal(child), 0);
+        const deptTotal = dept.budget + childrenTotal;
+        setEditParentBudget(deptTotal.toString());
         const amounts: Record<string, string> = {};
-        amounts[dept.id] = dept.budget.toString();
         dept.children.forEach(child => {
-            amounts[child.id] = child.budget.toString();
+            amounts[child.id] = calcSubtotal(child).toString();
         });
         setEditAmounts(amounts);
+        setInputMode('dollar');
     };
 
     const cancelEditing = () => {
         setEditingDept(null);
+        setEditParentBudget('0');
         setEditAmounts({});
+        setInputMode('dollar');
     };
 
-    const getEditSubtotal = (): number => {
-        if (!editingDept) return 0;
-        return Object.values(editAmounts).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+    const getParentBudgetNum = (): number => {
+        return parseFloat(editParentBudget) || 0;
     };
 
     const getChildrenTotal = (): number => {
@@ -275,26 +306,47 @@ export default function BudgetAllocationTab() {
         return editingDept.children.reduce((sum, child) => sum + (parseFloat(editAmounts[child.id]) || 0), 0);
     };
 
-    const getParentBudget = (): number => {
-        if (!editingDept) return 0;
-        return parseFloat(editAmounts[editingDept.id]) || 0;
-    };
-
     const isOverBudget = (): boolean => {
         if (!editingDept || editingDept.children.length === 0) return false;
-        const parentBudget = getParentBudget();
+        const parentBudget = getParentBudgetNum();
         const childrenTotal = getChildrenTotal();
         return childrenTotal > parentBudget && parentBudget > 0;
+    };
+
+    const getRemainingBudget = (): number => {
+        return getParentBudgetNum() - getChildrenTotal();
+    };
+
+    const handleChildAmountChange = (childId: string, value: string) => {
+        if (inputMode === 'dollar') {
+            setEditAmounts({ ...editAmounts, [childId]: value });
+        } else {
+            const percent = parseFloat(value) || 0;
+            const dollarAmount = (percent / 100) * getParentBudgetNum();
+            setEditAmounts({ ...editAmounts, [childId]: dollarAmount.toFixed(2) });
+        }
+    };
+
+    const getPercentValue = (childId: string): string => {
+        const parentBudget = getParentBudgetNum();
+        if (parentBudget === 0) return '0';
+        const childAmount = parseFloat(editAmounts[childId]) || 0;
+        return ((childAmount / parentBudget) * 100).toFixed(1);
     };
 
     const handleSaveEdits = async () => {
         if (!selectedFiscalYear || !editingDept) return;
 
+        if (isOverBudget()) {
+            setError('Cannot save: Subdepartments total exceeds parent budget');
+            return;
+        }
+
         setSaving(true);
         setError(null);
 
         try {
-            const parentAmount = parseFloat(editAmounts[editingDept.id]) || 0;
+            const parentAmount = getParentBudgetNum();
             await upsertBudget({
                 input: {
                     id: editingDept.budgetId || undefined,
@@ -367,8 +419,10 @@ export default function BudgetAllocationTab() {
     const renderDepartmentCard = (dept: DepartmentNode) => {
         const hasChildren = dept.children.length > 0;
         const isExpanded = expandedDepts.has(dept.id);
-        const subtotal = calcSubtotal(dept);
         const childrenTotal = dept.children.reduce((sum, child) => sum + calcSubtotal(child), 0);
+        const deptTotal = dept.budget + childrenTotal;
+        const allocationPercent = deptTotal > 0 ? (childrenTotal / deptTotal) * 100 : 0;
+        const canEdit = hasAdminAccess(dept.id);
 
         return (
             <Box key={dept.id} sx={{ mb: 2 }}>
@@ -384,29 +438,52 @@ export default function BudgetAllocationTab() {
                         </Box>
 
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                            <Box sx={{ textAlign: 'right' }}>
-                                <Typography variant="caption" color="text.secondary">Direct</Typography>
-                                <Typography variant="body1" fontWeight="bold">{formatCurrency(dept.budget)}</Typography>
-                            </Box>
-                            {hasChildren && (
-                                <Box sx={{ textAlign: 'right' }}>
-                                    <Typography variant="caption" color="text.secondary">Subdepts</Typography>
-                                    <Typography variant="body1" color="info.main">{formatCurrency(childrenTotal)}</Typography>
-                                </Box>
-                            )}
-                            <Box sx={{ textAlign: 'right', minWidth: 100 }}>
-                                <Typography variant="caption" color="text.secondary">Total</Typography>
-                                <Typography variant="h6" color="primary.main" fontWeight="bold">
-                                    {formatCurrency(subtotal)}
+                            <Box sx={{ textAlign: 'right', minWidth: 140 }}>
+                                <Typography variant="caption" color="text.secondary">Total Budget</Typography>
+                                <Typography variant="h5" color="primary.main" fontWeight="bold">
+                                    {formatCurrency(deptTotal)}
                                 </Typography>
                             </Box>
-                            <Tooltip title="Edit budget allocation">
-                                <IconButton color="primary" onClick={() => startEditing(dept)}>
-                                    <EditIcon />
-                                </IconButton>
+                            {hasChildren && dept.budget > 0 && (
+                                <Box sx={{ textAlign: 'right', minWidth: 100 }}>
+                                    <Typography variant="caption" color="text.secondary">Direct</Typography>
+                                    <Typography variant="body1">
+                                        {formatCurrency(dept.budget)}
+                                    </Typography>
+                                </Box>
+                            )}
+                            {hasChildren && (
+                                <Box sx={{ textAlign: 'right', minWidth: 120 }}>
+                                    <Typography variant="caption" color="text.secondary">In Subdepts</Typography>
+                                    <Typography variant="body1" color="success.main">
+                                        {formatCurrency(childrenTotal)} ({allocationPercent.toFixed(0)}%)
+                                    </Typography>
+                                </Box>
+                            )}
+                            <Tooltip title={canEdit ? "Edit budget allocation" : "No admin access to this department"}>
+                                <span>
+                                    <IconButton 
+                                        color="primary" 
+                                        onClick={() => startEditing(dept)}
+                                        disabled={!canEdit}
+                                    >
+                                        <EditIcon />
+                                    </IconButton>
+                                </span>
                             </Tooltip>
                         </Box>
                     </Box>
+
+                    {hasChildren && deptTotal > 0 && (
+                        <Box sx={{ mt: 1 }}>
+                            <LinearProgress
+                                variant="determinate"
+                                value={100}
+                                color="primary"
+                                sx={{ height: 6, borderRadius: 3 }}
+                            />
+                        </Box>
+                    )}
                 </Paper>
 
                 {hasChildren && (
@@ -414,9 +491,9 @@ export default function BudgetAllocationTab() {
                         <Box sx={{ pl: 4, mt: 1, borderLeft: '2px dashed', borderColor: 'divider', ml: 2 }}>
                             {dept.children.map(child => {
                                 const childSubtotal = calcSubtotal(child);
+                                const childPercent = deptTotal > 0 ? (childSubtotal / deptTotal) * 100 : 0;
                                 const childHasChildren = child.children.length > 0;
                                 const childIsExpanded = expandedDepts.has(child.id);
-                                const childChildrenTotal = child.children.reduce((sum, gc) => sum + calcSubtotal(gc), 0);
 
                                 return (
                                     <Box key={child.id} sx={{ mb: 1 }}>
@@ -431,12 +508,11 @@ export default function BudgetAllocationTab() {
                                                     <Typography fontWeight="medium">{child.name}</Typography>
                                                 </Box>
                                                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                                                    <Typography variant="body2">Direct: {formatCurrency(child.budget)}</Typography>
-                                                    {childHasChildren && (
-                                                        <Typography variant="body2" color="info.main">Subs: {formatCurrency(childChildrenTotal)}</Typography>
-                                                    )}
                                                     <Typography variant="body2" fontWeight="bold" color="primary.main">
-                                                        Total: {formatCurrency(childSubtotal)}
+                                                        {formatCurrency(childSubtotal)}
+                                                    </Typography>
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        ({childPercent.toFixed(1)}% of {dept.name})
                                                     </Typography>
                                                 </Box>
                                             </Box>
@@ -445,16 +521,23 @@ export default function BudgetAllocationTab() {
                                         {childHasChildren && (
                                             <Collapse in={childIsExpanded}>
                                                 <Box sx={{ pl: 3, mt: 0.5, borderLeft: '1px dashed', borderColor: 'divider', ml: 1 }}>
-                                                    {child.children.map(grandChild => (
-                                                        <Paper
-                                                            key={grandChild.id}
-                                                            variant="outlined"
-                                                            sx={{ p: 1, mb: 0.5, display: 'flex', justifyContent: 'space-between' }}
-                                                        >
-                                                            <Typography variant="body2">{grandChild.name}</Typography>
-                                                            <Typography variant="body2" fontWeight="bold">{formatCurrency(grandChild.budget)}</Typography>
-                                                        </Paper>
-                                                    ))}
+                                                    {child.children.map(grandChild => {
+                                                        const gcSubtotal = calcSubtotal(grandChild);
+                                                        const gcPercent = childSubtotal > 0 ? (gcSubtotal / childSubtotal) * 100 : 0;
+                                                        return (
+                                                            <Paper
+                                                                key={grandChild.id}
+                                                                variant="outlined"
+                                                                sx={{ p: 1, mb: 0.5, display: 'flex', justifyContent: 'space-between' }}
+                                                            >
+                                                                <Typography variant="body2">{grandChild.name}</Typography>
+                                                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                                                    <Typography variant="body2" fontWeight="bold">{formatCurrency(gcSubtotal)}</Typography>
+                                                                    <Typography variant="body2" color="text.secondary">({gcPercent.toFixed(1)}%)</Typography>
+                                                                </Box>
+                                                            </Paper>
+                                                        );
+                                                    })}
                                                 </Box>
                                             </Collapse>
                                         )}
@@ -523,7 +606,7 @@ export default function BudgetAllocationTab() {
                             Total Church Budget: {formatCurrency(totalBudget)}
                         </Typography>
                         <Typography variant="body2" color="primary.contrastText" align="center" sx={{ opacity: 0.8 }}>
-                            Sum of all department allocations
+                            Sum of all top-level department allocations
                         </Typography>
                     </Paper>
 
@@ -541,83 +624,149 @@ export default function BudgetAllocationTab() {
                 </>
             )}
 
-            <Dialog open={!!editingDept} onClose={cancelEditing} maxWidth="sm" fullWidth>
+            {/* Edit Budget Dialog */}
+            <Dialog open={!!editingDept} onClose={cancelEditing} maxWidth="md" fullWidth>
                 <DialogTitle>
                     Edit Budget: {editingDept?.name}
                 </DialogTitle>
                 <DialogContent>
-                    <Stack spacing={2} sx={{ mt: 1 }}>
-                        <TextField
-                            label={`${editingDept?.name} Direct Budget`}
-                            type="number"
-                            value={editAmounts[editingDept?.id || ''] || '0'}
-                            onChange={(e) => setEditAmounts({ ...editAmounts, [editingDept?.id || '']: e.target.value })}
-                            fullWidth
-                            InputProps={{ startAdornment: <Typography sx={{ mr: 1 }}>$</Typography> }}
-                        />
+                    <Stack spacing={3} sx={{ mt: 1 }}>
+                        {/* Top Level Department Budget */}
+                        <Paper sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                                Total Budget for {editingDept?.name}
+                            </Typography>
+                            <TextField
+                                type="number"
+                                value={editParentBudget}
+                                onChange={(e) => setEditParentBudget(e.target.value)}
+                                fullWidth
+                                variant="outlined"
+                                InputProps={{
+                                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                                    sx: { bgcolor: 'white', borderRadius: 1 }
+                                }}
+                                inputProps={{ min: 0, step: 0.01 }}
+                            />
+                        </Paper>
 
                         {editingDept && editingDept.children.length > 0 && (
                             <>
                                 <Divider />
-                                <Typography variant="subtitle2" fontWeight="bold">
-                                    Subdepartment Allocations
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                    Subdepartment total should not exceed the parent's direct budget
-                                </Typography>
 
-                                {editingDept.children.map(child => (
-                                    <TextField
-                                        key={child.id}
-                                        label={child.name}
-                                        type="number"
-                                        value={editAmounts[child.id] || '0'}
-                                        onChange={(e) => setEditAmounts({ ...editAmounts, [child.id]: e.target.value })}
-                                        fullWidth
+                                {/* Input Mode Toggle */}
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography variant="subtitle1" fontWeight="bold">
+                                        Subdepartment Allocations
+                                    </Typography>
+                                    <ToggleButtonGroup
+                                        value={inputMode}
+                                        exclusive
+                                        onChange={(_, newMode) => newMode && setInputMode(newMode)}
                                         size="small"
-                                        InputProps={{ startAdornment: <Typography sx={{ mr: 1 }}>$</Typography> }}
-                                    />
-                                ))}
+                                    >
+                                        <ToggleButton value="dollar">
+                                            <AttachMoneyIcon fontSize="small" sx={{ mr: 0.5 }} /> Dollar
+                                        </ToggleButton>
+                                        <ToggleButton value="percent">
+                                            <PercentIcon fontSize="small" sx={{ mr: 0.5 }} /> Percent
+                                        </ToggleButton>
+                                    </ToggleButtonGroup>
+                                </Box>
+
+                                <Alert severity="info" sx={{ py: 0.5 }}>
+                                    Subdepartment allocations cannot exceed the total budget of {formatCurrency(getParentBudgetNum())}
+                                </Alert>
+
+                                {/* Subdepartment Table */}
+                                <Table size="small">
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell>Subdepartment</TableCell>
+                                            <TableCell align="right" width={180}>
+                                                {inputMode === 'dollar' ? 'Amount ($)' : 'Percent (%)'}
+                                            </TableCell>
+                                            <TableCell align="right" width={120}>
+                                                {inputMode === 'dollar' ? 'Percent' : 'Amount'}
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {editingDept.children.map(child => (
+                                            <TableRow key={child.id}>
+                                                <TableCell>{child.name}</TableCell>
+                                                <TableCell align="right">
+                                                    <TextField
+                                                        type="number"
+                                                        size="small"
+                                                        value={inputMode === 'dollar' ? (editAmounts[child.id] || '0') : getPercentValue(child.id)}
+                                                        onChange={(e) => handleChildAmountChange(child.id, e.target.value)}
+                                                        InputProps={{
+                                                            startAdornment: (
+                                                                <InputAdornment position="start">
+                                                                    {inputMode === 'dollar' ? '$' : '%'}
+                                                                </InputAdornment>
+                                                            ),
+                                                        }}
+                                                        inputProps={{
+                                                            min: 0,
+                                                            max: inputMode === 'percent' ? 100 : undefined,
+                                                            step: inputMode === 'dollar' ? 0.01 : 0.1
+                                                        }}
+                                                        sx={{ width: 140 }}
+                                                    />
+                                                </TableCell>
+                                                <TableCell align="right">
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        {inputMode === 'dollar'
+                                                            ? `${getPercentValue(child.id)}%`
+                                                            : formatCurrency(parseFloat(editAmounts[child.id]) || 0)
+                                                        }
+                                                    </Typography>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
 
                                 <Divider />
 
+                                {/* Summary */}
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Typography>Subdepartments Total:</Typography>
-                                    <Typography fontWeight="bold" color={isOverBudget() ? 'error.main' : 'primary.main'}>
+                                    <Typography fontWeight="bold">Total Allocated:</Typography>
+                                    <Typography fontWeight="bold" color={isOverBudget() ? 'error.main' : 'success.main'}>
                                         {formatCurrency(getChildrenTotal())}
+                                        {' '}
+                                        ({getParentBudgetNum() > 0 ? ((getChildrenTotal() / getParentBudgetNum()) * 100).toFixed(1) : 0}%)
                                     </Typography>
+                                </Box>
+
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography>Remaining Unallocated:</Typography>
+                                    <Typography color={getRemainingBudget() < 0 ? 'error.main' : 'text.secondary'}>
+                                        {formatCurrency(getRemainingBudget())}
+                                    </Typography>
+                                </Box>
+
+                                {/* Progress Bar */}
+                                <Box>
+                                    <LinearProgress
+                                        variant="determinate"
+                                        value={Math.min((getChildrenTotal() / (getParentBudgetNum() || 1)) * 100, 100)}
+                                        color={isOverBudget() ? 'error' : 'primary'}
+                                        sx={{ height: 10, borderRadius: 5 }}
+                                    />
                                 </Box>
 
                                 {isOverBudget() && (
-                                    <Alert severity="warning" icon={<WarningIcon />}>
-                                        Subdepartments total ({formatCurrency(getChildrenTotal())}) exceeds parent budget ({formatCurrency(getParentBudget())})
+                                    <Alert severity="error" icon={<WarningIcon />}>
+                                        Subdepartments total ({formatCurrency(getChildrenTotal())}) exceeds 
+                                        the total budget ({formatCurrency(getParentBudgetNum())}) by {formatCurrency(Math.abs(getRemainingBudget()))}. 
+                                        Please reduce allocations before saving.
                                     </Alert>
                                 )}
-
-                                <Box sx={{ mt: 1 }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Budget allocation progress
-                                    </Typography>
-                                    <LinearProgress
-                                        variant="determinate"
-                                        value={Math.min((getChildrenTotal() / (getParentBudget() || 1)) * 100, 100)}
-                                        color={isOverBudget() ? 'error' : 'primary'}
-                                        sx={{ height: 8, borderRadius: 4, mt: 0.5 }}
-                                    />
-                                    <Typography variant="caption" color="text.secondary">
-                                        {formatCurrency(getParentBudget() - getChildrenTotal())} remaining to allocate
-                                    </Typography>
-                                </Box>
                             </>
                         )}
-
-                        <Divider />
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography fontWeight="bold">Grand Total:</Typography>
-                            <Typography fontWeight="bold" color="primary.main">
-                                {formatCurrency(getEditSubtotal())}
-                            </Typography>
-                        </Box>
                     </Stack>
                 </DialogContent>
                 <DialogActions>
@@ -625,7 +774,7 @@ export default function BudgetAllocationTab() {
                     <Button
                         variant="contained"
                         onClick={handleSaveEdits}
-                        disabled={saving}
+                        disabled={saving || isOverBudget()}
                         startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
                     >
                         Save
@@ -633,6 +782,7 @@ export default function BudgetAllocationTab() {
                 </DialogActions>
             </Dialog>
 
+            {/* Create Fiscal Year Dialog */}
             <Dialog open={fyDialogOpen} onClose={() => setFyDialogOpen(false)} maxWidth="xs" fullWidth>
                 <DialogTitle>Create New Fiscal Year</DialogTitle>
                 <DialogContent>

@@ -1,4 +1,11 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+
+interface DepartmentPermission {
+    id: string;
+    departmentId: string;
+    departmentName: string;
+    accessLevel: 'VIEW' | 'EDIT' | 'ADMIN';
+}
 
 interface User {
     id: string;
@@ -7,6 +14,7 @@ interface User {
     picture?: string;
     role: 'SUPER_ADMIN' | 'DEPT_ADMIN' | 'USER';
     status: 'INVITED' | 'ACTIVE' | 'DISABLED';
+    departments: DepartmentPermission[];
 }
 
 interface AuthContextType {
@@ -16,8 +24,12 @@ interface AuthContextType {
     isAuthenticated: boolean;
     login: (code: string) => Promise<void>;
     logout: () => void;
+    refreshUser: () => Promise<void>;
     isSuperAdmin: boolean;
     isDeptAdmin: boolean;
+    canViewDepartment: (departmentId: string) => boolean;
+    canEditDepartment: (departmentId: string) => boolean;
+    getAccessibleDepartmentIds: () => string[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,10 +37,44 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const TOKEN_KEY = 'finapp_auth_token';
 const USER_KEY = 'finapp_user';
 
+const USER_FRAGMENT = `
+    id
+    email
+    name
+    picture
+    role
+    status
+    departments {
+        id
+        department {
+            id
+            name
+        }
+        accessLevel
+    }
+`;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    const parseUserFromResponse = (userData: any): User => {
+        return {
+            id: userData.id,
+            email: userData.email,
+            name: userData.name,
+            picture: userData.picture,
+            role: userData.role,
+            status: userData.status,
+            departments: (userData.departments || []).map((d: any) => ({
+                id: d.id,
+                departmentId: d.department.id,
+                departmentName: d.department.name,
+                accessLevel: d.accessLevel,
+            })),
+        };
+    };
 
     useEffect(() => {
         const storedToken = localStorage.getItem(TOKEN_KEY);
@@ -47,6 +93,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
     }, []);
 
+    const refreshUser = useCallback(async () => {
+        const currentToken = localStorage.getItem(TOKEN_KEY);
+        if (!currentToken) return;
+
+        try {
+            const response = await fetch('/graphql', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentToken}`,
+                },
+                body: JSON.stringify({
+                    query: `query { me { ${USER_FRAGMENT} } }`,
+                }),
+            });
+
+            const result = await response.json();
+            if (result.data?.me) {
+                const newUser = parseUserFromResponse(result.data.me);
+                localStorage.setItem(USER_KEY, JSON.stringify(newUser));
+                setUser(newUser);
+            }
+        } catch (e) {
+            console.error('Failed to refresh user:', e);
+        }
+    }, []);
+
     const login = async (code: string) => {
         setIsLoading(true);
         try {
@@ -61,12 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             googleAuth(code: $code) {
                                 token
                                 user {
-                                    id
-                                    email
-                                    name
-                                    picture
-                                    role
-                                    status
+                                    ${USER_FRAGMENT}
                                 }
                             }
                         }
@@ -81,7 +149,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 throw new Error(result.errors[0].message);
             }
 
-            const { token: newToken, user: newUser } = result.data.googleAuth;
+            const { token: newToken, user: userData } = result.data.googleAuth;
+            const newUser = parseUserFromResponse(userData);
 
             localStorage.setItem(TOKEN_KEY, newToken);
             localStorage.setItem(USER_KEY, JSON.stringify(newUser));
@@ -116,6 +185,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     };
 
+    const canViewDepartment = useCallback((departmentId: string): boolean => {
+        if (!user) return false;
+        if (user.role === 'SUPER_ADMIN') return true;
+        return user.departments.some(d => d.departmentId === departmentId);
+    }, [user]);
+
+    const canEditDepartment = useCallback((departmentId: string): boolean => {
+        if (!user) return false;
+        if (user.role === 'SUPER_ADMIN') return true;
+        const perm = user.departments.find(d => d.departmentId === departmentId);
+        return perm?.accessLevel === 'EDIT' || perm?.accessLevel === 'ADMIN';
+    }, [user]);
+
+    const getAccessibleDepartmentIds = useCallback((): string[] => {
+        if (!user) return [];
+        if (user.role === 'SUPER_ADMIN') return [];
+        return user.departments.map(d => d.departmentId);
+    }, [user]);
+
     const value: AuthContextType = {
         user,
         token,
@@ -123,8 +211,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user && !!token,
         login,
         logout,
+        refreshUser,
         isSuperAdmin: user?.role === 'SUPER_ADMIN',
         isDeptAdmin: user?.role === 'DEPT_ADMIN' || user?.role === 'SUPER_ADMIN',
+        canViewDepartment,
+        canEditDepartment,
+        getAccessibleDepartmentIds,
     };
 
     return (

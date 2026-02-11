@@ -114,27 +114,32 @@ export const Entry: EntryResolvers = {
   paymentMethod: ({ paymentMethod }) => paymentMethod[0].value,
   reconciled: ({ reconciled }) => reconciled[0].value,
   refunds: ({ refunds }) => refunds || [],
-  source: async ({ source }, _, { loaders, dataSources: { accountingDb } }) => {
-    // Note: Source is async now
+  source: async ({ source, _id }, _, { loaders }): Promise<any> => {
+    if (!source?.[0]?.value) {
+      console.error(`Entry ${_id} has no source`);
+      return { __typename: 'Business', id: 'unknown', name: 'Unknown Source' } as any;
+    }
+    
     const { type, id } = source[0].value;
 
+    let result: any = null;
     switch (type) {
       case "Business":
-        return addTypename(
-          type,
-          loaders.business.load(id.toString())
-        );
+        result = await loaders.business.load(id.toString());
+        if (result) return addTypename(type, result);
+        break;
       case "Department":
-        return addTypename(
-          type,
-          loaders.department.load(id.toString())
-        );
+        result = await loaders.department.load(id.toString());
+        if (result) return addTypename(type, result);
+        break;
       case "Person":
-        return addTypename(
-          type,
-          loaders.person.load(id.toString())
-        );
+        result = await loaders.person.load(id.toString());
+        if (result) return addTypename(type, result);
+        break;
     }
+    
+    console.error(`Entry source ${type}:${id} not found for entry ${_id}`);
+    return { __typename: 'Business', id: id.toString(), name: `Unknown ${type}` } as any;
   },
   total: ({ total }) => total[0].value as any,
   lastEditedAt: (root) => root.lastUpdate,

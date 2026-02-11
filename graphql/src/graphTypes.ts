@@ -609,7 +609,13 @@ export type GrantPermissionInput = {
 export type InviteUserInput = {
   email: Scalars['String']['input'];
   name: Scalars['String']['input'];
+  permissions?: InputMaybe<Array<InviteUserPermissionInput>>;
   role?: InputMaybe<UserRole>;
+};
+
+export type InviteUserPermissionInput = {
+  accessLevel: AccessLevel;
+  departmentId: Scalars['ID']['input'];
 };
 
 export type Mutation = {
@@ -629,6 +635,7 @@ export type Mutation = {
   deleteBudget: DeleteBudgetResult;
   deleteEntry: DeleteEntryPayload;
   deleteEntryRefund: DeleteEntryRefundPayload;
+  deleteUser: Scalars['Boolean']['output'];
   googleAuth: AuthPayload;
   grantPermission: UserPermission;
   inviteUser: AuthUser;
@@ -699,6 +706,11 @@ export type MutationDeleteEntryArgs = {
 
 
 export type MutationDeleteEntryRefundArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type MutationDeleteUserArgs = {
   id: Scalars['ID']['input'];
 };
 
@@ -1560,6 +1572,7 @@ export type ResolversTypes = {
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   InviteUserInput: InviteUserInput;
+  InviteUserPermissionInput: InviteUserPermissionInput;
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   NewAlias: NewAlias;
@@ -1697,6 +1710,7 @@ export type ResolversParentTypes = {
   ID: Scalars['ID']['output'];
   Int: Scalars['Int']['output'];
   InviteUserInput: InviteUserInput;
+  InviteUserPermissionInput: InviteUserPermissionInput;
   JSON: Scalars['JSON']['output'];
   Mutation: Record<PropertyKey, never>;
   NewAlias: NewAlias;
@@ -2043,6 +2057,7 @@ export type MutationResolvers<ContextType = Context, ParentType = ResolversParen
   deleteBudget?: Resolver<ResolversTypes['DeleteBudgetResult'], ParentType, ContextType, RequireFields<MutationDeleteBudgetArgs, 'input'>>;
   deleteEntry?: Resolver<ResolversTypes['DeleteEntryPayload'], ParentType, ContextType, RequireFields<MutationDeleteEntryArgs, 'id'>>;
   deleteEntryRefund?: Resolver<ResolversTypes['DeleteEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationDeleteEntryRefundArgs, 'id'>>;
+  deleteUser?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteUserArgs, 'id'>>;
   googleAuth?: Resolver<ResolversTypes['AuthPayload'], ParentType, ContextType, RequireFields<MutationGoogleAuthArgs, 'code'>>;
   grantPermission?: Resolver<ResolversTypes['UserPermission'], ParentType, ContextType, RequireFields<MutationGrantPermissionArgs, 'input'>>;
   inviteUser?: Resolver<ResolversTypes['AuthUser'], ParentType, ContextType, RequireFields<MutationInviteUserArgs, 'input'>>;

@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "urql";
-import { useState, useEffect } from "react";
-import { Grid, Paper, Typography, Box, CircularProgress, Alert, Fade, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Divider, FormControl, InputLabel, Select, TextField } from "@mui/material";
+import { useState, useEffect, useMemo } from "react";
+import { Grid, Paper, Typography, Box, Skeleton, Alert, Fade, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Divider, FormControl, InputLabel, Select, TextField } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
 import { format, parseISO } from "date-fns";
 import { useNavigate } from "react-router-dom";
@@ -11,28 +11,18 @@ import ReplayIcon from '@mui/icons-material/Replay';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useDepartment } from "../context/DepartmentContext";
 import { useLayout } from "../context/LayoutContext";
+import { useAuth } from "../context/AuthContext";
 import EditEntryDialog from "../components/EditEntryDialog";
 import EntryFormDialog from "../components/EntryFormDialog";
 import PageHeader from "../components/PageHeader";
 import SearchDialog from "../components/SearchDialog";
 
-const GET_DASHBOARD_DATA = `
-  query GetDashboardData($where: EntriesWhere) {
-    entries(where: $where) {
-      id
-      description
-      date
-      total
-      category {
-        name
-        type
-      }
-      department {
-        name
-      }
-    }
-  }
-`;
+// New Imports
+import { useSnackbar } from 'notistack';
+import { useTransactions } from '../hooks/useTransactions';
+import { EmptyState } from '../components/common/EmptyState';
+
+// Replaced GET_DASHBOARD_DATA with useTransactions hook usage
 
 const parseRational = (rationalStr: any) => {
     try {
@@ -85,6 +75,7 @@ const GET_DEPARTMENTS = `
 export default function Dashboard() {
     const { departmentId, fiscalYearId, fiscalYears, setFiscalYearId, setSelectedDepartment } = useDepartment();
     const { openEntryDialog } = useLayout();
+    const { user, canEditDepartment, isSuperAdmin } = useAuth();
 
     // Department selection state
     const [topLevelDeptId, setTopLevelDeptId] = useState<string>('');
@@ -93,7 +84,16 @@ export default function Dashboard() {
 
     // Fetch departments
     const [deptResult] = useQuery({ query: GET_DEPARTMENTS });
-    const departments = deptResult.data?.departments || [];
+    const departmentsRaw = deptResult.data?.departments || [];
+    
+    // Filter departments based on user access
+    const departments = useMemo(() => {
+        if (user?.role === 'SUPER_ADMIN') return departmentsRaw;
+        const userDeptIds = (user as any)?.departments?.map((d: any) => d.departmentId) || [];
+        if (userDeptIds.length === 0) return departmentsRaw;
+        return departmentsRaw.filter((d: any) => userDeptIds.includes(d.id));
+    }, [departmentsRaw, user]);
+    
     const topLevelDepartments = departments.filter((d: any) => d.parent?.__typename === 'Business' || !d.parent);
     const subDepartments = topLevelDeptId
         ? departments.filter((d: any) => d.parent?.__typename === 'Department' && d.parent?.id === topLevelDeptId)
@@ -118,26 +118,16 @@ export default function Dashboard() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    const where: any = { deleted: false };
+    const { enqueueSnackbar } = useSnackbar();
 
-    if (departmentId) {
-        where.department = {
-            id: { lte: departmentId },
-        };
-    }
-
-    if (fiscalYearId) {
-        where.fiscalYear = {
-            id: { eq: fiscalYearId },
-        };
-    }
-
-    const [result, reexecuteQuery] = useQuery({
-        query: GET_DASHBOARD_DATA,
-        variables: { where },
-        pause: !fiscalYearId,
+    // Use Custom Hook to fetch dashboard data (entries for list + stats)
+    const { entries, fetching, error, refresh } = useTransactions({
+        departmentId: subDeptId || topLevelDeptId || departmentId,
+        fiscalYearId,
     });
-    const { data, fetching, error } = result;
+
+    const handleReexecute = refresh;
+    const data = { entries };
     const navigate = useNavigate();
 
     // Action Menu State
@@ -151,10 +141,7 @@ export default function Dashboard() {
     const [, reconcileEntries] = useMutation(RECONCILE_ENTRIES_MUTATION);
     const [, deleteEntry] = useMutation(DELETE_ENTRY_MUTATION);
 
-    const handleReexecute = () => {
-        // Re-execute query to refresh data
-        reexecuteQuery({ requestPolicy: 'network-only' });
-    };
+
 
     const recentEntries = data?.entries
         ? [...data.entries]
@@ -322,7 +309,13 @@ export default function Dashboard() {
                                 </Typography>
                             </Box>
 
-                            {fetching && <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>}
+                            {fetching && (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    {[1, 2, 3, 4, 5].map((i) => (
+                                        <Skeleton key={i} variant="rectangular" height={60} sx={{ borderRadius: 2 }} />
+                                    ))}
+                                </Box>
+                            )}
                             {error && <Alert severity="error">Error loading data: {error.message}</Alert>}
 
                             {recentEntries.length > 0 && (
@@ -376,7 +369,11 @@ export default function Dashboard() {
                             )}
 
                             {recentEntries.length === 0 && !fetching && (
-                                <Alert severity="info">No transactions found for the selected department and fiscal year.</Alert>
+                                <EmptyState
+                                    title="No Transactions Found"
+                                    description="No transactions found for the selected department and fiscal year."
+                                    height={300}
+                                />
                             )}
                         </Paper>
                     </Fade>
@@ -392,25 +389,38 @@ export default function Dashboard() {
                     setActionMenuEntry(null);
                 }}
             >
-                <MenuItem onClick={() => {
-                    setEditEntry(actionMenuEntry);
-                    setEditDialogOpen(true);
-                    setActionMenuAnchor(null);
-                    setActionMenuEntry(null);
-                }}>
+                <MenuItem 
+                    onClick={() => {
+                        setEditEntry(actionMenuEntry);
+                        setEditDialogOpen(true);
+                        setActionMenuAnchor(null);
+                        setActionMenuEntry(null);
+                    }}
+                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
+                >
                     <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
                     <ListItemText>Edit Transaction</ListItemText>
                 </MenuItem>
-                <MenuItem onClick={async () => {
-                    if (actionMenuEntry) {
-                        await reconcileEntries({
-                            input: { entries: [actionMenuEntry.id] }
-                        });
-                        handleReexecute();
-                    }
-                    setActionMenuAnchor(null);
-                    setActionMenuEntry(null);
-                }}>
+                <MenuItem 
+                    onClick={async () => {
+                        if (actionMenuEntry) {
+                            const { error } = await reconcileEntries({
+                                input: { entries: [actionMenuEntry.id] }
+                            });
+
+                            if (error) {
+                                enqueueSnackbar(`Error: ${error.message}`, { variant: 'error' });
+                            } else {
+                                const action = actionMenuEntry.reconciled ? 'unreconciled' : 'reconciled';
+                                enqueueSnackbar(`Transaction ${action} successfully`, { variant: 'success' });
+                                handleReexecute();
+                            }
+                        }
+                        setActionMenuAnchor(null);
+                        setActionMenuEntry(null);
+                    }}
+                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
+                >
                     <ListItemIcon>
                         <CheckCircleIcon fontSize="small" color={actionMenuEntry?.reconciled ? "disabled" : "success"} />
                     </ListItemIcon>
@@ -418,12 +428,15 @@ export default function Dashboard() {
                         {actionMenuEntry?.reconciled ? "Already Reconciled" : "Mark as Reconciled"}
                     </ListItemText>
                 </MenuItem>
-                <MenuItem onClick={() => {
-                    setRefundEntry(actionMenuEntry);
-                    setRefundDialogOpen(true);
-                    setActionMenuAnchor(null);
-                    setActionMenuEntry(null);
-                }}>
+                <MenuItem 
+                    onClick={() => {
+                        setRefundEntry(actionMenuEntry);
+                        setRefundDialogOpen(true);
+                        setActionMenuAnchor(null);
+                        setActionMenuEntry(null);
+                    }}
+                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
+                >
                     <ListItemIcon><ReplayIcon fontSize="small" color="info" /></ListItemIcon>
                     <ListItemText>Issue Refund</ListItemText>
                 </MenuItem>
@@ -431,13 +444,20 @@ export default function Dashboard() {
                 <MenuItem
                     onClick={async () => {
                         if (actionMenuEntry && window.confirm('Are you sure you want to delete this transaction?')) {
-                            await deleteEntry({ id: actionMenuEntry.id });
-                            handleReexecute();
+                            const { error } = await deleteEntry({ id: actionMenuEntry.id });
+
+                            if (error) {
+                                enqueueSnackbar(`Failed to delete: ${error.message}`, { variant: 'error' });
+                            } else {
+                                enqueueSnackbar('Transaction deleted', { variant: 'success' });
+                                handleReexecute();
+                            }
                         }
                         setActionMenuAnchor(null);
                         setActionMenuEntry(null);
                     }}
                     sx={{ color: 'error.main' }}
+                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
                 >
                     <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
                     <ListItemText>Delete Transaction</ListItemText>

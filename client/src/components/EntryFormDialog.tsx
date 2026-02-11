@@ -24,9 +24,13 @@ import {
     FormLabel,
     Divider,
     Autocomplete,
+    Fade,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
+import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
+import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
+import SaveIcon from '@mui/icons-material/Save';
 import { useMutation, useQuery } from 'urql';
 
 const GET_FORM_DATA = `
@@ -232,19 +236,37 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
     const searchedEntries = searchResult.data?.entries || [];
 
     const personOptions = useMemo(() => {
-        return (data?.people || []).map((person: any) => ({
-            id: person.id,
-            label: `${person.name.first} ${person.name.last}`,
-            firstName: person.name.first,
-            lastName: person.name.last,
-        }));
+        const seen = new Set<string>();
+        return (data?.people || [])
+            .filter((person: any) => {
+                const key = `${person.name?.first || ''} ${person.name?.last || ''}`.toLowerCase().trim();
+                if (seen.has(key) || !key) return false;
+                seen.add(key);
+                return true;
+            })
+            .map((person: any) => ({
+                id: person.id,
+                label: `${person.name.first} ${person.name.last}`,
+                firstName: person.name.first,
+                lastName: person.name.last,
+            }))
+            .sort((a: any, b: any) => a.label.localeCompare(b.label));
     }, [data?.people]);
 
     const businessOptions = useMemo(() => {
-        return (data?.businesses || []).map((biz: any) => ({
-            id: biz.id,
-            label: biz.name,
-        }));
+        const seen = new Set<string>();
+        return (data?.businesses || [])
+            .filter((biz: any) => {
+                const key = (biz.name || '').toLowerCase().trim();
+                if (seen.has(key) || !key) return false;
+                seen.add(key);
+                return true;
+            })
+            .map((biz: any) => ({
+                id: biz.id,
+                label: biz.name,
+            }))
+            .sort((a: any, b: any) => a.label.localeCompare(b.label));
     }, [data?.businesses]);
 
     const selectedPerson = useMemo(() => {
@@ -296,10 +318,10 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
 
     const buildSource = () => {
         if (formData.sourceType === 'person' && formData.sourceId) {
-            return { existingPerson: formData.sourceId };
+            return { source: { type: 'PERSON', id: formData.sourceId } };
         }
         if (formData.sourceType === 'business' && formData.sourceId) {
-            return { existingBusiness: formData.sourceId };
+            return { source: { type: 'BUSINESS', id: formData.sourceId } };
         }
         if (formData.sourceType === 'new_person') {
             return {
@@ -414,12 +436,11 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                 if (response.error) {
                     setError(response.error.message);
                 } else {
-                    onSuccess();
                     if (keepOpen) {
                         resetForm(true); // Keep date
                         setError(null); // Clear any errors
-                        // Maybe show success toast?
                     } else {
+                        onSuccess();
                         handleClose();
                     }
                 }
@@ -452,11 +473,11 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                 if (response.error) {
                     setError(response.error.message);
                 } else {
-                    onSuccess();
                     if (keepOpen) {
                         resetForm(true); // Keep date
                         setError(null);
                     } else {
+                        onSuccess();
                         handleClose();
                     }
                 }
@@ -470,7 +491,14 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
     };
 
     return (
-        <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+        <Dialog
+            open={open}
+            onClose={handleClose}
+            maxWidth="sm"
+            fullWidth
+            TransitionComponent={Fade}
+            TransitionProps={{ timeout: 600 }}
+        >
             <form onSubmit={handleSubmit}>
                 <DialogTitle>
                     {entryType === 'transaction' ? 'New Transaction' : 'Record Refund'}
@@ -960,6 +988,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                         type="submit"
                         disabled={fetching || (entryType === 'refund' && !selectedEntry)}
                         onClick={() => setKeepOpen(true)}
+                        startIcon={<PlaylistAddIcon />}
                     >
                         Save & Add Another
                     </Button>
@@ -969,6 +998,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                         disabled={fetching || (entryType === 'refund' && !selectedEntry)}
                         color={entryType === 'refund' ? 'success' : 'primary'}
                         onClick={() => setKeepOpen(false)}
+                        startIcon={entryType === 'refund' ? <CurrencyExchangeIcon /> : <SaveIcon />}
                     >
                         {entryType === 'refund' ? 'Record Refund' : 'Save'}
                     </Button>

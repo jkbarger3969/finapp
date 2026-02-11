@@ -31,6 +31,10 @@ export declare const authResolvers: {
                 email: string;
                 name: string;
                 role?: string;
+                permissions?: {
+                    departmentId: string;
+                    accessLevel: string;
+                }[];
             };
         }, context: Context<unknown>) => Promise<AuthUser>;
         updateUser: (_parent: unknown, args: {
@@ -41,6 +45,9 @@ export declare const authResolvers: {
                 status?: string;
             };
         }, context: Context<unknown>) => Promise<AuthUser>;
+        deleteUser: (_parent: unknown, args: {
+            id: string;
+        }, context: Context<unknown>) => Promise<boolean>;
         grantPermission: (_parent: unknown, args: {
             input: {
                 userId: string;
@@ -62,13 +69,13 @@ export declare const authResolvers: {
     };
     UserPermission: {
         id: (parent: UserPermission) => string;
-        user: (parent: UserPermission, _args: unknown, context: Context<unknown>) => Promise<AuthUser | null>;
+        user: (parent: UserPermission, _args: unknown, context: Context<unknown>) => Promise<AuthUser>;
         department: (parent: UserPermission, _args: unknown, context: Context<unknown>) => Promise<import("mongodb").WithId<import("bson").Document>>;
-        grantedBy: (parent: UserPermission, _args: unknown, context: Context<unknown>) => Promise<AuthUser | null>;
+        grantedBy: (parent: UserPermission, _args: unknown, context: Context<unknown>) => Promise<AuthUser>;
     };
     AuditLogEntry: {
         id: (parent: AuditLogEntry) => string;
-        user: (parent: AuditLogEntry, _args: unknown, context: Context<unknown>) => Promise<AuthUser | null>;
+        user: (parent: AuditLogEntry, _args: unknown, context: Context<unknown>) => Promise<AuthUser>;
     };
 };
 declare function requireAuth(context: Context<unknown>): Promise<AuthUser>;

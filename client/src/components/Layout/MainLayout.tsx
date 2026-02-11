@@ -309,6 +309,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 open={isEntryDialogOpen}
                 onClose={closeEntryDialog}
                 onSuccess={() => {
+                    closeEntryDialog();
                     window.location.reload();
                 }}
             />

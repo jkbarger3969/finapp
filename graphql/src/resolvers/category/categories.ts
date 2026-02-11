@@ -113,7 +113,7 @@ export const whereCategories = (
         filterQuery["name"] = whereRegex(categoryWhere[whereKey]);
         break;
       case "type":
-        filterQuery["name"] = pascalCase(categoryWhere[whereKey]);
+        filterQuery["type"] = pascalCase(categoryWhere[whereKey]);
         break;
       case "parent":
         filterQuery["parent"] = whereId(categoryWhere[whereKey]);

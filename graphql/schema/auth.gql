@@ -80,10 +80,16 @@ type GoogleAuthUrl {
   url: String!
 }
 
+input InviteUserPermissionInput {
+  departmentId: ID!
+  accessLevel: AccessLevel!
+}
+
 input InviteUserInput {
   email: String!
   name: String!
   role: UserRole
+  permissions: [InviteUserPermissionInput!]
 }
 
 input UpdateUserInput {
@@ -131,6 +137,7 @@ extend type Mutation {
   logout: Boolean!
   inviteUser(input: InviteUserInput!): AuthUser!
   updateUser(id: ID!, input: UpdateUserInput!): AuthUser!
+  deleteUser(id: ID!): Boolean!
   grantPermission(input: GrantPermissionInput!): UserPermission!
   revokePermission(input: RevokePermissionInput!): Boolean!
 }

@@ -243,7 +243,7 @@ export class AuthService {
     name: string,
     role: "SUPER_ADMIN" | "DEPT_ADMIN" | "USER" = "USER",
     invitedBy: ObjectId,
-    departmentIds?: string[]
+    permissions?: { departmentId: string; accessLevel: string }[]
   ): Promise<AuthUser> {
     if (!email.endsWith(`@${ALLOWED_DOMAIN}`)) {
       throw new Error(`Only ${ALLOWED_DOMAIN} email addresses are allowed`);
@@ -282,17 +282,33 @@ export class AuthService {
       throw new Error("Failed to create user");
     }
 
-    // Send invite email
-    const inviter = await this.getUserById(invitedBy);
-    let departmentNames: string[] = [];
-    
-    if (departmentIds && departmentIds.length > 0) {
-      const departments = await this.db
-        .collection("departments")
-        .find({ _id: { $in: departmentIds.map(id => new ObjectId(id)) } })
-        .toArray();
-      departmentNames = departments.map(d => d.name);
+    // Grant permissions and gather details for email
+    const emailPermissions: { departmentId: string; departmentName: string; accessLevel: "VIEW" | "EDIT" | "ADMIN" }[] = [];
+
+    if (permissions && permissions.length > 0) {
+      for (const p of permissions) {
+        // Grant the permission
+        await this.grantPermission(
+          user._id,
+          new ObjectId(p.departmentId),
+          p.accessLevel as "VIEW" | "EDIT" | "ADMIN",
+          invitedBy
+        );
+
+        // Get department name for email
+        const dept = await this.db.collection("departments").findOne({ _id: new ObjectId(p.departmentId) });
+        if (dept) {
+          emailPermissions.push({
+            departmentId: p.departmentId,
+            departmentName: dept.name,
+            accessLevel: p.accessLevel as "VIEW" | "EDIT" | "ADMIN"
+          });
+        }
+      }
     }
+
+    // Send invite email with detailed permissions
+    const inviter = await this.getUserById(invitedBy);
 
     try {
       await sendInviteEmail({
@@ -300,7 +316,7 @@ export class AuthService {
         toName: name,
         invitedByName: inviter?.name || "Administrator",
         role,
-        departments: departmentNames,
+        permissions: emailPermissions,
       });
     } catch (error) {
       console.error("Failed to send invite email, but user was created:", error);
@@ -464,7 +480,7 @@ export class AuthService {
     grantedBy: ObjectId
   ): Promise<void> {
     await this.grantPermission(userId, departmentId, "ADMIN", grantedBy);
-    
+
     const subdeptIds = await this.getSubdepartmentIds(departmentId);
     for (const subdeptId of subdeptIds) {
       await this.grantPermission(userId, subdeptId, "ADMIN", grantedBy);
@@ -477,7 +493,7 @@ export class AuthService {
     revokedBy: ObjectId
   ): Promise<void> {
     await this.revokePermission(userId, departmentId, revokedBy);
-    
+
     const subdeptIds = await this.getSubdepartmentIds(departmentId);
     for (const subdeptId of subdeptIds) {
       await this.revokePermission(userId, subdeptId, revokedBy);

@@ -27,6 +27,7 @@ import {
     Alert,
     CircularProgress,
     Tooltip,
+    Snackbar,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -34,6 +35,7 @@ import {
     Block as BlockIcon,
     CheckCircle as CheckCircleIcon,
     Security as SecurityIcon,
+    Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, gql } from 'urql';
 import { useAuth } from '../../context/AuthContext';
@@ -118,6 +120,12 @@ const REVOKE_PERMISSION_MUTATION = gql`
     }
 `;
 
+const DELETE_USER_MUTATION = gql`
+    mutation DeleteUser($id: ID!) {
+        deleteUser(id: $id)
+    }
+`;
+
 interface User {
     id: string;
     email: string;
@@ -148,10 +156,11 @@ interface Department {
 }
 
 export default function UsersTab() {
-    const { isSuperAdmin } = useAuth();
+    const { isSuperAdmin, user: currentUser } = useAuth();
     const [inviteOpen, setInviteOpen] = useState(false);
     const [editUser, setEditUser] = useState<User | null>(null);
     const [editRole, setEditRole] = useState<'SUPER_ADMIN' | 'DEPT_ADMIN' | 'USER'>('USER');
+    const [editDepartments, setEditDepartments] = useState<{ departmentId: string; accessLevel: 'VIEW' | 'EDIT' | 'ADMIN' }[]>([]);
     const [permissionUser, setPermissionUser] = useState<User | null>(null);
     const [newPermission, setNewPermission] = useState<{ departmentId: string; accessLevel: 'VIEW' | 'EDIT' | 'ADMIN' }>({ departmentId: '', accessLevel: 'VIEW' });
     const [inviteForm, setInviteForm] = useState<{
@@ -162,12 +171,16 @@ export default function UsersTab() {
     }>({ email: '', name: '', role: 'USER', departments: [] });
 
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [inviteLoading, setInviteLoading] = useState(false);
+    const [deleteUserToConfirm, setDeleteUserToConfirm] = useState<User | null>(null);
 
     const [{ data: usersData, fetching: usersFetching }, refetchUsers] = useQuery({ query: USERS_QUERY });
     const [{ data: departmentsData }] = useQuery({ query: DEPARTMENTS_QUERY });
 
     const [, inviteUser] = useMutation(INVITE_USER_MUTATION);
     const [, updateUser] = useMutation(UPDATE_USER_MUTATION);
+    const [, deleteUser] = useMutation(DELETE_USER_MUTATION);
     const [, grantPermission] = useMutation(GRANT_PERMISSION_MUTATION);
     const [, revokePermission] = useMutation(REVOKE_PERMISSION_MUTATION);
 
@@ -176,32 +189,78 @@ export default function UsersTab() {
 
     const topLevelDepartments = departments.filter(d => !d.parent || d.parent.__typename === 'Business');
     const getSubdepartments = (parentId: string) => departments.filter(d => d.parent?.__typename === 'Department' && d.parent.id === parentId);
+
+    // Recursively get all subdepartments (including grandchildren, etc.)
+    const getAllSubdepartments = (parentId: string): Department[] => {
+        const directSubs = departments.filter(d => d.parent?.__typename === 'Department' && d.parent.id === parentId);
+        let allSubs = [...directSubs];
+
+        directSubs.forEach(sub => {
+            allSubs = [...allSubs, ...getAllSubdepartments(sub.id)];
+        });
+
+        return allSubs;
+    };
     const getDepartmentName = (id: string) => departments.find(d => d.id === id)?.name || id;
 
     const handleInvite = async () => {
         setError(null);
-        const result = await inviteUser({ input: { email: inviteForm.email, name: inviteForm.name, role: inviteForm.role } });
-        if (result.error) {
-            setError(result.error.message);
+        setInviteLoading(true);
+
+        // Validate email domain
+        if (!inviteForm.email.endsWith('@lonestarcowboychurch.org')) {
+            setError('Email must be a @lonestarcowboychurch.org address');
+            setInviteLoading(false);
             return;
         }
 
-        const newUserId = result.data?.inviteUser?.id;
-        if (newUserId && inviteForm.departments.length > 0) {
-            for (const dept of inviteForm.departments) {
-                await grantPermission({
-                    input: {
-                        userId: newUserId,
-                        departmentId: dept.departmentId,
-                        accessLevel: dept.accessLevel,
-                    },
-                });
-            }
+        // Validate required fields
+        if (!inviteForm.email || !inviteForm.name) {
+            setError('Please fill in all required fields');
+            setInviteLoading(false);
+            return;
         }
 
-        setInviteOpen(false);
-        setInviteForm({ email: '', name: '', role: 'USER', departments: [] });
-        refetchUsers();
+        // Validate departments for non-super-admin
+        if (inviteForm.role !== 'SUPER_ADMIN' && inviteForm.departments.length === 0) {
+            setError('Please select at least one department');
+            setInviteLoading(false);
+            return;
+        }
+
+        try {
+            // Prepare permissions payload
+            const permissions = inviteForm.departments.map(d => ({
+                departmentId: d.departmentId,
+                accessLevel: d.accessLevel
+            }));
+
+            // Call atomic invite mutation
+            const result = await inviteUser({
+                input: {
+                    email: inviteForm.email,
+                    name: inviteForm.name,
+                    role: inviteForm.role,
+                    permissions: permissions
+                }
+            });
+
+            if (result.error) {
+                setError(result.error.message);
+                setInviteLoading(false);
+                return;
+            }
+
+            setSuccessMessage(`Successfully invited ${inviteForm.name}! Invitation email sent to ${inviteForm.email}`);
+            setInviteOpen(false);
+            setInviteForm({ email: '', name: '', role: 'USER', departments: [] });
+            refetchUsers({ requestPolicy: 'network-only' });
+        } catch (err) {
+            setError('An unexpected error occurred');
+            console.error('Invite error:', err);
+        } finally {
+            setInviteLoading(false);
+        }
     };
 
 
@@ -213,21 +272,100 @@ export default function UsersTab() {
         });
     };
 
-    const handleUpdateRole = async () => {
+    const removeDepartmentFromEdit = (departmentId: string) => {
+        setEditDepartments(editDepartments.filter(d => d.departmentId !== departmentId));
+    };
+
+    // Auto-add subdepartments when selecting a top-level department
+    const addDepartmentWithSubdepts = (departmentId: string, accessLevel: 'VIEW' | 'EDIT' | 'ADMIN', isInvite: boolean) => {
+        const subdepts = getAllSubdepartments(departmentId);
+        console.log(`Adding department ${departmentId} with ${subdepts.length} subdepartments:`, subdepts.map(s => s.name));
+
+        const newDepts = [
+            { departmentId, accessLevel },
+            ...subdepts.map(sub => ({ departmentId: sub.id, accessLevel }))
+        ];
+
+        console.log('New departments to add:', newDepts);
+
+        if (isInvite) {
+            setInviteForm({
+                ...inviteForm,
+                departments: [...inviteForm.departments, ...newDepts]
+            });
+        } else {
+            setEditDepartments([...editDepartments, ...newDepts]);
+        }
+    };
+
+    const handleUpdateUser = async () => {
         if (!editUser) return;
         setError(null);
+
+        // Update role
         const result = await updateUser({ id: editUser.id, input: { role: editRole } });
         if (result.error) {
             setError(result.error.message);
-        } else {
-            setEditUser(null);
-            refetchUsers();
+            return;
         }
+
+        // Sync department permissions
+        const newDeptIds = editDepartments.map(d => d.departmentId);
+
+        // Remove departments that are no longer selected
+        for (const currentDept of editUser.departments) {
+            if (!newDeptIds.includes(currentDept.department.id)) {
+                await revokePermission({
+                    input: {
+                        userId: editUser.id,
+                        departmentId: currentDept.department.id,
+                    },
+                });
+            }
+        }
+
+        // Add new departments or update access levels
+        for (const dept of editDepartments) {
+            const existing = editUser.departments.find(d => d.department.id === dept.departmentId);
+            if (!existing || existing.accessLevel !== dept.accessLevel) {
+                await grantPermission({
+                    input: {
+                        userId: editUser.id,
+                        departmentId: dept.departmentId,
+                        accessLevel: dept.accessLevel,
+                    },
+                });
+            }
+        }
+
+        setEditUser(null);
+        setEditDepartments([]);
+        refetchUsers({ requestPolicy: 'network-only' });
     };
 
     const openEditRole = (user: User) => {
         setEditUser(user);
         setEditRole(user.role);
+        // Load current department permissions
+        setEditDepartments(user.departments.map(d => ({
+            departmentId: d.department.id,
+            accessLevel: d.accessLevel
+        })));
+    };
+
+    const handleDeleteUser = async () => {
+        if (!deleteUserToConfirm) return;
+
+        const result = await deleteUser({ id: deleteUserToConfirm.id });
+        if (result.error) {
+            setError(result.error.message);
+            setDeleteUserToConfirm(null);
+            return;
+        }
+
+        setSuccessMessage(`Successfully deleted user: ${deleteUserToConfirm.name}`);
+        setDeleteUserToConfirm(null);
+        refetchUsers({ requestPolicy: 'network-only' });
     };
 
     const handleToggleStatus = async (user: User) => {
@@ -237,7 +375,7 @@ export default function UsersTab() {
         if (result.error) {
             setError(result.error.message);
         } else {
-            refetchUsers();
+            refetchUsers({ requestPolicy: 'network-only' });
         }
     };
 
@@ -255,7 +393,7 @@ export default function UsersTab() {
             setError(result.error.message);
         } else {
             setNewPermission({ departmentId: '', accessLevel: 'VIEW' });
-            refetchUsers();
+            refetchUsers({ requestPolicy: 'network-only' });
         }
     };
 
@@ -267,7 +405,7 @@ export default function UsersTab() {
         if (result.error) {
             setError(result.error.message);
         } else {
-            refetchUsers();
+            refetchUsers({ requestPolicy: 'network-only' });
         }
     };
 
@@ -428,6 +566,16 @@ export default function UsersTab() {
                                                     )}
                                                 </IconButton>
                                             </Tooltip>
+                                            <Tooltip title="Delete User">
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => setDeleteUserToConfirm(user)}
+                                                    color="error"
+                                                    disabled={user.id === currentUser?.id}
+                                                >
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
                                         </>
                                     )}
                                 </TableCell>
@@ -443,21 +591,35 @@ export default function UsersTab() {
                     <DialogContentText sx={{ mb: 2 }}>
                         Send an invitation to a user. They must have a @lonestarcowboychurch.org email.
                     </DialogContentText>
+
+                    {error && (
+                        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+                            {error}
+                        </Alert>
+                    )}
                     <TextField
                         autoFocus
                         margin="dense"
                         label="Email"
                         type="email"
                         fullWidth
+                        required
                         value={inviteForm.email}
                         onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
                         placeholder="user@lonestarcowboychurch.org"
+                        error={inviteForm.email.length > 0 && !inviteForm.email.endsWith('@lonestarcowboychurch.org')}
+                        helperText={
+                            inviteForm.email.length > 0 && !inviteForm.email.endsWith('@lonestarcowboychurch.org')
+                                ? 'Must be a @lonestarcowboychurch.org email'
+                                : 'User will receive an invitation email'
+                        }
                         sx={{ mb: 2 }}
                     />
                     <TextField
                         margin="dense"
                         label="Name"
                         fullWidth
+                        required
                         value={inviteForm.name}
                         onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
                         sx={{ mb: 2 }}
@@ -599,20 +761,14 @@ export default function UsersTab() {
                                                                 <Button
                                                                     size="small"
                                                                     variant="outlined"
-                                                                    onClick={() => setInviteForm({
-                                                                        ...inviteForm,
-                                                                        departments: [...inviteForm.departments, { departmentId: topDept.id, accessLevel: 'VIEW' }]
-                                                                    })}
+                                                                    onClick={() => addDepartmentWithSubdepts(topDept.id, 'VIEW', true)}
                                                                 >
                                                                     +View
                                                                 </Button>
                                                                 <Button
                                                                     size="small"
                                                                     variant="outlined"
-                                                                    onClick={() => setInviteForm({
-                                                                        ...inviteForm,
-                                                                        departments: [...inviteForm.departments, { departmentId: topDept.id, accessLevel: 'EDIT' }]
-                                                                    })}
+                                                                    onClick={() => addDepartmentWithSubdepts(topDept.id, 'EDIT', true)}
                                                                 >
                                                                     +Edit
                                                                 </Button>
@@ -699,19 +855,21 @@ export default function UsersTab() {
                     <Button onClick={() => {
                         setInviteOpen(false);
                         setInviteForm({ email: '', name: '', role: 'USER', departments: [] });
+                        setError(null);
                     }}>Cancel</Button>
                     <Button
                         onClick={handleInvite}
                         variant="contained"
-                        disabled={!inviteForm.email || !inviteForm.name || (inviteForm.role !== 'SUPER_ADMIN' && inviteForm.departments.length === 0)}
+                        disabled={inviteLoading || !inviteForm.email || !inviteForm.name || (inviteForm.role !== 'SUPER_ADMIN' && inviteForm.departments.length === 0)}
+                        startIcon={inviteLoading ? <CircularProgress size={20} color="inherit" /> : null}
                     >
-                        Invite User
+                        {inviteLoading ? 'Sending Invite...' : 'Invite User'}
                     </Button>
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={!!editUser} onClose={() => setEditUser(null)} maxWidth="sm" fullWidth>
-                <DialogTitle>Edit User Role</DialogTitle>
+            <Dialog open={!!editUser} onClose={() => setEditUser(null)} maxWidth="md" fullWidth>
+                <DialogTitle>Edit User</DialogTitle>
                 <DialogContent>
                     <Typography sx={{ mb: 2 }}>
                         Change role for <strong>{editUser?.name}</strong> ({editUser?.email})
@@ -759,13 +917,168 @@ export default function UsersTab() {
                             Removing Super Admin access will restrict this user to only their assigned departments.
                         </Alert>
                     )}
+
+                    {editRole !== 'SUPER_ADMIN' && (
+                        <>
+                            <Divider sx={{ my: 3 }} />
+                            <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                                Department Access
+                            </Typography>
+
+                            {editDepartments.length > 0 && (
+                                <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+                                    <Table size="small">
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Department</TableCell>
+                                                <TableCell>Access Level</TableCell>
+                                                <TableCell align="right">Remove</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {editDepartments.map((dept) => {
+                                                const deptInfo = departments.find(d => d.id === dept.departmentId);
+                                                const parentName = deptInfo?.parent?.__typename === 'Department'
+                                                    ? getDepartmentName(deptInfo.parent.id)
+                                                    : null;
+                                                return (
+                                                    <TableRow key={dept.departmentId}>
+                                                        <TableCell>
+                                                            {parentName && (
+                                                                <Typography variant="caption" color="text.secondary" display="block">
+                                                                    {parentName}
+                                                                </Typography>
+                                                            )}
+                                                            {deptInfo?.name || dept.departmentId}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Chip label={dept.accessLevel} size="small" />
+                                                        </TableCell>
+                                                        <TableCell align="right">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => removeDepartmentFromEdit(dept.departmentId)}
+                                                            >
+                                                                <BlockIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            )}
+
+                            <Paper variant="outlined" sx={{ p: 2 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                    Select departments to grant access:
+                                </Typography>
+
+                                {topLevelDepartments.map((topDept) => {
+                                    const subdepts = getSubdepartments(topDept.id);
+                                    const isTopSelected = editDepartments.some(d => d.departmentId === topDept.id);
+
+                                    return (
+                                        <Box key={topDept.id} sx={{ mb: 2 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', minWidth: 150 }}>
+                                                    {topDept.name}
+                                                </Typography>
+                                                {!isTopSelected ? (
+                                                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                                        <Button
+                                                            size="small"
+                                                            variant="outlined"
+                                                            onClick={() => addDepartmentWithSubdepts(topDept.id, 'VIEW', false)}
+                                                        >
+                                                            +View
+                                                        </Button>
+                                                        <Button
+                                                            size="small"
+                                                            variant="outlined"
+                                                            onClick={() => addDepartmentWithSubdepts(topDept.id, 'EDIT', false)}
+                                                        >
+                                                            +Edit
+                                                        </Button>
+                                                    </Box>
+                                                ) : (
+                                                    <Chip
+                                                        label={editDepartments.find(d => d.departmentId === topDept.id)?.accessLevel}
+                                                        size="small"
+                                                        color="primary"
+                                                        onDelete={() => removeDepartmentFromEdit(topDept.id)}
+                                                    />
+                                                )}
+                                            </Box>
+
+                                            {subdepts.length > 0 && (
+                                                <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider' }}>
+                                                    {subdepts.map((subDept) => {
+                                                        const isSubSelected = editDepartments.some(d => d.departmentId === subDept.id);
+                                                        return (
+                                                            <Box key={subDept.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
+                                                                <Typography variant="body2" sx={{ minWidth: 140 }}>
+                                                                    {subDept.name}
+                                                                </Typography>
+                                                                {!isSubSelected ? (
+                                                                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                                                        <Button
+                                                                            size="small"
+                                                                            variant="text"
+                                                                            onClick={() => setEditDepartments([
+                                                                                ...editDepartments,
+                                                                                { departmentId: subDept.id, accessLevel: 'VIEW' }
+                                                                            ])}
+                                                                            sx={{ minWidth: 'auto', px: 1 }}
+                                                                        >
+                                                                            +View
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="small"
+                                                                            variant="text"
+                                                                            onClick={() => setEditDepartments([
+                                                                                ...editDepartments,
+                                                                                { departmentId: subDept.id, accessLevel: 'EDIT' }
+                                                                            ])}
+                                                                            sx={{ minWidth: 'auto', px: 1 }}
+                                                                        >
+                                                                            +Edit
+                                                                        </Button>
+                                                                    </Box>
+                                                                ) : (
+                                                                    <Chip
+                                                                        label={editDepartments.find(d => d.departmentId === subDept.id)?.accessLevel}
+                                                                        size="small"
+                                                                        color="primary"
+                                                                        onDelete={() => removeDepartmentFromEdit(subDept.id)}
+                                                                    />
+                                                                )}
+                                                            </Box>
+                                                        );
+                                                    })}
+                                                </Box>
+                                            )}
+                                        </Box>
+                                    );
+                                })}
+                            </Paper>
+                        </>
+                    )}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setEditUser(null)}>Cancel</Button>
+                    <Button onClick={() => {
+                        setEditUser(null);
+                        setEditDepartments([]);
+                    }}>Cancel</Button>
                     <Button
-                        onClick={handleUpdateRole}
+                        onClick={handleUpdateUser}
                         variant="contained"
-                        disabled={editRole === editUser?.role}
+                        disabled={
+                            editRole === editUser?.role &&
+                            JSON.stringify(editDepartments.sort((a, b) => a.departmentId.localeCompare(b.departmentId))) ===
+                            JSON.stringify(editUser?.departments.map(d => ({ departmentId: d.department.id, accessLevel: d.accessLevel })).sort((a, b) => a.departmentId.localeCompare(b.departmentId)))
+                        }
                     >
                         Save Changes
                     </Button>
@@ -879,6 +1192,37 @@ export default function UsersTab() {
                     <Button onClick={() => setPermissionUser(null)}>Close</Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Delete User Confirmation Dialog */}
+            <Dialog open={!!deleteUserToConfirm} onClose={() => setDeleteUserToConfirm(null)}>
+                <DialogTitle>Delete User?</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        Are you sure you want to delete <strong>{deleteUserToConfirm?.name}</strong> ({deleteUserToConfirm?.email})?
+                    </DialogContentText>
+                    <Alert severity="warning" sx={{ mt: 2 }}>
+                        This action cannot be undone. All permissions and data for this user will be permanently removed.
+                    </Alert>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDeleteUserToConfirm(null)}>Cancel</Button>
+                    <Button onClick={handleDeleteUser} variant="contained" color="error">
+                        Delete User
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Success/Error Snackbar */}
+            <Snackbar
+                open={!!successMessage}
+                autoHideDuration={6000}
+                onClose={() => setSuccessMessage(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert onClose={() => setSuccessMessage(null)} severity="success" variant="filled">
+                    {successMessage}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }

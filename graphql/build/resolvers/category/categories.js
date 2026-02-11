@@ -85,7 +85,7 @@ const whereCategories = (categoryWhere, db) => {
                 filterQuery["name"] = (0, queryUtils_1.whereRegex)(categoryWhere[whereKey]);
                 break;
             case "type":
-                filterQuery["name"] = (0, change_case_1.pascalCase)(categoryWhere[whereKey]);
+                filterQuery["type"] = (0, change_case_1.pascalCase)(categoryWhere[whereKey]);
                 break;
             case "parent":
                 filterQuery["parent"] = (0, queryUtils_1.whereId)(categoryWhere[whereKey]);

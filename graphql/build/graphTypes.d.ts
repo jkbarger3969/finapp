@@ -72,6 +72,11 @@ export declare type Scalars = {
         output: any;
     };
 };
+export declare enum AccessLevel {
+    Admin = "ADMIN",
+    Edit = "EDIT",
+    View = "VIEW"
+}
 export declare type AccountCard = Aliasable & PaymentCardInterface & {
     __typename?: 'AccountCard';
     account: AccountChecking | AccountCreditCard;
@@ -184,21 +189,17 @@ export declare type AliasesWhere = {
 };
 /**
  * Attachment represents a file (receipt, document, etc.) attached to an Entry.
- * Files are stored in Google Cloud Storage.
+ * Files are stored on the filesystem (QNAP NAS mount).
  */
 export declare type Attachment = {
     __typename?: 'Attachment';
     /** Whether this attachment has been deleted */
     deleted: Scalars['Boolean']['output'];
+    /** Relative path from storage root (e.g., "2024/02/timestamp-file.pdf") */
+    filePath: Scalars['String']['output'];
     /** File size in bytes */
     fileSize: Scalars['Int']['output'];
     filename: Scalars['String']['output'];
-    /** GCS bucket name where the file is stored */
-    gcsBucket: Scalars['String']['output'];
-    /** Path within the GCS bucket */
-    gcsPath: Scalars['String']['output'];
-    /** Google Cloud Storage URL for accessing the file */
-    gcsUrl: Scalars['String']['output'];
     id: Scalars['ID']['output'];
     /** MIME type of the file (e.g., image/jpeg, application/pdf) */
     mimeType: Scalars['String']['output'];
@@ -208,6 +209,8 @@ export declare type Attachment = {
     uploadedAt: Scalars['Date']['output'];
     /** Email of the user who uploaded the file */
     uploadedBy: Scalars['String']['output'];
+    /** Public URL for downloading the file */
+    url: Scalars['String']['output'];
 };
 export declare type AttachmentsWhere = {
     and?: InputMaybe<Array<AttachmentsWhere>>;
@@ -219,6 +222,63 @@ export declare type AttachmentsWhere = {
     or?: InputMaybe<Array<AttachmentsWhere>>;
     uploadedAt?: InputMaybe<WhereDate>;
     uploadedBy?: InputMaybe<WhereRegex>;
+};
+export declare enum AuditAction {
+    EntryCreate = "ENTRY_CREATE",
+    EntryDelete = "ENTRY_DELETE",
+    EntryUpdate = "ENTRY_UPDATE",
+    Login = "LOGIN",
+    Logout = "LOGOUT",
+    PermissionGrant = "PERMISSION_GRANT",
+    PermissionRevoke = "PERMISSION_REVOKE",
+    ReceiptDelete = "RECEIPT_DELETE",
+    ReceiptUpload = "RECEIPT_UPLOAD",
+    Reconcile = "RECONCILE",
+    RefundCreate = "REFUND_CREATE",
+    RefundDelete = "REFUND_DELETE",
+    RefundUpdate = "REFUND_UPDATE",
+    UserDisable = "USER_DISABLE",
+    UserInvite = "USER_INVITE",
+    UserUpdate = "USER_UPDATE"
+}
+export declare type AuditLogEntry = {
+    __typename?: 'AuditLogEntry';
+    action: AuditAction;
+    details?: Maybe<Scalars['JSON']['output']>;
+    id: Scalars['ID']['output'];
+    ipAddress?: Maybe<Scalars['String']['output']>;
+    resourceId?: Maybe<Scalars['ID']['output']>;
+    resourceType?: Maybe<Scalars['String']['output']>;
+    timestamp: Scalars['Date']['output'];
+    user: AuthUser;
+    userAgent?: Maybe<Scalars['String']['output']>;
+};
+export declare type AuditLogWhere = {
+    action?: InputMaybe<AuditAction>;
+    resourceId?: InputMaybe<WhereId>;
+    resourceType?: InputMaybe<Scalars['String']['input']>;
+    timestamp?: InputMaybe<WhereDate>;
+    userId?: InputMaybe<WhereId>;
+};
+export declare type AuthPayload = {
+    __typename?: 'AuthPayload';
+    token: Scalars['String']['output'];
+    user: AuthUser;
+};
+export declare type AuthUser = {
+    __typename?: 'AuthUser';
+    createdAt: Scalars['Date']['output'];
+    departments: Array<UserPermission>;
+    email: Scalars['String']['output'];
+    googleId?: Maybe<Scalars['String']['output']>;
+    id: Scalars['ID']['output'];
+    invitedAt?: Maybe<Scalars['Date']['output']>;
+    invitedBy?: Maybe<AuthUser>;
+    lastLoginAt?: Maybe<Scalars['Date']['output']>;
+    name: Scalars['String']['output'];
+    picture?: Maybe<Scalars['String']['output']>;
+    role: UserRole;
+    status: UserStatus;
 };
 export declare type Budget = {
     __typename?: 'Budget';
@@ -288,12 +348,28 @@ export declare type CreateAccountCardInput = {
     trailingDigits: Scalars['String']['input'];
     type: PaymentCardType;
 };
+export declare type CreateFiscalYearInput = {
+    begin: Scalars['Date']['input'];
+    end: Scalars['Date']['input'];
+    name: Scalars['String']['input'];
+};
+export declare type CreateFiscalYearPayload = {
+    __typename?: 'CreateFiscalYearPayload';
+    fiscalYear: FiscalYear;
+};
 export declare enum Currency {
     Usd = "USD"
 }
 export declare type DeleteAttachmentPayload = {
     __typename?: 'DeleteAttachmentPayload';
     deletedAttachment: Attachment;
+};
+export declare type DeleteBudgetInput = {
+    id: Scalars['ID']['input'];
+};
+export declare type DeleteBudgetResult = {
+    __typename?: 'DeleteBudgetResult';
+    deletedId: Scalars['ID']['output'];
 };
 export declare type DeleteEntryPayload = {
     __typename?: 'DeleteEntryPayload';
@@ -493,6 +569,25 @@ export declare type FiscalYearsWhere = {
     nor?: InputMaybe<Array<FiscalYearsWhere>>;
     or?: InputMaybe<Array<FiscalYearsWhere>>;
 };
+export declare type GoogleAuthUrl = {
+    __typename?: 'GoogleAuthUrl';
+    url: Scalars['String']['output'];
+};
+export declare type GrantPermissionInput = {
+    accessLevel: AccessLevel;
+    departmentId: Scalars['ID']['input'];
+    userId: Scalars['ID']['input'];
+};
+export declare type InviteUserInput = {
+    email: Scalars['String']['input'];
+    name: Scalars['String']['input'];
+    permissions?: InputMaybe<Array<InviteUserPermissionInput>>;
+    role?: InputMaybe<UserRole>;
+};
+export declare type InviteUserPermissionInput = {
+    accessLevel: AccessLevel;
+    departmentId: Scalars['ID']['input'];
+};
 export declare type Mutation = {
     __typename?: 'Mutation';
     addNewBusiness: Business;
@@ -500,23 +595,33 @@ export declare type Mutation = {
     addNewEntryRefund: AddNewEntryRefundPayload;
     addNewPerson: AddNewPersonPayload;
     createAccountCard: AccountCard;
+    createFiscalYear: CreateFiscalYearPayload;
     deleteAccountCard: Scalars['Boolean']['output'];
     /**
      * Delete an attachment from an entry.
-     * This marks the attachment as deleted and removes it from GCS.
+     * This marks the attachment as deleted in the database.
      */
     deleteAttachment: DeleteAttachmentPayload;
+    deleteBudget: DeleteBudgetResult;
     deleteEntry: DeleteEntryPayload;
     deleteEntryRefund: DeleteEntryRefundPayload;
+    deleteUser: Scalars['Boolean']['output'];
+    googleAuth: AuthPayload;
+    grantPermission: UserPermission;
+    inviteUser: AuthUser;
+    logout: Scalars['Boolean']['output'];
     reconcileEntries: ReconcileEntriesPayload;
+    revokePermission: Scalars['Boolean']['output'];
     updateAccountCard: AccountCard;
     updateEntry: UpdateEntryPayload;
     updateEntryRefund: UpdateEntryRefundPayload;
+    updateUser: AuthUser;
     /**
      * Upload a receipt file to an entry.
-     * The file will be stored in Google Cloud Storage.
+     * The file will be stored on the filesystem (QNAP NAS).
      */
     uploadReceipt: UploadReceiptPayload;
+    upsertBudget: UpsertBudgetResult;
 };
 export declare type MutationAddNewBusinessArgs = {
     input: NewBusiness;
@@ -533,11 +638,17 @@ export declare type MutationAddNewPersonArgs = {
 export declare type MutationCreateAccountCardArgs = {
     input: CreateAccountCardInput;
 };
+export declare type MutationCreateFiscalYearArgs = {
+    input: CreateFiscalYearInput;
+};
 export declare type MutationDeleteAccountCardArgs = {
     id: Scalars['ID']['input'];
 };
 export declare type MutationDeleteAttachmentArgs = {
     id: Scalars['ID']['input'];
+};
+export declare type MutationDeleteBudgetArgs = {
+    input: DeleteBudgetInput;
 };
 export declare type MutationDeleteEntryArgs = {
     id: Scalars['ID']['input'];
@@ -545,8 +656,23 @@ export declare type MutationDeleteEntryArgs = {
 export declare type MutationDeleteEntryRefundArgs = {
     id: Scalars['ID']['input'];
 };
+export declare type MutationDeleteUserArgs = {
+    id: Scalars['ID']['input'];
+};
+export declare type MutationGoogleAuthArgs = {
+    code: Scalars['String']['input'];
+};
+export declare type MutationGrantPermissionArgs = {
+    input: GrantPermissionInput;
+};
+export declare type MutationInviteUserArgs = {
+    input: InviteUserInput;
+};
 export declare type MutationReconcileEntriesArgs = {
     input?: InputMaybe<ReconcileEntries>;
+};
+export declare type MutationRevokePermissionArgs = {
+    input: RevokePermissionInput;
 };
 export declare type MutationUpdateAccountCardArgs = {
     id: Scalars['ID']['input'];
@@ -558,9 +684,16 @@ export declare type MutationUpdateEntryArgs = {
 export declare type MutationUpdateEntryRefundArgs = {
     input: UpdateEntryRefund;
 };
+export declare type MutationUpdateUserArgs = {
+    id: Scalars['ID']['input'];
+    input: UpdateUserInput;
+};
 export declare type MutationUploadReceiptArgs = {
     entryId: Scalars['ID']['input'];
     file: Scalars['Upload']['input'];
+};
+export declare type MutationUpsertBudgetArgs = {
+    input: UpsertBudget;
 };
 export declare type NewAlias = {
     name: Scalars['String']['input'];
@@ -733,6 +866,7 @@ export declare type Query = {
     accounts: Array<AccountChecking | AccountCreditCard>;
     attachment?: Maybe<Attachment>;
     attachments: Array<Attachment>;
+    auditLog: Array<AuditLogEntry>;
     budget: Budget;
     budgets: Array<Budget>;
     business: Business;
@@ -753,9 +887,13 @@ export declare type Query = {
     entryRefunds: Array<EntryRefund>;
     fiscalYear: FiscalYear;
     fiscalYears: Array<FiscalYear>;
+    googleAuthUrl: GoogleAuthUrl;
+    me?: Maybe<AuthUser>;
     people: Array<Person>;
     person: Person;
     sources: Array<Source>;
+    user?: Maybe<AuthUser>;
+    users: Array<AuthUser>;
 };
 export declare type QueryAccountArgs = {
     id: Scalars['ID']['input'];
@@ -774,6 +912,11 @@ export declare type QueryAttachmentArgs = {
 };
 export declare type QueryAttachmentsArgs = {
     where?: InputMaybe<AttachmentsWhere>;
+};
+export declare type QueryAuditLogArgs = {
+    limit?: InputMaybe<Scalars['Int']['input']>;
+    offset?: InputMaybe<Scalars['Int']['input']>;
+    where?: InputMaybe<AuditLogWhere>;
 };
 export declare type QueryBudgetArgs = {
     id: Scalars['ID']['input'];
@@ -834,6 +977,12 @@ export declare type QueryPersonArgs = {
 export declare type QuerySourcesArgs = {
     searchByName: Scalars['String']['input'];
 };
+export declare type QueryUserArgs = {
+    id: Scalars['ID']['input'];
+};
+export declare type QueryUsersArgs = {
+    where?: InputMaybe<UsersWhere>;
+};
 export declare type ReconcileEntries = {
     entries?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
     refunds?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
@@ -854,6 +1003,10 @@ export declare enum RegexFlags {
     /** Allows . to match newline characters. */
     S = "S"
 }
+export declare type RevokePermissionInput = {
+    departmentId: Scalars['ID']['input'];
+    userId: Scalars['ID']['input'];
+};
 export declare type Source = Business | Department | Person;
 export declare type Subscription = {
     __typename?: 'Subscription';
@@ -902,9 +1055,24 @@ export declare type UpdateEntryRefundPayload = {
     __typename?: 'UpdateEntryRefundPayload';
     updatedEntryRefund: EntryRefund;
 };
+export declare type UpdateUserInput = {
+    name?: InputMaybe<Scalars['String']['input']>;
+    role?: InputMaybe<UserRole>;
+    status?: InputMaybe<UserStatus>;
+};
 export declare type UploadReceiptPayload = {
     __typename?: 'UploadReceiptPayload';
     attachment: Attachment;
+};
+export declare type UpsertBudget = {
+    amount: Scalars['Rational']['input'];
+    fiscalYear: Scalars['ID']['input'];
+    id?: InputMaybe<Scalars['ID']['input']>;
+    owner: NodeInput;
+};
+export declare type UpsertBudgetResult = {
+    __typename?: 'UpsertBudgetResult';
+    budget: Budget;
 };
 /** `NewEntry.source` and `UpdateEntry.source` input.  Choose ONE field only. */
 export declare type UpsertEntrySource = {
@@ -927,6 +1095,31 @@ export declare type User = {
     __typename?: 'User';
     id: Scalars['ID']['output'];
     user: Person;
+};
+export declare type UserPermission = {
+    __typename?: 'UserPermission';
+    accessLevel: AccessLevel;
+    department: Department;
+    grantedAt: Scalars['Date']['output'];
+    grantedBy: AuthUser;
+    id: Scalars['ID']['output'];
+    user: AuthUser;
+};
+export declare enum UserRole {
+    DeptAdmin = "DEPT_ADMIN",
+    SuperAdmin = "SUPER_ADMIN",
+    User = "USER"
+}
+export declare enum UserStatus {
+    Active = "ACTIVE",
+    Disabled = "DISABLED",
+    Invited = "INVITED"
+}
+export declare type UsersWhere = {
+    email?: InputMaybe<WhereRegex>;
+    id?: InputMaybe<WhereId>;
+    role?: InputMaybe<UserRole>;
+    status?: InputMaybe<UserStatus>;
 };
 export declare type Vendor = {
     __typename?: 'Vendor';
@@ -1046,6 +1239,7 @@ export declare type ResolversInterfaceTypes<_RefType extends Record<string, unkn
 };
 /** Mapping between all available schema types and the resolvers types */
 export declare type ResolversTypes = {
+    AccessLevel: AccessLevel;
     AccountCard: ResolverTypeWrapper<PaymentCardDbRecord>;
     AccountCardsWhere: AccountCardsWhere;
     AccountCheck: ResolverTypeWrapper<Omit<AccountCheck, 'account'> & {
@@ -1075,6 +1269,18 @@ export declare type ResolversTypes = {
     AliasesWhere: AliasesWhere;
     Attachment: ResolverTypeWrapper<Attachment>;
     AttachmentsWhere: AttachmentsWhere;
+    AuditAction: AuditAction;
+    AuditLogEntry: ResolverTypeWrapper<Omit<AuditLogEntry, 'user'> & {
+        user: ResolversTypes['AuthUser'];
+    }>;
+    AuditLogWhere: AuditLogWhere;
+    AuthPayload: ResolverTypeWrapper<Omit<AuthPayload, 'user'> & {
+        user: ResolversTypes['AuthUser'];
+    }>;
+    AuthUser: ResolverTypeWrapper<Omit<AuthUser, 'departments' | 'invitedBy'> & {
+        departments: Array<ResolversTypes['UserPermission']>;
+        invitedBy?: Maybe<ResolversTypes['AuthUser']>;
+    }>;
     Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
     Budget: ResolverTypeWrapper<BudgetDbRecord>;
     BudgetOwner: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['BudgetOwner']>;
@@ -1084,11 +1290,17 @@ export declare type ResolversTypes = {
     CategoriesWhere: CategoriesWhere;
     Category: ResolverTypeWrapper<CategoryDbRecord>;
     CreateAccountCardInput: CreateAccountCardInput;
+    CreateFiscalYearInput: CreateFiscalYearInput;
+    CreateFiscalYearPayload: ResolverTypeWrapper<Omit<CreateFiscalYearPayload, 'fiscalYear'> & {
+        fiscalYear: ResolversTypes['FiscalYear'];
+    }>;
     Currency: Currency;
     Date: ResolverTypeWrapper<Scalars['Date']['output']>;
     DeleteAttachmentPayload: ResolverTypeWrapper<Omit<DeleteAttachmentPayload, 'deletedAttachment'> & {
         deletedAttachment: ResolversTypes['Attachment'];
     }>;
+    DeleteBudgetInput: DeleteBudgetInput;
+    DeleteBudgetResult: ResolverTypeWrapper<DeleteBudgetResult>;
     DeleteEntryPayload: ResolverTypeWrapper<Omit<DeleteEntryPayload, 'deletedEntry'> & {
         deletedEntry: ResolversTypes['Entry'];
     }>;
@@ -1115,8 +1327,12 @@ export declare type ResolversTypes = {
     EntryType: EntryType;
     FiscalYear: ResolverTypeWrapper<FiscalYearDbRecord>;
     FiscalYearsWhere: FiscalYearsWhere;
+    GoogleAuthUrl: ResolverTypeWrapper<GoogleAuthUrl>;
+    GrantPermissionInput: GrantPermissionInput;
     ID: ResolverTypeWrapper<Scalars['ID']['output']>;
     Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+    InviteUserInput: InviteUserInput;
+    InviteUserPermissionInput: InviteUserPermissionInput;
     JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
     Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
     NewAlias: NewAlias;
@@ -1166,6 +1382,7 @@ export declare type ResolversTypes = {
         reconciledRefunds: Array<ResolversTypes['EntryRefund']>;
     }>;
     RegexFlags: RegexFlags;
+    RevokePermissionInput: RevokePermissionInput;
     Source: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['Source']>;
     String: ResolverTypeWrapper<Scalars['String']['output']>;
     Subscription: ResolverTypeWrapper<Record<PropertyKey, never>>;
@@ -1179,15 +1396,28 @@ export declare type ResolversTypes = {
     UpdateEntryRefundPayload: ResolverTypeWrapper<Omit<UpdateEntryRefundPayload, 'updatedEntryRefund'> & {
         updatedEntryRefund: ResolversTypes['EntryRefund'];
     }>;
+    UpdateUserInput: UpdateUserInput;
     Upload: ResolverTypeWrapper<Scalars['Upload']['output']>;
     UploadReceiptPayload: ResolverTypeWrapper<Omit<UploadReceiptPayload, 'attachment'> & {
         attachment: ResolversTypes['Attachment'];
+    }>;
+    UpsertBudget: UpsertBudget;
+    UpsertBudgetResult: ResolverTypeWrapper<Omit<UpsertBudgetResult, 'budget'> & {
+        budget: ResolversTypes['Budget'];
     }>;
     UpsertEntrySource: UpsertEntrySource;
     UpsertPaymentMethod: UpsertPaymentMethod;
     User: ResolverTypeWrapper<Omit<User, 'user'> & {
         user: ResolversTypes['Person'];
     }>;
+    UserPermission: ResolverTypeWrapper<Omit<UserPermission, 'department' | 'grantedBy' | 'user'> & {
+        department: ResolversTypes['Department'];
+        grantedBy: ResolversTypes['AuthUser'];
+        user: ResolversTypes['AuthUser'];
+    }>;
+    UserRole: UserRole;
+    UserStatus: UserStatus;
+    UsersWhere: UsersWhere;
     Vendor: ResolverTypeWrapper<Vendor>;
     WhereDate: WhereDate;
     WhereId: WhereId;
@@ -1227,6 +1457,17 @@ export declare type ResolversParentTypes = {
     AliasesWhere: AliasesWhere;
     Attachment: Attachment;
     AttachmentsWhere: AttachmentsWhere;
+    AuditLogEntry: Omit<AuditLogEntry, 'user'> & {
+        user: ResolversParentTypes['AuthUser'];
+    };
+    AuditLogWhere: AuditLogWhere;
+    AuthPayload: Omit<AuthPayload, 'user'> & {
+        user: ResolversParentTypes['AuthUser'];
+    };
+    AuthUser: Omit<AuthUser, 'departments' | 'invitedBy'> & {
+        departments: Array<ResolversParentTypes['UserPermission']>;
+        invitedBy?: Maybe<ResolversParentTypes['AuthUser']>;
+    };
     Boolean: Scalars['Boolean']['output'];
     Budget: BudgetDbRecord;
     BudgetOwner: ResolversUnionTypes<ResolversParentTypes>['BudgetOwner'];
@@ -1236,10 +1477,16 @@ export declare type ResolversParentTypes = {
     CategoriesWhere: CategoriesWhere;
     Category: CategoryDbRecord;
     CreateAccountCardInput: CreateAccountCardInput;
+    CreateFiscalYearInput: CreateFiscalYearInput;
+    CreateFiscalYearPayload: Omit<CreateFiscalYearPayload, 'fiscalYear'> & {
+        fiscalYear: ResolversParentTypes['FiscalYear'];
+    };
     Date: Scalars['Date']['output'];
     DeleteAttachmentPayload: Omit<DeleteAttachmentPayload, 'deletedAttachment'> & {
         deletedAttachment: ResolversParentTypes['Attachment'];
     };
+    DeleteBudgetInput: DeleteBudgetInput;
+    DeleteBudgetResult: DeleteBudgetResult;
     DeleteEntryPayload: Omit<DeleteEntryPayload, 'deletedEntry'> & {
         deletedEntry: ResolversParentTypes['Entry'];
     };
@@ -1264,8 +1511,12 @@ export declare type ResolversParentTypes = {
     EntryRefundsWhere: EntryRefundsWhere;
     FiscalYear: FiscalYearDbRecord;
     FiscalYearsWhere: FiscalYearsWhere;
+    GoogleAuthUrl: GoogleAuthUrl;
+    GrantPermissionInput: GrantPermissionInput;
     ID: Scalars['ID']['output'];
     Int: Scalars['Int']['output'];
+    InviteUserInput: InviteUserInput;
+    InviteUserPermissionInput: InviteUserPermissionInput;
     JSON: Scalars['JSON']['output'];
     Mutation: Record<PropertyKey, never>;
     NewAlias: NewAlias;
@@ -1312,6 +1563,7 @@ export declare type ResolversParentTypes = {
         reconciledEntries: Array<ResolversParentTypes['Entry']>;
         reconciledRefunds: Array<ResolversParentTypes['EntryRefund']>;
     };
+    RevokePermissionInput: RevokePermissionInput;
     Source: ResolversUnionTypes<ResolversParentTypes>['Source'];
     String: Scalars['String']['output'];
     Subscription: Record<PropertyKey, never>;
@@ -1325,15 +1577,26 @@ export declare type ResolversParentTypes = {
     UpdateEntryRefundPayload: Omit<UpdateEntryRefundPayload, 'updatedEntryRefund'> & {
         updatedEntryRefund: ResolversParentTypes['EntryRefund'];
     };
+    UpdateUserInput: UpdateUserInput;
     Upload: Scalars['Upload']['output'];
     UploadReceiptPayload: Omit<UploadReceiptPayload, 'attachment'> & {
         attachment: ResolversParentTypes['Attachment'];
+    };
+    UpsertBudget: UpsertBudget;
+    UpsertBudgetResult: Omit<UpsertBudgetResult, 'budget'> & {
+        budget: ResolversParentTypes['Budget'];
     };
     UpsertEntrySource: UpsertEntrySource;
     UpsertPaymentMethod: UpsertPaymentMethod;
     User: Omit<User, 'user'> & {
         user: ResolversParentTypes['Person'];
     };
+    UserPermission: Omit<UserPermission, 'department' | 'grantedBy' | 'user'> & {
+        department: ResolversParentTypes['Department'];
+        grantedBy: ResolversParentTypes['AuthUser'];
+        user: ResolversParentTypes['AuthUser'];
+    };
+    UsersWhere: UsersWhere;
     Vendor: Vendor;
     WhereDate: WhereDate;
     WhereId: WhereId;
@@ -1401,16 +1664,44 @@ export declare type AliasableResolvers<ContextType = Context, ParentType = Resol
 };
 export declare type AttachmentResolvers<ContextType = Context, ParentType = ResolversParentTypes['Attachment']> = {
     deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+    filePath?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     fileSize?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
     filename?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-    gcsBucket?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-    gcsPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-    gcsUrl?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
     mimeType?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
     thumbnailUrl?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
     uploadedAt?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
     uploadedBy?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+export declare type AuditLogEntryResolvers<ContextType = Context, ParentType = ResolversParentTypes['AuditLogEntry']> = {
+    action?: Resolver<ResolversTypes['AuditAction'], ParentType, ContextType>;
+    details?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+    id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+    ipAddress?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+    resourceId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+    resourceType?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+    timestamp?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
+    user?: Resolver<ResolversTypes['AuthUser'], ParentType, ContextType>;
+    userAgent?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+export declare type AuthPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['AuthPayload']> = {
+    token?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    user?: Resolver<ResolversTypes['AuthUser'], ParentType, ContextType>;
+};
+export declare type AuthUserResolvers<ContextType = Context, ParentType = ResolversParentTypes['AuthUser']> = {
+    createdAt?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
+    departments?: Resolver<Array<ResolversTypes['UserPermission']>, ParentType, ContextType>;
+    email?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    googleId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+    id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+    invitedAt?: Resolver<Maybe<ResolversTypes['Date']>, ParentType, ContextType>;
+    invitedBy?: Resolver<Maybe<ResolversTypes['AuthUser']>, ParentType, ContextType>;
+    lastLoginAt?: Resolver<Maybe<ResolversTypes['Date']>, ParentType, ContextType>;
+    name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    picture?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+    role?: Resolver<ResolversTypes['UserRole'], ParentType, ContextType>;
+    status?: Resolver<ResolversTypes['UserStatus'], ParentType, ContextType>;
 };
 export declare type BudgetResolvers<ContextType = Context, ParentType = ResolversParentTypes['Budget']> = {
     amount?: Resolver<ResolversTypes['Rational'], ParentType, ContextType>;
@@ -1439,11 +1730,17 @@ export declare type CategoryResolvers<ContextType = Context, ParentType = Resolv
     parent?: Resolver<Maybe<ResolversTypes['Category']>, ParentType, ContextType>;
     type?: Resolver<ResolversTypes['EntryType'], ParentType, ContextType>;
 };
+export declare type CreateFiscalYearPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['CreateFiscalYearPayload']> = {
+    fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType>;
+};
 export interface DateScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['Date'], any> {
     name: 'Date';
 }
 export declare type DeleteAttachmentPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['DeleteAttachmentPayload']> = {
     deletedAttachment?: Resolver<ResolversTypes['Attachment'], ParentType, ContextType>;
+};
+export declare type DeleteBudgetResultResolvers<ContextType = Context, ParentType = ResolversParentTypes['DeleteBudgetResult']> = {
+    deletedId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
 };
 export declare type DeleteEntryPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['DeleteEntryPayload']> = {
     deletedEntry?: Resolver<ResolversTypes['Entry'], ParentType, ContextType>;
@@ -1532,6 +1829,9 @@ export declare type FiscalYearResolvers<ContextType = Context, ParentType = Reso
     id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
     name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
+export declare type GoogleAuthUrlResolvers<ContextType = Context, ParentType = ResolversParentTypes['GoogleAuthUrl']> = {
+    url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
 export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['JSON'], any> {
     name: 'JSON';
 }
@@ -1541,15 +1841,25 @@ export declare type MutationResolvers<ContextType = Context, ParentType = Resolv
     addNewEntryRefund?: Resolver<ResolversTypes['AddNewEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationAddNewEntryRefundArgs, 'input'>>;
     addNewPerson?: Resolver<ResolversTypes['AddNewPersonPayload'], ParentType, ContextType, RequireFields<MutationAddNewPersonArgs, 'input'>>;
     createAccountCard?: Resolver<ResolversTypes['AccountCard'], ParentType, ContextType, RequireFields<MutationCreateAccountCardArgs, 'input'>>;
+    createFiscalYear?: Resolver<ResolversTypes['CreateFiscalYearPayload'], ParentType, ContextType, RequireFields<MutationCreateFiscalYearArgs, 'input'>>;
     deleteAccountCard?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAccountCardArgs, 'id'>>;
     deleteAttachment?: Resolver<ResolversTypes['DeleteAttachmentPayload'], ParentType, ContextType, RequireFields<MutationDeleteAttachmentArgs, 'id'>>;
+    deleteBudget?: Resolver<ResolversTypes['DeleteBudgetResult'], ParentType, ContextType, RequireFields<MutationDeleteBudgetArgs, 'input'>>;
     deleteEntry?: Resolver<ResolversTypes['DeleteEntryPayload'], ParentType, ContextType, RequireFields<MutationDeleteEntryArgs, 'id'>>;
     deleteEntryRefund?: Resolver<ResolversTypes['DeleteEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationDeleteEntryRefundArgs, 'id'>>;
+    deleteUser?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteUserArgs, 'id'>>;
+    googleAuth?: Resolver<ResolversTypes['AuthPayload'], ParentType, ContextType, RequireFields<MutationGoogleAuthArgs, 'code'>>;
+    grantPermission?: Resolver<ResolversTypes['UserPermission'], ParentType, ContextType, RequireFields<MutationGrantPermissionArgs, 'input'>>;
+    inviteUser?: Resolver<ResolversTypes['AuthUser'], ParentType, ContextType, RequireFields<MutationInviteUserArgs, 'input'>>;
+    logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     reconcileEntries?: Resolver<ResolversTypes['ReconcileEntriesPayload'], ParentType, ContextType, Partial<MutationReconcileEntriesArgs>>;
+    revokePermission?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRevokePermissionArgs, 'input'>>;
     updateAccountCard?: Resolver<ResolversTypes['AccountCard'], ParentType, ContextType, RequireFields<MutationUpdateAccountCardArgs, 'id' | 'input'>>;
     updateEntry?: Resolver<ResolversTypes['UpdateEntryPayload'], ParentType, ContextType, RequireFields<MutationUpdateEntryArgs, 'input'>>;
     updateEntryRefund?: Resolver<ResolversTypes['UpdateEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationUpdateEntryRefundArgs, 'input'>>;
+    updateUser?: Resolver<ResolversTypes['AuthUser'], ParentType, ContextType, RequireFields<MutationUpdateUserArgs, 'id' | 'input'>>;
     uploadReceipt?: Resolver<ResolversTypes['UploadReceiptPayload'], ParentType, ContextType, RequireFields<MutationUploadReceiptArgs, 'entryId' | 'file'>>;
+    upsertBudget?: Resolver<ResolversTypes['UpsertBudgetResult'], ParentType, ContextType, RequireFields<MutationUpsertBudgetArgs, 'input'>>;
 };
 export declare type PaymentCardResolvers<ContextType = Context, ParentType = ResolversParentTypes['PaymentCard']> = {
     trailingDigits?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -1613,6 +1923,7 @@ export declare type QueryResolvers<ContextType = Context, ParentType = Resolvers
     accounts?: Resolver<Array<ResolversTypes['AccountInterface']>, ParentType, ContextType, Partial<QueryAccountsArgs>>;
     attachment?: Resolver<Maybe<ResolversTypes['Attachment']>, ParentType, ContextType, RequireFields<QueryAttachmentArgs, 'id'>>;
     attachments?: Resolver<Array<ResolversTypes['Attachment']>, ParentType, ContextType, Partial<QueryAttachmentsArgs>>;
+    auditLog?: Resolver<Array<ResolversTypes['AuditLogEntry']>, ParentType, ContextType, Partial<QueryAuditLogArgs>>;
     budget?: Resolver<ResolversTypes['Budget'], ParentType, ContextType, RequireFields<QueryBudgetArgs, 'id'>>;
     budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType, Partial<QueryBudgetsArgs>>;
     business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>;
@@ -1629,9 +1940,13 @@ export declare type QueryResolvers<ContextType = Context, ParentType = Resolvers
     entryRefunds?: Resolver<Array<ResolversTypes['EntryRefund']>, ParentType, ContextType, Partial<QueryEntryRefundsArgs>>;
     fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType, RequireFields<QueryFiscalYearArgs, 'id'>>;
     fiscalYears?: Resolver<Array<ResolversTypes['FiscalYear']>, ParentType, ContextType, Partial<QueryFiscalYearsArgs>>;
+    googleAuthUrl?: Resolver<ResolversTypes['GoogleAuthUrl'], ParentType, ContextType>;
+    me?: Resolver<Maybe<ResolversTypes['AuthUser']>, ParentType, ContextType>;
     people?: Resolver<Array<ResolversTypes['Person']>, ParentType, ContextType, Partial<QueryPeopleArgs>>;
     person?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<QueryPersonArgs, 'id'>>;
     sources?: Resolver<Array<ResolversTypes['Source']>, ParentType, ContextType, RequireFields<QuerySourcesArgs, 'searchByName'>>;
+    user?: Resolver<Maybe<ResolversTypes['AuthUser']>, ParentType, ContextType, RequireFields<QueryUserArgs, 'id'>>;
+    users?: Resolver<Array<ResolversTypes['AuthUser']>, ParentType, ContextType, Partial<QueryUsersArgs>>;
 };
 export interface RationalScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['Rational'], any> {
     name: 'Rational';
@@ -1660,9 +1975,20 @@ export interface UploadScalarConfig extends GraphQLScalarTypeConfig<ResolversTyp
 export declare type UploadReceiptPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['UploadReceiptPayload']> = {
     attachment?: Resolver<ResolversTypes['Attachment'], ParentType, ContextType>;
 };
+export declare type UpsertBudgetResultResolvers<ContextType = Context, ParentType = ResolversParentTypes['UpsertBudgetResult']> = {
+    budget?: Resolver<ResolversTypes['Budget'], ParentType, ContextType>;
+};
 export declare type UserResolvers<ContextType = Context, ParentType = ResolversParentTypes['User']> = {
     id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
     user?: Resolver<ResolversTypes['Person'], ParentType, ContextType>;
+};
+export declare type UserPermissionResolvers<ContextType = Context, ParentType = ResolversParentTypes['UserPermission']> = {
+    accessLevel?: Resolver<ResolversTypes['AccessLevel'], ParentType, ContextType>;
+    department?: Resolver<ResolversTypes['Department'], ParentType, ContextType>;
+    grantedAt?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
+    grantedBy?: Resolver<ResolversTypes['AuthUser'], ParentType, ContextType>;
+    id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+    user?: Resolver<ResolversTypes['AuthUser'], ParentType, ContextType>;
 };
 export declare type VendorResolvers<ContextType = Context, ParentType = ResolversParentTypes['Vendor']> = {
     approved?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
@@ -1681,12 +2007,17 @@ export declare type Resolvers<ContextType = Context> = {
     Alias?: AliasResolvers<ContextType>;
     Aliasable?: AliasableResolvers<ContextType>;
     Attachment?: AttachmentResolvers<ContextType>;
+    AuditLogEntry?: AuditLogEntryResolvers<ContextType>;
+    AuthPayload?: AuthPayloadResolvers<ContextType>;
+    AuthUser?: AuthUserResolvers<ContextType>;
     Budget?: BudgetResolvers<ContextType>;
     BudgetOwner?: BudgetOwnerResolvers<ContextType>;
     Business?: BusinessResolvers<ContextType>;
     Category?: CategoryResolvers<ContextType>;
+    CreateFiscalYearPayload?: CreateFiscalYearPayloadResolvers<ContextType>;
     Date?: GraphQLScalarType;
     DeleteAttachmentPayload?: DeleteAttachmentPayloadResolvers<ContextType>;
+    DeleteBudgetResult?: DeleteBudgetResultResolvers<ContextType>;
     DeleteEntryPayload?: DeleteEntryPayloadResolvers<ContextType>;
     DeleteEntryRefundPayload?: DeleteEntryRefundPayloadResolvers<ContextType>;
     Department?: DepartmentResolvers<ContextType>;
@@ -1698,6 +2029,7 @@ export declare type Resolvers<ContextType = Context> = {
     EntryItem?: EntryItemResolvers<ContextType>;
     EntryRefund?: EntryRefundResolvers<ContextType>;
     FiscalYear?: FiscalYearResolvers<ContextType>;
+    GoogleAuthUrl?: GoogleAuthUrlResolvers<ContextType>;
     JSON?: GraphQLScalarType;
     Mutation?: MutationResolvers<ContextType>;
     PaymentCard?: PaymentCardResolvers<ContextType>;
@@ -1722,6 +2054,8 @@ export declare type Resolvers<ContextType = Context> = {
     UpdateEntryRefundPayload?: UpdateEntryRefundPayloadResolvers<ContextType>;
     Upload?: GraphQLScalarType;
     UploadReceiptPayload?: UploadReceiptPayloadResolvers<ContextType>;
+    UpsertBudgetResult?: UpsertBudgetResultResolvers<ContextType>;
     User?: UserResolvers<ContextType>;
+    UserPermission?: UserPermissionResolvers<ContextType>;
     Vendor?: VendorResolvers<ContextType>;
 };

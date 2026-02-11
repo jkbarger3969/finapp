@@ -10,6 +10,7 @@ import {
     Typography,
     Chip,
     InputAdornment,
+    Fade,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { useQuery } from 'urql';
@@ -131,6 +132,8 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
             onClose={onClose}
             maxWidth="sm"
             fullWidth
+            TransitionComponent={Fade}
+            TransitionProps={{ timeout: 600 }}
             PaperProps={{
                 sx: {
                     position: 'fixed',

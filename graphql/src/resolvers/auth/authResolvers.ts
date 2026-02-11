@@ -21,7 +21,7 @@ export const authResolvers = {
       context: Context<unknown>
     ): Promise<AuthUser[]> => {
       const currentUser = await requireAuth(context);
-      
+
       if (currentUser.role !== "SUPER_ADMIN" && currentUser.role !== "DEPT_ADMIN") {
         throw new Error("Unauthorized: Only admins can view user list");
       }
@@ -44,7 +44,7 @@ export const authResolvers = {
       context: Context<unknown>
     ): Promise<AuditLogEntry[]> => {
       const currentUser = await requireAuth(context);
-      
+
       if (currentUser.role !== "SUPER_ADMIN") {
         throw new Error("Unauthorized: Only super admins can view audit log");
       }
@@ -99,7 +99,7 @@ export const authResolvers = {
 
     inviteUser: async (
       _parent: unknown,
-      args: { input: { email: string; name: string; role?: string; departmentIds?: string[] } },
+      args: { input: { email: string; name: string; role?: string; permissions?: { departmentId: string; accessLevel: string }[] } },
       context: Context<unknown>
     ): Promise<AuthUser> => {
       const currentUser = await requireAuth(context);
@@ -117,7 +117,7 @@ export const authResolvers = {
         args.input.name,
         (args.input.role as "SUPER_ADMIN" | "DEPT_ADMIN" | "USER") || "USER",
         new ObjectId(currentUser._id),
-        args.input.departmentIds
+        args.input.permissions
       );
     },
 
@@ -157,6 +157,47 @@ export const authResolvers = {
       );
     },
 
+    deleteUser: async (
+      _parent: unknown,
+      args: { id: string },
+      context: Context<unknown>
+    ): Promise<boolean> => {
+      const currentUser = await requireAuth(context);
+
+      // Only super admins can delete users
+      if (currentUser.role !== "SUPER_ADMIN") {
+        throw new Error("Unauthorized: Only super admins can delete users");
+      }
+
+      const targetUser = await context.authService!.getUserById(args.id);
+      if (!targetUser) {
+        throw new Error("User not found");
+      }
+
+      // Cannot delete yourself
+      if (targetUser._id.toString() === currentUser._id.toString()) {
+        throw new Error("Cannot delete your own account");
+      }
+
+      // Delete the user from the database
+      await context.db.collection("users").deleteOne({ _id: new ObjectId(args.id) });
+
+      // Delete all permissions for this user
+      await context.db.collection("userPermissions").deleteMany({ userId: new ObjectId(args.id) });
+
+      // Log the deletion
+      await context.authService!.logAudit({
+        userId: new ObjectId(currentUser._id),
+        action: "USER_DELETE" as any,
+        resourceType: "User",
+        resourceId: new ObjectId(args.id),
+        details: { email: targetUser.email, name: targetUser.name },
+        timestamp: new Date(),
+      });
+
+      return true;
+    },
+
     grantPermission: async (
       _parent: unknown,
       args: { input: { userId: string; departmentId: string; accessLevel: string } },
@@ -180,14 +221,14 @@ export const authResolvers = {
       }
 
       const targetUser = await context.authService!.getUserById(args.input.userId);
-      
+
       if (targetUser?.role === "DEPT_ADMIN" && args.input.accessLevel === "ADMIN") {
         await context.authService!.grantDeptAdminWithSubdepartments(
           new ObjectId(args.input.userId),
           new ObjectId(args.input.departmentId),
           new ObjectId(currentUser._id)
         );
-        
+
         const permission = await context.authService!.getUserPermissions(new ObjectId(args.input.userId));
         return permission.find(p => p.departmentId.toString() === args.input.departmentId)!;
       }
@@ -223,7 +264,7 @@ export const authResolvers = {
       }
 
       const targetUser = await context.authService!.getUserById(args.input.userId);
-      
+
       if (targetUser?.role === "DEPT_ADMIN") {
         await context.authService!.revokeDeptAdminWithSubdepartments(
           new ObjectId(args.input.userId),
@@ -248,7 +289,15 @@ export const authResolvers = {
       _args: unknown,
       context: Context<unknown>
     ): Promise<UserPermission[]> => {
-      return context.authService!.getUserPermissions(parent._id);
+      try {
+        const userId = parent._id instanceof ObjectId 
+          ? parent._id 
+          : new ObjectId(parent._id.toString());
+        return context.authService!.getUserPermissions(userId);
+      } catch (error) {
+        console.error(`Error fetching permissions for user ${parent._id}:`, error);
+        return [];
+      }
     },
     invitedBy: async (
       parent: AuthUser,
@@ -266,22 +315,61 @@ export const authResolvers = {
       parent: UserPermission,
       _args: unknown,
       context: Context<unknown>
-    ): Promise<AuthUser | null> => {
-      return context.authService!.getUserById(parent.userId);
+    ): Promise<AuthUser> => {
+      try {
+        const userId = parent.userId instanceof ObjectId 
+          ? parent.userId 
+          : new ObjectId(parent.userId.toString());
+        const user = await context.authService!.getUserById(userId);
+        if (!user) {
+          console.error(`UserPermission.user: User not found: ${userId}`);
+          throw new Error(`User not found: ${userId}`);
+        }
+        return user;
+      } catch (error) {
+        console.error(`UserPermission.user error:`, error);
+        throw error;
+      }
     },
     department: async (
       parent: UserPermission,
       _args: unknown,
       context: Context<unknown>
     ) => {
-      return context.db.collection("departments").findOne({ _id: parent.departmentId });
+      try {
+        const deptId = parent.departmentId instanceof ObjectId 
+          ? parent.departmentId 
+          : new ObjectId(parent.departmentId.toString());
+        const dept = await context.db.collection("departments").findOne({ _id: deptId });
+        if (!dept) {
+          console.error(`UserPermission.department: Department not found: ${deptId}`);
+          throw new Error(`Department not found: ${deptId}`);
+        }
+        return dept;
+      } catch (error) {
+        console.error(`UserPermission.department error for deptId ${parent.departmentId}:`, error);
+        throw error;
+      }
     },
     grantedBy: async (
       parent: UserPermission,
       _args: unknown,
       context: Context<unknown>
-    ): Promise<AuthUser | null> => {
-      return context.authService!.getUserById(parent.grantedBy);
+    ): Promise<AuthUser> => {
+      try {
+        const grantedById = parent.grantedBy instanceof ObjectId 
+          ? parent.grantedBy 
+          : new ObjectId(parent.grantedBy.toString());
+        const user = await context.authService!.getUserById(grantedById);
+        if (!user) {
+          console.error(`UserPermission.grantedBy: User not found: ${grantedById}`);
+          throw new Error(`GrantedBy user not found: ${grantedById}`);
+        }
+        return user;
+      } catch (error) {
+        console.error(`UserPermission.grantedBy error:`, error);
+        throw error;
+      }
     },
   },
 
@@ -291,8 +379,12 @@ export const authResolvers = {
       parent: AuditLogEntry,
       _args: unknown,
       context: Context<unknown>
-    ): Promise<AuthUser | null> => {
-      return context.authService!.getUserById(parent.userId);
+    ): Promise<AuthUser> => {
+      const user = await context.authService!.getUserById(parent.userId);
+      if (!user) {
+        throw new Error(`User not found: ${parent.userId}`);
+      }
+      return user;
     },
   },
 };

@@ -20,9 +20,10 @@ import { AccountingDb } from "./dataSources/accountingDb/accountingDb";
 import { makeExecutableSchema } from "@graphql-tools/schema";
 import { createLoaders } from "./loaders";
 import { AuthService } from "./services/authService";
+import { verifyEmailConnection } from "./services/emailService";
 
 const PORT = process.env.PORT || 4000;
-const RECEIPT_STORAGE_PATH = process.env.RECEIPT_STORAGE_PATH;
+const RECEIPT_STORAGE_PATH = process.env.RECEIPT_STORAGE_PATH || "/tmp/receipts";
 
 (async () => {
   try {
@@ -44,10 +45,12 @@ const RECEIPT_STORAGE_PATH = process.env.RECEIPT_STORAGE_PATH;
     await db.collection("auditLog").createIndex({ userId: 1 });
     await db.collection("auditLog").createIndex({ timestamp: -1 });
 
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI ||
-      (process.env.NODE_ENV === "production"
-        ? "https://yourdomain.com/login"
-        : "http://localhost:5173/login");
+    // Use localhost for development, env variable for production
+    const redirectUri = process.env.NODE_ENV === "development"
+      ? "http://localhost:5173/login"
+      : (process.env.GOOGLE_REDIRECT_URI || "http://localhost:5173/login");
+
+    console.log(`Environment: ${process.env.NODE_ENV}, Redirect URI: ${redirectUri}`);
 
     let authService: AuthService | undefined;
     if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
@@ -55,6 +58,12 @@ const RECEIPT_STORAGE_PATH = process.env.RECEIPT_STORAGE_PATH;
       console.log("Auth service initialized");
     } else {
       console.warn("Warning: Google OAuth credentials not configured. Auth disabled.");
+    }
+
+    // Verify email service connection
+    const emailConnected = await verifyEmailConnection();
+    if (!emailConnected) {
+      console.warn("Warning: Email service not connected. Check SMTP settings (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM)");
     }
 
     const httpServer = http.createServer();
@@ -125,6 +134,16 @@ const RECEIPT_STORAGE_PATH = process.env.RECEIPT_STORAGE_PATH;
     console.log(
       `Graphql server ready at http://localhost:${PORT}${server.graphqlPath}`
     );
+
+    // Handle uncaught errors to prevent crashes
+    process.on('uncaughtException', (err) => {
+      console.error('Uncaught Exception:', err);
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    });
+
   } catch (e) {
     console.error(e);
   }

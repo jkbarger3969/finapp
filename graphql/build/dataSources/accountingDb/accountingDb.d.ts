@@ -1,5 +1,5 @@
 import { DataSource } from "apollo-datasource";
-import { MongoClient, Db, ClientSession, Filter as FilterQuery, OptionalId, UpdateFilter as UpdateQuery } from "mongodb";
+import { MongoClient, Db, ClientSession, Filter as FilterQuery, OptionalId, UpdateFilter as UpdateQuery, InsertOneResult } from "mongodb";
 import { Context } from "../../types";
 import { FindOneOptions, CollectionSchemaMap } from "./types";
 export declare type UpdateOne<TCollection extends keyof CollectionSchemaMap> = UpdateQuery<CollectionSchemaMap[TCollection]>;
@@ -24,7 +24,7 @@ export declare class AccountingDb extends DataSource<Context> {
     insertOne<TCollection extends keyof CollectionSchemaMap>({ collection, doc, }: {
         collection: TCollection;
         doc: OptionalId<CollectionSchemaMap[TCollection]>;
-    }): Promise<import("mongodb").InsertOneResult<CollectionSchemaMap[TCollection]>>;
+    }): Promise<InsertOneResult<CollectionSchemaMap[TCollection]>>;
     updateOne<TCollection extends keyof CollectionSchemaMap>({ collection, filter, update, }: {
         collection: TCollection;
         filter: FilterQuery<CollectionSchemaMap[TCollection]>;

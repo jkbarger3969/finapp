@@ -16,8 +16,9 @@ import {
     Alert,
     IconButton,
     Tooltip,
+    Fade,
 } from '@mui/material';
-import { History as HistoryIcon } from '@mui/icons-material';
+import { History as HistoryIcon, Save as SaveIcon } from '@mui/icons-material';
 import { useMutation, useQuery } from 'urql';
 import EditHistoryViewer from './EditHistoryViewer';
 
@@ -165,7 +166,14 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="sm"
+            fullWidth
+            TransitionComponent={Fade}
+            TransitionProps={{ timeout: 600 }}
+        >
             <form onSubmit={handleSubmit}>
                 <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     Edit Transaction
@@ -201,8 +209,8 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
                             control={
                                 <Checkbox
                                     checked={formData.hasDifferentPostedDate}
-                                    onChange={(e) => setFormData({ 
-                                        ...formData, 
+                                    onChange={(e) => setFormData({
+                                        ...formData,
                                         hasDifferentPostedDate: e.target.checked,
                                         postedDate: e.target.checked ? formData.postedDate : '',
                                         usePostedDateForFiscalYear: e.target.checked ? formData.usePostedDateForFiscalYear : false,
@@ -290,7 +298,7 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={onClose}>Cancel</Button>
-                    <Button type="submit" variant="contained" disabled={fetching}>
+                    <Button type="submit" variant="contained" disabled={fetching} startIcon={<SaveIcon />}>
                         Save Changes
                     </Button>
                 </DialogActions>

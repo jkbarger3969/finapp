@@ -32,12 +32,14 @@ interface ReceiptManagerDialogProps {
     open: boolean;
     onClose: () => void;
     entryId: string | null;
+    onUpdate?: () => void;
 }
 
 export const ReceiptManagerDialog = ({
     open,
     onClose,
     entryId,
+    onUpdate,
 }: ReceiptManagerDialogProps) => {
     const [result, reexecuteQuery] = useQuery({
         query: GET_ENTRY_ATTACHMENTS,
@@ -49,6 +51,10 @@ export const ReceiptManagerDialog = ({
 
     const handleRefresh = () => {
         reexecuteQuery({ requestPolicy: "network-only" });
+        // Also trigger parent update to refresh transaction list icons
+        if (onUpdate) {
+            onUpdate();
+        }
     };
 
     if (!entryId) return null;

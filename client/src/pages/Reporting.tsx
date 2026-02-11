@@ -142,17 +142,47 @@ export default function Reporting() {
 
     // Fetch filter options
     const [optionsResult] = useQuery({ query: GET_FILTER_OPTIONS });
-    const people = optionsResult.data?.people || [];
-    const businesses = optionsResult.data?.businesses || [];
+    const peopleRaw = optionsResult.data?.people || [];
+    const businessesRaw = optionsResult.data?.businesses || [];
     const categories = optionsResult.data?.categories || [];
     const departmentsRaw = optionsResult.data?.departments || [];
     const { user } = useAuth();
 
-    // Filter departments based on access
+    // Sort and dedupe people (by full name, alphabetically)
+    const people = useMemo(() => {
+        const seen = new Set<string>();
+        return peopleRaw
+            .filter((p: any) => {
+                const key = `${p.name?.first || ''} ${p.name?.last || ''}`.toLowerCase().trim();
+                if (seen.has(key) || !key) return false;
+                seen.add(key);
+                return true;
+            })
+            .sort((a: any, b: any) => {
+                const nameA = `${a.name?.first || ''} ${a.name?.last || ''}`.toLowerCase();
+                const nameB = `${b.name?.first || ''} ${b.name?.last || ''}`.toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+    }, [peopleRaw]);
+
+    // Sort and dedupe businesses (alphabetically by name)
+    const businesses = useMemo(() => {
+        const seen = new Set<string>();
+        return businessesRaw
+            .filter((b: any) => {
+                const key = (b.name || '').toLowerCase().trim();
+                if (seen.has(key) || !key) return false;
+                seen.add(key);
+                return true;
+            })
+            .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+    }, [businessesRaw]);
+
+    // Filter departments based on access (using proper departmentId from permissions)
     const departments = useMemo(() => {
         let depts = departmentsRaw;
         if (user?.role !== 'SUPER_ADMIN') {
-            const userDeptIds = (user as any)?.departments?.map((d: any) => d.id) || [];
+            const userDeptIds = (user as any)?.departments?.map((d: any) => d.departmentId) || [];
             if (userDeptIds.length > 0) {
                 depts = departmentsRaw.filter((d: any) => userDeptIds.includes(d.id));
             }
@@ -226,7 +256,7 @@ export default function Reporting() {
         }
 
         if (entryType !== 'ALL') {
-            baseWhere.category = { type: { eq: entryType } };
+            baseWhere.category = { type: entryType };
         }
 
         if (selectedCategory) {
@@ -243,9 +273,9 @@ export default function Reporting() {
         }
 
         if (reconcileFilter === 'RECONCILED') {
-            baseWhere.reconciled = { eq: true };
+            baseWhere.reconciled = true;
         } else if (reconcileFilter === 'UNRECONCILED') {
-            baseWhere.reconciled = { eq: false };
+            baseWhere.reconciled = false;
         }
 
         return baseWhere;
@@ -432,6 +462,8 @@ export default function Reporting() {
                                 value={fiscalYearId || ''}
                                 onChange={(e) => setFiscalYearId(e.target.value)}
                                 sx={{ minWidth: 150 }}
+                                data-tooltip="Select fiscal year for report"
+                                data-tooltip-pos="top"
                             >
                                 {fiscalYears.map((fy: any) => (
                                     <MenuItem key={fy.id} value={fy.id}>
@@ -444,13 +476,13 @@ export default function Reporting() {
                                 label="Start Date"
                                 value={startDate}
                                 onChange={(newValue) => setStartDate(newValue)}
-                                slotProps={{ textField: { size: 'small', sx: { width: 150 } } }}
+                                slotProps={{ textField: { size: 'small', sx: { width: 150 }, inputProps: { 'data-tooltip': "Filter by start date", 'data-tooltip-pos': "top" } } }}
                             />
                             <DatePicker
                                 label="End Date"
                                 value={endDate}
                                 onChange={(newValue) => setEndDate(newValue)}
-                                slotProps={{ textField: { size: 'small', sx: { width: 150 } } }}
+                                slotProps={{ textField: { size: 'small', sx: { width: 150 }, inputProps: { 'data-tooltip': "Filter by end date", 'data-tooltip-pos': "top" } } }}
                             />
 
                             {/* Search Input  */}
@@ -459,6 +491,8 @@ export default function Reporting() {
                                 size="small"
                                 onClick={() => setSearchDialogOpen(true)}
                                 sx={{ minWidth: 350, cursor: 'pointer' }}
+                                data-tooltip="Search by description, amount, or connected entity (Cmd+K)"
+                                data-tooltip-pos="top"
                                 InputProps={{
                                     readOnly: true,
                                     startAdornment: (
@@ -485,6 +519,8 @@ export default function Reporting() {
                                 value={entryType}
                                 onChange={(e) => setEntryType(e.target.value)}
                                 sx={{ minWidth: 120 }}
+                                data-tooltip="Filter by Income (Credit) or Expense (Debit)"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="ALL">All Types</MenuItem>
                                 <MenuItem value="DEBIT">Expense</MenuItem>
@@ -498,6 +534,8 @@ export default function Reporting() {
                                 value={reconcileFilter}
                                 onChange={(e) => setReconcileFilter(e.target.value)}
                                 sx={{ minWidth: 150 }}
+                                data-tooltip="Filter by reconciliation status"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="ALL">All Status</MenuItem>
                                 <MenuItem value="RECONCILED">Reconciled</MenuItem>
@@ -512,8 +550,11 @@ export default function Reporting() {
                                 onChange={(e) => {
                                     setTopLevelDeptId(e.target.value);
                                     setSubDeptId('');
+                                    setSubDeptId('');
                                 }}
                                 sx={{ minWidth: 120 }}
+                                data-tooltip="Filter by top-level department"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="">All</MenuItem>
                                 {topLevelDepartments.map((dept: any) => (
@@ -529,6 +570,8 @@ export default function Reporting() {
                                     value={subDeptId}
                                     onChange={(e) => setSubDeptId(e.target.value)}
                                     sx={{ minWidth: 120 }}
+                                    data-tooltip="Filter by sub-department"
+                                    data-tooltip-pos="top"
                                 >
                                     <MenuItem value="">All</MenuItem>
                                     {subDepartments.map((dept: any) => (
@@ -544,6 +587,8 @@ export default function Reporting() {
                                 value={paymentMethodType}
                                 onChange={(e) => setPaymentMethodType(e.target.value)}
                                 sx={{ minWidth: 120 }}
+                                data-tooltip="Filter by payment method"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="ALL">All Payments</MenuItem>
                                 <MenuItem value="check">Check</MenuItem>
@@ -562,6 +607,8 @@ export default function Reporting() {
                                     setSelectedCategory(cat || null);
                                 }}
                                 sx={{ minWidth: 150 }}
+                                data-tooltip="Filter by specific category"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="">All Categories</MenuItem>
                                 {categories.map((cat: any) => (
@@ -580,6 +627,8 @@ export default function Reporting() {
                                     if (person) setSelectedBusiness(null);
                                 }}
                                 sx={{ minWidth: 150 }}
+                                data-tooltip="Filter by associated person"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="">All People</MenuItem>
                                 {people.map((person: any) => (
@@ -600,6 +649,8 @@ export default function Reporting() {
                                     if (biz) setSelectedPerson(null);
                                 }}
                                 sx={{ minWidth: 150 }}
+                                data-tooltip="Filter by associated business"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="">All Businesses</MenuItem>
                                 {businesses.map((biz: any) => (
@@ -620,6 +671,8 @@ export default function Reporting() {
                                     setSelectedCategory(null);
                                     setFilterDepartmentId(null);
                                 }}
+                                data-tooltip="Reset all active filters"
+                                data-tooltip-pos="top"
                             >
                                 Clear All
                             </Button>

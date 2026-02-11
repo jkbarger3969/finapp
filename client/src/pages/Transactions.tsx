@@ -47,82 +47,11 @@ import EditEntryDialog from "../components/EditEntryDialog";
 import EntryFormDialog from "../components/EntryFormDialog";
 import PageHeader from "../components/PageHeader";
 
-const GET_ENTRIES_BY_DEPARTMENT = `
-  query GetEntriesByDepartment($where: EntriesWhere!) {
-    entries(where: $where) {
-      id
-      description
-      date
-      dateOfRecord {
-        date
-        overrideFiscalYear
-      }
-      reconciled
-      total
-      category {
-        id
-        name
-        type
-      }
-      department {
-        id
-        name
-      }
-      source {
-        __typename
-        ... on Person {
-          id
-          personName: name {
-            first
-            last
-          }
-        }
-        ... on Business {
-          id
-          businessName: name
-        }
-      }
-      refunds {
-        id
-        date
-        description
-        total
-        reconciled
-        paymentMethod {
-          currency
-          ... on PaymentMethodCard {
-            card {
-              type
-              trailingDigits
-            }
-          }
-          ... on PaymentMethodCheck {
-            check {
-              checkNumber
-            }
-          }
-        }
-      }
-      attachments {
-        id
-      }
-      paymentMethod {
-        currency
-        ... on PaymentMethodCard {
-          card {
-            type
-            trailingDigits
-          }
-        }
-        ... on PaymentMethodCheck {
-          check {
-            checkNumber
-          }
-        }
-      }
-    }
-  }
-`;
+// New Imports
+import { useSnackbar } from 'notistack';
+import { TableSkeleton } from '../components/common/TableSkeleton';
+import { EmptyState } from '../components/common/EmptyState';
+import { useTransactions } from '../hooks/useTransactions';
 
 const RECONCILE_ENTRIES_MUTATION = `
 mutation ReconcileEntries($input: ReconcileEntries!) {
@@ -239,6 +168,7 @@ export default function Transactions() {
 
     // Expandable refunds state
     const [expandedRefunds, setExpandedRefunds] = useState<Set<string>>(new Set());
+    const [sortModel, setSortModel] = useState<any>([{ field: "date", sort: "desc" }]);
 
     // Action menu state
     const [actionMenuAnchor, setActionMenuAnchor] = useState<null | HTMLElement>(null);
@@ -254,18 +184,47 @@ export default function Transactions() {
 
     // Fetch filter options
     const [optionsResult] = useQuery({ query: GET_FILTER_OPTIONS });
-    const people = optionsResult.data?.people || [];
-    const businesses = optionsResult.data?.businesses || [];
+    const peopleRaw = optionsResult.data?.people || [];
+    const businessesRaw = optionsResult.data?.businesses || [];
     const categories = optionsResult.data?.categories || [];
     const departmentsRaw = optionsResult.data?.departments || [];
-    const { user } = useAuth();
+    const { user, canEditDepartment, isSuperAdmin } = useAuth();
 
-    // Filter departments based on user access
-    // Filter departments based on user access
+    // Sort and dedupe people (by full name, alphabetically)
+    const people = useMemo(() => {
+        const seen = new Set<string>();
+        return peopleRaw
+            .filter((p: any) => {
+                const key = `${p.name?.first || ''} ${p.name?.last || ''}`.toLowerCase().trim();
+                if (seen.has(key) || !key) return false;
+                seen.add(key);
+                return true;
+            })
+            .sort((a: any, b: any) => {
+                const nameA = `${a.name?.first || ''} ${a.name?.last || ''}`.toLowerCase();
+                const nameB = `${b.name?.first || ''} ${b.name?.last || ''}`.toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+    }, [peopleRaw]);
+
+    // Sort and dedupe businesses (alphabetically by name)
+    const businesses = useMemo(() => {
+        const seen = new Set<string>();
+        return businessesRaw
+            .filter((b: any) => {
+                const key = (b.name || '').toLowerCase().trim();
+                if (seen.has(key) || !key) return false;
+                seen.add(key);
+                return true;
+            })
+            .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+    }, [businessesRaw]);
+
+    // Filter departments based on user access (using proper departmentId from permissions)
     const departments = useMemo(() => {
         let depts = departmentsRaw;
         if (user?.role !== 'SUPER_ADMIN') {
-            const userDeptIds = (user as any)?.departments?.map((d: any) => d.id) || [];
+            const userDeptIds = (user as any)?.departments?.map((d: any) => d.departmentId) || [];
             if (userDeptIds.length > 0) {
                 depts = departmentsRaw.filter((d: any) => userDeptIds.includes(d.id));
             }
@@ -323,81 +282,40 @@ export default function Transactions() {
     const [, reconcileEntries] = useMutation(RECONCILE_ENTRIES_MUTATION);
     const [, deleteEntry] = useMutation(DELETE_ENTRY_MUTATION);
 
-    // Build GraphQL where clause
-    const where = useMemo(() => {
-        const baseWhere: any = {
-            deleted: false,
-        };
+    const { enqueueSnackbar } = useSnackbar();
 
-        // Note: searchTerm filtering is done client-side after data fetch
-
-        // Department filtering (from page filter dropdown, defaults to context)
-        const filterDept = filterDepartmentId || contextDeptId;
-        if (filterDept) {
-            baseWhere.department = { id: { lte: filterDept } };
-        }
-
-        // Add fiscal year filter
-        if (fiscalYearId && !startDate && !endDate) {
-            baseWhere.fiscalYear = {
-                id: {
-                    eq: fiscalYearId,
-                },
-            };
-        }
-
-        // Add reconciliation filter
-        if (reconcileFilter === 'RECONCILED') {
-            baseWhere.reconciled = true;
-        } else if (reconcileFilter === 'UNRECONCILED') {
-            baseWhere.reconciled = false;
-        }
-
-        // Add date range filter
-        if (startDate || endDate) {
-            baseWhere.date = {};
-            if (startDate) {
-                baseWhere.date.gte = startDate.toISOString();
-            }
-            if (endDate) {
-                baseWhere.date.lte = endDate.toISOString();
-            }
-        }
-
-        // Type filter
-        if (entryType !== 'ALL') {
-            baseWhere.category = { type: { eq: entryType } };
-        }
-
-        // Category filter
-        if (selectedCategory) {
-            baseWhere.category = {
-                ...baseWhere.category,
-                id: { eq: selectedCategory.id }
-            };
-        }
-
-        // Source filter
-        if (selectedPerson) {
-            baseWhere.source = { people: { id: { eq: selectedPerson.id } } };
-        } else if (selectedBusiness) {
-            baseWhere.source = { businesses: { id: { eq: selectedBusiness.id } } };
-        }
-
-        return baseWhere;
-    }, [fiscalYearId, reconcileFilter, startDate, endDate, entryType, selectedCategory, filterDepartmentId, selectedPerson, selectedBusiness]);
-
-    const [result, reexecuteQuery] = useQuery({
-        query: GET_ENTRIES_BY_DEPARTMENT,
-        variables: { where },
-        pause: !fiscalYearId,
+    // Use Custom Hook for data fetching
+    const { entries, fetching, error, refresh } = useTransactions({
+        departmentId: filterDepartmentId || contextDeptId,
+        fiscalYearId,
+        reconcileFilter,
+        startDate,
+        endDate,
+        entryType,
+        categoryId: selectedCategory?.id,
+        personId: selectedPerson?.id,
+        businessId: selectedBusiness?.id,
     });
 
-    const handleReexecute = () => {
-        reexecuteQuery({ requestPolicy: 'network-only' });
-    };
+    // Alias refresh to handleReexecute for compatibility
+    const handleReexecute = refresh;
 
-    const { data, fetching, error } = result;
+    // Adapt for DataGrid usage
+    const data = { entries };
+
+    const handleClearAllFilters = () => {
+        setStartDate(null);
+        setEndDate(null);
+        setEntryType('ALL');
+        setSelectedCategory(null);
+        setFilterDepartmentId(null);
+        setSelectedPerson(null);
+        setSelectedBusiness(null);
+        setPaymentMethodType('ALL');
+        setShowMatchingOnly(false);
+        setReconcileFilter('ALL');
+        setSearchTerm('');
+    };
 
     // Column Definitions
     const columns = [
@@ -897,6 +815,8 @@ export default function Transactions() {
                                 value={fiscalYearId || ''}
                                 onChange={(e) => setFiscalYearId(e.target.value)}
                                 sx={{ minWidth: 150 }}
+                                data-tooltip="Select fiscal year"
+                                data-tooltip-pos="top"
                             >
                                 {fiscalYears.map((fy: any) => (
                                     <MenuItem key={fy.id} value={fy.id}>
@@ -910,7 +830,14 @@ export default function Transactions() {
                                 value={startDate}
                                 onChange={(newValue) => setStartDate(newValue)}
                                 slotProps={{
-                                    textField: { size: "small", sx: { width: 150 } },
+                                    textField: {
+                                        size: "small",
+                                        sx: { width: 150 },
+                                        inputProps: {
+                                            'data-tooltip': "Filter by start date",
+                                            'data-tooltip-pos': "top"
+                                        }
+                                    },
                                 }}
                             />
                             <DatePicker
@@ -918,7 +845,14 @@ export default function Transactions() {
                                 value={endDate}
                                 onChange={(newValue) => setEndDate(newValue)}
                                 slotProps={{
-                                    textField: { size: "small", sx: { width: 150 } },
+                                    textField: {
+                                        size: "small",
+                                        sx: { width: 150 },
+                                        inputProps: {
+                                            'data-tooltip': "Filter by end date",
+                                            'data-tooltip-pos': "top"
+                                        }
+                                    },
                                 }}
                             />
 
@@ -928,6 +862,10 @@ export default function Transactions() {
                                         checked={showMatchingOnly}
                                         onChange={(e) => setShowMatchingOnly(e.target.checked)}
                                         size="small"
+                                        inputProps={{
+                                            'data-tooltip': "Group refunds with original transactions",
+                                            'data-tooltip-pos': "top"
+                                        } as any}
                                     />
                                 }
                                 label={<Typography variant="body2">Show Matching (Refunds)</Typography>}
@@ -940,6 +878,8 @@ export default function Transactions() {
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 sx={{ minWidth: 350 }}
+                                data-tooltip="Search by description, amount, or connected entity (Cmd+K)"
+                                data-tooltip-pos="top"
                                 InputProps={{
                                     startAdornment: (
                                         <Box component="span" sx={{ mr: 1, display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
@@ -978,9 +918,10 @@ export default function Transactions() {
                                 value={entryType}
                                 onChange={(e) => setEntryType(e.target.value)}
                                 sx={{ minWidth: 120 }}
+                                data-tooltip="Filter by Income (Credit) or Expense (Debit)"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="ALL">All</MenuItem>
-                                <MenuItem value="DEBIT">Expense</MenuItem>
                                 <MenuItem value="DEBIT">Expense</MenuItem>
                                 <MenuItem value="CREDIT">Income</MenuItem>
                             </TextField>
@@ -992,6 +933,8 @@ export default function Transactions() {
                                 value={reconcileFilter}
                                 onChange={(e) => setReconcileFilter(e.target.value)}
                                 sx={{ minWidth: 150 }}
+                                data-tooltip="Filter by reconciliation status"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="ALL">All Status</MenuItem>
                                 <MenuItem value="RECONCILED">Reconciled</MenuItem>
@@ -1008,6 +951,8 @@ export default function Transactions() {
                                     setSubDeptId('');
                                 }}
                                 sx={{ minWidth: 150 }}
+                                data-tooltip="Filter by top-level department"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="">All</MenuItem>
                                 {topLevelDepartments.map((dept: any) => (
@@ -1023,6 +968,8 @@ export default function Transactions() {
                                     value={subDeptId}
                                     onChange={(e) => setSubDeptId(e.target.value)}
                                     sx={{ minWidth: 150 }}
+                                    data-tooltip="Filter by sub-department"
+                                    data-tooltip-pos="top"
                                 >
                                     <MenuItem value="">All</MenuItem>
                                     {subDepartments.map((dept: any) => (
@@ -1038,6 +985,8 @@ export default function Transactions() {
                                 value={paymentMethodType}
                                 onChange={(e) => setPaymentMethodType(e.target.value)}
                                 sx={{ minWidth: 120 }}
+                                data-tooltip="Filter by payment method"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="ALL">All Types</MenuItem>
                                 <MenuItem value="check">Check</MenuItem>
@@ -1056,6 +1005,8 @@ export default function Transactions() {
                                     setSelectedCategory(cat || null);
                                 }}
                                 sx={{ minWidth: 150 }}
+                                data-tooltip="Filter by specific category"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="">All Categories</MenuItem>
                                 {categories.map((cat: any) => (
@@ -1074,6 +1025,8 @@ export default function Transactions() {
                                     if (person) setSelectedBusiness(null);
                                 }}
                                 sx={{ minWidth: 150 }}
+                                data-tooltip="Filter by associated person"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="">All People</MenuItem>
                                 {people.map((person: any) => (
@@ -1094,6 +1047,8 @@ export default function Transactions() {
                                     if (biz) setSelectedPerson(null);
                                 }}
                                 sx={{ minWidth: 150 }}
+                                data-tooltip="Filter by associated business"
+                                data-tooltip-pos="top"
                             >
                                 <MenuItem value="">All Businesses</MenuItem>
                                 {businesses.map((biz: any) => (
@@ -1119,19 +1074,9 @@ export default function Transactions() {
                                 ))}
                                 <Button
                                     size="small"
-                                    onClick={() => {
-                                        setStartDate(null);
-                                        setEndDate(null);
-                                        setEntryType('ALL');
-                                        setSelectedCategory(null);
-                                        setFilterDepartmentId(null);
-                                        setSelectedPerson(null);
-                                        setSelectedPerson(null);
-                                        setSelectedBusiness(null);
-                                        setPaymentMethodType('ALL');
-                                        setShowMatchingOnly(false);
-                                        setReconcileFilter('ALL');
-                                    }}
+                                    onClick={handleClearAllFilters}
+                                    data-tooltip="Reset all active filters"
+                                    data-tooltip-pos="top"
                                 >
                                     Clear All
                                 </Button>
@@ -1231,77 +1176,88 @@ export default function Transactions() {
                                     boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
                                 }}
                             >
-                                <DataGrid
-                                    rows={rows}
-                                    columns={columns as GridColDef[]}
-                                    loading={fetching}
-                                    pageSizeOptions={[25, 50, 100]}
-                                    initialState={{
-                                        pagination: { paginationModel: { pageSize: 25 } },
-                                        sorting: {
-                                            sortModel: [{ field: "date", sort: "desc" }],
-                                        },
-                                    }}
-                                    checkboxSelection
-                                    isRowSelectable={(params) => !params.row.reconciled}
-                                    rowSelectionModel={rowSelectionModel}
-                                    onRowSelectionModelChange={(newModel) => setRowSelectionModel(newModel)}
-                                    slots={{ toolbar: GridToolbar }}
-                                    slotProps={{
-                                        toolbar: {
-                                            showQuickFilter: true,
-                                            sx: { p: 2, '& .MuiTextField-root': { width: '300px' } }
-                                        },
-                                    }}
-                                    getRowClassName={(params) => {
-                                        if (params.row.isRefund) return 'refund-row';
-                                        if (params.row.refunds?.length > 0) return 'has-refunds-row';
-                                        return '';
-                                    }}
-                                    getRowHeight={() => 'auto'}
-                                    getEstimatedRowHeight={() => 100}
-                                    sx={{
-                                        border: "none",
-                                        color: 'text.primary',
-                                        '& .MuiDataGrid-cell': {
-                                            borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                                        },
-                                        '& .MuiDataGrid-columnHeaders': {
-                                            backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                                            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                                            color: 'text.secondary',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.1em',
-                                            fontSize: '0.75rem',
-                                            fontWeight: 700,
-                                        },
-                                        "& .MuiDataGrid-row": {
-                                            transition: "all 0.2s",
-                                            "&:hover": {
-                                                backgroundColor: 'rgba(255, 255, 255, 0.05) !important',
-                                                transform: "scale(1.002)",
-                                                zIndex: 1,
-                                                boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                                {fetching && !entries.length ? (
+                                    <TableSkeleton rows={15} columns={8} />
+                                ) : !fetching && !entries.length ? (
+                                    <EmptyState
+                                        title="No Transactions Found"
+                                        description="Try adjusting your filters, selecting a different department, or clearing your search."
+                                        height={400}
+                                        action={{ label: "Clear Filters", onClick: handleClearAllFilters }}
+                                    />
+                                ) : (
+                                    <DataGrid
+                                        rows={rows}
+                                        columns={columns as GridColDef[]}
+                                        loading={fetching}
+                                        pageSizeOptions={[25, 50, 100]}
+                                        sortModel={showMatchingOnly ? [] : sortModel}
+                                        onSortModelChange={(model) => !showMatchingOnly && setSortModel(model)}
+                                        disableColumnSorting={showMatchingOnly}
+                                        initialState={{
+                                            pagination: { paginationModel: { pageSize: 25 } },
+                                        }}
+                                        checkboxSelection
+                                        isRowSelectable={(params) => !params.row.reconciled}
+                                        rowSelectionModel={rowSelectionModel}
+                                        onRowSelectionModelChange={(newModel) => setRowSelectionModel(newModel)}
+                                        slots={{ toolbar: GridToolbar }}
+                                        slotProps={{
+                                            toolbar: {
+                                                showQuickFilter: true,
+                                                sx: { p: 2, '& .MuiTextField-root': { width: '300px' } }
                                             },
-                                            "&.Mui-selected": {
-                                                backgroundColor: 'rgba(108, 93, 211, 0.1) !important',
+                                        }}
+                                        getRowClassName={(params) => {
+                                            if (params.row.isRefund) return 'refund-row';
+                                            if (params.row.refunds?.length > 0) return 'has-refunds-row';
+                                            return '';
+                                        }}
+                                        getRowHeight={() => 'auto'}
+                                        getEstimatedRowHeight={() => 100}
+                                        sx={{
+                                            border: "none",
+                                            color: 'text.primary',
+                                            '& .MuiDataGrid-cell': {
+                                                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                            },
+                                            '& .MuiDataGrid-columnHeaders': {
+                                                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                                                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                                                color: 'text.secondary',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.1em',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 700,
+                                            },
+                                            "& .MuiDataGrid-row": {
+                                                transition: "all 0.2s",
                                                 "&:hover": {
-                                                    backgroundColor: 'rgba(108, 93, 211, 0.2) !important',
+                                                    backgroundColor: 'rgba(255, 255, 255, 0.05) !important',
+                                                    transform: "scale(1.002)",
+                                                    zIndex: 1,
+                                                    boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                                                },
+                                                "&.Mui-selected": {
+                                                    backgroundColor: 'rgba(108, 93, 211, 0.1) !important',
+                                                    "&:hover": {
+                                                        backgroundColor: 'rgba(108, 93, 211, 0.2) !important',
+                                                    }
                                                 }
-                                            }
-                                        },
-                                        "& .refund-row": {
-                                            borderLeft: "4px solid",
-                                            borderLeftColor: "success.main",
-                                            pl: 1,
-                                            bgcolor: 'rgba(0, 229, 255, 0.02)',
-                                        },
-                                        "& .has-refunds-row": {
-                                            borderLeft: "4px solid",
-                                            borderLeftColor: "warning.main",
-                                        },
-                                    }}
-                                />
+                                            },
+                                            "& .refund-row": {
+                                                borderLeft: "4px solid",
+                                                borderLeftColor: "success.main",
+                                                pl: 1,
+                                                bgcolor: 'rgba(0, 229, 255, 0.02)',
+                                            },
+                                            "& .has-refunds-row": {
+                                                borderLeft: "4px solid",
+                                                borderLeftColor: "warning.main",
+                                            },
+                                        }}
+                                    />
+                                )}
                             </Paper>
                         </Box>
                     </Fade>
@@ -1317,25 +1273,38 @@ export default function Transactions() {
                     setActionMenuEntry(null);
                 }}
             >
-                <MenuItem onClick={() => {
-                    setEditEntry(actionMenuEntry);
-                    setEditDialogOpen(true);
-                    setActionMenuAnchor(null);
-                    setActionMenuEntry(null);
-                }}>
+                <MenuItem 
+                    onClick={() => {
+                        setEditEntry(actionMenuEntry);
+                        setEditDialogOpen(true);
+                        setActionMenuAnchor(null);
+                        setActionMenuEntry(null);
+                    }}
+                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
+                >
                     <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
                     <ListItemText>Edit Transaction</ListItemText>
                 </MenuItem>
-                <MenuItem onClick={async () => {
-                    if (actionMenuEntry) {
-                        await reconcileEntries({
-                            input: { entries: [actionMenuEntry.id] }
-                        });
-                        handleReexecute();
-                    }
-                    setActionMenuAnchor(null);
-                    setActionMenuEntry(null);
-                }}>
+                <MenuItem 
+                    onClick={async () => {
+                        if (actionMenuEntry) {
+                            const { error } = await reconcileEntries({
+                                input: { entries: [actionMenuEntry.id] }
+                            });
+
+                            if (error) {
+                                enqueueSnackbar(`Error: ${error.message}`, { variant: 'error' });
+                            } else {
+                                const action = actionMenuEntry.reconciled ? 'unreconciled' : 'reconciled';
+                                enqueueSnackbar(`Transaction ${action} successfully`, { variant: 'success' });
+                                handleReexecute();
+                            }
+                        }
+                        setActionMenuAnchor(null);
+                        setActionMenuEntry(null);
+                    }}
+                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
+                >
                     <ListItemIcon>
                         <CheckCircleIcon fontSize="small" color={actionMenuEntry?.reconciled ? "disabled" : "success"} />
                     </ListItemIcon>
@@ -1343,12 +1312,15 @@ export default function Transactions() {
                         {actionMenuEntry?.reconciled ? "Already Reconciled" : "Mark as Reconciled"}
                     </ListItemText>
                 </MenuItem>
-                <MenuItem onClick={() => {
-                    setRefundEntry(actionMenuEntry);
-                    setRefundDialogOpen(true);
-                    setActionMenuAnchor(null);
-                    setActionMenuEntry(null);
-                }}>
+                <MenuItem 
+                    onClick={() => {
+                        setRefundEntry(actionMenuEntry);
+                        setRefundDialogOpen(true);
+                        setActionMenuAnchor(null);
+                        setActionMenuEntry(null);
+                    }}
+                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
+                >
                     <ListItemIcon><ReplayIcon fontSize="small" color="info" /></ListItemIcon>
                     <ListItemText>Issue Refund</ListItemText>
                 </MenuItem>
@@ -1356,13 +1328,19 @@ export default function Transactions() {
                 <MenuItem
                     onClick={async () => {
                         if (actionMenuEntry && window.confirm('Are you sure you want to delete this transaction?')) {
-                            await deleteEntry({ id: actionMenuEntry.id });
-                            handleReexecute();
+                            const { error } = await deleteEntry({ id: actionMenuEntry.id });
+                            if (error) {
+                                enqueueSnackbar(`Failed to delete: ${error.message}`, { variant: 'error' });
+                            } else {
+                                enqueueSnackbar('Transaction deleted', { variant: 'success' });
+                                handleReexecute();
+                            }
                         }
                         setActionMenuAnchor(null);
                         setActionMenuEntry(null);
                     }}
                     sx={{ color: 'error.main' }}
+                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
                 >
                     <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
                     <ListItemText>Delete Transaction</ListItemText>
@@ -1373,6 +1351,7 @@ export default function Transactions() {
                 open={receiptDialogOpen}
                 onClose={() => setReceiptDialogOpen(false)}
                 entryId={selectedEntryId}
+                onUpdate={handleReexecute}
             />
 
             <EditEntryDialog
