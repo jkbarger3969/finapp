@@ -1,6 +1,5 @@
-if (process.env.NODE_ENV === "development") {
-  require("dotenv").config();
-}
+// Load .env file in all environments (production uses .env on server)
+require("dotenv").config();
 
 import { ApolloServer } from "apollo-server-koa";
 import { ApolloServerPluginDrainHttpServer } from "apollo-server-core";
