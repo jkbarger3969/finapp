@@ -199,7 +199,7 @@ export default function BudgetAllocationTab() {
         }
     }, [data?.fiscalYears, selectedFiscalYear]);
 
-    const { topLevelDepts, deptMap } = useMemo(() => {
+    const { topLevelDepts } = useMemo(() => {
         if (!data?.departments || !data?.budgets || !selectedFiscalYear) {
             return { topLevelDepts: [], deptMap: new Map() };
         }
@@ -252,8 +252,8 @@ export default function BudgetAllocationTab() {
             }
         });
 
-        const accessibleRootDepts = isSuperAdmin 
-            ? rootDepts 
+        const accessibleRootDepts = isSuperAdmin
+            ? rootDepts
             : rootDepts.filter(dept => hasAdminAccess(dept.id));
 
         return { topLevelDepts: accessibleRootDepts, deptMap: map };
@@ -462,8 +462,8 @@ export default function BudgetAllocationTab() {
                             )}
                             <Tooltip title={canEdit ? "Edit budget allocation" : "No admin access to this department"}>
                                 <span>
-                                    <IconButton 
-                                        color="primary" 
+                                    <IconButton
+                                        color="primary"
                                         onClick={() => startEditing(dept)}
                                         disabled={!canEdit}
                                     >
@@ -760,8 +760,8 @@ export default function BudgetAllocationTab() {
 
                                 {isOverBudget() && (
                                     <Alert severity="error" icon={<WarningIcon />}>
-                                        Subdepartments total ({formatCurrency(getChildrenTotal())}) exceeds 
-                                        the total budget ({formatCurrency(getParentBudgetNum())}) by {formatCurrency(Math.abs(getRemainingBudget()))}. 
+                                        Subdepartments total ({formatCurrency(getChildrenTotal())}) exceeds
+                                        the total budget ({formatCurrency(getParentBudgetNum())}) by {formatCurrency(Math.abs(getRemainingBudget()))}.
                                         Please reduce allocations before saving.
                                     </Alert>
                                 )}

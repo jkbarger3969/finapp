@@ -9,7 +9,7 @@ let transporter: Transporter | null = null;
 function getTransporter(): Transporter {
   if (!transporter) {
     console.log(`Creating email transporter - Host: ${process.env.SMTP_HOST}, Port: ${process.env.SMTP_PORT}, User: ${process.env.SMTP_USER}`);
-    
+
     transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT || '587'),
@@ -22,7 +22,7 @@ function getTransporter(): Transporter {
       maxConnections: 1,
       socketTimeout: 30000,
       greetingTimeout: 15000,
-    });
+    } as any);
   }
   return transporter;
 }
@@ -185,7 +185,7 @@ Note: You must sign in with your @lonestarcowboychurch.org Google Workspace acco
   try {
     const fromAddress = process.env.SMTP_FROM || 'finapp@lonestarcowboychurch.org';
     console.log(`Sending invite email to ${toEmail} from ${fromAddress}`);
-    
+
     const info = await getTransporter().sendMail({
       from: `"${APP_NAME}" <${fromAddress}>`,
       to: toEmail,

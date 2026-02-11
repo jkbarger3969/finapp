@@ -290,9 +290,9 @@ export const authResolvers = {
       context: Context<unknown>
     ): Promise<UserPermission[]> => {
       try {
-        const userId = parent._id instanceof ObjectId 
-          ? parent._id 
-          : new ObjectId(parent._id.toString());
+        const userId = (parent._id as any) instanceof ObjectId
+          ? parent._id
+          : new ObjectId((parent._id as any).toString());
         return context.authService!.getUserPermissions(userId);
       } catch (error) {
         console.error(`Error fetching permissions for user ${parent._id}:`, error);
@@ -317,9 +317,9 @@ export const authResolvers = {
       context: Context<unknown>
     ): Promise<AuthUser> => {
       try {
-        const userId = parent.userId instanceof ObjectId 
-          ? parent.userId 
-          : new ObjectId(parent.userId.toString());
+        const userId = parent.userId instanceof ObjectId
+          ? parent.userId
+          : new ObjectId((parent.userId as any).toString());
         const user = await context.authService!.getUserById(userId);
         if (!user) {
           console.error(`UserPermission.user: User not found: ${userId}`);
@@ -337,9 +337,9 @@ export const authResolvers = {
       context: Context<unknown>
     ) => {
       try {
-        const deptId = parent.departmentId instanceof ObjectId 
-          ? parent.departmentId 
-          : new ObjectId(parent.departmentId.toString());
+        const deptId = parent.departmentId instanceof ObjectId
+          ? parent.departmentId
+          : new ObjectId((parent.departmentId as any).toString());
         const dept = await context.db.collection("departments").findOne({ _id: deptId });
         if (!dept) {
           console.error(`UserPermission.department: Department not found: ${deptId}`);
@@ -357,9 +357,9 @@ export const authResolvers = {
       context: Context<unknown>
     ): Promise<AuthUser> => {
       try {
-        const grantedById = parent.grantedBy instanceof ObjectId 
-          ? parent.grantedBy 
-          : new ObjectId(parent.grantedBy.toString());
+        const grantedById = parent.grantedBy instanceof ObjectId
+          ? parent.grantedBy
+          : new ObjectId((parent.grantedBy as any).toString());
         const user = await context.authService!.getUserById(grantedById);
         if (!user) {
           console.error(`UserPermission.grantedBy: User not found: ${grantedById}`);

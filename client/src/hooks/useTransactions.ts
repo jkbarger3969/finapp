@@ -115,7 +115,7 @@ export function useTransactions({
     businessId,
   });
 
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     // Clear previous timeout
