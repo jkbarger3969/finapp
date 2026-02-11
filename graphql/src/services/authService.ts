@@ -117,55 +117,49 @@ export class AuthService {
     let user = await usersCollection.findOne({ email: googleUser.email });
 
     if (!user) {
-      const existingInvite = await usersCollection.findOne({
-        email: googleUser.email,
-        status: "INVITED",
-      });
+      // No user exists - check if they're a super admin who can self-register
+      const isSuperAdmin = SUPER_ADMINS.includes(googleUser.email);
 
-      if (existingInvite) {
-        await usersCollection.updateOne(
-          { _id: existingInvite._id },
-          {
-            $set: {
-              googleId: googleUser.sub,
-              name: googleUser.name,
-              picture: googleUser.picture,
-              status: "ACTIVE",
-              lastLoginAt: new Date(),
-            },
-          }
-        );
-        user = await usersCollection.findOne({ _id: existingInvite._id });
-      } else {
-        const isSuperAdmin = SUPER_ADMINS.includes(googleUser.email);
-
-        if (!isSuperAdmin) {
-          throw new Error(
-            "Access denied. You have not been invited to use this application. Please contact an administrator."
-          );
-        }
-
-        const newUser: Omit<AuthUser, "_id"> = {
-          email: googleUser.email,
-          googleId: googleUser.sub,
-          name: googleUser.name,
-          picture: googleUser.picture,
-          role: "SUPER_ADMIN",
-          status: "ACTIVE",
-          lastLoginAt: new Date(),
-          createdAt: new Date(),
-        };
-
-        const result = await usersCollection.insertOne(newUser as AuthUser);
-        user = await usersCollection.findOne({ _id: result.insertedId });
-      }
-    } else {
-      if (user.status === "DISABLED") {
+      if (!isSuperAdmin) {
         throw new Error(
-          "Your account has been disabled. Please contact an administrator."
+          "Access denied. You have not been invited to use this application. Please contact an administrator."
         );
       }
 
+      const newUser: Omit<AuthUser, "_id"> = {
+        email: googleUser.email,
+        googleId: googleUser.sub,
+        name: googleUser.name,
+        picture: googleUser.picture,
+        role: "SUPER_ADMIN",
+        status: "ACTIVE",
+        lastLoginAt: new Date(),
+        createdAt: new Date(),
+      };
+
+      const result = await usersCollection.insertOne(newUser as AuthUser);
+      user = await usersCollection.findOne({ _id: result.insertedId });
+    } else if (user.status === "INVITED") {
+      // User was invited - activate their account on first login
+      await usersCollection.updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            googleId: googleUser.sub,
+            name: googleUser.name,
+            picture: googleUser.picture,
+            status: "ACTIVE",
+            lastLoginAt: new Date(),
+          },
+        }
+      );
+      user = await usersCollection.findOne({ _id: user._id });
+    } else if (user.status === "DISABLED") {
+      throw new Error(
+        "Your account has been disabled. Please contact an administrator."
+      );
+    } else {
+      // Existing active user - update their info on login
       await usersCollection.updateOne(
         { _id: user._id },
         {
@@ -174,7 +168,6 @@ export class AuthService {
             name: googleUser.name,
             picture: googleUser.picture,
             lastLoginAt: new Date(),
-            ...(user.status === "INVITED" ? { status: "ACTIVE" } : {}),
           },
         }
       );
