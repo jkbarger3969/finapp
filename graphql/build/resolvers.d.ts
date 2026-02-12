@@ -306,7 +306,7 @@ declare const resolvers: {
         } & import("./types").ContextBase, Partial<import("./graphTypes").MutationReconcileEntriesArgs>>;
         updateAccountCard?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").PaymentCardDbRecord>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
-        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdateAccountCardArgs, "id" | "input">>;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdateAccountCardArgs, "input" | "id">>;
         updateEntry?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").UpdateEntryPayload, "updatedEntry"> & {
             updatedEntry: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>;
         }>, Record<PropertyKey, never>, {
@@ -341,7 +341,7 @@ declare const resolvers: {
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").AccountDbRecord>;
     AccountCreditCard?: import("./graphTypes").AccountCreditCardResolvers<{
         dataSources: import("./types").DataSources;
-    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").AccountCreditCard, "cards" | "owner"> & {
+    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").AccountCreditCard, "owner" | "cards"> & {
         cards: import("./dataSources/accountingDb/types").PaymentCardDbRecord[];
         owner: import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord;
     }>;
@@ -378,13 +378,13 @@ declare const resolvers: {
     AuthPayload?: import("./graphTypes").AuthPayloadResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").AuthPayload, "user"> & {
-        user: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "invitedBy" | "departments"> & {
-            departments: (import("./graphTypes").Omit<import("./graphTypes").UserPermission, "department" | "user" | "grantedBy"> & {
+        user: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "departments" | "invitedBy"> & {
+            departments: (import("./graphTypes").Omit<import("./graphTypes").UserPermission, "user" | "department" | "grantedBy"> & {
                 department: import("./dataSources/accountingDb/types").DepartmentDbRecord;
-                grantedBy: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "invitedBy" | "departments"> & any;
-                user: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "invitedBy" | "departments"> & any;
+                grantedBy: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "departments" | "invitedBy"> & any;
+                user: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "departments" | "invitedBy"> & any;
             })[];
-            invitedBy?: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "invitedBy" | "departments"> & any;
+            invitedBy?: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "departments" | "invitedBy"> & any;
         };
     }>;
     Budget?: import("./graphTypes").BudgetResolvers<{

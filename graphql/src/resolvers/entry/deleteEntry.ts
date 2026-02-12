@@ -7,12 +7,18 @@ import { validateEntry } from "./entryValidators";
 export const deleteEntry: MutationResolvers["deleteEntry"] = async (
   _,
   { id },
-  { reqDateTime, user, dataSources: { accountingDb } }
+  { reqDateTime, user, dataSources: { accountingDb }, authService, ipAddress, userAgent }
 ) =>
   accountingDb.withTransaction(async () => {
     const entry = new ObjectId(id);
 
     const filter = { _id: entry } as const;
+
+    // Get entry details before deletion for audit
+    const existingEntry = await accountingDb.findOne({
+      collection: "entries",
+      filter,
+    });
 
     await Promise.all([
       validateEntry.exists({
@@ -56,6 +62,23 @@ export const deleteEntry: MutationResolvers["deleteEntry"] = async (
       filter,
       update,
     });
+
+    // Log audit entry
+    if (authService) {
+      await authService.logAudit({
+        userId: user.id,
+        action: "ENTRY_DELETE",
+        resourceType: "Entry",
+        resourceId: entry,
+        details: {
+          description: existingEntry?.description?.[0]?.value || null,
+          total: existingEntry?.total?.[0]?.value || null,
+        },
+        ipAddress,
+        userAgent,
+        timestamp: new Date(),
+      });
+    }
 
     const deletedEntry = await accountingDb.findOne({
       collection: "entries",

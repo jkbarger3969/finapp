@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Box, Tab, Tabs, Typography, Paper } from '@mui/material';
 import PaymentCardsTab from '../components/admin/PaymentCardsTab';
 import UsersTab from '../components/admin/UsersTab';
+import AuditLogTab from '../components/admin/AuditLogTab';
 import { useAuth } from '../context/AuthContext';
 
 interface TabPanelProps {
@@ -69,7 +70,7 @@ export default function Admin() {
                 <PaymentCardsTab />
             </CustomTabPanel>
             <CustomTabPanel value={value} index={2}>
-                Audit Log (Coming Soon)
+                {isSuperAdmin && <AuditLogTab />}
             </CustomTabPanel>
         </Box>
     );

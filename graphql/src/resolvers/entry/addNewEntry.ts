@@ -11,7 +11,7 @@ import { upsertEntrySourceToEntityDbRecord } from "./upsertEntrySource";
 export const addNewEntry: MutationResolvers["addNewEntry"] = (
   _,
   { input },
-  { reqDateTime, user, dataSources: { accountingDb } }
+  { reqDateTime, user, dataSources: { accountingDb }, authService, ipAddress, userAgent }
 ) =>
   accountingDb.withTransaction(async () => {
     // validate NewEntry input
@@ -87,6 +87,26 @@ export const addNewEntry: MutationResolvers["addNewEntry"] = (
       collection: "entries",
       doc: newDocBuilder.valueOf(),
     });
+
+    // Log audit entry
+    if (authService) {
+      await authService.logAudit({
+        userId: user.id,
+        action: "ENTRY_CREATE",
+        resourceType: "Entry",
+        resourceId: insertedId,
+        details: {
+          description: description || null,
+          total: totalInput,
+          department: departmentInput,
+          category: categoryInput,
+          date: date.toISOString(),
+        },
+        ipAddress,
+        userAgent,
+        timestamp: new Date(),
+      });
+    }
 
     return {
       newEntry: await accountingDb.findOne({

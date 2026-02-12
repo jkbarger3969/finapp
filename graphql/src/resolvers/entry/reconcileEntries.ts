@@ -11,7 +11,7 @@ import { DocHistory, UpdateHistoricalDoc } from "../utils/DocHistory";
 export const reconcileEntries: MutationResolvers["reconcileEntries"] = async (
   _,
   { input },
-  { reqDateTime, user, dataSources: { accountingDb } }
+  { reqDateTime, user, dataSources: { accountingDb }, authService, ipAddress, userAgent }
 ) => {
   await validateEntry.reconcileEntries({
     reconcileEntries: input,
@@ -71,6 +71,38 @@ export const reconcileEntries: MutationResolvers["reconcileEntries"] = async (
       });
     }),
   ]);
+
+  // Log audit entries for reconciliation
+  if (authService) {
+    if (entriesSet.size > 0) {
+      await authService.logAudit({
+        userId: user.id,
+        action: "RECONCILE",
+        resourceType: "Entry",
+        details: {
+          entryIds: [...entriesSet],
+          count: entriesSet.size,
+        },
+        ipAddress,
+        userAgent,
+        timestamp: new Date(),
+      });
+    }
+    if (refundsSet.size > 0) {
+      await authService.logAudit({
+        userId: user.id,
+        action: "RECONCILE",
+        resourceType: "Refund",
+        details: {
+          refundIds: [...refundsSet],
+          count: refundsSet.size,
+        },
+        ipAddress,
+        userAgent,
+        timestamp: new Date(),
+      });
+    }
+  }
 
   return {
     reconciledEntries: input.entries?.length

@@ -12,7 +12,7 @@ const NULLISH = Symbol();
 export const updateEntryRefund: MutationResolvers["updateEntryRefund"] = (
   _,
   { input },
-  { dataSources: { accountingDb }, reqDateTime, user }
+  { dataSources: { accountingDb }, reqDateTime, user, authService, ipAddress, userAgent }
 ) =>
   accountingDb.withTransaction(async () => {
     await validateEntry.updateEntryRefund({
@@ -46,8 +46,11 @@ export const updateEntryRefund: MutationResolvers["updateEntryRefund"] = (
       fieldPrefix: "refunds.$",
     });
 
+    const changedFields: string[] = [];
+
     if (date) {
       updateBuilder.updateHistoricalField("date", date);
+      changedFields.push("date");
     }
 
     const dateOfRecordUpdateBuilder = new UpdateHistoricalDoc<
@@ -63,11 +66,13 @@ export const updateEntryRefund: MutationResolvers["updateEntryRefund"] = (
       dateOfRecordUpdateBuilder
         .updateHistoricalField("date", null)
         .updateHistoricalField("overrideFiscalYear", null);
+      changedFields.push("dateOfRecord");
     } else if (dateOfRecord) {
       const { date, overrideFiscalYear } = dateOfRecord;
 
       if (dateOfRecord.date) {
         dateOfRecordUpdateBuilder.updateHistoricalField("date", date);
+        changedFields.push("dateOfRecord.date");
       }
 
       if ((overrideFiscalYear ?? NULLISH) !== NULLISH) {
@@ -75,6 +80,7 @@ export const updateEntryRefund: MutationResolvers["updateEntryRefund"] = (
           "overrideFiscalYear",
           overrideFiscalYear
         );
+        changedFields.push("dateOfRecord.overrideFiscalYear");
       }
     }
 
@@ -85,22 +91,22 @@ export const updateEntryRefund: MutationResolvers["updateEntryRefund"] = (
           upsertPaymentMethod: paymentMethodInput,
         })
       );
+      changedFields.push("paymentMethod");
     }
 
     if (description) {
       updateBuilder.updateHistoricalField("description", description);
-    }
-
-    if (description) {
-      updateBuilder.updateHistoricalField("description", description);
+      changedFields.push("description");
     }
 
     if (total) {
       updateBuilder.updateHistoricalField("total", fractionToRational(total));
+      changedFields.push("total");
     }
 
     if ((reconciled ?? NULLISH) !== NULLISH) {
       updateBuilder.updateHistoricalField("reconciled", reconciled);
+      changedFields.push("reconciled");
     }
     const entryRefundUpdate = updateBuilder.valueOf();
     const dateOfRecordUpdate = dateOfRecordUpdateBuilder.valueOf();
@@ -128,6 +134,23 @@ export const updateEntryRefund: MutationResolvers["updateEntryRefund"] = (
       },
       update,
     });
+
+    // Log audit entry
+    if (authService && changedFields.length > 0) {
+      await authService.logAudit({
+        userId: user.id,
+        action: "REFUND_UPDATE",
+        resourceType: "Refund",
+        resourceId: refundId,
+        details: {
+          changedFields,
+          changes: input,
+        },
+        ipAddress,
+        userAgent,
+        timestamp: new Date(),
+      });
+    }
 
     return {
       updatedEntryRefund: await accountingDb

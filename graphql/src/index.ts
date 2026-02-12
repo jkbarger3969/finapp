@@ -43,6 +43,7 @@ const RECEIPT_STORAGE_PATH = process.env.RECEIPT_STORAGE_PATH || "/tmp/receipts"
     await db.collection("userPermissions").createIndex({ userId: 1, departmentId: 1 }, { unique: true });
     await db.collection("auditLog").createIndex({ userId: 1 });
     await db.collection("auditLog").createIndex({ timestamp: -1 });
+    await db.collection("auditLog").createIndex({ action: 1 });
 
     // Use localhost for development, env variable for production
     const redirectUri = process.env.NODE_ENV === "development"

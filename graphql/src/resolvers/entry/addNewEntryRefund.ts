@@ -10,7 +10,7 @@ import { validateEntry } from "./entryValidators";
 export const addNewEntryRefund: MutationResolvers["addNewEntryRefund"] = (
   _,
   { input },
-  { dataSources: { accountingDb }, reqDateTime, user }
+  { dataSources: { accountingDb }, reqDateTime, user, authService, ipAddress, userAgent }
 ) =>
   accountingDb.withTransaction(async () => {
     await validateEntry.newEntryRefund({
@@ -83,6 +83,25 @@ export const addNewEntryRefund: MutationResolvers["addNewEntryRefund"] = (
         },
       },
     });
+
+    // Log audit entry
+    if (authService) {
+      await authService.logAudit({
+        userId: user.id,
+        action: "REFUND_CREATE",
+        resourceType: "Refund",
+        resourceId: refundId,
+        details: {
+          entryId: entry,
+          description: description || null,
+          total: totalInput,
+          date: date.toISOString(),
+        },
+        ipAddress,
+        userAgent,
+        timestamp: new Date(),
+      });
+    }
 
     return {
       newEntryRefund: await accountingDb

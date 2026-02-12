@@ -14,7 +14,7 @@ const NULLISH = Symbol();
 export const updateEntry: MutationResolvers["updateEntry"] = async (
   _,
   { input },
-  { reqDateTime, user, dataSources: { accountingDb } }
+  { reqDateTime, user, dataSources: { accountingDb }, authService, ipAddress, userAgent }
 ) =>
   accountingDb.withTransaction(async () => {
     await validateEntry.updateEntry({
@@ -38,6 +38,12 @@ export const updateEntry: MutationResolvers["updateEntry"] = async (
 
     const entryId = new ObjectId(id);
 
+    // Get existing entry for audit comparison
+    const existingEntry = await accountingDb.findOne({
+      collection: "entries",
+      filter: { _id: entryId },
+    });
+
     const docHistory = new DocHistory({ by: user.id, date: reqDateTime });
 
     const updateBuilder = new UpdateHistoricalDoc<EntryDbRecord>({
@@ -45,8 +51,11 @@ export const updateEntry: MutationResolvers["updateEntry"] = async (
       isRootDoc: true,
     });
 
+    const changedFields: string[] = [];
+
     if (date) {
       updateBuilder.updateHistoricalField("date", date);
+      changedFields.push("date");
     }
 
     const dateOfRecordUpdateBuilder = new UpdateHistoricalDoc<
@@ -62,11 +71,13 @@ export const updateEntry: MutationResolvers["updateEntry"] = async (
       dateOfRecordUpdateBuilder
         .updateHistoricalField("date", null)
         .updateHistoricalField("overrideFiscalYear", null);
+      changedFields.push("dateOfRecord");
     } else if (dateOfRecord) {
       const { date, overrideFiscalYear } = dateOfRecord;
 
       if (dateOfRecord.date) {
         dateOfRecordUpdateBuilder.updateHistoricalField("date", date);
+        changedFields.push("dateOfRecord.date");
       }
 
       if ((overrideFiscalYear ?? NULLISH) !== NULLISH) {
@@ -74,6 +85,7 @@ export const updateEntry: MutationResolvers["updateEntry"] = async (
           "overrideFiscalYear",
           overrideFiscalYear
         );
+        changedFields.push("dateOfRecord.overrideFiscalYear");
       }
     }
 
@@ -81,11 +93,13 @@ export const updateEntry: MutationResolvers["updateEntry"] = async (
       const department = new ObjectId(departmentInput);
 
       updateBuilder.updateHistoricalField("department", department);
+      changedFields.push("department");
     }
 
     const category = categoryInput ? new ObjectId(categoryInput) : null;
     if (category) {
       updateBuilder.updateHistoricalField("category", category);
+      changedFields.push("category");
     }
 
     const paymentMethod = paymentMethodInput
@@ -95,15 +109,18 @@ export const updateEntry: MutationResolvers["updateEntry"] = async (
       : null;
     if (paymentMethod) {
       updateBuilder.updateHistoricalField("paymentMethod", paymentMethod);
+      changedFields.push("paymentMethod");
     }
 
     const description = descriptionInput?.trim();
     if (description) {
       updateBuilder.updateHistoricalField("description", description);
+      changedFields.push("description");
     }
 
     if (total) {
       updateBuilder.updateHistoricalField("total", fractionToRational(total));
+      changedFields.push("total");
     }
 
     if (sourceInput) {
@@ -113,10 +130,12 @@ export const updateEntry: MutationResolvers["updateEntry"] = async (
       });
 
       updateBuilder.updateHistoricalField("source", source);
+      changedFields.push("source");
     }
 
     if ((reconciled ?? NULLISH) !== NULLISH) {
       updateBuilder.updateHistoricalField("reconciled", reconciled);
+      changedFields.push("reconciled");
     }
 
     const entryUpdate = updateBuilder.valueOf();
@@ -143,6 +162,23 @@ export const updateEntry: MutationResolvers["updateEntry"] = async (
       filter: { _id: entryId },
       update,
     });
+
+    // Log audit entry
+    if (authService && changedFields.length > 0) {
+      await authService.logAudit({
+        userId: user.id,
+        action: "ENTRY_UPDATE",
+        resourceType: "Entry",
+        resourceId: entryId,
+        details: {
+          changedFields,
+          changes: input,
+        },
+        ipAddress,
+        userAgent,
+        timestamp: new Date(),
+      });
+    }
 
     return {
       updatedEntry: await accountingDb.findOne({
