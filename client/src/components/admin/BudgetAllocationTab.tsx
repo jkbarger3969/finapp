@@ -258,9 +258,15 @@ export default function BudgetAllocationTab() {
             }
         });
 
+        // Check if user has access to a department OR any of its descendants
+        const hasAccessToTreeBranch = (node: DepartmentNode): boolean => {
+            if (canAccessDept(node.id)) return true;
+            return node.children.some(child => hasAccessToTreeBranch(child));
+        };
+
         const accessibleRootDepts = isSuperAdmin
             ? rootDepts
-            : rootDepts.filter(dept => canAccessDept(dept.id));
+            : rootDepts.filter(dept => hasAccessToTreeBranch(dept));
 
         // Debug log
         console.log('[BudgetAllocation] User departments:', user?.departments);

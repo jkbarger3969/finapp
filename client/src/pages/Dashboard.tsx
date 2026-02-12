@@ -188,13 +188,20 @@ export default function Dashboard() {
             return ancestors.some((ancestorId: string) => userDepartments.includes(ancestorId));
         };
 
-        const accessibleRootDepts = rootDepts.filter(dept => canAccessDept(dept.id));
+        // Check if user has access to a department OR any of its descendants
+        const hasAccessToTreeBranch = (node: DeptNode): boolean => {
+            if (canAccessDept(node.id)) return true;
+            return node.children.some(child => hasAccessToTreeBranch(child));
+        };
+
+        // Filter root departments: include if user has access to root OR any child
+        const accessibleRootDepts = rootDepts.filter(dept => hasAccessToTreeBranch(dept));
 
         const filterAccessibleChildren = (node: DeptNode): DeptNode => {
             return {
                 ...node,
                 children: node.children
-                    .filter(child => canAccessDept(child.id))
+                    .filter(child => hasAccessToTreeBranch(child))
                     .map(filterAccessibleChildren),
             };
         };
