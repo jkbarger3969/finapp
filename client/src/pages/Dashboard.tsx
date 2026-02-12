@@ -117,6 +117,14 @@ export default function Dashboard() {
         ?.map((p: any) => p.department?.id)
         .filter(Boolean) || [];
 
+    // Debug: log user access info
+    console.log('[Dashboard] User access:', { 
+        isSuperAdmin, 
+        userDepartments, 
+        userRole: (user as any)?.role,
+        departmentCount: userDepartments.length 
+    });
+
     // Build department tree with budget and spending data
     const { topLevelDepts, totalBudget, totalSpent, topLevelDepartments, subDepartments } = (() => {
         if (!data?.entries || !data?.budgets || !data?.departments) {
@@ -172,7 +180,7 @@ export default function Dashboard() {
         // Filter by user access
         const canAccessDept = (deptId: string): boolean => {
             if (isSuperAdmin) return true;
-            if (userDepartments.length === 0) return true;
+            if (userDepartments.length === 0) return false; // No access = no departments shown
             if (userDepartments.includes(deptId)) return true;
 
             const dept = data.departments.find((d: any) => d.id === deptId);
@@ -376,7 +384,6 @@ export default function Dashboard() {
     }, []);
 
     const totalRemaining = totalBudget - totalSpent;
-    const totalPercentUsed = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
     return (
         <Box>
@@ -486,7 +493,7 @@ export default function Dashboard() {
                 {/* Key Metrics */}
                 <Grid size={{ xs: 12, md: 8 }}>
                     <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, sm: 6 }}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <Paper sx={{ p: 3, borderLeft: '4px solid #00E5FF', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                 <Typography variant="caption" color="text.secondary">Total Budget</Typography>
                                 <Typography variant="h4" fontWeight={800}>
@@ -494,66 +501,30 @@ export default function Dashboard() {
                                 </Typography>
                             </Paper>
                         </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <Paper sx={{ p: 3, borderLeft: '4px solid #6C5DD3', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
+                            <Paper sx={{ p: 3, borderLeft: '4px solid #FF6B6B', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                <Typography variant="caption" color="text.secondary">Spent</Typography>
+                                <Typography variant="h4" fontWeight={800} color="error.main">
+                                    {formatCurrency(totalSpent)}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {totalBudget > 0 ? `${((totalSpent / totalBudget) * 100).toFixed(1)}% of budget` : '0%'}
+                                </Typography>
+                            </Paper>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 4 }}>
+                            <Paper sx={{ p: 3, borderLeft: `4px solid ${totalRemaining < 0 ? '#FF6B6B' : '#4CAF50'}`, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                 <Typography variant="caption" color="text.secondary">Remaining</Typography>
                                 <Typography variant="h4" fontWeight={800} color={totalRemaining < 0 ? 'error.main' : 'success.main'}>
                                     {formatCurrency(totalRemaining)}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {totalBudget > 0 ? `${((totalRemaining / totalBudget) * 100).toFixed(1)}% of budget` : '0%'}
                                 </Typography>
                             </Paper>
                         </Grid>
                     </Grid>
                 </Grid>
-
-                {/* Overall Budget Summary */}
-                {totalBudget > 0 && (
-                    <Grid size={12}>
-                        <Paper sx={{ p: 3 }}>
-                            <Typography variant="h6" gutterBottom>Overall Budget Summary</Typography>
-                            <Grid container spacing={3}>
-                                <Grid size={{ xs: 12, md: 4 }}>
-                                    <Box sx={{ textAlign: 'center' }}>
-                                        <Typography variant="overline" color="text.secondary">Total Budget</Typography>
-                                        <Typography variant="h4">{formatCurrency(totalBudget)}</Typography>
-                                    </Box>
-                                </Grid>
-                                <Grid size={{ xs: 12, md: 4 }}>
-                                    <Box sx={{ textAlign: 'center' }}>
-                                        <Typography variant="overline" color="text.secondary">Spent</Typography>
-                                        <Typography variant="h4" color="error.main">
-                                            {formatCurrency(totalSpent)}
-                                        </Typography>
-                                    </Box>
-                                </Grid>
-                                <Grid size={{ xs: 12, md: 4 }}>
-                                    <Box sx={{ textAlign: 'center' }}>
-                                        <Typography variant="overline" color="text.secondary">Remaining</Typography>
-                                        <Typography
-                                            variant="h4"
-                                            color={totalRemaining < 0 ? 'error.main' : 'success.main'}
-                                        >
-                                            {formatCurrency(totalRemaining)}
-                                        </Typography>
-                                    </Box>
-                                </Grid>
-                                <Grid size={12}>
-                                    <Box sx={{ mt: 2 }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                            <Typography variant="body2">Budget Used</Typography>
-                                            <Typography variant="body2">{Math.round(totalPercentUsed)}%</Typography>
-                                        </Box>
-                                        <LinearProgress
-                                            variant="determinate"
-                                            value={Math.min(totalPercentUsed, 100)}
-                                            color={totalPercentUsed > 100 ? 'error' : totalPercentUsed > 80 ? 'warning' : 'primary'}
-                                            sx={{ height: 12, borderRadius: 6 }}
-                                        />
-                                    </Box>
-                                </Grid>
-                            </Grid>
-                        </Paper>
-                    </Grid>
-                )}
 
                 {/* Department Budget Cards */}
                 <Grid size={12}>

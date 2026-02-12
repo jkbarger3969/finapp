@@ -177,6 +177,12 @@ export default function BudgetAllocationTab() {
         return perm?.accessLevel === 'ADMIN';
     }, [user, isSuperAdmin]);
 
+    const canAccessDept = useCallback((deptId: string): boolean => {
+        if (isSuperAdmin) return true;
+        if (!user?.departments || user.departments.length === 0) return false;
+        return user.departments.some(d => d.departmentId === deptId);
+    }, [user, isSuperAdmin]);
+
     useEffect(() => {
         if (fyDialogOpen && newFyYear) {
             const suggested = getSuggestedFiscalYearDates(newFyYear);
@@ -254,10 +260,15 @@ export default function BudgetAllocationTab() {
 
         const accessibleRootDepts = isSuperAdmin
             ? rootDepts
-            : rootDepts.filter(dept => hasAdminAccess(dept.id));
+            : rootDepts.filter(dept => canAccessDept(dept.id));
+
+        // Debug log
+        console.log('[BudgetAllocation] User departments:', user?.departments);
+        console.log('[BudgetAllocation] Root depts:', rootDepts.map(d => d.name));
+        console.log('[BudgetAllocation] Accessible root depts:', accessibleRootDepts.map(d => d.name));
 
         return { topLevelDepts: accessibleRootDepts, deptMap: map };
-    }, [data, selectedFiscalYear, isSuperAdmin, hasAdminAccess]);
+    }, [data, selectedFiscalYear, isSuperAdmin, canAccessDept, user]);
 
     const calcSubtotal = (dept: DepartmentNode): number => {
         return dept.budget + dept.children.reduce((sum, child) => sum + calcSubtotal(child), 0);
@@ -603,10 +614,12 @@ export default function BudgetAllocationTab() {
                 <>
                     <Paper sx={{ p: 3, mb: 3, bgcolor: 'primary.dark' }}>
                         <Typography variant="h5" color="primary.contrastText" align="center">
-                            Total Church Budget: {formatCurrency(totalBudget)}
+                            {isSuperAdmin ? 'Total Church Budget' : 'Your Accessible Budget'}: {formatCurrency(totalBudget)}
                         </Typography>
                         <Typography variant="body2" color="primary.contrastText" align="center" sx={{ opacity: 0.8 }}>
-                            Sum of all top-level department allocations
+                            {isSuperAdmin 
+                                ? 'Sum of all top-level department allocations'
+                                : 'Sum of departments you have access to'}
                         </Typography>
                     </Paper>
 
@@ -618,7 +631,9 @@ export default function BudgetAllocationTab() {
 
                     {topLevelDepts.length === 0 && (
                         <Alert severity="info">
-                            No departments found. Create departments first to allocate budgets.
+                            {isSuperAdmin 
+                                ? 'No departments found. Create departments first to allocate budgets.'
+                                : 'You do not have access to any departments. Contact an administrator to request access.'}
                         </Alert>
                     )}
                 </>
