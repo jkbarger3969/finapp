@@ -1,111 +1,369 @@
-import { useQuery, useMutation } from "urql";
-import { useState, useEffect, useMemo } from "react";
-import { Grid, Paper, Typography, Box, Skeleton, Alert, Fade, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Divider, FormControl, InputLabel, Select, TextField } from "@mui/material";
+import { useState, useEffect } from 'react';
+import { useQuery } from "urql";
+import {
+    Box,
+    Typography,
+    Paper,
+    Grid,
+    Alert,
+    CircularProgress,
+    LinearProgress,
+    Chip,
+    Collapse,
+    IconButton,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    TextField,
+} from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
-import { format, parseISO } from "date-fns";
-import { useNavigate } from "react-router-dom";
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import EditIcon from '@mui/icons-material/Edit';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ReplayIcon from '@mui/icons-material/Replay';
-import DeleteIcon from '@mui/icons-material/Delete';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useDepartment } from "../context/DepartmentContext";
-import { useLayout } from "../context/LayoutContext";
 import { useAuth } from "../context/AuthContext";
-import EditEntryDialog from "../components/EditEntryDialog";
-import EntryFormDialog from "../components/EntryFormDialog";
+import { formatCurrency, parseRational } from "../utils/currency";
 import PageHeader from "../components/PageHeader";
+import EntryFormDialog from "../components/EntryFormDialog";
 import SearchDialog from "../components/SearchDialog";
 
-// New Imports
-import { useSnackbar } from 'notistack';
-import { useTransactions } from '../hooks/useTransactions';
-import { EmptyState } from '../components/common/EmptyState';
-
-// Replaced GET_DASHBOARD_DATA with useTransactions hook usage
-
-const parseRational = (rationalStr: any) => {
-    try {
-        const r = typeof rationalStr === 'string' ? JSON.parse(rationalStr) : rationalStr;
-        return (r.n / r.d) * r.s;
-    } catch {
-        return 0;
-    }
-};
-
-const RECONCILE_ENTRIES_MUTATION = `
-mutation ReconcileEntries($input: ReconcileEntries!) {
-  reconcileEntries(input: $input) {
-    reconciledEntries {
-      id
-      reconciled
-    }
-  }
-}
-`;
-
-const DELETE_ENTRY_MUTATION = `
-mutation DeleteEntry($id: ID!) {
-  deleteEntry(id: $id) {
-    id
-  }
-}
-`;
-
-const GET_DEPARTMENTS = `
-  query GetDepartments {
-    departments {
-      id
-      name
-      parent {
-        __typename
-        ... on Department {
-          id
-          name
+const GET_BUDGET_DATA = `
+    query GetBudgetData($entriesWhere: EntriesWhere, $budgetsWhere: BudgetsWhere) {
+        entries(where: $entriesWhere) {
+            id
+            total
+            category {
+                type
+            }
+            department {
+                id
+                name
+            }
         }
-        ... on Business {
-          id
-          name
+        budgets(where: $budgetsWhere) {
+            id
+            amount
+            owner {
+                __typename
+                ... on Department {
+                    id
+                    name
+                }
+            }
+            fiscalYear {
+                id
+                name
+            }
         }
-      }
+        departments {
+            id
+            name
+            ancestors {
+                __typename
+                ... on Department {
+                    id
+                    name
+                }
+                ... on Business {
+                    id
+                }
+            }
+        }
+        fiscalYears {
+            id
+            name
+        }
     }
-  }
 `;
+
+interface DeptNode {
+    id: string;
+    name: string;
+    budget: number;
+    spent: number;
+    children: DeptNode[];
+    level: number;
+}
 
 export default function Dashboard() {
-    const { departmentId, fiscalYearId, fiscalYears, setFiscalYearId, setSelectedDepartment } = useDepartment();
-    const { openEntryDialog } = useLayout();
-    const { user, canEditDepartment, isSuperAdmin } = useAuth();
+    const { fiscalYearId, setFiscalYearId } = useDepartment();
+    const { user, isSuperAdmin } = useAuth();
 
-    // Department selection state
-    const [topLevelDeptId, setTopLevelDeptId] = useState<string>('');
-    const [subDeptId, setSubDeptId] = useState<string>('');
+    const [topLevelDeptId, setTopLevelDeptId] = useState('');
+    const [subDeptId, setSubDeptId] = useState('');
     const [searchDialogOpen, setSearchDialogOpen] = useState(false);
+    const [entryDialogOpen, setEntryDialogOpen] = useState(false);
+    const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
 
-    // Fetch departments
-    const [deptResult] = useQuery({ query: GET_DEPARTMENTS });
-    const departmentsRaw = deptResult.data?.departments || [];
-    
-    // Filter departments based on user access
-    const departments = useMemo(() => {
-        if (user?.role === 'SUPER_ADMIN') return departmentsRaw;
-        const userDeptIds = (user as any)?.departments?.map((d: any) => d.departmentId) || [];
-        if (userDeptIds.length === 0) return departmentsRaw;
-        return departmentsRaw.filter((d: any) => userDeptIds.includes(d.id));
-    }, [departmentsRaw, user]);
-    
-    const topLevelDepartments = departments.filter((d: any) => d.parent?.__typename === 'Business' || !d.parent);
-    const subDepartments = topLevelDeptId
-        ? departments.filter((d: any) => d.parent?.__typename === 'Department' && d.parent?.id === topLevelDeptId)
-        : [];
+    const entriesWhere: any = { deleted: false };
+    const budgetsWhere: any = {};
 
-    // Update context when department selection changes
-    useEffect(() => {
-        const selectedDept = subDeptId || topLevelDeptId;
-        setSelectedDepartment(selectedDept || null);
-    }, [topLevelDeptId, subDeptId, setSelectedDepartment]);
+    if (fiscalYearId) {
+        entriesWhere.fiscalYear = { id: { eq: fiscalYearId } };
+        budgetsWhere.fiscalYear = { id: { eq: fiscalYearId } };
+    }
 
-    // Global keyboard shortcut for search (Cmd/Ctrl + K)
+    const [result] = useQuery({
+        query: GET_BUDGET_DATA,
+        variables: { entriesWhere, budgetsWhere },
+        pause: !fiscalYearId,
+    });
+
+    const { data, fetching, error } = result;
+
+    const fiscalYears = data?.fiscalYears || [];
+
+    const userDepartments = (user as any)?.departments
+        ?.map((p: any) => p.department?.id)
+        .filter(Boolean) || [];
+
+    // Build department tree with budget and spending data
+    const { topLevelDepts, totalBudget, totalSpent, topLevelDepartments, subDepartments } = (() => {
+        if (!data?.entries || !data?.budgets || !data?.departments) {
+            return { topLevelDepts: [], totalBudget: 0, totalSpent: 0, topLevelDepartments: [], subDepartments: [] };
+        }
+
+        const spendingByDept = new Map<string, number>();
+        data.entries.forEach((entry: any) => {
+            if (entry.department?.id && entry.category?.type === 'DEBIT') {
+                const deptId = entry.department.id;
+                const current = spendingByDept.get(deptId) || 0;
+                spendingByDept.set(deptId, current + Math.abs(parseRational(entry.total)));
+            }
+        });
+
+        const budgetByDept = new Map<string, number>();
+        data.budgets.forEach((budget: any) => {
+            if (budget.owner?.__typename === 'Department' && budget.owner?.id) {
+                budgetByDept.set(budget.owner.id, parseRational(budget.amount));
+            }
+        });
+
+        const deptMap = new Map<string, DeptNode>();
+        const rootDepts: DeptNode[] = [];
+
+        data.departments.forEach((dept: any) => {
+            const deptAncestors = dept.ancestors?.filter((a: any) => a.__typename === 'Department') || [];
+            deptMap.set(dept.id, {
+                id: dept.id,
+                name: dept.name,
+                budget: budgetByDept.get(dept.id) || 0,
+                spent: spendingByDept.get(dept.id) || 0,
+                children: [],
+                level: deptAncestors.length,
+            });
+        });
+
+        data.departments.forEach((dept: any) => {
+            const node = deptMap.get(dept.id)!;
+            const deptAncestors = dept.ancestors?.filter((a: any) => a.__typename === 'Department') || [];
+
+            if (deptAncestors.length === 0) {
+                rootDepts.push(node);
+            } else {
+                const parentId = deptAncestors[deptAncestors.length - 1]?.id;
+                const parent = parentId ? deptMap.get(parentId) : null;
+                if (parent) {
+                    parent.children.push(node);
+                }
+            }
+        });
+
+        // Filter by user access
+        const canAccessDept = (deptId: string): boolean => {
+            if (isSuperAdmin) return true;
+            if (userDepartments.length === 0) return true;
+            if (userDepartments.includes(deptId)) return true;
+
+            const dept = data.departments.find((d: any) => d.id === deptId);
+            const ancestors = dept?.ancestors?.filter((a: any) => a.__typename === 'Department')?.map((a: any) => a.id) || [];
+            return ancestors.some((ancestorId: string) => userDepartments.includes(ancestorId));
+        };
+
+        const accessibleRootDepts = rootDepts.filter(dept => canAccessDept(dept.id));
+
+        const filterAccessibleChildren = (node: DeptNode): DeptNode => {
+            return {
+                ...node,
+                children: node.children
+                    .filter(child => canAccessDept(child.id))
+                    .map(filterAccessibleChildren),
+            };
+        };
+
+        const filteredDepts = accessibleRootDepts.map(filterAccessibleChildren);
+
+        const calcTotals = (nodes: DeptNode[]): { budget: number; spent: number } => {
+            return nodes.reduce((acc, node) => {
+                const childTotals = calcTotals(node.children);
+                return {
+                    budget: acc.budget + node.budget + childTotals.budget,
+                    spent: acc.spent + node.spent + childTotals.spent,
+                };
+            }, { budget: 0, spent: 0 });
+        };
+
+        const totals = calcTotals(filteredDepts);
+
+        // Build top level and sub department lists for selector
+        const topLevelDepartmentsList = filteredDepts.map(d => ({ id: d.id, name: d.name }));
+        const selectedTopDept = filteredDepts.find(d => d.id === topLevelDeptId);
+        const subDepartmentsList = selectedTopDept?.children.map(c => ({ id: c.id, name: c.name })) || [];
+
+        return {
+            topLevelDepts: filteredDepts,
+            totalBudget: totals.budget,
+            totalSpent: totals.spent,
+            topLevelDepartments: topLevelDepartmentsList,
+            subDepartments: subDepartmentsList,
+        };
+    })();
+
+    const toggleExpand = (deptId: string) => {
+        const newExpanded = new Set(expandedDepts);
+        if (newExpanded.has(deptId)) {
+            newExpanded.delete(deptId);
+        } else {
+            newExpanded.add(deptId);
+        }
+        setExpandedDepts(newExpanded);
+    };
+
+    const calcSubtotals = (dept: DeptNode): { budget: number; spent: number } => {
+        const childTotals = dept.children.reduce((acc, child) => {
+            const childSubtotals = calcSubtotals(child);
+            return {
+                budget: acc.budget + childSubtotals.budget,
+                spent: acc.spent + childSubtotals.spent,
+            };
+        }, { budget: 0, spent: 0 });
+
+        return {
+            budget: dept.budget + childTotals.budget,
+            spent: dept.spent + childTotals.spent,
+        };
+    };
+
+    const renderDeptCard = (dept: DeptNode) => {
+        const hasChildren = dept.children.length > 0;
+        const isExpanded = expandedDepts.has(dept.id);
+        const subtotals = calcSubtotals(dept);
+        const percentUsed = subtotals.budget > 0 ? (subtotals.spent / subtotals.budget) * 100 : 0;
+        const remaining = subtotals.budget - subtotals.spent;
+
+        return (
+            <Grid size={{ xs: 12, md: 6, lg: 4 }} key={dept.id}>
+                <Paper
+                    sx={{
+                        p: 2,
+                        height: '100%',
+                        borderTop: 4,
+                        borderColor: percentUsed > 100 ? 'error.main' : percentUsed > 80 ? 'warning.main' : 'success.main',
+                        display: 'flex',
+                        flexDirection: 'column',
+                    }}
+                >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                        <Typography variant="h6" fontWeight="bold" noWrap title={dept.name} sx={{ maxWidth: '70%' }}>
+                            {dept.name}
+                        </Typography>
+                        <Chip
+                            label={`${Math.round(percentUsed)}%`}
+                            size="small"
+                            color={percentUsed > 100 ? 'error' : percentUsed > 80 ? 'warning' : 'success'}
+                        />
+                    </Box>
+
+                    <LinearProgress
+                        variant="determinate"
+                        value={Math.min(percentUsed, 100)}
+                        color={percentUsed > 100 ? 'error' : percentUsed > 80 ? 'warning' : 'success'}
+                        sx={{ height: 6, borderRadius: 3, mb: 2 }}
+                    />
+
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+                        <Box>
+                            <Typography variant="caption" color="text.secondary">Budget</Typography>
+                            <Typography variant="subtitle1" fontWeight="medium">{formatCurrency(subtotals.budget)}</Typography>
+                        </Box>
+                        <Box sx={{ textAlign: 'right' }}>
+                            <Typography variant="caption" color="text.secondary">Spent</Typography>
+                            <Typography variant="subtitle1" color="error.main">{formatCurrency(subtotals.spent)}</Typography>
+                        </Box>
+                    </Box>
+
+                    <Box sx={{ mt: 'auto', pt: 1, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" color="text.secondary">Remaining</Typography>
+                        <Typography variant="body1" fontWeight="bold" color={remaining < 0 ? 'error.main' : 'success.main'}>
+                            {formatCurrency(remaining)}
+                        </Typography>
+                    </Box>
+
+                    {hasChildren && (
+                        <Box sx={{ mt: 2 }}>
+                            <IconButton
+                                size="small"
+                                onClick={() => toggleExpand(dept.id)}
+                                sx={{ width: '100%', borderRadius: 1, justifyContent: 'center', fontSize: '0.875rem' }}
+                            >
+                                {isExpanded ? <ExpandLessIcon fontSize="small" sx={{ mr: 1 }} /> : <ExpandMoreIcon fontSize="small" sx={{ mr: 1 }} />}
+                                {isExpanded ? 'Hide Subdepartments' : 'View Subdepartments'}
+                            </IconButton>
+                            <Collapse in={isExpanded}>
+                                <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    {dept.children.map(child => {
+                                        const childSubtotals = calcSubtotals(child);
+                                        const cPercent = childSubtotals.budget > 0 ? (childSubtotals.spent / childSubtotals.budget) * 100 : 0;
+
+                                        return (
+                                            <Paper key={child.id} variant="outlined" sx={{ p: 1 }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                                    <Typography variant="body2" fontWeight="medium">{child.name}</Typography>
+                                                    <Typography variant="caption" fontWeight="bold" color={cPercent > 100 ? 'error.main' : 'text.primary'}>
+                                                        {Math.round(cPercent)}%
+                                                    </Typography>
+                                                </Box>
+                                                <LinearProgress
+                                                    variant="determinate"
+                                                    value={Math.min(cPercent, 100)}
+                                                    color={cPercent > 100 ? 'error' : cPercent > 80 ? 'warning' : 'success'}
+                                                    sx={{ height: 4, borderRadius: 2 }}
+                                                />
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                                                    <Typography variant="caption" color="text.secondary">{formatCurrency(childSubtotals.spent)} spent</Typography>
+                                                    <Typography variant="caption" color="text.secondary">of {formatCurrency(childSubtotals.budget)}</Typography>
+                                                </Box>
+                                            </Paper>
+                                        );
+                                    })}
+                                </Box>
+                            </Collapse>
+                        </Box>
+                    )}
+                </Paper>
+            </Grid>
+        );
+    };
+
+    // Filter departments to display based on selector
+    const getDisplayedDepts = () => {
+        if (subDeptId) {
+            for (const topDept of topLevelDepts) {
+                const subDept = topDept.children.find(c => c.id === subDeptId);
+                if (subDept) return [subDept];
+            }
+            return [];
+        }
+        if (topLevelDeptId) {
+            const topDept = topLevelDepts.find(d => d.id === topLevelDeptId);
+            return topDept ? [topDept] : [];
+        }
+        return topLevelDepts;
+    };
+
+    const displayedDepts = getDisplayedDepts();
+
+    // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -113,50 +371,12 @@ export default function Dashboard() {
                 setSearchDialogOpen(true);
             }
         };
-
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    const { enqueueSnackbar } = useSnackbar();
-
-    // Use Custom Hook to fetch dashboard data (entries for list + stats)
-    const { entries, fetching, error, refresh } = useTransactions({
-        departmentId: subDeptId || topLevelDeptId || departmentId,
-        fiscalYearId,
-    });
-
-    const handleReexecute = refresh;
-    const data = { entries };
-    const navigate = useNavigate();
-
-    // Action Menu State
-    const [actionMenuAnchor, setActionMenuAnchor] = useState<null | HTMLElement>(null);
-    const [actionMenuEntry, setActionMenuEntry] = useState<any>(null);
-    const [editDialogOpen, setEditDialogOpen] = useState(false);
-    const [editEntry, setEditEntry] = useState<any>(null);
-    const [refundDialogOpen, setRefundDialogOpen] = useState(false);
-    const [refundEntry, setRefundEntry] = useState<any>(null);
-
-    const [, reconcileEntries] = useMutation(RECONCILE_ENTRIES_MUTATION);
-    const [, deleteEntry] = useMutation(DELETE_ENTRY_MUTATION);
-
-
-
-    const recentEntries = data?.entries
-        ? [...data.entries]
-            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .slice(0, 10)
-        : [];
-
-
-    const stats = {
-        totalEntries: data?.entries?.length || 0,
-        thisMonth: data?.entries ? data.entries.reduce((sum: number, entry: any) => {
-            const amount = parseRational(entry.total);
-            return sum + (entry.category?.type === 'CREDIT' ? Math.abs(amount) : -Math.abs(amount));
-        }, 0) : 0,
-    };
+    const totalRemaining = totalBudget - totalSpent;
+    const totalPercentUsed = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
     return (
         <Box>
@@ -169,7 +389,6 @@ export default function Dashboard() {
             <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Typography variant="subtitle2" sx={{ minWidth: 80 }}>Department:</Typography>
 
-                {/* Fiscal Year Selector */}
                 <FormControl size="small" sx={{ minWidth: 180 }}>
                     <InputLabel>Fiscal Year</InputLabel>
                     <Select
@@ -207,8 +426,6 @@ export default function Dashboard() {
                             value={subDeptId}
                             onChange={(e: SelectChangeEvent) => setSubDeptId(e.target.value)}
                             label="Sub Dept"
-                            data-tooltip="Filter by sub-department"
-                            data-tooltip-pos="top"
                         >
                             <MenuItem value="">All</MenuItem>
                             {subDepartments.map((dept: any) => (
@@ -218,13 +435,10 @@ export default function Dashboard() {
                     </FormControl>
                 )}
 
-                {/* Search Input */}
                 <TextField
                     placeholder="Search transactions..."
                     size="small"
                     onClick={() => setSearchDialogOpen(true)}
-                    data-tooltip="Search all transactions (⌘K / Ctrl+K)"
-                    data-tooltip-pos="top"
                     sx={{ minWidth: 350, cursor: 'pointer' }}
                     InputProps={{
                         readOnly: true,
@@ -243,6 +457,7 @@ export default function Dashboard() {
             </Paper>
 
             <Grid container spacing={3}>
+                {/* Quick Action Card */}
                 <Grid size={{ xs: 12, md: 4 }}>
                     <Paper sx={{
                         p: 3,
@@ -258,7 +473,7 @@ export default function Dashboard() {
                         transition: 'transform 0.2s',
                         '&:hover': { transform: 'scale(1.02)' }
                     }}
-                        onClick={openEntryDialog}
+                        onClick={() => setEntryDialogOpen(true)}
                     >
                         <Typography variant="h6" fontWeight="bold">Quick Action</Typography>
                         <Typography variant="body2" sx={{ opacity: 0.8, mb: 2 }}>Add a new expense or income</Typography>
@@ -268,225 +483,118 @@ export default function Dashboard() {
                     </Paper>
                 </Grid>
 
-                {/* Key Metrics Row - Simplified */}
+                {/* Key Metrics */}
                 <Grid size={{ xs: 12, md: 8 }}>
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <Paper sx={{ p: 3, borderLeft: '4px solid #00E5FF', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                <Typography variant="caption" color="text.secondary">Current Period Balance</Typography>
-                                <Typography variant="h4" fontWeight={800} color={stats.thisMonth >= 0 ? "success.main" : "error.main"}>
-                                    ${stats.thisMonth.toFixed(2)}
+                                <Typography variant="caption" color="text.secondary">Total Budget</Typography>
+                                <Typography variant="h4" fontWeight={800}>
+                                    {formatCurrency(totalBudget)}
                                 </Typography>
                             </Paper>
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <Paper sx={{ p: 3, borderLeft: '4px solid #6C5DD3', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                <Typography variant="caption" color="text.secondary">Total Pending (Unreconciled)</Typography>
-                                <Typography variant="h4" fontWeight={800}>
-                                    {stats.totalEntries} <Typography component="span" variant="body2" color="text.secondary">Transactions</Typography>
+                                <Typography variant="caption" color="text.secondary">Remaining</Typography>
+                                <Typography variant="h4" fontWeight={800} color={totalRemaining < 0 ? 'error.main' : 'success.main'}>
+                                    {formatCurrency(totalRemaining)}
                                 </Typography>
                             </Paper>
                         </Grid>
                     </Grid>
                 </Grid>
 
-                <Grid size={{ xs: 12 }}>
-                    <Fade in timeout={1000}>
-                        <Paper sx={{
-                            p: 3,
-                            transition: 'transform 0.2s, box-shadow 0.2s',
-                            '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 }
-                        }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                <Typography variant="h6">Recent Transactions</Typography>
-                                <Typography
-                                    variant="body2"
-                                    color="primary"
-                                    sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
-                                    onClick={() => navigate('/transactions')}
-                                >
-                                    View All
-                                </Typography>
-                            </Box>
-
-                            {fetching && (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                    {[1, 2, 3, 4, 5].map((i) => (
-                                        <Skeleton key={i} variant="rectangular" height={60} sx={{ borderRadius: 2 }} />
-                                    ))}
-                                </Box>
-                            )}
-                            {error && <Alert severity="error">Error loading data: {error.message}</Alert>}
-
-                            {recentEntries.length > 0 && (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                    {recentEntries.map((entry: any) => {
-                                        const amount = Math.abs(parseRational(entry.total));
-                                        const isCredit = entry.category?.type === 'CREDIT';
-                                        return (
-                                            <Box key={entry.id} sx={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                p: 2,
-                                                bgcolor: 'background.default',
-                                                borderRadius: 2,
-                                                alignItems: 'center',
-                                                transition: 'all 0.2s',
-                                                '&:hover': { bgcolor: 'action.hover', transform: 'translateX(8px)', boxShadow: 2 }
-                                            }}>
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setActionMenuAnchor(e.currentTarget);
-                                                        setActionMenuEntry(entry);
-                                                    }}
-                                                    data-tooltip="Actions"
-                                                    data-tooltip-pos="right"
-                                                    sx={{ mr: 1 }}
-                                                >
-                                                    <MoreVertIcon fontSize="small" />
-                                                </IconButton>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-                                                    <Box sx={{ flex: 1 }}>
-                                                        <Typography variant="subtitle1" fontWeight="bold">
-                                                            {entry.description || "No Description"}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            {format(parseISO(entry.date), 'MMM dd, yyyy')} • {entry.category?.name || "Uncategorized"}
-                                                        </Typography>
-                                                    </Box>
-                                                </Box>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    <Typography variant="body1" fontWeight="bold" color={isCredit ? 'success.main' : 'error.main'}>
-                                                        {isCredit ? '+' : '-'}${amount.toFixed(2)}
-                                                    </Typography>
-                                                </Box>
-                                            </Box>
-                                        );
-                                    })}
-                                </Box>
-                            )}
-
-                            {recentEntries.length === 0 && !fetching && (
-                                <EmptyState
-                                    title="No Transactions Found"
-                                    description="No transactions found for the selected department and fiscal year."
-                                    height={300}
-                                />
-                            )}
+                {/* Overall Budget Summary */}
+                {totalBudget > 0 && (
+                    <Grid size={12}>
+                        <Paper sx={{ p: 3 }}>
+                            <Typography variant="h6" gutterBottom>Overall Budget Summary</Typography>
+                            <Grid container spacing={3}>
+                                <Grid size={{ xs: 12, md: 4 }}>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <Typography variant="overline" color="text.secondary">Total Budget</Typography>
+                                        <Typography variant="h4">{formatCurrency(totalBudget)}</Typography>
+                                    </Box>
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 4 }}>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <Typography variant="overline" color="text.secondary">Spent</Typography>
+                                        <Typography variant="h4" color="error.main">
+                                            {formatCurrency(totalSpent)}
+                                        </Typography>
+                                    </Box>
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 4 }}>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <Typography variant="overline" color="text.secondary">Remaining</Typography>
+                                        <Typography
+                                            variant="h4"
+                                            color={totalRemaining < 0 ? 'error.main' : 'success.main'}
+                                        >
+                                            {formatCurrency(totalRemaining)}
+                                        </Typography>
+                                    </Box>
+                                </Grid>
+                                <Grid size={12}>
+                                    <Box sx={{ mt: 2 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                            <Typography variant="body2">Budget Used</Typography>
+                                            <Typography variant="body2">{Math.round(totalPercentUsed)}%</Typography>
+                                        </Box>
+                                        <LinearProgress
+                                            variant="determinate"
+                                            value={Math.min(totalPercentUsed, 100)}
+                                            color={totalPercentUsed > 100 ? 'error' : totalPercentUsed > 80 ? 'warning' : 'primary'}
+                                            sx={{ height: 12, borderRadius: 6 }}
+                                        />
+                                    </Box>
+                                </Grid>
+                            </Grid>
                         </Paper>
-                    </Fade>
+                    </Grid>
+                )}
+
+                {/* Department Budget Cards */}
+                <Grid size={12}>
+                    <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Department Budgets</Typography>
                 </Grid>
+
+                {fetching && (
+                    <Grid size={12}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                            <CircularProgress />
+                        </Box>
+                    </Grid>
+                )}
+
+                {error && (
+                    <Grid size={12}>
+                        <Alert severity="error">Error loading budget data: {error.message}</Alert>
+                    </Grid>
+                )}
+
+                {!fetching && !error && displayedDepts.map(dept => renderDeptCard(dept))}
+
+                {!fetching && !error && displayedDepts.length === 0 && (
+                    <Grid size={12}>
+                        <Alert severity="info">
+                            No budget allocations found for your accessible departments.
+                            {isSuperAdmin && (
+                                <> Go to Budget Allocations to set up budgets.</>
+                            )}
+                        </Alert>
+                    </Grid>
+                )}
             </Grid>
 
-            {/* Action Menu */}
-            <Menu
-                anchorEl={actionMenuAnchor}
-                open={Boolean(actionMenuAnchor)}
-                onClose={() => {
-                    setActionMenuAnchor(null);
-                    setActionMenuEntry(null);
-                }}
-            >
-                <MenuItem 
-                    onClick={() => {
-                        setEditEntry(actionMenuEntry);
-                        setEditDialogOpen(true);
-                        setActionMenuAnchor(null);
-                        setActionMenuEntry(null);
-                    }}
-                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
-                >
-                    <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
-                    <ListItemText>Edit Transaction</ListItemText>
-                </MenuItem>
-                <MenuItem 
-                    onClick={async () => {
-                        if (actionMenuEntry) {
-                            const { error } = await reconcileEntries({
-                                input: { entries: [actionMenuEntry.id] }
-                            });
-
-                            if (error) {
-                                enqueueSnackbar(`Error: ${error.message}`, { variant: 'error' });
-                            } else {
-                                const action = actionMenuEntry.reconciled ? 'unreconciled' : 'reconciled';
-                                enqueueSnackbar(`Transaction ${action} successfully`, { variant: 'success' });
-                                handleReexecute();
-                            }
-                        }
-                        setActionMenuAnchor(null);
-                        setActionMenuEntry(null);
-                    }}
-                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
-                >
-                    <ListItemIcon>
-                        <CheckCircleIcon fontSize="small" color={actionMenuEntry?.reconciled ? "disabled" : "success"} />
-                    </ListItemIcon>
-                    <ListItemText>
-                        {actionMenuEntry?.reconciled ? "Already Reconciled" : "Mark as Reconciled"}
-                    </ListItemText>
-                </MenuItem>
-                <MenuItem 
-                    onClick={() => {
-                        setRefundEntry(actionMenuEntry);
-                        setRefundDialogOpen(true);
-                        setActionMenuAnchor(null);
-                        setActionMenuEntry(null);
-                    }}
-                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
-                >
-                    <ListItemIcon><ReplayIcon fontSize="small" color="info" /></ListItemIcon>
-                    <ListItemText>Issue Refund</ListItemText>
-                </MenuItem>
-                <Divider />
-                <MenuItem
-                    onClick={async () => {
-                        if (actionMenuEntry && window.confirm('Are you sure you want to delete this transaction?')) {
-                            const { error } = await deleteEntry({ id: actionMenuEntry.id });
-
-                            if (error) {
-                                enqueueSnackbar(`Failed to delete: ${error.message}`, { variant: 'error' });
-                            } else {
-                                enqueueSnackbar('Transaction deleted', { variant: 'success' });
-                                handleReexecute();
-                            }
-                        }
-                        setActionMenuAnchor(null);
-                        setActionMenuEntry(null);
-                    }}
-                    sx={{ color: 'error.main' }}
-                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
-                >
-                    <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
-                    <ListItemText>Delete Transaction</ListItemText>
-                </MenuItem>
-            </Menu>
-
-            <EditEntryDialog
-                open={editDialogOpen}
-                onClose={() => {
-                    setEditDialogOpen(false);
-                    setEditEntry(null);
-                }}
-                onSuccess={() => {
-                    handleReexecute();
-                }}
-                entry={editEntry}
-            />
-
             <EntryFormDialog
-                open={refundDialogOpen}
-                onClose={() => {
-                    setRefundDialogOpen(false);
-                    setRefundEntry(null);
-                }}
+                open={entryDialogOpen}
+                onClose={() => setEntryDialogOpen(false)}
                 onSuccess={() => {
-                    handleReexecute();
+                    setEntryDialogOpen(false);
+                    window.location.reload();
                 }}
-                initialEntryType="refund"
-                initialSelectedEntry={refundEntry}
             />
 
             <SearchDialog

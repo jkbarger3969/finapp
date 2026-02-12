@@ -72,7 +72,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const menuItems = [
         { text: "Dashboard", path: "/" },
         { text: "Transactions", path: "/transactions" },
-        { text: "Budget", path: "/budget" },
+        { text: "Budget Allocations", path: "/budget" },
         { text: "Reports", path: "/reporting" },
         ...(isSuperAdmin || isDeptAdmin ? [{ text: "Admin", path: "/admin" }] : []),
     ];
