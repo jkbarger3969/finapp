@@ -114,7 +114,7 @@ export default function Dashboard() {
     const fiscalYears = data?.fiscalYears || [];
 
     const userDepartments = (user as any)?.departments
-        ?.map((p: any) => p.department?.id)
+        ?.map((p: any) => p.departmentId)
         .filter(Boolean) || [];
 
     // Debug: log user access info
@@ -122,7 +122,8 @@ export default function Dashboard() {
         isSuperAdmin, 
         userDepartments, 
         userRole: (user as any)?.role,
-        departmentCount: userDepartments.length 
+        departmentCount: userDepartments.length,
+        rawDepartments: (user as any)?.departments
     });
 
     // Build department tree with budget and spending data
