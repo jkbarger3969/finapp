@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import {
     Box,
     Paper,
@@ -73,6 +73,7 @@ type AuditAction =
     | 'RECONCILE'
     | 'USER_INVITE'
     | 'USER_UPDATE'
+    | 'USER_DELETE'
     | 'USER_DISABLE'
     | 'PERMISSION_GRANT'
     | 'PERMISSION_REVOKE'
@@ -91,6 +92,7 @@ const ACTION_COLORS: Record<string, 'success' | 'info' | 'warning' | 'error' | '
     RECONCILE: 'warning',
     USER_INVITE: 'success',
     USER_UPDATE: 'info',
+    USER_DELETE: 'error',
     USER_DISABLE: 'error',
     PERMISSION_GRANT: 'success',
     PERMISSION_REVOKE: 'warning',
@@ -110,6 +112,7 @@ const ACTION_LABELS: Record<string, string> = {
     RECONCILE: 'Reconciled',
     USER_INVITE: 'User Invited',
     USER_UPDATE: 'User Updated',
+    USER_DELETE: 'User Deleted',
     USER_DISABLE: 'User Disabled',
     PERMISSION_GRANT: 'Permission Granted',
     PERMISSION_REVOKE: 'Permission Revoked',
@@ -326,9 +329,11 @@ export default function AuditLogTab() {
                     </Tooltip>
 
                     <Tooltip title="Export CSV">
-                        <IconButton onClick={exportToCsv} disabled={auditLog.length === 0}>
-                            <DownloadIcon />
-                        </IconButton>
+                        <span>
+                            <IconButton onClick={exportToCsv} disabled={auditLog.length === 0}>
+                                <DownloadIcon />
+                            </IconButton>
+                        </span>
                     </Tooltip>
                 </Box>
             </Paper>
@@ -369,9 +374,8 @@ export default function AuditLogTab() {
                         )}
 
                         {!fetching && auditLog.map((entry) => (
-                            <>
+                            <Fragment key={entry.id}>
                                 <TableRow
-                                    key={entry.id}
                                     hover
                                     sx={{ cursor: 'pointer' }}
                                     onClick={() => toggleRowExpand(entry.id)}
@@ -404,7 +408,7 @@ export default function AuditLogTab() {
                                     </TableCell>
                                     <TableCell>{entry.ipAddress || '-'}</TableCell>
                                 </TableRow>
-                                <TableRow key={`${entry.id}-details`}>
+                                <TableRow>
                                     <TableCell colSpan={6} sx={{ py: 0, borderBottom: expandedRows.has(entry.id) ? undefined : 'none' }}>
                                         <Collapse in={expandedRows.has(entry.id)} timeout="auto" unmountOnExit>
                                             <Box sx={{ py: 2, px: 4, bgcolor: 'grey.50' }}>
@@ -451,7 +455,7 @@ export default function AuditLogTab() {
                                         </Collapse>
                                     </TableCell>
                                 </TableRow>
-                            </>
+                            </Fragment>
                         ))}
                     </TableBody>
                 </Table>

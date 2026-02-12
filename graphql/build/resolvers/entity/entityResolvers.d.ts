@@ -9,7 +9,7 @@ export declare const getEntity: (node: EntityDbRecord, db: Db) => Promise<Pick<B
     _id: import("bson").ObjectID;
 } & {
     __typename: "Business";
-}> | Promise<Pick<DepartmentDbRecord, "name" | "code" | "parent" | "disable" | "virtualRoot"> & {
+}> | Promise<Pick<DepartmentDbRecord, "name" | "code" | "disable" | "parent" | "virtualRoot"> & {
     _id: import("bson").ObjectID;
 } & {
     __typename: "Department";
@@ -22,7 +22,7 @@ export declare const getEntities: (nodes: EntityDbRecord[], db: Db) => Promise<(
     _id: import("bson").ObjectID;
 } & {
     __typename: "Business";
-}) | (Pick<DepartmentDbRecord, "name" | "code" | "parent" | "disable" | "virtualRoot"> & {
+}) | (Pick<DepartmentDbRecord, "name" | "code" | "disable" | "parent" | "virtualRoot"> & {
     _id: import("bson").ObjectID;
 } & {
     __typename: "Department";
@@ -33,4 +33,4 @@ export declare const getEntities: (nodes: EntityDbRecord[], db: Db) => Promise<(
 }))[]>;
 export declare const Entity: EntityResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, DepartmentDbRecord | BusinessDbRecord | import("../../dataSources/accountingDb/types").PersonDbRecord>;
+} & import("../../types").ContextBase, BusinessDbRecord | DepartmentDbRecord | import("../../dataSources/accountingDb/types").PersonDbRecord>;

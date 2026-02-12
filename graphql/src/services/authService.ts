@@ -525,13 +525,27 @@ export class AuthService {
     const filter: Record<string, unknown> = {};
 
     if (where?.userId) {
-      filter.userId = new ObjectId(where.userId as string);
+      // Handle both { eq: "id" } format and direct string
+      const userId = typeof where.userId === 'object' && (where.userId as any)?.eq
+        ? (where.userId as any).eq
+        : where.userId;
+      filter.userId = new ObjectId(userId as string);
     }
     if (where?.action) {
       filter.action = where.action;
     }
     if (where?.resourceType) {
       filter.resourceType = where.resourceType;
+    }
+    if (where?.timestamp) {
+      const timestampFilter = where.timestamp as Record<string, string>;
+      filter.timestamp = {};
+      if (timestampFilter.gte) {
+        (filter.timestamp as any).$gte = new Date(timestampFilter.gte);
+      }
+      if (timestampFilter.lte) {
+        (filter.timestamp as any).$lte = new Date(timestampFilter.lte);
+      }
     }
 
     return this.db

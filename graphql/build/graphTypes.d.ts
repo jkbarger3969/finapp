@@ -237,6 +237,7 @@ export declare enum AuditAction {
     RefundCreate = "REFUND_CREATE",
     RefundDelete = "REFUND_DELETE",
     RefundUpdate = "REFUND_UPDATE",
+    UserDelete = "USER_DELETE",
     UserDisable = "USER_DISABLE",
     UserInvite = "USER_INVITE",
     UserUpdate = "USER_UPDATE"

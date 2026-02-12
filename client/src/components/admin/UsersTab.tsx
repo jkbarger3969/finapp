@@ -567,14 +567,16 @@ export default function UsersTab() {
                                                 </IconButton>
                                             </Tooltip>
                                             <Tooltip title="Delete User">
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => setDeleteUserToConfirm(user)}
-                                                    color="error"
-                                                    disabled={user.id === currentUser?.id}
-                                                >
-                                                    <DeleteIcon fontSize="small" />
-                                                </IconButton>
+                                                <span>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => setDeleteUserToConfirm(user)}
+                                                        color="error"
+                                                        disabled={user.id === currentUser?.id}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </span>
                                             </Tooltip>
                                         </>
                                     )}
