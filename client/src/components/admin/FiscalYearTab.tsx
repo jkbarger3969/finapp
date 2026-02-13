@@ -176,7 +176,7 @@ export default function FiscalYearTab() {
     const [, restoreFiscalYear] = useMutation(RESTORE_FISCAL_YEAR);
     const [, deleteFiscalYear] = useMutation(DELETE_FISCAL_YEAR);
     const [, createFiscalYear] = useMutation(CREATE_FISCAL_YEAR);
-    const [{ data: exportData }, executeExport] = useQuery({
+    const [{ data: exportData }] = useQuery({
         query: EXPORT_FISCAL_YEAR,
         variables: { id: exportingId },
         pause: !exportingId,
