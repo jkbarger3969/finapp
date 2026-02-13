@@ -423,11 +423,11 @@ export default function Dashboard() {
             }
             if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
                 e.preventDefault();
-                setQuickAddOpen(true);
+                setEntryDialogOpen(true);
             }
             if (e.key === 'Escape') {
                 setSearchDialogOpen(false);
-                setQuickAddOpen(false);
+                setEntryDialogOpen(false);
             }
         };
         window.addEventListener('keydown', handleKeyDown);
