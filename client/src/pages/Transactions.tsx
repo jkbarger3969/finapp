@@ -232,12 +232,19 @@ export default function Transactions() {
     }, [businessesRaw]);
 
     // Filter departments based on user access (using proper departmentId from permissions)
+    // Also include subdepartments of any top-level department the user has access to
     const departments = useMemo(() => {
         let depts = departmentsRaw;
         if (user?.role !== 'SUPER_ADMIN') {
             const userDeptIds = (user as any)?.departments?.map((d: any) => d.departmentId) || [];
             if (userDeptIds.length > 0) {
-                depts = departmentsRaw.filter((d: any) => userDeptIds.includes(d.id));
+                depts = departmentsRaw.filter((d: any) => {
+                    // Include if user has direct access
+                    if (userDeptIds.includes(d.id)) return true;
+                    // Include subdepartments if user has access to their parent
+                    if (d.parent?.__typename === 'Department' && userDeptIds.includes(d.parent.id)) return true;
+                    return false;
+                });
             }
         }
         return depts;
