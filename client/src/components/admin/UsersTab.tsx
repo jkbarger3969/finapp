@@ -177,7 +177,10 @@ export default function UsersTab() {
     const [inviteLoading, setInviteLoading] = useState(false);
     const [deleteUserToConfirm, setDeleteUserToConfirm] = useState<User | null>(null);
 
-    const [{ data: usersData, fetching: usersFetching }, refetchUsers] = useQuery({ query: USERS_QUERY });
+    const [{ data: usersData, fetching: usersFetching }, refetchUsers] = useQuery({ 
+        query: USERS_QUERY,
+        requestPolicy: 'cache-and-network'
+    });
     const [{ data: departmentsData }] = useQuery({ query: DEPARTMENTS_QUERY });
 
     const [, inviteUser] = useMutation(INVITE_USER_MUTATION);
@@ -260,7 +263,7 @@ export default function UsersTab() {
             setSuccessMessage(`Successfully invited ${inviteForm.name}! Invitation email sent to ${inviteForm.email}`);
             setInviteOpen(false);
             setInviteForm({ email: '', name: '', role: 'USER', departments: [] });
-            refetchUsers({ requestPolicy: 'network-only' });
+            setTimeout(() => refetchUsers({ requestPolicy: 'network-only' }), 300);
         } catch (err) {
             setError('An unexpected error occurred');
             console.error('Invite error:', err);
@@ -375,7 +378,7 @@ export default function UsersTab() {
 
         setSuccessMessage(`Successfully deleted user: ${deleteUserToConfirm.name}`);
         setDeleteUserToConfirm(null);
-        refetchUsers({ requestPolicy: 'network-only' });
+        setTimeout(() => refetchUsers({ requestPolicy: 'network-only' }), 300);
     };
 
     const handleToggleStatus = async (user: User) => {
