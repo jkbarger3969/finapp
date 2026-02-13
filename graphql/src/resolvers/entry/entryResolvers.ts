@@ -72,6 +72,10 @@ export const EntryRefund: EntryRefundResolvers = {
 
 export const Entry: EntryResolvers = {
   id: ({ _id }) => _id.toString(),
+  attachments: (root) => {
+    const attachments = (root as any).snapshot?.meta?.attachments || [];
+    return attachments.filter((a: any) => !a.deleted);
+  },
   category: ({ category }, _, { loaders }) =>
     loaders.category.load(category[0].value.toString()),
 
