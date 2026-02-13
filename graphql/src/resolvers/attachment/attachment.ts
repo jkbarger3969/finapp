@@ -165,8 +165,9 @@ export const attachmentResolvers: Resolvers = {
 
                 // Prefer generating URL from filePath if available (Relative URL for portability)
                 if (a.filePath) {
-                    // Ensure it starts with /receipts/
-                    url = `/receipts/${a.filePath}`;
+                    // URL-encode the path components to handle spaces and special characters
+                    const encodedPath = a.filePath.split('/').map(part => encodeURIComponent(part)).join('/');
+                    url = `/receipts/${encodedPath}`;
                 } else if (a.url && a.url.includes("/receipts/")) {
                     // Legacy fallback: try to extract relative path from absolute URL
                     try {
@@ -174,6 +175,11 @@ export const attachmentResolvers: Resolvers = {
                         if (a.url.startsWith("http")) {
                             const urlObj = new URL(a.url);
                             url = urlObj.pathname;
+                        }
+                        // URL-encode the path if it contains spaces
+                        if (url.includes(' ')) {
+                            const parts = url.split('/');
+                            url = parts.map(part => part.includes(' ') ? encodeURIComponent(part) : part).join('/');
                         }
                     } catch (e) {
                         // ignore parsing error
