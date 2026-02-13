@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import { createWriteStream, createReadStream } from "fs";
 import path from "path";
+import { URL } from "url";
 import { pipeline } from "stream/promises";
 import { GraphQLError } from "graphql";
 import { ObjectId } from "mongodb";
@@ -155,11 +156,35 @@ export const attachmentResolvers: Resolvers = {
     },
     Entry: {
         attachments: (parent: any) => {
-            return (
-                parent.snapshot?.meta?.attachments?.filter(
-                    (a: AttachmentDbRecord) => !a.deleted
-                ) || []
-            );
+            const attachments = parent.snapshot?.meta?.attachments?.filter(
+                (a: AttachmentDbRecord) => !a.deleted
+            ) || [];
+
+            return attachments.map((a: AttachmentDbRecord) => {
+                let url = a.url;
+
+                // Prefer generating URL from filePath if available (Relative URL for portability)
+                if (a.filePath) {
+                    // Ensure it starts with /receipts/
+                    url = `/receipts/${a.filePath}`;
+                } else if (a.url && a.url.includes("/receipts/")) {
+                    // Legacy fallback: try to extract relative path from absolute URL
+                    try {
+                        // If it's a full URL, parse it
+                        if (a.url.startsWith("http")) {
+                            const urlObj = new URL(a.url);
+                            url = urlObj.pathname;
+                        }
+                    } catch (e) {
+                        // ignore parsing error
+                    }
+                }
+
+                return {
+                    ...a,
+                    url,
+                };
+            });
         },
     },
 };
