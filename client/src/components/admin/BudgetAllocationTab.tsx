@@ -34,18 +34,20 @@ import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import AddIcon from '@mui/icons-material/Add';
 import WarningIcon from '@mui/icons-material/Warning';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import PercentIcon from '@mui/icons-material/Percent';
 import { useQuery, useMutation } from 'urql';
-import { formatFiscalYearFromDates, getSuggestedFiscalYearDates, getCurrentFiscalYear } from '../../utils/fiscalYear';
+import { formatFiscalYearFromDates } from '../../utils/fiscalYear';
 import { formatCurrency } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
+import { useDepartment } from '../../context/DepartmentContext';
+import { useOnlineStatus } from '../../context/OnlineStatusContext';
+import { useSnackbar } from 'notistack';
 
 const GET_BUDGET_DATA = `
     query GetBudgetData {
-        fiscalYears {
+        fiscalYears(where: { archived: false }) {
             id
             name
             begin
@@ -105,19 +107,6 @@ const UPSERT_BUDGET = `
     }
 `;
 
-const CREATE_FISCAL_YEAR = `
-    mutation CreateFiscalYear($input: CreateFiscalYearInput!) {
-        createFiscalYear(input: $input) {
-            fiscalYear {
-                id
-                name
-                begin
-                end
-            }
-        }
-    }
-`;
-
 function parseRational(rational: any): number {
     if (!rational) return 0;
     try {
@@ -149,9 +138,14 @@ type InputMode = 'dollar' | 'percent';
 
 export default function BudgetAllocationTab() {
     const { user, isSuperAdmin } = useAuth();
-    const [result, reexecuteQuery] = useQuery({ query: GET_BUDGET_DATA });
+    const { fiscalYears: contextFiscalYears } = useDepartment();
+    const { isOnline } = useOnlineStatus();
+    const { enqueueSnackbar } = useSnackbar();
+    const [result, reexecuteQuery] = useQuery({ 
+        query: GET_BUDGET_DATA,
+        requestPolicy: 'cache-and-network'
+    });
     const [, upsertBudget] = useMutation(UPSERT_BUDGET);
-    const [, createFiscalYear] = useMutation(CREATE_FISCAL_YEAR);
 
     const [selectedFiscalYear, setSelectedFiscalYear] = useState<string>('');
     const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
@@ -159,17 +153,13 @@ export default function BudgetAllocationTab() {
     const [saving, setSaving] = useState(false);
 
     const [editingDept, setEditingDept] = useState<DepartmentNode | null>(null);
-    const [editParentBudget, setEditParentBudget] = useState<string>('0');
+    const [editParentBudget, setEditParentBudget] = useState<string>('');
     const [editAmounts, setEditAmounts] = useState<Record<string, string>>({});
     const [inputMode, setInputMode] = useState<InputMode>('dollar');
 
-    const [fyDialogOpen, setFyDialogOpen] = useState(false);
-    const [newFyYear, setNewFyYear] = useState<number>(() => {
-        const currentFY = getCurrentFiscalYear();
-        return parseInt(currentFY.id) + 1;
-    });
-    const [newFyBegin, setNewFyBegin] = useState('');
-    const [newFyEnd, setNewFyEnd] = useState('');
+    useEffect(() => {
+        reexecuteQuery({ requestPolicy: 'network-only' });
+    }, [contextFiscalYears.length, reexecuteQuery]);
 
     const hasAdminAccess = useCallback((deptId: string): boolean => {
         if (isSuperAdmin) return true;
@@ -182,14 +172,6 @@ export default function BudgetAllocationTab() {
         if (!user?.departments || user.departments.length === 0) return false;
         return user.departments.some(d => d.departmentId === deptId);
     }, [user, isSuperAdmin]);
-
-    useEffect(() => {
-        if (fyDialogOpen && newFyYear) {
-            const suggested = getSuggestedFiscalYearDates(newFyYear);
-            setNewFyBegin(suggested.begin);
-            setNewFyEnd(suggested.end);
-        }
-    }, [fyDialogOpen, newFyYear]);
 
     const { data, fetching } = result;
 
@@ -281,7 +263,10 @@ export default function BudgetAllocationTab() {
     };
 
     const totalBudget = useMemo(() => {
-        return topLevelDepts.reduce((sum, dept) => sum + calcSubtotal(dept), 0);
+        return topLevelDepts.reduce((sum, dept) => {
+            const childrenTotal = dept.children.reduce((s, child) => s + calcSubtotal(child), 0);
+            return sum + (dept.budget > 0 ? dept.budget : childrenTotal);
+        }, 0);
     }, [topLevelDepts]);
 
     const toggleExpand = (deptId: string) => {
@@ -296,9 +281,7 @@ export default function BudgetAllocationTab() {
 
     const startEditing = (dept: DepartmentNode) => {
         setEditingDept(dept);
-        const childrenTotal = dept.children.reduce((sum, child) => sum + calcSubtotal(child), 0);
-        const deptTotal = dept.budget + childrenTotal;
-        setEditParentBudget(deptTotal.toString());
+        setEditParentBudget(dept.budget.toString());
         const amounts: Record<string, string> = {};
         dept.children.forEach(child => {
             amounts[child.id] = calcSubtotal(child).toString();
@@ -309,7 +292,7 @@ export default function BudgetAllocationTab() {
 
     const cancelEditing = () => {
         setEditingDept(null);
-        setEditParentBudget('0');
+        setEditParentBudget('');
         setEditAmounts({});
         setInputMode('dollar');
     };
@@ -352,6 +335,10 @@ export default function BudgetAllocationTab() {
     };
 
     const handleSaveEdits = async () => {
+        if (!isOnline) {
+            enqueueSnackbar('Cannot save while offline. Please reconnect.', { variant: 'warning' });
+            return;
+        }
         if (!selectedFiscalYear || !editingDept) return;
 
         if (isOverBudget()) {
@@ -394,56 +381,19 @@ export default function BudgetAllocationTab() {
         }
     };
 
-    const handleCreateFiscalYear = async () => {
-        if (!newFyYear || !newFyBegin || !newFyEnd) {
-            setError('Please fill all fiscal year fields');
-            return;
-        }
-
-        setSaving(true);
-        setError(null);
-
-        const displayName = `${newFyYear - 1}-${newFyYear}`;
-
-        try {
-            const result = await createFiscalYear({
-                input: {
-                    name: displayName,
-                    begin: newFyBegin,
-                    end: newFyEnd,
-                },
-            });
-
-            if (result.error) {
-                setError(result.error.message);
-            } else {
-                setFyDialogOpen(false);
-                setNewFyYear(newFyYear + 1);
-                setNewFyBegin('');
-                setNewFyEnd('');
-                reexecuteQuery({ requestPolicy: 'network-only' });
-                if (result.data?.createFiscalYear?.fiscalYear?.id) {
-                    setSelectedFiscalYear(result.data.createFiscalYear.fiscalYear.id);
-                }
-            }
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setSaving(false);
-        }
-    };
-
     const renderDepartmentCard = (dept: DepartmentNode) => {
         const hasChildren = dept.children.length > 0;
         const isExpanded = expandedDepts.has(dept.id);
         const childrenTotal = dept.children.reduce((sum, child) => sum + calcSubtotal(child), 0);
-        const deptTotal = dept.budget + childrenTotal;
+        const deptTotal = dept.budget > 0 ? dept.budget : childrenTotal;
         const allocationPercent = deptTotal > 0 ? (childrenTotal / deptTotal) * 100 : 0;
+        const isOverAllocated = dept.budget > 0 && childrenTotal > dept.budget;
+        const hasDirectBudget = dept.budget > 0;
         const canEdit = hasAdminAccess(dept.id);
 
         return (
             <Box key={dept.id} sx={{ mb: 2 }}>
-                <Paper sx={{ p: 2, borderLeft: 4, borderColor: 'primary.main' }}>
+                <Paper sx={{ p: 2, borderLeft: 4, borderColor: isOverAllocated ? 'error.main' : 'primary.main' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             {hasChildren && (
@@ -461,19 +411,19 @@ export default function BudgetAllocationTab() {
                                     {formatCurrency(deptTotal)}
                                 </Typography>
                             </Box>
-                            {hasChildren && dept.budget > 0 && (
-                                <Box sx={{ textAlign: 'right', minWidth: 100 }}>
-                                    <Typography variant="caption" color="text.secondary">Direct</Typography>
-                                    <Typography variant="body1">
-                                        {formatCurrency(dept.budget)}
+                            {hasChildren && hasDirectBudget && (
+                                <Box sx={{ textAlign: 'right', minWidth: 120 }}>
+                                    <Typography variant="caption" color="text.secondary">Allocated</Typography>
+                                    <Typography variant="body1" color={isOverAllocated ? 'error.main' : 'success.main'}>
+                                        {formatCurrency(childrenTotal)} ({allocationPercent.toFixed(0)}%)
                                     </Typography>
                                 </Box>
                             )}
-                            {hasChildren && (
-                                <Box sx={{ textAlign: 'right', minWidth: 120 }}>
-                                    <Typography variant="caption" color="text.secondary">In Subdepts</Typography>
-                                    <Typography variant="body1" color="success.main">
-                                        {formatCurrency(childrenTotal)} ({allocationPercent.toFixed(0)}%)
+                            {hasChildren && hasDirectBudget && (
+                                <Box sx={{ textAlign: 'right', minWidth: 100 }}>
+                                    <Typography variant="caption" color="text.secondary">Unallocated</Typography>
+                                    <Typography variant="body1" color={isOverAllocated ? 'error.main' : 'text.secondary'}>
+                                        {formatCurrency(dept.budget - childrenTotal)}
                                     </Typography>
                                 </Box>
                             )}
@@ -491,12 +441,12 @@ export default function BudgetAllocationTab() {
                         </Box>
                     </Box>
 
-                    {hasChildren && deptTotal > 0 && (
+                    {hasChildren && hasDirectBudget && (
                         <Box sx={{ mt: 1 }}>
                             <LinearProgress
                                 variant="determinate"
-                                value={100}
-                                color="primary"
+                                value={Math.min(allocationPercent, 100)}
+                                color={isOverAllocated ? "error" : "primary"}
                                 sx={{ height: 6, borderRadius: 3 }}
                             />
                         </Box>
@@ -582,9 +532,6 @@ export default function BudgetAllocationTab() {
         <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Typography variant="h6">Budget Allocation</Typography>
-                <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setFyDialogOpen(true)}>
-                    New Fiscal Year
-                </Button>
             </Box>
 
             {error && (
@@ -652,24 +599,60 @@ export default function BudgetAllocationTab() {
                 </DialogTitle>
                 <DialogContent>
                     <Stack spacing={3} sx={{ mt: 1 }}>
-                        {/* Top Level Department Budget */}
+                        {/* Top Level Department Budget - Only Super Admins can edit */}
                         <Paper sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
                             <Typography variant="subtitle2" sx={{ mb: 1 }}>
                                 Total Budget for {editingDept?.name}
                             </Typography>
-                            <TextField
-                                type="number"
-                                value={editParentBudget}
-                                onChange={(e) => setEditParentBudget(e.target.value)}
-                                fullWidth
-                                variant="outlined"
-                                InputProps={{
-                                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                                    sx: { bgcolor: 'white', borderRadius: 1 }
-                                }}
-                                inputProps={{ min: 0, step: 0.01 }}
-                            />
+                            {isSuperAdmin ? (
+                                <TextField
+                                    type="number"
+                                    value={editParentBudget}
+                                    onChange={(e) => setEditParentBudget(e.target.value)}
+                                    onFocus={(e) => e.target.select()}
+                                    fullWidth
+                                    variant="outlined"
+                                    placeholder="Enter budget amount"
+                                    InputProps={{
+                                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                                        sx: { bgcolor: 'white', borderRadius: 1 }
+                                    }}
+                                    inputProps={{ min: 0, step: 0.01 }}
+                                />
+                            ) : (
+                                <Typography variant="h5" sx={{ bgcolor: 'white', p: 1.5, borderRadius: 1, color: 'text.primary' }}>
+                                    {formatCurrency(getParentBudgetNum())}
+                                </Typography>
+                            )}
+                            {!isSuperAdmin && (
+                                <Typography variant="caption" sx={{ mt: 1, display: 'block', opacity: 0.9 }}>
+                                    Only Super Admins can modify the total budget amount
+                                </Typography>
+                            )}
                         </Paper>
+
+                        {/* Remaining Budget Display */}
+                        {editingDept && editingDept.children.length > 0 && getParentBudgetNum() > 0 && (
+                            <Paper sx={{ 
+                                p: 2, 
+                                bgcolor: getRemainingBudget() < 0 ? 'error.light' : 'success.light',
+                                border: 2,
+                                borderColor: getRemainingBudget() < 0 ? 'error.main' : 'success.main'
+                            }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography variant="subtitle1" fontWeight="bold">
+                                        Remaining to Allocate:
+                                    </Typography>
+                                    <Typography variant="h5" fontWeight="bold" color={getRemainingBudget() < 0 ? 'error.dark' : 'success.dark'}>
+                                        {formatCurrency(getRemainingBudget())}
+                                    </Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                    {formatCurrency(getChildrenTotal())} of {formatCurrency(getParentBudgetNum())} allocated 
+                                    ({getParentBudgetNum() > 0 ? ((getChildrenTotal() / getParentBudgetNum()) * 100).toFixed(1) : 0}%)
+                                </Typography>
+                            </Paper>
+                        )}
 
                         {editingDept && editingDept.children.length > 0 && (
                             <>
@@ -720,8 +703,10 @@ export default function BudgetAllocationTab() {
                                                     <TextField
                                                         type="number"
                                                         size="small"
-                                                        value={inputMode === 'dollar' ? (editAmounts[child.id] || '0') : getPercentValue(child.id)}
+                                                        value={inputMode === 'dollar' ? (editAmounts[child.id] || '') : getPercentValue(child.id)}
                                                         onChange={(e) => handleChildAmountChange(child.id, e.target.value)}
+                                                        onFocus={(e) => e.target.select()}
+                                                        placeholder="0"
                                                         InputProps={{
                                                             startAdornment: (
                                                                 <InputAdornment position="start">
@@ -751,23 +736,6 @@ export default function BudgetAllocationTab() {
                                 </Table>
 
                                 <Divider />
-
-                                {/* Summary */}
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Typography fontWeight="bold">Total Allocated:</Typography>
-                                    <Typography fontWeight="bold" color={isOverBudget() ? 'error.main' : 'success.main'}>
-                                        {formatCurrency(getChildrenTotal())}
-                                        {' '}
-                                        ({getParentBudgetNum() > 0 ? ((getChildrenTotal() / getParentBudgetNum()) * 100).toFixed(1) : 0}%)
-                                    </Typography>
-                                </Box>
-
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Typography>Remaining Unallocated:</Typography>
-                                    <Typography color={getRemainingBudget() < 0 ? 'error.main' : 'text.secondary'}>
-                                        {formatCurrency(getRemainingBudget())}
-                                    </Typography>
-                                </Box>
 
                                 {/* Progress Bar */}
                                 <Box>
@@ -799,54 +767,6 @@ export default function BudgetAllocationTab() {
                         startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
                     >
                         Save
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
-            {/* Create Fiscal Year Dialog */}
-            <Dialog open={fyDialogOpen} onClose={() => setFyDialogOpen(false)} maxWidth="xs" fullWidth>
-                <DialogTitle>Create New Fiscal Year</DialogTitle>
-                <DialogContent>
-                    <Stack spacing={2} sx={{ mt: 1 }}>
-                        <Alert severity="info" sx={{ mb: 1 }}>
-                            Fiscal year runs from September 1 to August 31.
-                            Select the ending year to auto-populate dates.
-                        </Alert>
-
-                        <TextField
-                            label="Fiscal Year Ending"
-                            type="number"
-                            value={newFyYear}
-                            onChange={(e) => setNewFyYear(parseInt(e.target.value) || 0)}
-                            fullWidth
-                            helperText={`Will be displayed as: ${newFyYear - 1}-${newFyYear}`}
-                            inputProps={{ min: 2020, max: 2100 }}
-                        />
-
-                        <TextField
-                            label="Start Date (Sept 1)"
-                            type="date"
-                            value={newFyBegin}
-                            onChange={(e) => setNewFyBegin(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
-                            fullWidth
-                            helperText="First day of fiscal year (inclusive)"
-                        />
-                        <TextField
-                            label="End Date (Sept 1 of next year)"
-                            type="date"
-                            value={newFyEnd}
-                            onChange={(e) => setNewFyEnd(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
-                            fullWidth
-                            helperText="Day after last day of fiscal year (exclusive boundary)"
-                        />
-                    </Stack>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setFyDialogOpen(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={handleCreateFiscalYear} disabled={saving}>
-                        {saving ? <CircularProgress size={20} /> : 'Create'}
                     </Button>
                 </DialogActions>
             </Dialog>

@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import { History as HistoryIcon, Save as SaveIcon } from '@mui/icons-material';
 import { useMutation, useQuery } from 'urql';
+import { useOnlineStatus } from '../context/OnlineStatusContext';
 import EditHistoryViewer from './EditHistoryViewer';
 
 const GET_FORM_DATA = `
@@ -69,6 +70,7 @@ interface EditEntryDialogProps {
 }
 
 export default function EditEntryDialog({ open, onClose, onSuccess, entry }: EditEntryDialogProps) {
+    const { isOnline } = useOnlineStatus();
     const [formData, setFormData] = useState({
         description: '',
         date: '',
@@ -122,6 +124,11 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+
+        if (!isOnline) {
+            setError('Cannot save while offline. Please reconnect and try again.');
+            return;
+        }
 
         try {
             const amountFloat = parseFloat(formData.amount);

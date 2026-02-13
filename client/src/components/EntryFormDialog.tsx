@@ -26,6 +26,7 @@ import {
     Autocomplete,
     Fade,
 } from '@mui/material';
+import { useOnlineStatus } from '../context/OnlineStatusContext';
 import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
@@ -137,6 +138,7 @@ function formatCurrency(amount: number): string {
 }
 
 export default function EntryFormDialog({ open, onClose, onSuccess, initialEntryType, initialSelectedEntry }: EntryFormDialogProps) {
+    const { isOnline } = useOnlineStatus();
     const [entryType, setEntryType] = useState<'transaction' | 'refund'>(initialEntryType || 'transaction');
     const [searchTerm, setSearchTerm] = useState('');
     const [searchAmount, setSearchAmount] = useState('');
@@ -390,6 +392,11 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+
+        if (!isOnline) {
+            setError('Cannot save while offline. Please reconnect and try again.');
+            return;
+        }
 
         try {
             const amountFloat = parseFloat(formData.amount);

@@ -31,6 +31,7 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { format } from "date-fns";
 import { useDepartment } from "../context/DepartmentContext";
 import { useAuth } from "../context/AuthContext";
+import { useOnlineStatus } from "../context/OnlineStatusContext";
 import CloseIcon from "@mui/icons-material/Close";
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -67,7 +68,9 @@ mutation ReconcileEntries($input: ReconcileEntries!) {
 const DELETE_ENTRY_MUTATION = `
 mutation DeleteEntry($id: ID!) {
   deleteEntry(id: $id) {
-    id
+    deletedEntry {
+      id
+    }
   }
 }
 `;
@@ -283,6 +286,7 @@ export default function Transactions() {
     const [, deleteEntry] = useMutation(DELETE_ENTRY_MUTATION);
 
     const { enqueueSnackbar } = useSnackbar();
+    const { isOnline } = useOnlineStatus();
 
     // Use Custom Hook for data fetching
     const { entries, fetching, error, refresh } = useTransactions({
@@ -748,6 +752,10 @@ export default function Transactions() {
     };
 
     const handleReconcileSelected = async () => {
+        if (!isOnline) {
+            enqueueSnackbar('Cannot reconcile while offline. Please reconnect.', { variant: 'warning' });
+            return;
+        }
         if (rowSelectionModel.ids.size === 0) return;
 
         // Strip prefixes if selecting expanded rows? 
@@ -1327,6 +1335,12 @@ export default function Transactions() {
                 <Divider />
                 <MenuItem
                     onClick={async () => {
+                        if (!isOnline) {
+                            enqueueSnackbar('Cannot delete while offline. Please reconnect.', { variant: 'warning' });
+                            setActionMenuAnchor(null);
+                            setActionMenuEntry(null);
+                            return;
+                        }
                         if (actionMenuEntry && window.confirm('Are you sure you want to delete this transaction?')) {
                             const { error } = await deleteEntry({ id: actionMenuEntry.id });
                             if (error) {
@@ -1340,7 +1354,7 @@ export default function Transactions() {
                         setActionMenuEntry(null);
                     }}
                     sx={{ color: 'error.main' }}
-                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
+                    disabled={(!isOnline) || (!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id))}
                 >
                     <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
                     <ListItemText>Delete Transaction</ListItemText>

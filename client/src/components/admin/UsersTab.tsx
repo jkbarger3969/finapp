@@ -38,6 +38,7 @@ import {
     Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, gql } from 'urql';
+import { useOnlineStatus } from '../../context/OnlineStatusContext';
 import { useAuth } from '../../context/AuthContext';
 
 const USERS_QUERY = gql`
@@ -157,6 +158,7 @@ interface Department {
 
 export default function UsersTab() {
     const { isSuperAdmin, user: currentUser } = useAuth();
+    const { isOnline } = useOnlineStatus();
     const [inviteOpen, setInviteOpen] = useState(false);
     const [editUser, setEditUser] = useState<User | null>(null);
     const [editRole, setEditRole] = useState<'SUPER_ADMIN' | 'DEPT_ADMIN' | 'USER'>('USER');
@@ -204,6 +206,10 @@ export default function UsersTab() {
     const getDepartmentName = (id: string) => departments.find(d => d.id === id)?.name || id;
 
     const handleInvite = async () => {
+        if (!isOnline) {
+            setError('Cannot invite users while offline. Please reconnect.');
+            return;
+        }
         setError(null);
         setInviteLoading(true);
 
@@ -354,6 +360,10 @@ export default function UsersTab() {
     };
 
     const handleDeleteUser = async () => {
+        if (!isOnline) {
+            setError('Cannot delete users while offline. Please reconnect.');
+            return;
+        }
         if (!deleteUserToConfirm) return;
 
         const result = await deleteUser({ id: deleteUserToConfirm.id });
@@ -369,6 +379,10 @@ export default function UsersTab() {
     };
 
     const handleToggleStatus = async (user: User) => {
+        if (!isOnline) {
+            setError('Cannot update users while offline. Please reconnect.');
+            return;
+        }
         setError(null);
         const newStatus = user.status === 'DISABLED' ? 'ACTIVE' : 'DISABLED';
         const result = await updateUser({ id: user.id, input: { status: newStatus } });
@@ -380,6 +394,10 @@ export default function UsersTab() {
     };
 
     const handleGrantPermission = async () => {
+        if (!isOnline) {
+            setError('Cannot update permissions while offline. Please reconnect.');
+            return;
+        }
         if (!permissionUser || !newPermission.departmentId) return;
         setError(null);
         const result = await grantPermission({
