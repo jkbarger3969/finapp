@@ -26,6 +26,7 @@ import {
     Autocomplete,
     Fade,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { useOnlineStatus } from '../context/OnlineStatusContext';
 import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
@@ -910,7 +911,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                 }
                                 label={
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Typography variant="body2" fontWeight="bold" color="warning.main">
+                                        <Typography variant="body2" fontWeight="bold" color="warning.dark">
                                             Void Check #{selectedEntry.paymentMethod?.check?.checkNumber}
                                         </Typography>
                                         <Typography variant="caption" color="text.secondary">
@@ -918,7 +919,15 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                         </Typography>
                                     </Box>
                                 }
-                                sx={{ mb: 1, p: 1, bgcolor: 'warning.light', borderRadius: 1, opacity: 0.9 }}
+                                sx={{
+                                    mb: 2,
+                                    p: 1.5,
+                                    bgcolor: (theme) => alpha(theme.palette.warning.main, 0.1),
+                                    border: (theme) => `1px solid ${alpha(theme.palette.warning.main, 0.3)}`,
+                                    borderRadius: 1,
+                                    width: '100%',
+                                    mx: 0,
+                                }}
                             />
                         )}
 
