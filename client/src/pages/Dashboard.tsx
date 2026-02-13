@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from "urql";
 import {
     Box,
@@ -16,10 +17,12 @@ import {
     Select,
     MenuItem,
     TextField,
+    Button,
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { useDepartment } from "../context/DepartmentContext";
 import { useAuth } from "../context/AuthContext";
 import { formatCurrency, parseRational } from "../utils/currency";
@@ -86,6 +89,7 @@ interface DeptNode {
 }
 
 export default function Dashboard() {
+    const navigate = useNavigate();
     const { fiscalYearId, setFiscalYearId, fiscalYears: contextFiscalYears } = useDepartment();
     const { user, isSuperAdmin } = useAuth();
 
@@ -267,6 +271,10 @@ export default function Dashboard() {
         };
     };
 
+    const navigateToTransactions = (departmentId: string) => {
+        navigate('/transactions', { state: { departmentId } });
+    };
+
     const renderDeptCard = (dept: DeptNode) => {
         const hasChildren = dept.children.length > 0;
         const isExpanded = expandedDepts.has(dept.id);
@@ -322,6 +330,17 @@ export default function Dashboard() {
                         </Typography>
                     </Box>
 
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<ReceiptLongIcon />}
+                        onClick={() => navigateToTransactions(dept.id)}
+                        sx={{ mt: 2 }}
+                        fullWidth
+                    >
+                        View Transactions
+                    </Button>
+
                     {hasChildren && (
                         <Box sx={{ mt: 2 }}>
                             <IconButton
@@ -339,7 +358,16 @@ export default function Dashboard() {
                                         const cPercent = childSubtotals.budget > 0 ? (childSubtotals.spent / childSubtotals.budget) * 100 : 0;
 
                                         return (
-                                            <Paper key={child.id} variant="outlined" sx={{ p: 1 }}>
+                                            <Paper 
+                                                key={child.id} 
+                                                variant="outlined" 
+                                                sx={{ 
+                                                    p: 1, 
+                                                    cursor: 'pointer',
+                                                    '&:hover': { bgcolor: 'action.hover' }
+                                                }}
+                                                onClick={() => navigateToTransactions(child.id)}
+                                            >
                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                                                     <Typography variant="body2" fontWeight="medium">{child.name}</Typography>
                                                     <Typography variant="caption" fontWeight="bold" color={cPercent > 100 ? 'error.main' : 'text.primary'}>

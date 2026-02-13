@@ -19,7 +19,7 @@ import { format, parseISO } from 'date-fns';
 
 const SEARCH_DATA_QUERY = `
   query SearchData {
-    entries {
+    entries(where: { deleted: false }) {
       id
       description
       date
@@ -29,6 +29,7 @@ const SEARCH_DATA_QUERY = `
         type
       }
       department {
+        id
         name
       }
     }

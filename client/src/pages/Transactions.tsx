@@ -151,7 +151,7 @@ export default function Transactions() {
     const [searchTerm, setSearchTerm] = useState<string>('');
     const location = useLocation();
 
-    // Handle search navigation
+    // Handle navigation from Dashboard or SearchDialog
     useEffect(() => {
         if (location.state?.searchQuery) {
             setSearchTerm(location.state.searchQuery);
@@ -164,6 +164,13 @@ export default function Transactions() {
                 // (see where clause logic below)
             }
 
+            // Clear navigation state so refresh doesn't re-trigger
+            window.history.replaceState({}, document.title);
+        }
+        
+        // Handle navigation from Dashboard budget cards
+        if (location.state?.departmentId) {
+            setFilterDepartmentId(location.state.departmentId);
             // Clear navigation state so refresh doesn't re-trigger
             window.history.replaceState({}, document.title);
         }
