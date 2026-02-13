@@ -7,6 +7,7 @@ import {
     DialogContent,
     Stack,
     Tooltip,
+    Button,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -196,11 +197,30 @@ export const ReceiptViewer = ({
                                     style={{ maxWidth: "100%", maxHeight: "80vh" }}
                                 />
                             ) : (
-                                <iframe
-                                    src={previewFile.url}
-                                    title={previewFile.filename}
-                                    style={{ width: "80vw", height: "80vh", border: "none" }}
-                                />
+                                <Box sx={{ width: "80vw", height: "80vh", display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                                    <iframe
+                                        src={previewFile.url}
+                                        title={previewFile.filename}
+                                        style={{ width: "100%", height: "100%", border: "none" }}
+                                    />
+                                    <Box sx={{ position: 'absolute', bottom: 16, display: 'flex', gap: 2 }}>
+                                        <Button
+                                            variant="contained"
+                                            startIcon={<DownloadIcon />}
+                                            component="a"
+                                            href={previewFile.url}
+                                            download={previewFile.filename}
+                                        >
+                                            Download
+                                        </Button>
+                                        <Button
+                                            variant="outlined"
+                                            onClick={() => window.open(previewFile.url, '_blank')}
+                                        >
+                                            Open in New Tab
+                                        </Button>
+                                    </Box>
+                                </Box>
                             )}
                         </>
                     )}
