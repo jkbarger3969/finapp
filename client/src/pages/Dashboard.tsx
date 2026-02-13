@@ -90,7 +90,7 @@ interface DeptNode {
 
 export default function Dashboard() {
     const navigate = useNavigate();
-    const { fiscalYearId, setFiscalYearId, fiscalYears: contextFiscalYears } = useDepartment();
+    const { fiscalYearId, setFiscalYearId } = useDepartment();
     const { user, isSuperAdmin } = useAuth();
 
     const [topLevelDeptId, setTopLevelDeptId] = useState('');
