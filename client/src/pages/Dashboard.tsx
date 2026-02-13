@@ -107,20 +107,14 @@ export default function Dashboard() {
         budgetsWhere.fiscalYear = { id: { eq: fiscalYearId } };
     }
 
-    const [result, reexecuteQuery] = useQuery({
+    const [result] = useQuery({
         query: GET_BUDGET_DATA,
         variables: { entriesWhere, budgetsWhere },
         pause: !fiscalYearId,
-        requestPolicy: 'cache-and-network'
+        requestPolicy: 'cache-first'
     });
 
     const { data, fetching, error } = result;
-
-    useEffect(() => {
-        if (fiscalYearId) {
-            reexecuteQuery({ requestPolicy: 'network-only' });
-        }
-    }, [contextFiscalYears.length, fiscalYearId, reexecuteQuery]);
 
     const fiscalYears = data?.fiscalYears || [];
 
