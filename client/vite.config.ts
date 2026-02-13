@@ -12,7 +12,12 @@ export default defineConfig({
       manifest: false,
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        navigateFallbackDenylist: [/^\/receipts\//],
         runtimeCaching: [
+          {
+            urlPattern: /\/receipts\//,
+            handler: 'NetworkOnly',
+          },
           {
             urlPattern: /^https?:\/\/.*\/graphql/,
             handler: 'StaleWhileRevalidate',
