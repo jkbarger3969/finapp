@@ -184,16 +184,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
                     {/* Navigation Items */}
                     <Box sx={{ px: 2, flex: 1 }}>
                         <Typography
-                            variant="caption"
+                            variant="overline"
+                            align="center"
                             sx={{
-                                px: 2,
-                                mb: 1,
                                 display: 'block',
-                                color: 'text.primary',
-                                fontWeight: 700,
-                                letterSpacing: '0.15em',
-                                fontSize: '0.65rem',
-                                opacity: 0.8,
+                                mb: 2,
+                                mt: 1,
+                                color: 'text.secondary',
+                                fontWeight: 800,
+                                letterSpacing: '0.2em',
+                                fontSize: '0.75rem',
                                 userSelect: 'none',
                                 cursor: 'default',
                             }}
