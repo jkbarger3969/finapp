@@ -45,9 +45,12 @@ export const ReceiptManagerDialog = ({
         query: GET_ENTRY_ATTACHMENTS,
         variables: { id: entryId! },
         pause: !open || !entryId,
+        requestPolicy: 'network-only',
     });
 
     const { data, fetching, error } = result;
+
+    console.log('[ReceiptManager] open:', open, 'entryId:', entryId, 'fetching:', fetching, 'error:', error, 'data:', data);
 
     const handleRefresh = () => {
         reexecuteQuery({ requestPolicy: "network-only" });
