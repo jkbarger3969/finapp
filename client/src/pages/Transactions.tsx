@@ -316,6 +316,17 @@ export default function Transactions() {
                 e.preventDefault();
                 setSearchDialogOpen(true);
             }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+                e.preventDefault();
+                setQuickAddOpen(true);
+            }
+            if (e.key === 'Escape') {
+                setSearchDialogOpen(false);
+                setQuickAddOpen(false);
+                setEditDialogOpen(false);
+                setRefundDialogOpen(false);
+                setReceiptDialogOpen(false);
+            }
         };
 
         window.addEventListener('keydown', handleKeyDown);

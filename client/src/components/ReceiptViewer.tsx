@@ -8,6 +8,7 @@ import {
     Stack,
     Tooltip,
     Button,
+    CircularProgress,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -46,13 +47,19 @@ export const ReceiptViewer = ({
     onDeleteComplete,
 }: ReceiptViewerProps) => {
     const [previewFile, setPreviewFile] = useState<Attachment | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const [, deleteAttachment] = useMutation(DELETE_ATTACHMENT_MUTATION);
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         if (confirm("Are you sure you want to delete this receipt?")) {
-            await deleteAttachment({ id });
-            if (onDeleteComplete) onDeleteComplete();
+            setDeletingId(id);
+            try {
+                await deleteAttachment({ id });
+                if (onDeleteComplete) onDeleteComplete();
+            } finally {
+                setDeletingId(null);
+            }
         }
     };
 
@@ -141,8 +148,13 @@ export const ReceiptViewer = ({
                                         size="small"
                                         sx={{ color: "white" }}
                                         onClick={(e) => handleDelete(file.id, e)}
+                                        disabled={deletingId === file.id}
                                     >
-                                        <DeleteIcon fontSize="small" />
+                                        {deletingId === file.id ? (
+                                            <CircularProgress size={16} color="inherit" />
+                                        ) : (
+                                            <DeleteIcon fontSize="small" />
+                                        )}
                                     </IconButton>
                                 )}
                             </Box>

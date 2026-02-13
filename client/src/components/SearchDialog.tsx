@@ -16,10 +16,11 @@ import SearchIcon from '@mui/icons-material/Search';
 import { useQuery } from 'urql';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
+import { useDepartment } from '../context/DepartmentContext';
 
 const SEARCH_DATA_QUERY = `
-  query SearchData {
-    entries(where: { deleted: false }) {
+  query SearchData($where: EntriesWhere!) {
+    entries(where: $where) {
       id
       description
       date
@@ -56,7 +57,18 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const navigate = useNavigate();
     const inputRef = useRef<HTMLInputElement>(null);
-    const [result] = useQuery({ query: SEARCH_DATA_QUERY, pause: !open });
+    const { fiscalYearId } = useDepartment();
+
+    const entriesWhere = useMemo(() => ({
+        deleted: false,
+        ...(fiscalYearId ? { fiscalYear: { id: { eq: fiscalYearId } } } : {}),
+    }), [fiscalYearId]);
+
+    const [result] = useQuery({
+        query: SEARCH_DATA_QUERY,
+        variables: { where: entriesWhere },
+        pause: !open || !fiscalYearId,
+    });
 
     const { data, fetching, error } = result;
 

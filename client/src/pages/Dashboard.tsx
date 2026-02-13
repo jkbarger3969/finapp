@@ -7,7 +7,6 @@ import {
     Paper,
     Grid,
     Alert,
-    CircularProgress,
     LinearProgress,
     Chip,
     Collapse,
@@ -29,6 +28,7 @@ import { formatCurrency, parseRational } from "../utils/currency";
 import PageHeader from "../components/PageHeader";
 import EntryFormDialog from "../components/EntryFormDialog";
 import SearchDialog from "../components/SearchDialog";
+import { DashboardSkeleton } from "../components/common/DashboardSkeleton";
 
 const GET_BUDGET_DATA = `
     query GetBudgetData($entriesWhere: EntriesWhere, $budgetsWhere: BudgetsWhere) {
@@ -421,6 +421,14 @@ export default function Dashboard() {
                 e.preventDefault();
                 setSearchDialogOpen(true);
             }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+                e.preventDefault();
+                setQuickAddOpen(true);
+            }
+            if (e.key === 'Escape') {
+                setSearchDialogOpen(false);
+                setQuickAddOpen(false);
+            }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
@@ -574,13 +582,7 @@ export default function Dashboard() {
                     <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Department Budgets</Typography>
                 </Grid>
 
-                {fetching && (
-                    <Grid size={12}>
-                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                            <CircularProgress />
-                        </Box>
-                    </Grid>
-                )}
+                {fetching && <DashboardSkeleton />}
 
                 {error && (
                     <Grid size={12}>

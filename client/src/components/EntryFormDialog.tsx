@@ -167,6 +167,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
         newPersonFirst: '',
         newPersonLast: '',
         newBusinessName: '',
+        isVoidCheck: false,
     });
 
     // Sync with initial props when dialog opens
@@ -371,6 +372,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
             newPersonFirst: '',
             newPersonLast: '',
             newBusinessName: '',
+            isVoidCheck: false,
         }));
         setEntryType('transaction');
         setSelectedEntry(null);
@@ -877,6 +879,49 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                             </>
                         )}
 
+                        {entryType === 'refund' && selectedEntry?.paymentMethod?.__typename === 'PaymentMethodCheck' && (
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={formData.isVoidCheck}
+                                        onChange={(e) => {
+                                            const isVoid = e.target.checked;
+                                            if (isVoid) {
+                                                const remainingAmount = calculateRemainingRefund(selectedEntry);
+                                                const originalCheckNumber = selectedEntry.paymentMethod?.check?.checkNumber || '';
+                                                setFormData({
+                                                    ...formData,
+                                                    isVoidCheck: true,
+                                                    amount: remainingAmount.toFixed(2),
+                                                    paymentType: 'CHECK',
+                                                    checkNumber: `VOID-${originalCheckNumber}`,
+                                                    description: formData.description || `Void Check #${originalCheckNumber}`,
+                                                });
+                                            } else {
+                                                setFormData({
+                                                    ...formData,
+                                                    isVoidCheck: false,
+                                                    checkNumber: '',
+                                                    paymentType: 'CASH',
+                                                });
+                                            }
+                                        }}
+                                    />
+                                }
+                                label={
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Typography variant="body2" fontWeight="bold" color="warning.main">
+                                            Void Check #{selectedEntry.paymentMethod?.check?.checkNumber}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            (Full refund for voided check)
+                                        </Typography>
+                                    </Box>
+                                }
+                                sx={{ mb: 1, p: 1, bgcolor: 'warning.light', borderRadius: 1, opacity: 0.9 }}
+                            />
+                        )}
+
                         <TextField
                             label={entryType === 'refund' ? 'Refund Amount' : 'Amount'}
                             type="number"
@@ -884,13 +929,16 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                             onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                             required
                             fullWidth
+                            disabled={formData.isVoidCheck}
                             inputProps={{ step: '0.01', min: '0.01' }}
                             InputProps={{
                                 startAdornment: <InputAdornment position="start">$</InputAdornment>,
                             }}
                             helperText={
                                 entryType === 'refund' && selectedEntry
-                                    ? `Max refund: ${formatCurrency(calculateRemainingRefund(selectedEntry))}`
+                                    ? formData.isVoidCheck
+                                        ? 'Full amount for voided check'
+                                        : `Max refund: ${formatCurrency(calculateRemainingRefund(selectedEntry))}`
                                     : entryType === 'transaction'
                                         ? "Enter amount (category type determines if income or expense)"
                                         : undefined
@@ -904,6 +952,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                     value={formData.paymentType}
                                     label="Payment Method"
                                     onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}
+                                    disabled={formData.isVoidCheck}
                                 >
                                     <MenuItem value="CASH">Cash</MenuItem>
                                     <MenuItem value="CHECK">Check</MenuItem>
@@ -919,6 +968,8 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                     onChange={(e) => setFormData({ ...formData, checkNumber: e.target.value })}
                                     required
                                     fullWidth
+                                    disabled={formData.isVoidCheck}
+                                    helperText={formData.isVoidCheck ? 'Auto-filled for void' : ''}
                                 />
                             )}
                         </Box>
