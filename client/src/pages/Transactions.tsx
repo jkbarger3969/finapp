@@ -177,26 +177,6 @@ export default function Transactions() {
         }
     }, [location.state]);
 
-    // Process pending department ID once departments are loaded
-    useEffect(() => {
-        if (!pendingDepartmentId || !departments || departments.length === 0) return;
-
-        const dept = departments.find((d: any) => d.id === pendingDepartmentId);
-        if (!dept) return;
-
-        if (dept.parent?.__typename === 'Department') {
-            // It's a subdepartment
-            setTopLevelDeptId(dept.parent.id);
-            setSubDeptId(dept.id);
-        } else {
-            // It's a top-level department
-            setTopLevelDeptId(dept.id);
-            setSubDeptId(null);
-        }
-
-        setPendingDepartmentId(null);
-    }, [pendingDepartmentId, departments]);
-
     // Expandable refunds state
     const [expandedRefunds, setExpandedRefunds] = useState<Set<string>>(new Set());
     const [sortModel, setSortModel] = useState<any>([{ field: "date", sort: "desc" }]);
@@ -273,6 +253,26 @@ export default function Transactions() {
     const subDepartments = useMemo(() => {
         return topLevelDeptId ? allChildDepartments.filter((d: any) => d.parent?.id === topLevelDeptId) : [];
     }, [topLevelDeptId, allChildDepartments]);
+
+    // Process pending department ID from Dashboard navigation
+    useEffect(() => {
+        if (!pendingDepartmentId || !departments || departments.length === 0) return;
+
+        const dept = departments.find((d: any) => d.id === pendingDepartmentId);
+        if (!dept) return;
+
+        if (dept.parent?.__typename === 'Department') {
+            // It's a subdepartment
+            setTopLevelDeptId(dept.parent.id);
+            setSubDeptId(dept.id);
+        } else {
+            // It's a top-level department
+            setTopLevelDeptId(dept.id);
+            setSubDeptId('');
+        }
+
+        setPendingDepartmentId(null);
+    }, [pendingDepartmentId, departments]);
 
     // Derived filterDepartmentId
     useEffect(() => {
