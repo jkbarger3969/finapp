@@ -2,8 +2,8 @@ import { useQuery } from 'urql';
 import { useMemo, useState, useEffect, useRef } from 'react';
 
 const GET_ENTRIES_BY_DEPARTMENT = `
-  query GetEntriesByDepartment($where: EntriesWhere!) {
-    entries(where: $where) {
+  query GetEntriesByDepartment($where: EntriesWhere!, $limit: Int, $offset: Int) {
+    entries(where: $where, limit: $limit, offset: $offset) {
       id
       description
       date
@@ -75,6 +75,7 @@ const GET_ENTRIES_BY_DEPARTMENT = `
         }
       }
     }
+    entriesCount(where: $where)
   }
 `;
 
@@ -88,6 +89,9 @@ interface UseTransactionsProps {
   categoryId?: string;
   personId?: string;
   businessId?: string;
+  paginationModel: { page: number; pageSize: number };
+  paymentMethodType?: string;
+  searchTerm?: string;
 }
 
 export function useTransactions({
@@ -100,6 +104,9 @@ export function useTransactions({
   categoryId,
   personId,
   businessId,
+  paginationModel,
+  paymentMethodType = 'ALL',
+  searchTerm = '',
 }: UseTransactionsProps) {
 
   // Debounce filter changes to reduce API calls
@@ -113,6 +120,8 @@ export function useTransactions({
     categoryId,
     personId,
     businessId,
+    paymentMethodType,
+    searchTerm,
   });
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -135,6 +144,8 @@ export function useTransactions({
         categoryId,
         personId,
         businessId,
+        paymentMethodType,
+        searchTerm,
       });
     }, 150);
 
@@ -143,7 +154,7 @@ export function useTransactions({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [departmentId, fiscalYearId, reconcileFilter, startDate, endDate, entryType, categoryId, personId, businessId]);
+  }, [departmentId, fiscalYearId, reconcileFilter, startDate, endDate, entryType, categoryId, personId, businessId, paymentMethodType, searchTerm]);
 
   // Build GraphQL where clause from debounced filters
   const where = useMemo(() => {
@@ -194,12 +205,39 @@ export function useTransactions({
       baseWhere.source = { businesses: { id: { eq: debouncedFilters.businessId } } };
     }
 
+    if (debouncedFilters.paymentMethodType && debouncedFilters.paymentMethodType !== 'ALL') {
+      baseWhere.paymentMethodType = debouncedFilters.paymentMethodType;
+    }
+
+    if (debouncedFilters.searchTerm) {
+      const term = debouncedFilters.searchTerm;
+      // Using regex for case-insensitive partial match
+      const regex = { pattern: term, flags: ["I"] };
+
+      const searchFilter = {
+        or: [
+          { description: regex },
+          { category: { name: regex } },
+          { department: { name: regex } }
+        ]
+      };
+
+      if (!baseWhere.and) {
+        baseWhere.and = [];
+      }
+      baseWhere.and.push(searchFilter);
+    }
+
     return baseWhere;
   }, [debouncedFilters]);
 
   const [result, reexecuteQuery] = useQuery({
     query: GET_ENTRIES_BY_DEPARTMENT,
-    variables: { where },
+    variables: {
+      where,
+      limit: paginationModel.pageSize,
+      offset: paginationModel.page * paginationModel.pageSize
+    },
     pause: !debouncedFilters.fiscalYearId,
     requestPolicy: 'cache-and-network',
   });
@@ -210,6 +248,7 @@ export function useTransactions({
 
   return {
     entries: result.data?.entries || [],
+    totalCount: result.data?.entriesCount || 0,
     fetching: result.fetching,
     error: result.error,
     refresh,

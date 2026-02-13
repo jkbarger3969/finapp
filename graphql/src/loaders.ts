@@ -14,6 +14,7 @@ export interface Loaders {
     fiscalYear: DataLoader<string, FiscalYearDbRecord | null>;
     business: DataLoader<string, BusinessDbRecord | null>;
     person: DataLoader<string, PersonDbRecord | null>;
+    allFiscalYears: DataLoader<string, FiscalYearDbRecord[]>;
 }
 
 export const createLoaders = (db: Db): Loaders => {
@@ -66,6 +67,14 @@ export const createLoaders = (db: Db): Loaders => {
                 .toArray();
             const map = new Map(results.map((r) => [r._id.toString(), r]));
             return ids.map((id) => map.get(id) || null);
+        }),
+        allFiscalYears: new DataLoader(async (keys) => {
+            const years = await db
+                .collection<FiscalYearDbRecord>("fiscalYears")
+                .find({})
+                .sort({ begin: 1 })
+                .toArray();
+            return keys.map(() => years);
         }),
     };
 };

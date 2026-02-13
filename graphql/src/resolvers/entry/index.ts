@@ -1,7 +1,7 @@
 export { entry } from "./entry";
 export { entryRefunds } from "./entryRefunds";
 export { entryRefund } from "./entryRefund";
-export { entries, whereEntries } from "./entries";
+export { entries, whereEntries, searchEntries, entriesCount } from "./entries";
 export { Entry, EntryItem, EntryRefund } from "./entryResolvers";
 export { addNewEntry } from "./addNewEntry";
 export { addNewEntryRefund } from "./addNewEntryRefund";

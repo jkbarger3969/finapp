@@ -702,6 +702,13 @@ export const whereEntries = (
       case "description":
         filterQuery["description.0.value"] = whereRegex(entriesWhere[whereKey]);
         break;
+      case "paymentMethodType":
+        // Maps "Card", "Check" etc to "PaymentMethodCard" etc as stored in DB
+        const type = entriesWhere[whereKey];
+        if (type) {
+          filterQuery["paymentMethod.type"] = `PaymentMethod${type}`;
+        }
+        break;
       case "total":
         if (!("$and" in filterQuery)) {
           filterQuery.$and = [];
@@ -935,7 +942,7 @@ export const whereEntries = (
 
 export const entries: QueryResolvers["entries"] = async (
   _,
-  { where, filterRefunds },
+  { where, filterRefunds, limit = 50, offset = 0 },
   context
 ) => {
   const { dataSources: { accountingDb }, authService, user } = context as Context;
@@ -1016,6 +1023,22 @@ export const entries: QueryResolvers["entries"] = async (
     }
   }
 
+  if (where) {
+    // Determine sort order based on input (default to date desc)
+    // Note: If 'where' contains date range, we might want to ensure sort matches index
+  }
+
+  // Always sort by date desc for consistent pagination
+  pipeline.push({ $sort: { "date.0.value": -1 } });
+
+  if (offset > 0) {
+    pipeline.push({ $skip: offset });
+  }
+
+  // Safe limit
+  const safeLimit = Math.min(Math.max(limit, 1), 1000);
+  pipeline.push({ $limit: safeLimit });
+
   return accountingDb
     .getCollection("entries")
     .aggregate<EntryDbRecord>(pipeline)
@@ -1041,3 +1064,170 @@ async function getDescendantDeptIds(parentId: ObjectId, db: Db): Promise<ObjectI
 
   return descendants;
 }
+
+export const searchEntries: QueryResolvers["searchEntries"] = async (
+  _,
+  { query, limit = 50 },
+  context
+) => {
+  const { dataSources: { accountingDb }, authService, user } = context as Context;
+  const db = accountingDb.db;
+
+  if (!query || query.trim().length === 0) {
+    return [];
+  }
+
+  const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), "i"); // Safe, Case-insensitive
+
+  // 1. Find matching Departments and Categories first
+  const [matchingDepts, matchingCats] = await Promise.all([
+    db.collection("departments").find({ name: regex }, { projection: { _id: 1 } }).toArray(),
+    db.collection("categories").find({ name: regex }, { projection: { _id: 1 } }).toArray(),
+  ]);
+
+  const deptIds = matchingDepts.map(d => d._id);
+  const catIds = matchingCats.map(c => c._id);
+
+  // 2. Build Base Query
+  const searchFilter: any = {
+    $or: [
+      { "description.0.value": regex },
+      ...(deptIds.length > 0 ? [{ "department.0.value": { $in: deptIds } }] : []),
+      ...(catIds.length > 0 ? [{ "category.0.value": { $in: catIds } }] : []),
+      // Attempt to match amount if query looks like a number?
+      // For now, keep it text-based as per plan.
+    ],
+    // Ensure deleted entries are excluded
+    "deleted.0.value": false,
+  };
+
+  // 3. Apply Permissions (same as 'entries' resolver)
+  const pipeline: any[] = [];
+
+  if (authService && user?.id) {
+    const authUser = await authService.getUserById(user.id);
+    if (authUser && authUser.role !== "SUPER_ADMIN") {
+      const accessibleDeptIds = await authService.getAccessibleDepartmentIds(user.id);
+      if (accessibleDeptIds.length === 0) return [];
+
+      const allAccessibleIds = new Set<string>();
+      for (const deptId of accessibleDeptIds) {
+        allAccessibleIds.add(deptId.toString());
+        const descendants = await getDescendantDeptIds(deptId, db);
+        descendants.forEach((id) => allAccessibleIds.add(id.toString()));
+      }
+      const permittedDeptIds = Array.from(allAccessibleIds).map((id) => new ObjectId(id));
+
+      pipeline.push({
+        $match: { "department.0.value": { $in: permittedDeptIds } }
+      });
+    }
+  }
+
+  pipeline.push({ $match: searchFilter });
+
+  // Sort by date desc (most recent first)
+  pipeline.push({ $sort: { "date.0.value": -1 } });
+  pipeline.push({ $limit: limit });
+
+  return accountingDb.getCollection("entries").aggregate<EntryDbRecord>(pipeline).toArray();
+};
+
+export const entriesCount: QueryResolvers["entriesCount"] = async (
+  _,
+  { where, filterRefunds },
+  context
+) => {
+  const { dataSources: { accountingDb }, authService, user } = context as Context;
+  const db = accountingDb.db;
+
+  // Reuse the logic from entries resolver for permissions and where clause
+  // We'll simplisticly assume count follows same rules but without complex pipeline if possible
+  // However, entries resolver uses aggregation for some things (like refund filtering).
+  // For basic count, filterRefunds might be complex.
+  // Standard 'entries' pipeline returns documents.
+  // We can convert the pipeline to a count aggregation.
+
+  const pipeline: any[] = [];
+
+  if (authService && user?.id) {
+    const authUser = await authService.getUserById(user.id);
+
+    if (authUser && authUser.role !== "SUPER_ADMIN") {
+      const accessibleDeptIds = await authService.getAccessibleDepartmentIds(user.id);
+
+      if (accessibleDeptIds.length === 0) {
+        return 0;
+      }
+
+      const allAccessibleIds = new Set<string>();
+      for (const deptId of accessibleDeptIds) {
+        allAccessibleIds.add(deptId.toString());
+
+        const descendants = await getDescendantDeptIds(deptId, accountingDb.db);
+        descendants.forEach((id) => allAccessibleIds.add(id.toString()));
+      }
+
+      const permittedDeptIds = Array.from(allAccessibleIds).map((id) => new ObjectId(id));
+
+      pipeline.push({
+        $match: {
+          "department.0.value": { $in: permittedDeptIds },
+        },
+      });
+    }
+  }
+
+  if (where) {
+    pipeline.push({
+      $match: await whereEntries(where, accountingDb.db),
+    });
+
+    if (filterRefunds) {
+      // Only if filtering *by* refunds or excluding them?
+      // Logic copied from entries resolver lines 978+
+      const matchRefunds = await whereEntries(where, accountingDb.db, {
+        excludeWhereRefunds: true,
+      });
+
+      pipeline.push(
+        {
+          $facet: {
+            all: [
+              {
+                $project: { refunds: false },
+              },
+            ],
+            refunds: [
+              { $unwind: "$refunds" },
+              {
+                $replaceRoot: {
+                  newRoot: { $mergeObjects: ["$$CURRENT", "$refunds"] },
+                },
+              },
+              {
+                $match: matchRefunds,
+              },
+              {
+                $group: { _id: "$_id", refunds: { $push: "$refunds" } },
+              },
+            ],
+          },
+        },
+        {
+          $project: {
+            all: { $concatArrays: ["$all", "$refunds"] },
+          },
+        },
+        { $unwind: "$all" },
+        { $group: { _id: "$all._id", docs: { $push: "$all" } } },
+        { $replaceRoot: { newRoot: { $mergeObjects: "$docs" } } }
+      );
+    }
+  }
+
+  pipeline.push({ $count: "count" });
+
+  const result = await accountingDb.getCollection("entries").aggregate(pipeline).toArray();
+  return result.length > 0 ? result[0].count : 0;
+};

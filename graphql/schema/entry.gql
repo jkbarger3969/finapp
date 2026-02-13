@@ -238,6 +238,11 @@ type Query {
     entriesWhere: EntriesWhere
   ): [EntryRefund!]!
   entryItem(id: ID!): EntryItem
+  """
+  Search entries by description, category, department, or amount.
+  """
+  searchEntries(query: String!, limit: Int = 50): [Entry!]!
+  entriesCount(where: EntriesWhere, filterRefunds: Boolean): Int!
 }
 
 type AddNewEntryPayload {

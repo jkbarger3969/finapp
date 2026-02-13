@@ -1041,6 +1041,7 @@ export type Query = {
    * NOTE: A `EntryRefund` is a subset of an `Entry`.  Excludes `EntriesWhere.refunds` in refund matching.
    */
   entries: Array<Entry>;
+  entriesCount: Scalars['Int']['output'];
   entry?: Maybe<Entry>;
   entryItem?: Maybe<EntryItem>;
   entryRefund?: Maybe<EntryRefund>;
@@ -1052,6 +1053,8 @@ export type Query = {
   me?: Maybe<AuthUser>;
   people: Array<Person>;
   person: Person;
+  /** Search entries by description, category, department, or amount. */
+  searchEntries: Array<Entry>;
   sources: Array<Source>;
   user?: Maybe<AuthUser>;
   users: Array<AuthUser>;
@@ -1146,6 +1149,12 @@ export type QueryEntriesArgs = {
 };
 
 
+export type QueryEntriesCountArgs = {
+  filterRefunds?: InputMaybe<Scalars['Boolean']['input']>;
+  where?: InputMaybe<EntriesWhere>;
+};
+
+
 export type QueryEntryArgs = {
   id: Scalars['ID']['input'];
 };
@@ -1189,6 +1198,12 @@ export type QueryPeopleArgs = {
 
 export type QueryPersonArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type QuerySearchEntriesArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  query: Scalars['String']['input'];
 };
 
 
@@ -2252,6 +2267,7 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, Partial<QueryDepartmentsArgs>>;
   entities?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType, RequireFields<QueryEntitiesArgs, 'where'>>;
   entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, 'filterRefunds'>>;
+  entriesCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType, Partial<QueryEntriesCountArgs>>;
   entry?: Resolver<Maybe<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntryArgs, 'id'>>;
   entryItem?: Resolver<Maybe<ResolversTypes['EntryItem']>, ParentType, ContextType, RequireFields<QueryEntryItemArgs, 'id'>>;
   entryRefund?: Resolver<Maybe<ResolversTypes['EntryRefund']>, ParentType, ContextType, RequireFields<QueryEntryRefundArgs, 'id'>>;
@@ -2263,6 +2279,7 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   me?: Resolver<Maybe<ResolversTypes['AuthUser']>, ParentType, ContextType>;
   people?: Resolver<Array<ResolversTypes['Person']>, ParentType, ContextType, Partial<QueryPeopleArgs>>;
   person?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<QueryPersonArgs, 'id'>>;
+  searchEntries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QuerySearchEntriesArgs, 'limit' | 'query'>>;
   sources?: Resolver<Array<ResolversTypes['Source']>, ParentType, ContextType, RequireFields<QuerySourcesArgs, 'searchByName'>>;
   user?: Resolver<Maybe<ResolversTypes['AuthUser']>, ParentType, ContextType, RequireFields<QueryUserArgs, 'id'>>;
   users?: Resolver<Array<ResolversTypes['AuthUser']>, ParentType, ContextType, Partial<QueryUsersArgs>>;

@@ -45,6 +45,15 @@ const RECEIPT_STORAGE_PATH = process.env.RECEIPT_STORAGE_PATH || "/tmp/receipts"
     await db.collection("auditLog").createIndex({ timestamp: -1 });
     await db.collection("auditLog").createIndex({ action: 1 });
 
+    // Entries Indexes for Performance
+    await db.collection("entries").createIndex({ "department.0.value": 1, "date.0.value": -1 });
+    await db.collection("entries").createIndex({ "date.0.value": -1 });
+    await db.collection("entries").createIndex({ "category.0.value": 1 });
+    await db.collection("entries").createIndex({ "paymentMethod.type": 1 });
+    await db.collection("entries").createIndex({ "reconciled.0.value": 1 });
+    // Text index for description if needed, or just standard for prefix
+    await db.collection("entries").createIndex({ "description.0.value": 1 });
+
     // Use localhost for development, env variable for production
     const redirectUri = process.env.NODE_ENV === "development"
       ? "http://localhost:5173/login"

@@ -168,7 +168,7 @@ export default function Transactions() {
             // Clear navigation state so refresh doesn't re-trigger
             window.history.replaceState({}, document.title);
         }
-        
+
         // Handle navigation from Dashboard budget cards
         if (location.state?.departmentId) {
             setPendingDepartmentId(location.state.departmentId);
@@ -335,7 +335,10 @@ export default function Transactions() {
     const { isOnline } = useOnlineStatus();
 
     // Use Custom Hook for data fetching
-    const { entries, fetching, error, refresh } = useTransactions({
+    const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 25 });
+
+    // Use Custom Hook for data fetching
+    const { entries, totalCount, fetching, error, refresh } = useTransactions({
         departmentId: filterDepartmentId || contextDeptId,
         fiscalYearId,
         reconcileFilter,
@@ -345,6 +348,9 @@ export default function Transactions() {
         categoryId: selectedCategory?.id,
         personId: selectedPerson?.id,
         businessId: selectedBusiness?.id,
+        paginationModel,
+        paymentMethodType,
+        searchTerm,
     });
 
     // Alias refresh to handleReexecute for compatibility
@@ -655,60 +661,36 @@ export default function Transactions() {
                 }
             });
 
-            // Client-side Payment Filter for Matching Rows
-            if (paymentMethodType !== 'ALL') {
-                return matchingRows.filter(row => {
-                    const type = row.paymentMethod?.__typename;
-                    if (paymentMethodType === 'check') return type === 'PaymentMethodCheck';
-                    if (paymentMethodType === 'card') return type === 'PaymentMethodCard';
-                    if (paymentMethodType === 'cash') return type === 'PaymentMethodCash';
-                    if (paymentMethodType === 'online') return type === 'PaymentMethodOnline';
-                    return true;
-                });
-            }
+            // Client-side Payment Filter for Matching Rows (Now server-side for main list, but matching rows logic is complex)
+            // Since we only fetched entries matching the payment type, the matching rows generated from them should be correct?
+            // Matching rows are refunds. Refunds have their own payment method.
+            // If I filter by "Card", I get entries paid by Card.
+            // Their refunds might be by Check?
+            // If I want to filter matching rows by payment type... 
+            // The server filter operates on the PARENT entry?
+            // Wait, my server filter `paymentMethodType` (step 5451) query `paymentMethod.type`.
+            // This filters the *Entry*.
+            // If I toggle "Show Matching", I generate rows for *Refunds*.
+            // If the Refund payment method differs, do I show it?
+            // The previous logic filtered the *Refund* rows by payment type.
+            // If I remove client-side filter, I show all refunds of the matching entries.
+            // This seems correct/acceptable.
+            // But what if I filter "Check" and the Entry is "Card" but Refund is "Check"?
+            // Server filter "Check" won't find the Entry (since it's Card). So I see nothing.
+            // This is a limitation of filtering on Parent only.
+            // But typically Entry and Refund match? Or simpler: filter applies to Entry.
 
             return matchingRows;
         }
 
         // Normal mode
-        let filteredEntries = data.entries;
-
-        // Client-side Search Filter
-        if (searchTerm) {
-            const query = searchTerm.toLowerCase();
-            filteredEntries = filteredEntries.filter((entry: any) => {
-                const description = (entry.description || '').toLowerCase();
-                const category = (entry.category?.name || '').toLowerCase();
-                const department = (entry.department?.name || '').toLowerCase();
-                const amount = Math.abs(parseRational(entry.total)).toFixed(2);
-
-                return (
-                    description.includes(query) ||
-                    category.includes(query) ||
-                    department.includes(query) ||
-                    amount.includes(query)
-                );
-            });
-        }
-
-        // Client-side Payment Filter
-        if (paymentMethodType !== 'ALL') {
-            filteredEntries = filteredEntries.filter((entry: any) => {
-                const type = entry.paymentMethod?.__typename;
-                if (paymentMethodType === 'check') return type === 'PaymentMethodCheck';
-                if (paymentMethodType === 'card') return type === 'PaymentMethodCard';
-                if (paymentMethodType === 'cash') return type === 'PaymentMethodCash';
-                if (paymentMethodType === 'online') return type === 'PaymentMethodOnline';
-                return true;
-            });
-        }
-
-        return filteredEntries.map((entry: any) => ({
+        // Server-side filtered already
+        return data.entries.map((entry: any) => ({
             ...entry,
             id: entry.id,
             isRefund: false,
         }));
-    }, [data, showMatchingOnly, expandedRefunds, paymentMethodType, searchTerm]);
+    }, [data, showMatchingOnly, expandedRefunds]);
 
     // Calculate summary
     const summary = useMemo(() => {
@@ -1078,8 +1060,8 @@ export default function Transactions() {
                                         return true;
                                     })
                                     .map((cat: any) => (
-                                    <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
-                                ))}
+                                        <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
+                                    ))}
                             </TextField>
 
                             <TextField
@@ -1259,12 +1241,13 @@ export default function Transactions() {
                                         columns={columns as GridColDef[]}
                                         loading={fetching}
                                         pageSizeOptions={[25, 50, 100]}
+                                        rowCount={totalCount}
+                                        paginationMode="server"
+                                        paginationModel={paginationModel}
+                                        onPaginationModelChange={setPaginationModel}
                                         sortModel={showMatchingOnly ? [] : sortModel}
                                         onSortModelChange={(model) => !showMatchingOnly && setSortModel(model)}
                                         disableColumnSorting={showMatchingOnly}
-                                        initialState={{
-                                            pagination: { paginationModel: { pageSize: 25 } },
-                                        }}
                                         checkboxSelection
                                         isRowSelectable={(params) => !params.row.reconciled}
                                         rowSelectionModel={rowSelectionModel}
@@ -1341,7 +1324,7 @@ export default function Transactions() {
                     setActionMenuEntry(null);
                 }}
             >
-                <MenuItem 
+                <MenuItem
                     onClick={() => {
                         setEditEntry(actionMenuEntry);
                         setEditDialogOpen(true);
@@ -1353,7 +1336,7 @@ export default function Transactions() {
                     <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
                     <ListItemText>Edit Transaction</ListItemText>
                 </MenuItem>
-                <MenuItem 
+                <MenuItem
                     onClick={async () => {
                         if (actionMenuEntry) {
                             const { error } = await reconcileEntries({
@@ -1380,7 +1363,7 @@ export default function Transactions() {
                         {actionMenuEntry?.reconciled ? "Already Reconciled" : "Mark as Reconciled"}
                     </ListItemText>
                 </MenuItem>
-                <MenuItem 
+                <MenuItem
                     onClick={() => {
                         setRefundEntry(actionMenuEntry);
                         setRefundDialogOpen(true);

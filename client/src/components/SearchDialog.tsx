@@ -16,11 +16,12 @@ import SearchIcon from '@mui/icons-material/Search';
 import { useQuery } from 'urql';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
-import { useDepartment } from '../context/DepartmentContext';
+// import { useDepartment } from '../context/DepartmentContext'; // Unused
+
 
 const SEARCH_DATA_QUERY = `
-  query SearchData($where: EntriesWhere!) {
-    entries(where: $where) {
+  query SearchEntries($query: String!, $limit: Int) {
+    searchEntries(query: $query, limit: $limit) {
       id
       description
       date
@@ -54,20 +55,23 @@ interface SearchDialogProps {
 
 export default function SearchDialog({ open, onClose }: SearchDialogProps) {
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedQuery, setDebouncedQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const navigate = useNavigate();
     const inputRef = useRef<HTMLInputElement>(null);
-    const { fiscalYearId } = useDepartment();
 
-    const entriesWhere = useMemo(() => ({
-        deleted: false,
-        ...(fiscalYearId ? { fiscalYear: { id: { eq: fiscalYearId } } } : {}),
-    }), [fiscalYearId]);
+    // Debounce search query
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedQuery(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     const [result] = useQuery({
         query: SEARCH_DATA_QUERY,
-        variables: { where: entriesWhere },
-        pause: !open || !fiscalYearId,
+        variables: { query: debouncedQuery, limit: 10 },
+        pause: !open || !debouncedQuery.trim(),
     });
 
     const { data, fetching, error } = result;
@@ -83,27 +87,10 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
         }
     }, [open]);
 
-    // Filter and search entries
+    // Use server results directly
     const searchResults = useMemo(() => {
-        if (!data?.entries || !searchQuery.trim()) return [];
-
-        const query = searchQuery.toLowerCase();
-        return data.entries
-            .filter((entry: any) => {
-                const description = (entry.description || '').toLowerCase();
-                const category = (entry.category?.name || '').toLowerCase();
-                const department = (entry.department?.name || '').toLowerCase();
-                const amount = Math.abs(parseRational(entry.total)).toFixed(2);
-
-                return (
-                    description.includes(query) ||
-                    category.includes(query) ||
-                    department.includes(query) ||
-                    amount.includes(query)
-                );
-            })
-            .slice(0, 10); // Limit to 10 results
-    }, [data, searchQuery]);
+        return data?.searchEntries || [];
+    }, [data]);
 
     // Reset selected index when results change
     useEffect(() => {

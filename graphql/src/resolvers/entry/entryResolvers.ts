@@ -30,30 +30,17 @@ export const EntryRefund: EntryRefundResolvers = {
       }
       : null,
 
-  fiscalYear: (
+  fiscalYear: async (
     { date, dateOfRecord },
     _,
-    { dataSources: { accountingDb } }
+    { loaders }
   ) => {
-    // NOTE: Fiscal Year lookup by Date Range cannot be easily Datloaded without a complex key.
-    // Keeping this one usage of accountingDb.findOne is acceptable as it's typically one per entry,
-    // and Fiscal Years are few. However, caching could be added if needed.
-    // For now, let's leave valid Date-based lookup as is, since DataLoader is ID-based.
     const value = dateOfRecord?.overrideFiscalYear[0].value
       ? dateOfRecord.date[0].value
       : date[0].value;
 
-    return accountingDb.findOne({
-      collection: "fiscalYears",
-      filter: {
-        begin: {
-          $lte: value,
-        },
-        end: {
-          $gt: value,
-        },
-      },
-    });
+    const years = await loaders.allFiscalYears.load("ALL");
+    return years.find(fy => value >= fy.begin && value < fy.end) || null;
   },
   deleted: ({ deleted }) => deleted[0].value,
   description: ({ description }) => (description ? description[0].value : null),
@@ -88,26 +75,17 @@ export const Entry: EntryResolvers = {
     loaders.department.load(department[0].value.toString()),
   description: ({ description }) =>
     description ? description[0]?.value || null : null,
-  fiscalYear: (
+  fiscalYear: async (
     { date, dateOfRecord },
     _,
-    { dataSources: { accountingDb } }
+    { loaders }
   ) => {
     const value = dateOfRecord?.overrideFiscalYear[0].value
       ? dateOfRecord.date[0].value
       : date[0].value;
 
-    return accountingDb.findOne({
-      collection: "fiscalYears",
-      filter: {
-        begin: {
-          $lte: value,
-        },
-        end: {
-          $gt: value,
-        },
-      },
-    });
+    const years = await loaders.allFiscalYears.load("ALL");
+    return years.find(fy => value >= fy.begin && value < fy.end) || null;
   },
   items: ({ items }) => items ?? ([] as any),
   // lastUpdate: Default works
@@ -119,7 +97,7 @@ export const Entry: EntryResolvers = {
       console.error(`Entry ${_id} has no source`);
       return { __typename: 'Business', id: 'unknown', name: 'Unknown Source' } as any;
     }
-    
+
     const { type, id } = source[0].value;
 
     let result: any = null;
@@ -137,7 +115,7 @@ export const Entry: EntryResolvers = {
         if (result) return addTypename(type, result);
         break;
     }
-    
+
     console.error(`Entry source ${type}:${id} not found for entry ${_id}`);
     return { __typename: 'Business', id: id.toString(), name: `Unknown ${type}` } as any;
   },
