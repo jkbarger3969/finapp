@@ -190,7 +190,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                                 display: 'block',
                                 mb: 2,
                                 mt: 1,
-                                color: 'text.secondary',
+                                color: 'text.primary',
                                 fontWeight: 800,
                                 letterSpacing: '0.2em',
                                 fontSize: '0.75rem',
