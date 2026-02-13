@@ -256,10 +256,15 @@ export default function Transactions() {
 
     // Process pending department ID from Dashboard navigation
     useEffect(() => {
-        if (!pendingDepartmentId || !departments || departments.length === 0) return;
+        if (!pendingDepartmentId || !departmentsRaw || departmentsRaw.length === 0) return;
 
-        const dept = departments.find((d: any) => d.id === pendingDepartmentId);
-        if (!dept) return;
+        const dept = departmentsRaw.find((d: any) => d.id === pendingDepartmentId);
+        if (!dept) {
+            console.log('[Transactions] Department not found:', pendingDepartmentId);
+            return;
+        }
+
+        console.log('[Transactions] Setting department filter:', dept.name, 'parent:', dept.parent?.name);
 
         if (dept.parent?.__typename === 'Department') {
             // It's a subdepartment
@@ -272,7 +277,7 @@ export default function Transactions() {
         }
 
         setPendingDepartmentId(null);
-    }, [pendingDepartmentId, departments]);
+    }, [pendingDepartmentId, departmentsRaw]);
 
     // Derived filterDepartmentId
     useEffect(() => {
