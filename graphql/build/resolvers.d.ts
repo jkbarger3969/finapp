@@ -178,6 +178,13 @@ declare const resolvers: {
         entryRefunds?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryRefundDbRecord>[], Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, Partial<import("./graphTypes").QueryEntryRefundsArgs>>;
+        exportFiscalYear?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "fiscalYear" | "budgets" | "entries"> & {
+            budgets: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").BudgetDbRecord>[];
+            entries: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>[];
+            fiscalYear: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").FiscalYearDbRecord>;
+        }>, Record<PropertyKey, never>, {
+            dataSources: import("./types").DataSources;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QueryExportFiscalYearArgs, "id">>;
         fiscalYear?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").FiscalYearDbRecord>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QueryFiscalYearArgs, "id">>;
@@ -269,6 +276,11 @@ declare const resolvers: {
         }>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationAddNewPersonArgs, "input">>;
+        archiveFiscalYear?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").ArchiveFiscalYearPayload, "fiscalYear"> & {
+            fiscalYear: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").FiscalYearDbRecord>;
+        }>, Record<PropertyKey, never>, {
+            dataSources: import("./types").DataSources;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationArchiveFiscalYearArgs, "id">>;
         createAccountCard?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").PaymentCardDbRecord>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationCreateAccountCardArgs, "input">>;
@@ -298,12 +310,20 @@ declare const resolvers: {
         }>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationDeleteEntryRefundArgs, "id">>;
+        deleteFiscalYear?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").DeleteFiscalYearPayload>, Record<PropertyKey, never>, {
+            dataSources: import("./types").DataSources;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationDeleteFiscalYearArgs, "id">>;
         reconcileEntries?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").ReconcileEntriesPayload, "reconciledEntries" | "reconciledRefunds"> & {
             reconciledEntries: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>[];
             reconciledRefunds: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryRefundDbRecord>[];
         }>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, Partial<import("./graphTypes").MutationReconcileEntriesArgs>>;
+        restoreFiscalYear?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").RestoreFiscalYearPayload, "fiscalYear"> & {
+            fiscalYear: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").FiscalYearDbRecord>;
+        }>, Record<PropertyKey, never>, {
+            dataSources: import("./types").DataSources;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationRestoreFiscalYearArgs, "id">>;
         updateAccountCard?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").PaymentCardDbRecord>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdateAccountCardArgs, "input" | "id">>;
@@ -372,6 +392,11 @@ declare const resolvers: {
     Aliasable?: import("./graphTypes").AliasableResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").PaymentCardDbRecord>;
+    ArchiveFiscalYearPayload?: import("./graphTypes").ArchiveFiscalYearPayloadResolvers<{
+        dataSources: import("./types").DataSources;
+    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").ArchiveFiscalYearPayload, "fiscalYear"> & {
+        fiscalYear: import("./dataSources/accountingDb/types").FiscalYearDbRecord;
+    }>;
     Attachment?: import("./graphTypes").AttachmentResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").Attachment>;
@@ -423,6 +448,9 @@ declare const resolvers: {
     } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").DeleteEntryRefundPayload, "deletedEntryRefund"> & {
         deletedEntryRefund: import("./dataSources/accountingDb/types").EntryRefundDbRecord;
     }>;
+    DeleteFiscalYearPayload?: import("./graphTypes").DeleteFiscalYearPayloadResolvers<{
+        dataSources: import("./types").DataSources;
+    } & import("./types").ContextBase, import("./graphTypes").DeleteFiscalYearPayload>;
     Department?: import("./graphTypes").DepartmentResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").DepartmentDbRecord>;
@@ -447,6 +475,13 @@ declare const resolvers: {
     FiscalYear?: import("./graphTypes").FiscalYearResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").FiscalYearDbRecord>;
+    FiscalYearExport?: import("./graphTypes").FiscalYearExportResolvers<{
+        dataSources: import("./types").DataSources;
+    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "fiscalYear" | "budgets" | "entries"> & {
+        budgets: import("./dataSources/accountingDb/types").BudgetDbRecord[];
+        entries: import("./dataSources/accountingDb/types").EntryDbRecord[];
+        fiscalYear: import("./dataSources/accountingDb/types").FiscalYearDbRecord;
+    }>;
     GoogleAuthUrl?: import("./graphTypes").GoogleAuthUrlResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").GoogleAuthUrl>;
@@ -510,6 +545,11 @@ declare const resolvers: {
     } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").ReconcileEntriesPayload, "reconciledEntries" | "reconciledRefunds"> & {
         reconciledEntries: import("./dataSources/accountingDb/types").EntryDbRecord[];
         reconciledRefunds: import("./dataSources/accountingDb/types").EntryRefundDbRecord[];
+    }>;
+    RestoreFiscalYearPayload?: import("./graphTypes").RestoreFiscalYearPayloadResolvers<{
+        dataSources: import("./types").DataSources;
+    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").RestoreFiscalYearPayload, "fiscalYear"> & {
+        fiscalYear: import("./dataSources/accountingDb/types").FiscalYearDbRecord;
     }>;
     Source?: import("./graphTypes").SourceResolvers<{
         dataSources: import("./types").DataSources;

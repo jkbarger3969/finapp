@@ -78,7 +78,10 @@ type AuditAction =
     | 'PERMISSION_GRANT'
     | 'PERMISSION_REVOKE'
     | 'RECEIPT_UPLOAD'
-    | 'RECEIPT_DELETE';
+    | 'RECEIPT_DELETE'
+    | 'FISCAL_YEAR_ARCHIVE'
+    | 'FISCAL_YEAR_RESTORE'
+    | 'FISCAL_YEAR_DELETE';
 
 const ACTION_COLORS: Record<string, 'success' | 'info' | 'warning' | 'error' | 'default'> = {
     LOGIN: 'info',
@@ -98,6 +101,9 @@ const ACTION_COLORS: Record<string, 'success' | 'info' | 'warning' | 'error' | '
     PERMISSION_REVOKE: 'warning',
     RECEIPT_UPLOAD: 'success',
     RECEIPT_DELETE: 'error',
+    FISCAL_YEAR_ARCHIVE: 'warning',
+    FISCAL_YEAR_RESTORE: 'success',
+    FISCAL_YEAR_DELETE: 'error',
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -118,6 +124,9 @@ const ACTION_LABELS: Record<string, string> = {
     PERMISSION_REVOKE: 'Permission Revoked',
     RECEIPT_UPLOAD: 'Receipt Uploaded',
     RECEIPT_DELETE: 'Receipt Deleted',
+    FISCAL_YEAR_ARCHIVE: 'Fiscal Year Archived',
+    FISCAL_YEAR_RESTORE: 'Fiscal Year Restored',
+    FISCAL_YEAR_DELETE: 'Fiscal Year Deleted',
 };
 
 interface AuditLogEntry {

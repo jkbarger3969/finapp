@@ -5,6 +5,9 @@ export interface FiscalYearDbRecord {
     name: string;
     begin: Date;
     end: Date;
+    archived?: boolean;
+    archivedAt?: Date;
+    archivedById?: ObjectId;
 }
 export declare const FiscalYear: FiscalYearResolvers<{
     dataSources: import("../../types").DataSources;

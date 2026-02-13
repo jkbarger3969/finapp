@@ -3,6 +3,7 @@ import { Box, Tab, Tabs, Typography, Paper } from '@mui/material';
 import PaymentCardsTab from '../components/admin/PaymentCardsTab';
 import UsersTab from '../components/admin/UsersTab';
 import AuditLogTab from '../components/admin/AuditLogTab';
+import FiscalYearTab from '../components/admin/FiscalYearTab';
 import { useAuth } from '../context/AuthContext';
 
 interface TabPanelProps {
@@ -58,6 +59,7 @@ export default function Admin() {
                     <Tabs value={value} onChange={handleChange} aria-label="admin tabs">
                         <Tab label="User Access" disabled={!isSuperAdmin} />
                         <Tab label="Payment Cards" />
+                        <Tab label="Fiscal Years" disabled={!isSuperAdmin} />
                         <Tab label="Audit Log" disabled={!isSuperAdmin} />
                     </Tabs>
                 </Box>
@@ -70,6 +72,9 @@ export default function Admin() {
                 <PaymentCardsTab />
             </CustomTabPanel>
             <CustomTabPanel value={value} index={2}>
+                {isSuperAdmin && <FiscalYearTab />}
+            </CustomTabPanel>
+            <CustomTabPanel value={value} index={3}>
                 {isSuperAdmin && <AuditLogTab />}
             </CustomTabPanel>
         </Box>

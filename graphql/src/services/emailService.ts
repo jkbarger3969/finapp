@@ -145,6 +145,29 @@ export async function sendInviteEmail(data: InviteEmailData): Promise<boolean> {
             <div style="text-align: center;">
               <a href="${appUrl}" class="button">Access Finance App</a>
             </div>
+
+            <h3 style="color: #444; font-size: 16px; margin-top: 30px;">Install as Desktop App (Optional)</h3>
+            <p style="color: #555;">For the best experience, you can install FinApp as a desktop application:</p>
+            
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+              <p style="margin: 0 0 10px 0;"><strong>Chrome / Edge:</strong></p>
+              <ol style="margin: 0; padding-left: 20px; color: #555;">
+                <li>Log in to FinApp using the button above</li>
+                <li>Look for the install icon (+) in your browser's address bar</li>
+                <li>Click "Install" to add FinApp to your desktop</li>
+              </ol>
+              
+              <p style="margin: 15px 0 10px 0;"><strong>Safari (Mac):</strong></p>
+              <ol style="margin: 0; padding-left: 20px; color: #555;">
+                <li>Log in to FinApp using the button above</li>
+                <li>Go to File → Add to Dock</li>
+              </ol>
+            </div>
+
+            <p style="font-size: 13px; color: #666;">
+              The desktop app launches in its own window, works offline for viewing data, 
+              and provides quick access from your desktop or taskbar.
+            </p>
             
             <p style="font-size: 13px; color: #666; background-color: #fff3cd; padding: 10px; border-radius: 4px; text-align: center;">
               <strong>Note:</strong> You must sign in with your @lonestarcowboychurch.org Google Workspace account. Personal Gmail accounts will not work.
@@ -177,6 +200,23 @@ HOW TO ACCESS:
 3. Use your ${toEmail} account
 
 Note: You must sign in with your @lonestarcowboychurch.org Google Workspace account.
+
+---
+
+INSTALL AS DESKTOP APP (Optional)
+For the best experience, you can install FinApp as a desktop application:
+
+Chrome / Edge:
+1. Log in to FinApp using the link above
+2. Look for the install icon (+) in your browser's address bar
+3. Click "Install" to add FinApp to your desktop
+
+Safari (Mac):
+1. Log in to FinApp using the link above
+2. Go to File → Add to Dock
+
+The desktop app launches in its own window, works offline for viewing data,
+and provides quick access from your desktop or taskbar.
 
 ---
 © ${new Date().getFullYear()} Lone Star Cowboy Church Finance App

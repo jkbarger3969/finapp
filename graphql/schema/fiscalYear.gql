@@ -3,6 +3,9 @@ type FiscalYear {
   name: String!
   begin: Date!
   end: Date!
+  archived: Boolean
+  archivedAt: Date
+  archivedBy: AuthUser
 }
 
 input FiscalYearsWhere {
@@ -19,6 +22,7 @@ input FiscalYearsWhere {
     lte: Any fiscal year that contains the date or ends on or before the date.
   """
   date: WhereDate
+  archived: Boolean
 
   # Logic
   and: [FiscalYearsWhere!]
@@ -36,11 +40,40 @@ type CreateFiscalYearPayload {
   fiscalYear: FiscalYear!
 }
 
+type ArchiveFiscalYearPayload {
+  fiscalYear: FiscalYear!
+  entriesArchived: Int!
+  budgetsArchived: Int!
+}
+
+type RestoreFiscalYearPayload {
+  fiscalYear: FiscalYear!
+  entriesRestored: Int!
+  budgetsRestored: Int!
+}
+
+type FiscalYearExport {
+  fiscalYear: FiscalYear!
+  entries: [Entry!]!
+  budgets: [Budget!]!
+  exportedAt: Date!
+}
+
+type DeleteFiscalYearPayload {
+  success: Boolean!
+  entriesDeleted: Int!
+  budgetsDeleted: Int!
+}
+
 extend type Query {
   fiscalYears(where: FiscalYearsWhere): [FiscalYear!]!
   fiscalYear(id: ID!): FiscalYear!
+  exportFiscalYear(id: ID!): FiscalYearExport!
 }
 
 extend type Mutation {
   createFiscalYear(input: CreateFiscalYearInput!): CreateFiscalYearPayload!
+  archiveFiscalYear(id: ID!): ArchiveFiscalYearPayload!
+  restoreFiscalYear(id: ID!): RestoreFiscalYearPayload!
+  deleteFiscalYear(id: ID!): DeleteFiscalYearPayload!
 }

@@ -18,8 +18,18 @@ export const whereFiscalYear = (
       case "name":
         filterQuery["name"] = whereRegex(fiscalYearWhere[whereKey]);
         break;
+      case "archived":
+        if (fiscalYearWhere[whereKey] === true) {
+          filterQuery["archived"] = true;
+        } else if (fiscalYearWhere[whereKey] === false) {
+          filterQuery["$or"] = [
+            { archived: { $exists: false } },
+            { archived: false }
+          ];
+        }
+        break;
       case "date":
-        if (!("$and" in fiscalYears)) {
+        if (!("$and" in filterQuery)) {
           filterQuery.$and = [];
         }
 
@@ -62,7 +72,7 @@ export const whereFiscalYear = (
         }
         break;
       case "and":
-        if (!("$and" in fiscalYears)) {
+        if (!("$and" in filterQuery)) {
           filterQuery.$and = [];
         }
 

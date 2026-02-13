@@ -49,7 +49,7 @@ import {
 import { sources } from "./resolvers/entrySource";
 import { Category, category, categories } from "./resolvers/category/index";
 import { people, person, Person } from "./resolvers/person";
-import { fiscalYear, fiscalYears, FiscalYear, createFiscalYear } from "./resolvers/fiscalYear";
+import { fiscalYear, fiscalYears, FiscalYear, createFiscalYear, archiveFiscalYear, restoreFiscalYear, exportFiscalYear, deleteFiscalYear } from "./resolvers/fiscalYear";
 import { User } from "./resolvers/user";
 import { attachmentResolvers } from "./resolvers/attachment";
 import { authResolvers } from "./resolvers/auth/authResolvers";
@@ -109,6 +109,7 @@ const initialResolvers: Resolvers = {
     people,
     fiscalYear,
     fiscalYears,
+    exportFiscalYear,
   },
   Mutation: {
     addNewEntry,
@@ -124,6 +125,9 @@ const initialResolvers: Resolvers = {
     upsertBudget,
     deleteBudget,
     createFiscalYear,
+    archiveFiscalYear,
+    restoreFiscalYear,
+    deleteFiscalYear,
   },
   Subscription: {
     // entryUpserted,

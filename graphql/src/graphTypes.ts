@@ -166,6 +166,13 @@ export type AliasesWhere = {
   id?: InputMaybe<WhereId>;
 };
 
+export type ArchiveFiscalYearPayload = {
+  __typename?: 'ArchiveFiscalYearPayload';
+  budgetsArchived: Scalars['Int']['output'];
+  entriesArchived: Scalars['Int']['output'];
+  fiscalYear: FiscalYear;
+};
+
 /**
  * Attachment represents a file (receipt, document, etc.) attached to an Entry.
  * Files are stored on the filesystem (QNAP NAS mount).
@@ -208,6 +215,9 @@ export enum AuditAction {
   EntryCreate = 'ENTRY_CREATE',
   EntryDelete = 'ENTRY_DELETE',
   EntryUpdate = 'ENTRY_UPDATE',
+  FiscalYearArchive = 'FISCAL_YEAR_ARCHIVE',
+  FiscalYearDelete = 'FISCAL_YEAR_DELETE',
+  FiscalYearRestore = 'FISCAL_YEAR_RESTORE',
   Login = 'LOGIN',
   Logout = 'LOGOUT',
   PermissionGrant = 'PERMISSION_GRANT',
@@ -382,6 +392,13 @@ export type DeleteEntryPayload = {
 export type DeleteEntryRefundPayload = {
   __typename?: 'DeleteEntryRefundPayload';
   deletedEntryRefund: EntryRefund;
+};
+
+export type DeleteFiscalYearPayload = {
+  __typename?: 'DeleteFiscalYearPayload';
+  budgetsDeleted: Scalars['Int']['output'];
+  entriesDeleted: Scalars['Int']['output'];
+  success: Scalars['Boolean']['output'];
 };
 
 export type Department = {
@@ -572,14 +589,26 @@ export enum EntryType {
 
 export type FiscalYear = {
   __typename?: 'FiscalYear';
+  archived?: Maybe<Scalars['Boolean']['output']>;
+  archivedAt?: Maybe<Scalars['Date']['output']>;
+  archivedBy?: Maybe<AuthUser>;
   begin: Scalars['Date']['output'];
   end: Scalars['Date']['output'];
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
 };
 
+export type FiscalYearExport = {
+  __typename?: 'FiscalYearExport';
+  budgets: Array<Budget>;
+  entries: Array<Entry>;
+  exportedAt: Scalars['Date']['output'];
+  fiscalYear: FiscalYear;
+};
+
 export type FiscalYearsWhere = {
   and?: InputMaybe<Array<FiscalYearsWhere>>;
+  archived?: InputMaybe<Scalars['Boolean']['input']>;
   /**
    * A FiscalYear is the set of all dates in the interval [begin, end).
    *   eq: A fiscal year that contains the date.
@@ -625,6 +654,7 @@ export type Mutation = {
   addNewEntry: AddNewEntryPayload;
   addNewEntryRefund: AddNewEntryRefundPayload;
   addNewPerson: AddNewPersonPayload;
+  archiveFiscalYear: ArchiveFiscalYearPayload;
   createAccountCard: AccountCard;
   createFiscalYear: CreateFiscalYearPayload;
   deleteAccountCard: Scalars['Boolean']['output'];
@@ -636,12 +666,14 @@ export type Mutation = {
   deleteBudget: DeleteBudgetResult;
   deleteEntry: DeleteEntryPayload;
   deleteEntryRefund: DeleteEntryRefundPayload;
+  deleteFiscalYear: DeleteFiscalYearPayload;
   deleteUser: Scalars['Boolean']['output'];
   googleAuth: AuthPayload;
   grantPermission: UserPermission;
   inviteUser: AuthUser;
   logout: Scalars['Boolean']['output'];
   reconcileEntries: ReconcileEntriesPayload;
+  restoreFiscalYear: RestoreFiscalYearPayload;
   revokePermission: Scalars['Boolean']['output'];
   updateAccountCard: AccountCard;
   updateEntry: UpdateEntryPayload;
@@ -673,6 +705,11 @@ export type MutationAddNewEntryRefundArgs = {
 
 export type MutationAddNewPersonArgs = {
   input: NewPerson;
+};
+
+
+export type MutationArchiveFiscalYearArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -711,6 +748,11 @@ export type MutationDeleteEntryRefundArgs = {
 };
 
 
+export type MutationDeleteFiscalYearArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type MutationDeleteUserArgs = {
   id: Scalars['ID']['input'];
 };
@@ -733,6 +775,11 @@ export type MutationInviteUserArgs = {
 
 export type MutationReconcileEntriesArgs = {
   input?: InputMaybe<ReconcileEntries>;
+};
+
+
+export type MutationRestoreFiscalYearArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -998,6 +1045,7 @@ export type Query = {
   entryItem?: Maybe<EntryItem>;
   entryRefund?: Maybe<EntryRefund>;
   entryRefunds: Array<EntryRefund>;
+  exportFiscalYear: FiscalYearExport;
   fiscalYear: FiscalYear;
   fiscalYears: Array<FiscalYear>;
   googleAuthUrl: GoogleAuthUrl;
@@ -1119,6 +1167,11 @@ export type QueryEntryRefundsArgs = {
 };
 
 
+export type QueryExportFiscalYearArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type QueryFiscalYearArgs = {
   id: Scalars['ID']['input'];
 };
@@ -1175,6 +1228,13 @@ export enum RegexFlags {
   /** Allows . to match newline characters. */
   S = 'S'
 }
+
+export type RestoreFiscalYearPayload = {
+  __typename?: 'RestoreFiscalYearPayload';
+  budgetsRestored: Scalars['Int']['output'];
+  entriesRestored: Scalars['Int']['output'];
+  fiscalYear: FiscalYear;
+};
 
 export type RevokePermissionInput = {
   departmentId: Scalars['ID']['input'];
@@ -1523,6 +1583,7 @@ export type ResolversTypes = {
   Alias: ResolverTypeWrapper<AliasTypeDbRecord>;
   Aliasable: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Aliasable']>;
   AliasesWhere: AliasesWhere;
+  ArchiveFiscalYearPayload: ResolverTypeWrapper<Omit<ArchiveFiscalYearPayload, 'fiscalYear'> & { fiscalYear: ResolversTypes['FiscalYear'] }>;
   Attachment: ResolverTypeWrapper<Attachment>;
   AttachmentsWhere: AttachmentsWhere;
   AuditAction: AuditAction;
@@ -1548,6 +1609,7 @@ export type ResolversTypes = {
   DeleteBudgetResult: ResolverTypeWrapper<DeleteBudgetResult>;
   DeleteEntryPayload: ResolverTypeWrapper<Omit<DeleteEntryPayload, 'deletedEntry'> & { deletedEntry: ResolversTypes['Entry'] }>;
   DeleteEntryRefundPayload: ResolverTypeWrapper<Omit<DeleteEntryRefundPayload, 'deletedEntryRefund'> & { deletedEntryRefund: ResolversTypes['EntryRefund'] }>;
+  DeleteFiscalYearPayload: ResolverTypeWrapper<DeleteFiscalYearPayload>;
   Department: ResolverTypeWrapper<DepartmentDbRecord>;
   DepartmentAncestor: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['DepartmentAncestor']>;
   DepartmentsWhere: DepartmentsWhere;
@@ -1567,6 +1629,7 @@ export type ResolversTypes = {
   EntryRefundsWhere: EntryRefundsWhere;
   EntryType: EntryType;
   FiscalYear: ResolverTypeWrapper<FiscalYearDbRecord>;
+  FiscalYearExport: ResolverTypeWrapper<Omit<FiscalYearExport, 'budgets' | 'entries' | 'fiscalYear'> & { budgets: Array<ResolversTypes['Budget']>, entries: Array<ResolversTypes['Entry']>, fiscalYear: ResolversTypes['FiscalYear'] }>;
   FiscalYearsWhere: FiscalYearsWhere;
   GoogleAuthUrl: ResolverTypeWrapper<GoogleAuthUrl>;
   GrantPermissionInput: GrantPermissionInput;
@@ -1616,6 +1679,7 @@ export type ResolversTypes = {
   ReconcileEntries: ReconcileEntries;
   ReconcileEntriesPayload: ResolverTypeWrapper<Omit<ReconcileEntriesPayload, 'reconciledEntries' | 'reconciledRefunds'> & { reconciledEntries: Array<ResolversTypes['Entry']>, reconciledRefunds: Array<ResolversTypes['EntryRefund']> }>;
   RegexFlags: RegexFlags;
+  RestoreFiscalYearPayload: ResolverTypeWrapper<Omit<RestoreFiscalYearPayload, 'fiscalYear'> & { fiscalYear: ResolversTypes['FiscalYear'] }>;
   RevokePermissionInput: RevokePermissionInput;
   Source: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['Source']>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
@@ -1665,6 +1729,7 @@ export type ResolversParentTypes = {
   Alias: AliasTypeDbRecord;
   Aliasable: ResolversInterfaceTypes<ResolversParentTypes>['Aliasable'];
   AliasesWhere: AliasesWhere;
+  ArchiveFiscalYearPayload: Omit<ArchiveFiscalYearPayload, 'fiscalYear'> & { fiscalYear: ResolversParentTypes['FiscalYear'] };
   Attachment: Attachment;
   AttachmentsWhere: AttachmentsWhere;
   AuditLogEntry: Omit<AuditLogEntry, 'user'> & { user: ResolversParentTypes['AuthUser'] };
@@ -1688,6 +1753,7 @@ export type ResolversParentTypes = {
   DeleteBudgetResult: DeleteBudgetResult;
   DeleteEntryPayload: Omit<DeleteEntryPayload, 'deletedEntry'> & { deletedEntry: ResolversParentTypes['Entry'] };
   DeleteEntryRefundPayload: Omit<DeleteEntryRefundPayload, 'deletedEntryRefund'> & { deletedEntryRefund: ResolversParentTypes['EntryRefund'] };
+  DeleteFiscalYearPayload: DeleteFiscalYearPayload;
   Department: DepartmentDbRecord;
   DepartmentAncestor: ResolversUnionTypes<ResolversParentTypes>['DepartmentAncestor'];
   DepartmentsWhere: DepartmentsWhere;
@@ -1705,6 +1771,7 @@ export type ResolversParentTypes = {
   EntryRefund: EntryRefundDbRecord;
   EntryRefundsWhere: EntryRefundsWhere;
   FiscalYear: FiscalYearDbRecord;
+  FiscalYearExport: Omit<FiscalYearExport, 'budgets' | 'entries' | 'fiscalYear'> & { budgets: Array<ResolversParentTypes['Budget']>, entries: Array<ResolversParentTypes['Entry']>, fiscalYear: ResolversParentTypes['FiscalYear'] };
   FiscalYearsWhere: FiscalYearsWhere;
   GoogleAuthUrl: GoogleAuthUrl;
   GrantPermissionInput: GrantPermissionInput;
@@ -1751,6 +1818,7 @@ export type ResolversParentTypes = {
   Rational: Scalars['Rational']['output'];
   ReconcileEntries: ReconcileEntries;
   ReconcileEntriesPayload: Omit<ReconcileEntriesPayload, 'reconciledEntries' | 'reconciledRefunds'> & { reconciledEntries: Array<ResolversParentTypes['Entry']>, reconciledRefunds: Array<ResolversParentTypes['EntryRefund']> };
+  RestoreFiscalYearPayload: Omit<RestoreFiscalYearPayload, 'fiscalYear'> & { fiscalYear: ResolversParentTypes['FiscalYear'] };
   RevokePermissionInput: RevokePermissionInput;
   Source: ResolversUnionTypes<ResolversParentTypes>['Source'];
   String: Scalars['String']['output'];
@@ -1846,6 +1914,12 @@ export type AliasResolvers<ContextType = Context, ParentType = ResolversParentTy
 
 export type AliasableResolvers<ContextType = Context, ParentType = ResolversParentTypes['Aliasable']> = {
   __resolveType?: TypeResolveFn<'AccountCard', ParentType, ContextType>;
+};
+
+export type ArchiveFiscalYearPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['ArchiveFiscalYearPayload']> = {
+  budgetsArchived?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  entriesArchived?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType>;
 };
 
 export type AttachmentResolvers<ContextType = Context, ParentType = ResolversParentTypes['Attachment']> = {
@@ -1948,6 +2022,12 @@ export type DeleteEntryRefundPayloadResolvers<ContextType = Context, ParentType 
   deletedEntryRefund?: Resolver<ResolversTypes['EntryRefund'], ParentType, ContextType>;
 };
 
+export type DeleteFiscalYearPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['DeleteFiscalYearPayload']> = {
+  budgetsDeleted?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  entriesDeleted?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  success?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
 export type DepartmentResolvers<ContextType = Context, ParentType = ResolversParentTypes['Department']> = {
   aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType>;
   ancestors?: Resolver<Array<ResolversTypes['DepartmentAncestor']>, ParentType, ContextType, Partial<DepartmentAncestorsArgs>>;
@@ -2032,10 +2112,20 @@ export type EntryRefundResolvers<ContextType = Context, ParentType = ResolversPa
 };
 
 export type FiscalYearResolvers<ContextType = Context, ParentType = ResolversParentTypes['FiscalYear']> = {
+  archived?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  archivedAt?: Resolver<Maybe<ResolversTypes['Date']>, ParentType, ContextType>;
+  archivedBy?: Resolver<Maybe<ResolversTypes['AuthUser']>, ParentType, ContextType>;
   begin?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
   end?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type FiscalYearExportResolvers<ContextType = Context, ParentType = ResolversParentTypes['FiscalYearExport']> = {
+  budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType>;
+  entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType>;
+  exportedAt?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
+  fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType>;
 };
 
 export type GoogleAuthUrlResolvers<ContextType = Context, ParentType = ResolversParentTypes['GoogleAuthUrl']> = {
@@ -2051,6 +2141,7 @@ export type MutationResolvers<ContextType = Context, ParentType = ResolversParen
   addNewEntry?: Resolver<ResolversTypes['AddNewEntryPayload'], ParentType, ContextType, RequireFields<MutationAddNewEntryArgs, 'input'>>;
   addNewEntryRefund?: Resolver<ResolversTypes['AddNewEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationAddNewEntryRefundArgs, 'input'>>;
   addNewPerson?: Resolver<ResolversTypes['AddNewPersonPayload'], ParentType, ContextType, RequireFields<MutationAddNewPersonArgs, 'input'>>;
+  archiveFiscalYear?: Resolver<ResolversTypes['ArchiveFiscalYearPayload'], ParentType, ContextType, RequireFields<MutationArchiveFiscalYearArgs, 'id'>>;
   createAccountCard?: Resolver<ResolversTypes['AccountCard'], ParentType, ContextType, RequireFields<MutationCreateAccountCardArgs, 'input'>>;
   createFiscalYear?: Resolver<ResolversTypes['CreateFiscalYearPayload'], ParentType, ContextType, RequireFields<MutationCreateFiscalYearArgs, 'input'>>;
   deleteAccountCard?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAccountCardArgs, 'id'>>;
@@ -2058,12 +2149,14 @@ export type MutationResolvers<ContextType = Context, ParentType = ResolversParen
   deleteBudget?: Resolver<ResolversTypes['DeleteBudgetResult'], ParentType, ContextType, RequireFields<MutationDeleteBudgetArgs, 'input'>>;
   deleteEntry?: Resolver<ResolversTypes['DeleteEntryPayload'], ParentType, ContextType, RequireFields<MutationDeleteEntryArgs, 'id'>>;
   deleteEntryRefund?: Resolver<ResolversTypes['DeleteEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationDeleteEntryRefundArgs, 'id'>>;
+  deleteFiscalYear?: Resolver<ResolversTypes['DeleteFiscalYearPayload'], ParentType, ContextType, RequireFields<MutationDeleteFiscalYearArgs, 'id'>>;
   deleteUser?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteUserArgs, 'id'>>;
   googleAuth?: Resolver<ResolversTypes['AuthPayload'], ParentType, ContextType, RequireFields<MutationGoogleAuthArgs, 'code'>>;
   grantPermission?: Resolver<ResolversTypes['UserPermission'], ParentType, ContextType, RequireFields<MutationGrantPermissionArgs, 'input'>>;
   inviteUser?: Resolver<ResolversTypes['AuthUser'], ParentType, ContextType, RequireFields<MutationInviteUserArgs, 'input'>>;
   logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   reconcileEntries?: Resolver<ResolversTypes['ReconcileEntriesPayload'], ParentType, ContextType, Partial<MutationReconcileEntriesArgs>>;
+  restoreFiscalYear?: Resolver<ResolversTypes['RestoreFiscalYearPayload'], ParentType, ContextType, RequireFields<MutationRestoreFiscalYearArgs, 'id'>>;
   revokePermission?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRevokePermissionArgs, 'input'>>;
   updateAccountCard?: Resolver<ResolversTypes['AccountCard'], ParentType, ContextType, RequireFields<MutationUpdateAccountCardArgs, 'id' | 'input'>>;
   updateEntry?: Resolver<ResolversTypes['UpdateEntryPayload'], ParentType, ContextType, RequireFields<MutationUpdateEntryArgs, 'input'>>;
@@ -2163,6 +2256,7 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   entryItem?: Resolver<Maybe<ResolversTypes['EntryItem']>, ParentType, ContextType, RequireFields<QueryEntryItemArgs, 'id'>>;
   entryRefund?: Resolver<Maybe<ResolversTypes['EntryRefund']>, ParentType, ContextType, RequireFields<QueryEntryRefundArgs, 'id'>>;
   entryRefunds?: Resolver<Array<ResolversTypes['EntryRefund']>, ParentType, ContextType, Partial<QueryEntryRefundsArgs>>;
+  exportFiscalYear?: Resolver<ResolversTypes['FiscalYearExport'], ParentType, ContextType, RequireFields<QueryExportFiscalYearArgs, 'id'>>;
   fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType, RequireFields<QueryFiscalYearArgs, 'id'>>;
   fiscalYears?: Resolver<Array<ResolversTypes['FiscalYear']>, ParentType, ContextType, Partial<QueryFiscalYearsArgs>>;
   googleAuthUrl?: Resolver<ResolversTypes['GoogleAuthUrl'], ParentType, ContextType>;
@@ -2181,6 +2275,12 @@ export interface RationalScalarConfig extends GraphQLScalarTypeConfig<ResolversT
 export type ReconcileEntriesPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['ReconcileEntriesPayload']> = {
   reconciledEntries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType>;
   reconciledRefunds?: Resolver<Array<ResolversTypes['EntryRefund']>, ParentType, ContextType>;
+};
+
+export type RestoreFiscalYearPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['RestoreFiscalYearPayload']> = {
+  budgetsRestored?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  entriesRestored?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType>;
 };
 
 export type SourceResolvers<ContextType = Context, ParentType = ResolversParentTypes['Source']> = {
@@ -2244,6 +2344,7 @@ export type Resolvers<ContextType = Context> = {
   AddNewPersonPayload?: AddNewPersonPayloadResolvers<ContextType>;
   Alias?: AliasResolvers<ContextType>;
   Aliasable?: AliasableResolvers<ContextType>;
+  ArchiveFiscalYearPayload?: ArchiveFiscalYearPayloadResolvers<ContextType>;
   Attachment?: AttachmentResolvers<ContextType>;
   AuditLogEntry?: AuditLogEntryResolvers<ContextType>;
   AuthPayload?: AuthPayloadResolvers<ContextType>;
@@ -2258,6 +2359,7 @@ export type Resolvers<ContextType = Context> = {
   DeleteBudgetResult?: DeleteBudgetResultResolvers<ContextType>;
   DeleteEntryPayload?: DeleteEntryPayloadResolvers<ContextType>;
   DeleteEntryRefundPayload?: DeleteEntryRefundPayloadResolvers<ContextType>;
+  DeleteFiscalYearPayload?: DeleteFiscalYearPayloadResolvers<ContextType>;
   Department?: DepartmentResolvers<ContextType>;
   DepartmentAncestor?: DepartmentAncestorResolvers<ContextType>;
   EditHistoryEntry?: EditHistoryEntryResolvers<ContextType>;
@@ -2267,6 +2369,7 @@ export type Resolvers<ContextType = Context> = {
   EntryItem?: EntryItemResolvers<ContextType>;
   EntryRefund?: EntryRefundResolvers<ContextType>;
   FiscalYear?: FiscalYearResolvers<ContextType>;
+  FiscalYearExport?: FiscalYearExportResolvers<ContextType>;
   GoogleAuthUrl?: GoogleAuthUrlResolvers<ContextType>;
   JSON?: GraphQLScalarType;
   Mutation?: MutationResolvers<ContextType>;
@@ -2286,6 +2389,7 @@ export type Resolvers<ContextType = Context> = {
   Query?: QueryResolvers<ContextType>;
   Rational?: GraphQLScalarType;
   ReconcileEntriesPayload?: ReconcileEntriesPayloadResolvers<ContextType>;
+  RestoreFiscalYearPayload?: RestoreFiscalYearPayloadResolvers<ContextType>;
   Source?: SourceResolvers<ContextType>;
   Subscription?: SubscriptionResolvers<ContextType>;
   UpdateEntryPayload?: UpdateEntryPayloadResolvers<ContextType>;

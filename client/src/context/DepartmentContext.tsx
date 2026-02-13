@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useQuery } from 'urql';
 
 interface DepartmentContextType {
@@ -7,6 +7,7 @@ interface DepartmentContextType {
     fiscalYears: any[];
     setSelectedDepartment: (deptId: string | null) => void;
     setFiscalYearId: (fyId: string) => void;
+    refetchFiscalYears: () => void;
 }
 
 const DepartmentContext = createContext<DepartmentContextType | undefined>(undefined);
@@ -15,7 +16,7 @@ import { isDateInFiscalYear } from '../utils/fiscalYear';
 
 const GET_FISCAL_YEARS = `
   query GetFiscalYears {
-    fiscalYears {
+    fiscalYears(where: { archived: false }) {
       id
       name
       begin
@@ -28,9 +29,13 @@ export function DepartmentProvider({ children }: { children: ReactNode }) {
     const [departmentId, setDepartmentId] = useState<string | null>(null);
     const [fiscalYearId, setFiscalYearId] = useState<string>('');
 
-    const [{ data }] = useQuery({
+    const [{ data }, reexecuteQuery] = useQuery({
         query: GET_FISCAL_YEARS,
     });
+
+    const refetchFiscalYears = useCallback(() => {
+        reexecuteQuery({ requestPolicy: 'network-only' });
+    }, [reexecuteQuery]);
 
     // Set fiscal year based on current date
     useEffect(() => {
@@ -58,6 +63,17 @@ export function DepartmentProvider({ children }: { children: ReactNode }) {
         }
     }, [data, fiscalYearId]);
 
+    // Reset fiscalYearId if it's no longer in the list (deleted)
+    useEffect(() => {
+        if (!fiscalYearId || !data?.fiscalYears?.length) return;
+        
+        const stillExists = data.fiscalYears.some((fy: any) => fy.id === fiscalYearId);
+        if (!stillExists) {
+            // Current fiscal year was deleted, reset to find a new one
+            setFiscalYearId('');
+        }
+    }, [data?.fiscalYears, fiscalYearId]);
+
     const setSelectedDepartment = (deptId: string | null) => {
         setDepartmentId(deptId);
     };
@@ -68,7 +84,8 @@ export function DepartmentProvider({ children }: { children: ReactNode }) {
             fiscalYearId,
             fiscalYears: data?.fiscalYears || [],
             setSelectedDepartment,
-            setFiscalYearId
+            setFiscalYearId,
+            refetchFiscalYears
         }}>
             {children}
         </DepartmentContext.Provider>

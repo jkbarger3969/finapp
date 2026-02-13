@@ -69,7 +69,7 @@ const GET_BUDGET_DATA = `
                 }
             }
         }
-        fiscalYears {
+        fiscalYears(where: { archived: false }) {
             id
             name
         }
@@ -86,7 +86,7 @@ interface DeptNode {
 }
 
 export default function Dashboard() {
-    const { fiscalYearId, setFiscalYearId } = useDepartment();
+    const { fiscalYearId, setFiscalYearId, fiscalYears: contextFiscalYears } = useDepartment();
     const { user, isSuperAdmin } = useAuth();
 
     const [topLevelDeptId, setTopLevelDeptId] = useState('');
@@ -103,13 +103,20 @@ export default function Dashboard() {
         budgetsWhere.fiscalYear = { id: { eq: fiscalYearId } };
     }
 
-    const [result] = useQuery({
+    const [result, reexecuteQuery] = useQuery({
         query: GET_BUDGET_DATA,
         variables: { entriesWhere, budgetsWhere },
         pause: !fiscalYearId,
+        requestPolicy: 'cache-and-network'
     });
 
     const { data, fetching, error } = result;
+
+    useEffect(() => {
+        if (fiscalYearId) {
+            reexecuteQuery({ requestPolicy: 'network-only' });
+        }
+    }, [contextFiscalYears.length, fiscalYearId, reexecuteQuery]);
 
     const fiscalYears = data?.fiscalYears || [];
 
