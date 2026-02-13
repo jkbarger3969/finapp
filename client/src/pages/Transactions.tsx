@@ -964,7 +964,14 @@ export default function Transactions() {
                                 label="Type"
                                 size="small"
                                 value={entryType}
-                                onChange={(e) => setEntryType(e.target.value)}
+                                onChange={(e) => {
+                                    const newType = e.target.value;
+                                    setEntryType(newType);
+                                    // Clear category if it doesn't match the new type
+                                    if (selectedCategory && newType !== 'ALL' && selectedCategory.type !== newType) {
+                                        setSelectedCategory(null);
+                                    }
+                                }}
                                 sx={{ minWidth: 120 }}
                                 data-tooltip="Filter by Income (Credit) or Expense (Debit)"
                                 data-tooltip-pos="top"
@@ -1057,7 +1064,14 @@ export default function Transactions() {
                                 data-tooltip-pos="top"
                             >
                                 <MenuItem value="">All Categories</MenuItem>
-                                {categories.map((cat: any) => (
+                                {categories
+                                    .filter((cat: any) => {
+                                        if (entryType === 'ALL') return true;
+                                        if (entryType === 'CREDIT') return cat.type === 'CREDIT';
+                                        if (entryType === 'DEBIT') return cat.type === 'DEBIT';
+                                        return true;
+                                    })
+                                    .map((cat: any) => (
                                     <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
                                 ))}
                             </TextField>
