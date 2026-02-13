@@ -149,6 +149,7 @@ export default function Transactions() {
     const [rowSelectionModel, setRowSelectionModel] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set<GridRowId>() });
     const [searchDialogOpen, setSearchDialogOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState<string>('');
+    const [pendingDepartmentId, setPendingDepartmentId] = useState<string | null>(null);
     const location = useLocation();
 
     // Handle navigation from Dashboard or SearchDialog
@@ -170,11 +171,31 @@ export default function Transactions() {
         
         // Handle navigation from Dashboard budget cards
         if (location.state?.departmentId) {
-            setFilterDepartmentId(location.state.departmentId);
+            setPendingDepartmentId(location.state.departmentId);
             // Clear navigation state so refresh doesn't re-trigger
             window.history.replaceState({}, document.title);
         }
     }, [location.state]);
+
+    // Process pending department ID once departments are loaded
+    useEffect(() => {
+        if (!pendingDepartmentId || !departments || departments.length === 0) return;
+
+        const dept = departments.find((d: any) => d.id === pendingDepartmentId);
+        if (!dept) return;
+
+        if (dept.parent?.__typename === 'Department') {
+            // It's a subdepartment
+            setTopLevelDeptId(dept.parent.id);
+            setSubDeptId(dept.id);
+        } else {
+            // It's a top-level department
+            setTopLevelDeptId(dept.id);
+            setSubDeptId(null);
+        }
+
+        setPendingDepartmentId(null);
+    }, [pendingDepartmentId, departments]);
 
     // Expandable refunds state
     const [expandedRefunds, setExpandedRefunds] = useState<Set<string>>(new Set());

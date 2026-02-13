@@ -58,7 +58,7 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [result] = useQuery({ query: SEARCH_DATA_QUERY, pause: !open });
 
-    const { data } = result;
+    const { data, fetching, error } = result;
 
     // Focus input when dialog opens
     useEffect(() => {
@@ -170,7 +170,15 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
 
                 {searchQuery && (
                     <Box sx={{ borderTop: 1, borderColor: 'divider' }}>
-                        {searchResults.length === 0 ? (
+                        {fetching ? (
+                            <Box sx={{ p: 4, textAlign: 'center' }}>
+                                <Typography color="text.secondary">Loading...</Typography>
+                            </Box>
+                        ) : error ? (
+                            <Box sx={{ p: 4, textAlign: 'center' }}>
+                                <Typography color="error">Error loading results</Typography>
+                            </Box>
+                        ) : searchResults.length === 0 ? (
                             <Box sx={{ p: 4, textAlign: 'center' }}>
                                 <Typography color="text.secondary">No results found</Typography>
                             </Box>
