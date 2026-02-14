@@ -1,7 +1,4 @@
-import { useState } from "react";
-import { useAuth } from "../../context/AuthContext";
 import { useLayout } from "../../context/LayoutContext";
-import { useThemeMode } from "../../context/ThemeModeContext";
 import Sidebar from "./Sidebar";
 import EntryFormDialog from "../EntryFormDialog";
 
@@ -16,7 +13,6 @@ import {
     Menu as MenuIcon,
 } from "@mui/icons-material";
 import { alpha } from "@mui/material/styles";
-import { useNavigate } from "react-router-dom";
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -27,15 +23,10 @@ const EXPANDED_WIDTH = 280;
 
 export default function MainLayout({ children }: MainLayoutProps) {
     const theme = useTheme();
-    const { isEntryDialogOpen, openEntryDialog, closeEntryDialog, isSidebarCollapsed } = useLayout();
-    const { mode, toggleTheme } = useThemeMode(); // Also unused? Toggle is in sidebar.
-    // Wait, MainLayout doesn't toggle theme anymore.
-
-    // Check if mode/toggleTheme is used in MainLayout?
-    // Not in AppBar. AppBar is simplified.
-    // So remove ThemeModeContext too?
+    const { isEntryDialogOpen, closeEntryDialog, isSidebarCollapsed } = useLayout();
 
     const drawerWidth = isSidebarCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH;
+
 
     return (
         <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
