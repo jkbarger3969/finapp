@@ -410,6 +410,8 @@ export default function Transactions() {
             field: "reconciled",
             headerName: "Status",
             width: 100,
+            align: "center",
+            headerAlign: "center",
             renderCell: (params: any) => (
                 <Chip
                     label={params.value ? "Reconciled" : "Pending"}
@@ -423,6 +425,8 @@ export default function Transactions() {
             field: "date",
             headerName: "Date",
             width: 120,
+            align: "center",
+            headerAlign: "center",
             renderCell: (params: any) => {
                 const txDate = format(new Date(params.value), "MMM dd, yyyy");
                 const postedDate = params.row.dateOfRecord?.date;
@@ -430,15 +434,15 @@ export default function Transactions() {
                 if (postedDate && postedDate !== params.value) {
                     const formattedPosted = format(new Date(postedDate), "MMM dd, yyyy");
                     return (
-                        <Box>
+                        <Box sx={{ textAlign: 'center', width: '100%' }}>
                             <Typography variant="body2">{txDate}</Typography>
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="caption" color="text.secondary" display="block">
                                 Posted: {formattedPosted}
                             </Typography>
                         </Box>
                     );
                 }
-                return <Typography variant="body2">{txDate}</Typography>;
+                return <Typography variant="body2" align="center" sx={{ width: '100%' }}>{txDate}</Typography>;
             },
         },
         {
@@ -505,19 +509,23 @@ export default function Transactions() {
             field: "department",
             headerName: "Department",
             width: 140,
+            align: "center",
+            headerAlign: "center",
             valueGetter: (_value: any, row: any) => row?.department?.name || "",
         },
         {
             field: "source",
             headerName: "Source",
             width: 160,
+            align: "center",
+            headerAlign: "center",
             renderCell: (params: any) => {
                 const source = params.row.source;
                 if (!source) return <Typography variant="body2" color="text.secondary">-</Typography>;
 
                 if (source.__typename === 'Business') {
                     return (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, width: '100%' }}>
                             <BusinessIcon fontSize="small" sx={{ color: 'primary.main' }} />
                             <Typography variant="body2" sx={{ color: 'primary.main' }}>
                                 {source.businessName}
@@ -527,7 +535,7 @@ export default function Transactions() {
                 }
                 if (source.__typename === 'Person') {
                     return (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, width: '100%' }}>
                             <PersonIcon fontSize="small" sx={{ color: 'secondary.main' }} />
                             <Typography variant="body2" sx={{ color: 'secondary.main' }}>
                                 {source.personName?.first} {source.personName?.last}
@@ -542,6 +550,8 @@ export default function Transactions() {
             field: "category",
             headerName: "Category",
             width: 130,
+            align: "center",
+            headerAlign: "center",
             renderCell: (params: any) => (
                 <Chip
                     label={params.value?.name || "Uncategorized"}
@@ -555,6 +565,8 @@ export default function Transactions() {
             field: "paymentMethod",
             headerName: "Payment",
             width: 130,
+            align: "center",
+            headerAlign: "center",
             valueGetter: (val: any) => {
                 const value = val as any;
                 if (!value) return "Unknown";
@@ -573,8 +585,8 @@ export default function Transactions() {
             field: "total",
             headerName: "Amount",
             width: 130,
-            align: "right",
-            headerAlign: "right",
+            align: "center",
+            headerAlign: "center",
             valueGetter: (value: any) => parseRational(value),
             renderCell: (params: any) => {
                 const amount = params.value as number;
@@ -583,6 +595,8 @@ export default function Transactions() {
                     <Typography
                         fontWeight="bold"
                         color={isCredit ? "success.main" : "error.main"}
+                        align="center"
+                        sx={{ width: '100%' }}
                     >
                         {isCredit ? "+" : "-"}
                         {currencyFormatter.format(Math.abs(amount))}
@@ -594,6 +608,8 @@ export default function Transactions() {
             field: "receipts",
             headerName: "Receipts",
             width: 90,
+            align: "center",
+            headerAlign: "center",
             sortable: false,
             renderCell: (params: any) => {
                 const count = params.row.attachments?.length || 0;
