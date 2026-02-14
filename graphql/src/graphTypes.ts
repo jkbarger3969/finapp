@@ -477,6 +477,7 @@ export type EntriesWhere = {
   lastUpdate?: InputMaybe<WhereDate>;
   nor?: InputMaybe<Array<EntriesWhere>>;
   or?: InputMaybe<Array<EntriesWhere>>;
+  paymentMethodType?: InputMaybe<PaymentMethodType>;
   reconciled?: InputMaybe<Scalars['Boolean']['input']>;
   refunds?: InputMaybe<EntryRefundsWhere>;
   source?: InputMaybe<EntriesWhereSource>;
@@ -1145,6 +1146,8 @@ export type QueryEntitiesArgs = {
 
 export type QueryEntriesArgs = {
   filterRefunds?: InputMaybe<Scalars['Boolean']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<EntriesWhere>;
 };
 
@@ -2266,7 +2269,7 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, Partial<QueryDepartmentsArgs>>;
   entities?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType, RequireFields<QueryEntitiesArgs, 'where'>>;
-  entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, 'filterRefunds'>>;
+  entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, 'filterRefunds' | 'limit' | 'offset'>>;
   entriesCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType, Partial<QueryEntriesCountArgs>>;
   entry?: Resolver<Maybe<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntryArgs, 'id'>>;
   entryItem?: Resolver<Maybe<ResolversTypes['EntryItem']>, ParentType, ContextType, RequireFields<QueryEntryItemArgs, 'id'>>;

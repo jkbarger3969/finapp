@@ -6,3 +6,5 @@ export declare const whereEntries: (entriesWhere: EntriesWhere, db: Db, { exclud
     excludeWhereRefunds?: boolean;
 }) => FilterQuery<any> | Promise<FilterQuery<any>>;
 export declare const entries: QueryResolvers["entries"];
+export declare const searchEntries: QueryResolvers["searchEntries"];
+export declare const entriesCount: QueryResolvers["entriesCount"];

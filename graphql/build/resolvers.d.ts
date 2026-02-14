@@ -165,7 +165,10 @@ declare const resolvers: {
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QueryEntitiesArgs, "where">>;
         entries?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>[], Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
-        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QueryEntriesArgs, "filterRefunds">>;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QueryEntriesArgs, "filterRefunds" | "limit" | "offset">>;
+        entriesCount?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<number>, Record<PropertyKey, never>, {
+            dataSources: import("./types").DataSources;
+        } & import("./types").ContextBase, Partial<import("./graphTypes").QueryEntriesCountArgs>>;
         entry?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QueryEntryArgs, "id">>;
@@ -197,6 +200,9 @@ declare const resolvers: {
         person?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").PersonDbRecord>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QueryPersonArgs, "id">>;
+        searchEntries?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>[], Record<PropertyKey, never>, {
+            dataSources: import("./types").DataSources;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QuerySearchEntriesArgs, "limit" | "query">>;
         sources?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord>[], Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QuerySourcesArgs, "searchByName">>;

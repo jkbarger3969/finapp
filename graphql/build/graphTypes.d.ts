@@ -461,6 +461,7 @@ export declare type EntriesWhere = {
     lastUpdate?: InputMaybe<WhereDate>;
     nor?: InputMaybe<Array<EntriesWhere>>;
     or?: InputMaybe<Array<EntriesWhere>>;
+    paymentMethodType?: InputMaybe<PaymentMethodType>;
     reconciled?: InputMaybe<Scalars['Boolean']['input']>;
     refunds?: InputMaybe<EntryRefundsWhere>;
     source?: InputMaybe<EntriesWhereSource>;
@@ -920,6 +921,7 @@ export declare type Query = {
      * NOTE: A `EntryRefund` is a subset of an `Entry`.  Excludes `EntriesWhere.refunds` in refund matching.
      */
     entries: Array<Entry>;
+    entriesCount: Scalars['Int']['output'];
     entry?: Maybe<Entry>;
     entryItem?: Maybe<EntryItem>;
     entryRefund?: Maybe<EntryRefund>;
@@ -931,6 +933,8 @@ export declare type Query = {
     me?: Maybe<AuthUser>;
     people: Array<Person>;
     person: Person;
+    /** Search entries by description, category, department, or amount. */
+    searchEntries: Array<Entry>;
     sources: Array<Source>;
     user?: Maybe<AuthUser>;
     users: Array<AuthUser>;
@@ -987,6 +991,12 @@ export declare type QueryEntitiesArgs = {
 };
 export declare type QueryEntriesArgs = {
     filterRefunds?: InputMaybe<Scalars['Boolean']['input']>;
+    limit?: InputMaybe<Scalars['Int']['input']>;
+    offset?: InputMaybe<Scalars['Int']['input']>;
+    where?: InputMaybe<EntriesWhere>;
+};
+export declare type QueryEntriesCountArgs = {
+    filterRefunds?: InputMaybe<Scalars['Boolean']['input']>;
     where?: InputMaybe<EntriesWhere>;
 };
 export declare type QueryEntryArgs = {
@@ -1016,6 +1026,10 @@ export declare type QueryPeopleArgs = {
 };
 export declare type QueryPersonArgs = {
     id: Scalars['ID']['input'];
+};
+export declare type QuerySearchEntriesArgs = {
+    limit?: InputMaybe<Scalars['Int']['input']>;
+    query: Scalars['String']['input'];
 };
 export declare type QuerySourcesArgs = {
     searchByName: Scalars['String']['input'];
@@ -2028,7 +2042,8 @@ export declare type QueryResolvers<ContextType = Context, ParentType = Resolvers
     department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
     departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, Partial<QueryDepartmentsArgs>>;
     entities?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType, RequireFields<QueryEntitiesArgs, 'where'>>;
-    entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, 'filterRefunds'>>;
+    entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, 'filterRefunds' | 'limit' | 'offset'>>;
+    entriesCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType, Partial<QueryEntriesCountArgs>>;
     entry?: Resolver<Maybe<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntryArgs, 'id'>>;
     entryItem?: Resolver<Maybe<ResolversTypes['EntryItem']>, ParentType, ContextType, RequireFields<QueryEntryItemArgs, 'id'>>;
     entryRefund?: Resolver<Maybe<ResolversTypes['EntryRefund']>, ParentType, ContextType, RequireFields<QueryEntryRefundArgs, 'id'>>;
@@ -2040,6 +2055,7 @@ export declare type QueryResolvers<ContextType = Context, ParentType = Resolvers
     me?: Resolver<Maybe<ResolversTypes['AuthUser']>, ParentType, ContextType>;
     people?: Resolver<Array<ResolversTypes['Person']>, ParentType, ContextType, Partial<QueryPeopleArgs>>;
     person?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<QueryPersonArgs, 'id'>>;
+    searchEntries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QuerySearchEntriesArgs, 'limit' | 'query'>>;
     sources?: Resolver<Array<ResolversTypes['Source']>, ParentType, ContextType, RequireFields<QuerySourcesArgs, 'searchByName'>>;
     user?: Resolver<Maybe<ResolversTypes['AuthUser']>, ParentType, ContextType, RequireFields<QueryUserArgs, 'id'>>;
     users?: Resolver<Array<ResolversTypes['AuthUser']>, ParentType, ContextType, Partial<QueryUsersArgs>>;

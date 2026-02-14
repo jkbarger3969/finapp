@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateEntry = exports.reconcileEntries = exports.deleteEntryRefund = exports.deleteEntry = exports.updateEntryRefund = exports.updateEntry = exports.addNewEntryRefund = exports.addNewEntry = exports.EntryRefund = exports.EntryItem = exports.Entry = exports.whereEntries = exports.entries = exports.entryRefund = exports.entryRefunds = exports.entry = void 0;
+exports.validateEntry = exports.reconcileEntries = exports.deleteEntryRefund = exports.deleteEntry = exports.updateEntryRefund = exports.updateEntry = exports.addNewEntryRefund = exports.addNewEntry = exports.EntryRefund = exports.EntryItem = exports.Entry = exports.entriesCount = exports.searchEntries = exports.whereEntries = exports.entries = exports.entryRefund = exports.entryRefunds = exports.entry = void 0;
 var entry_1 = require("./entry");
 Object.defineProperty(exports, "entry", { enumerable: true, get: function () { return entry_1.entry; } });
 var entryRefunds_1 = require("./entryRefunds");
@@ -10,6 +10,8 @@ Object.defineProperty(exports, "entryRefund", { enumerable: true, get: function 
 var entries_1 = require("./entries");
 Object.defineProperty(exports, "entries", { enumerable: true, get: function () { return entries_1.entries; } });
 Object.defineProperty(exports, "whereEntries", { enumerable: true, get: function () { return entries_1.whereEntries; } });
+Object.defineProperty(exports, "searchEntries", { enumerable: true, get: function () { return entries_1.searchEntries; } });
+Object.defineProperty(exports, "entriesCount", { enumerable: true, get: function () { return entries_1.entriesCount; } });
 var entryResolvers_1 = require("./entryResolvers");
 Object.defineProperty(exports, "Entry", { enumerable: true, get: function () { return entryResolvers_1.Entry; } });
 Object.defineProperty(exports, "EntryItem", { enumerable: true, get: function () { return entryResolvers_1.EntryItem; } });
@@ -30,4 +32,4 @@ var reconcileEntries_1 = require("./reconcileEntries");
 Object.defineProperty(exports, "reconcileEntries", { enumerable: true, get: function () { return reconcileEntries_1.reconcileEntries; } });
 var entryValidators_1 = require("./entryValidators");
 Object.defineProperty(exports, "validateEntry", { enumerable: true, get: function () { return entryValidators_1.validateEntry; } });
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi8uLi9zcmMvcmVzb2x2ZXJzL2VudHJ5L2luZGV4LnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7OztBQUFBLGlDQUFnQztBQUF2Qiw4RkFBQSxLQUFLLE9BQUE7QUFDZCwrQ0FBOEM7QUFBckMsNEdBQUEsWUFBWSxPQUFBO0FBQ3JCLDZDQUE0QztBQUFuQywwR0FBQSxXQUFXLE9BQUE7QUFDcEIscUNBQWtEO0FBQXpDLGtHQUFBLE9BQU8sT0FBQTtBQUFFLHVHQUFBLFlBQVksT0FBQTtBQUM5QixtREFBaUU7QUFBeEQsdUdBQUEsS0FBSyxPQUFBO0FBQUUsMkdBQUEsU0FBUyxPQUFBO0FBQUUsNkdBQUEsV0FBVyxPQUFBO0FBQ3RDLDZDQUE0QztBQUFuQywwR0FBQSxXQUFXLE9BQUE7QUFDcEIseURBQXdEO0FBQS9DLHNIQUFBLGlCQUFpQixPQUFBO0FBQzFCLDZDQUE0QztBQUFuQywwR0FBQSxXQUFXLE9BQUE7QUFDcEIseURBQXdEO0FBQS9DLHNIQUFBLGlCQUFpQixPQUFBO0FBQzFCLDZDQUE0QztBQUFuQywwR0FBQSxXQUFXLE9BQUE7QUFDcEIseURBQXdEO0FBQS9DLHNIQUFBLGlCQUFpQixPQUFBO0FBQzFCLHVEQUFzRDtBQUE3QyxvSEFBQSxnQkFBZ0IsT0FBQTtBQUN6QixxREFBa0Q7QUFBekMsZ0hBQUEsYUFBYSxPQUFBIn0=
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi8uLi9zcmMvcmVzb2x2ZXJzL2VudHJ5L2luZGV4LnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7OztBQUFBLGlDQUFnQztBQUF2Qiw4RkFBQSxLQUFLLE9BQUE7QUFDZCwrQ0FBOEM7QUFBckMsNEdBQUEsWUFBWSxPQUFBO0FBQ3JCLDZDQUE0QztBQUFuQywwR0FBQSxXQUFXLE9BQUE7QUFDcEIscUNBQStFO0FBQXRFLGtHQUFBLE9BQU8sT0FBQTtBQUFFLHVHQUFBLFlBQVksT0FBQTtBQUFFLHdHQUFBLGFBQWEsT0FBQTtBQUFFLHVHQUFBLFlBQVksT0FBQTtBQUMzRCxtREFBaUU7QUFBeEQsdUdBQUEsS0FBSyxPQUFBO0FBQUUsMkdBQUEsU0FBUyxPQUFBO0FBQUUsNkdBQUEsV0FBVyxPQUFBO0FBQ3RDLDZDQUE0QztBQUFuQywwR0FBQSxXQUFXLE9BQUE7QUFDcEIseURBQXdEO0FBQS9DLHNIQUFBLGlCQUFpQixPQUFBO0FBQzFCLDZDQUE0QztBQUFuQywwR0FBQSxXQUFXLE9BQUE7QUFDcEIseURBQXdEO0FBQS9DLHNIQUFBLGlCQUFpQixPQUFBO0FBQzFCLDZDQUE0QztBQUFuQywwR0FBQSxXQUFXLE9BQUE7QUFDcEIseURBQXdEO0FBQS9DLHNIQUFBLGlCQUFpQixPQUFBO0FBQzFCLHVEQUFzRDtBQUE3QyxvSEFBQSxnQkFBZ0IsT0FBQTtBQUN6QixxREFBa0Q7QUFBekMsZ0hBQUEsYUFBYSxPQUFBIn0=

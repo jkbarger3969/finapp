@@ -7,5 +7,6 @@ export interface Loaders {
     fiscalYear: DataLoader<string, FiscalYearDbRecord | null>;
     business: DataLoader<string, BusinessDbRecord | null>;
     person: DataLoader<string, PersonDbRecord | null>;
+    allFiscalYears: DataLoader<string, FiscalYearDbRecord[]>;
 }
 export declare const createLoaders: (db: Db) => Loaders;
