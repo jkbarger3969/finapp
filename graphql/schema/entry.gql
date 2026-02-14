@@ -230,7 +230,12 @@ type Query {
   filterRefunds: filter refunds against `where` argument by mapping the refund onto it's entry and running the `EntriesWhere` filter.
   NOTE: A `EntryRefund` is a subset of an `Entry`.  Excludes `EntriesWhere.refunds` in refund matching.
   """
-  entries(where: EntriesWhere, filterRefunds: Boolean = false): [Entry!]!
+  entries(
+    where: EntriesWhere
+    filterRefunds: Boolean = false
+    limit: Int = 50
+    offset: Int = 0
+  ): [Entry!]!
   entry(id: ID!): Entry
   entryRefund(id: ID!): EntryRefund
   entryRefunds(
