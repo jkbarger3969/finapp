@@ -703,10 +703,12 @@ export const whereEntries = (
         filterQuery["description.0.value"] = whereRegex(entriesWhere[whereKey]);
         break;
       case "paymentMethodType":
-        // Maps "Card", "Check" etc to "PaymentMethodCard" etc as stored in DB
+        // Maps "CARD", "CHECK" (Enum) to "Card", "Check" (DB)
         const type = entriesWhere[whereKey];
         if (type) {
-          filterQuery["paymentMethod.type"] = `PaymentMethod${type}`;
+          // Simple TitleCase conversion
+          const dbType = type.charAt(0) + type.slice(1).toLowerCase();
+          filterQuery["paymentMethod.type"] = dbType;
         }
         break;
       case "total":

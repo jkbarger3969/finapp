@@ -75,6 +75,7 @@ input EntriesWhere {
   reconciled: Boolean
   lastUpdate: WhereDate
   deleted: Boolean
+  paymentMethodType: PaymentMethodType
 
   # Logic
   and: [EntriesWhere!]
