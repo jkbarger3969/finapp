@@ -379,7 +379,7 @@ export default function Transactions() {
         {
             field: "actions",
             headerName: "",
-            width: 60,
+            width: 50,
             sortable: false,
             filterable: false,
             disableColumnMenu: true,
@@ -417,7 +417,7 @@ export default function Transactions() {
         {
             field: "date",
             headerName: "Date",
-            width: 140,
+            width: 120,
             renderCell: (params: any) => {
                 const txDate = format(new Date(params.value), "MMM dd, yyyy");
                 const postedDate = params.row.dateOfRecord?.date;
@@ -440,7 +440,7 @@ export default function Transactions() {
             field: "description",
             headerName: "Description",
             flex: 1,
-            minWidth: 200,
+            minWidth: 180,
             renderCell: (params: any) => {
                 if (params.row.isRefund) {
                     const isExpanded = expandedRefunds.has(params.row.id);
@@ -499,13 +499,13 @@ export default function Transactions() {
         {
             field: "department",
             headerName: "Department",
-            width: 150,
+            width: 140,
             valueGetter: (_value: any, row: any) => row?.department?.name || "",
         },
         {
             field: "source",
             headerName: "Source",
-            width: 180,
+            width: 160,
             renderCell: (params: any) => {
                 const source = params.row.source;
                 if (!source) return <Typography variant="body2" color="text.secondary">-</Typography>;
@@ -536,7 +536,7 @@ export default function Transactions() {
         {
             field: "category",
             headerName: "Category",
-            width: 150,
+            width: 130,
             renderCell: (params: any) => (
                 <Chip
                     label={params.value?.name || "Uncategorized"}
@@ -549,7 +549,7 @@ export default function Transactions() {
         {
             field: "paymentMethod",
             headerName: "Payment",
-            width: 150,
+            width: 130,
             valueGetter: (val: any) => {
                 const value = val as any;
                 if (!value) return "Unknown";
@@ -567,7 +567,7 @@ export default function Transactions() {
         {
             field: "total",
             headerName: "Amount",
-            width: 150,
+            width: 130,
             align: "right",
             headerAlign: "right",
             valueGetter: (value: any) => parseRational(value),
@@ -588,7 +588,7 @@ export default function Transactions() {
         {
             field: "receipts",
             headerName: "Receipts",
-            width: 80,
+            width: 90,
             sortable: false,
             renderCell: (params: any) => {
                 const count = params.row.attachments?.length || 0;
@@ -1273,9 +1273,13 @@ export default function Transactions() {
                                             '& .MuiDataGrid-cell': {
                                                 borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                                             },
-                                            '& .MuiDataGrid-columnHeaders': {
+                                            "& .MuiDataGrid-virtualScroller": {
+                                                marginTop: "8px !important",
+                                            },
+                                            "& .MuiDataGrid-columnHeaders": {
                                                 backgroundColor: 'rgba(0, 0, 0, 0.2)',
                                                 borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                                                borderRadius: '8px', // Round the headers
                                                 color: 'text.secondary',
                                                 textTransform: 'uppercase',
                                                 letterSpacing: '0.1em',
@@ -1284,6 +1288,8 @@ export default function Transactions() {
                                             },
                                             "& .MuiDataGrid-row": {
                                                 transition: "all 0.2s",
+                                                borderRadius: '8px', // Round the rows
+                                                mb: 0.5, // Markdown between rows
                                                 "&:hover": {
                                                     backgroundColor: 'rgba(255, 255, 255, 0.05) !important',
                                                     transform: "scale(1.002)",
