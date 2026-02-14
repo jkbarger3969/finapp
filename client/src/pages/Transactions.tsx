@@ -348,7 +348,7 @@ export default function Transactions() {
         categoryId: selectedCategory?.id,
         personId: selectedPerson?.id,
         businessId: selectedBusiness?.id,
-        paginationModel,
+        paginationModel: showMatchingOnly ? { page: 0, pageSize: 1000 } : paginationModel,
         paymentMethodType,
         searchTerm,
     });
