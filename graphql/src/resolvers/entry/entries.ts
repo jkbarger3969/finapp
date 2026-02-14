@@ -833,6 +833,18 @@ export const whereEntries = (
       case "deleted":
         filterQuery["deleted.0.value"] = entriesWhere[whereKey];
         break;
+      case "hasRefunds":
+        if (entriesWhere[whereKey] === true) {
+          filterQuery["refunds"] = { $exists: true, $ne: [], $type: "array" };
+          filterQuery["refunds.0"] = { $exists: true };
+        } else if (entriesWhere[whereKey] === false) {
+          filterQuery["$or"] = [
+            { "refunds": { $exists: false } },
+            { "refunds": { $size: 0 } },
+            { "refunds": [] }
+          ];
+        }
+        break;
       case "and":
         {
           let hasPromise = false;

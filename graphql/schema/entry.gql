@@ -76,6 +76,7 @@ input EntriesWhere {
   lastUpdate: WhereDate
   deleted: Boolean
   paymentMethodType: PaymentMethodType
+  hasRefunds: Boolean
 
   # Logic
   and: [EntriesWhere!]

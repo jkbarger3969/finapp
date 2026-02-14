@@ -456,6 +456,7 @@ export declare type EntriesWhere = {
     department?: InputMaybe<DepartmentsWhere>;
     description?: InputMaybe<WhereRegex>;
     fiscalYear?: InputMaybe<FiscalYearsWhere>;
+    hasRefunds?: InputMaybe<Scalars['Boolean']['input']>;
     id?: InputMaybe<WhereId>;
     items?: InputMaybe<EntryItemsWhere>;
     lastUpdate?: InputMaybe<WhereDate>;

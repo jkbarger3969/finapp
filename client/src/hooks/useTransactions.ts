@@ -92,6 +92,7 @@ interface UseTransactionsProps {
   paginationModel: { page: number; pageSize: number };
   paymentMethodType?: string;
   searchTerm?: string;
+  hasRefunds?: boolean;
 }
 
 export function useTransactions({
@@ -107,6 +108,7 @@ export function useTransactions({
   paginationModel,
   paymentMethodType = 'ALL',
   searchTerm = '',
+  hasRefunds,
 }: UseTransactionsProps) {
 
   // Debounce filter changes to reduce API calls
@@ -122,6 +124,7 @@ export function useTransactions({
     businessId,
     paymentMethodType,
     searchTerm,
+    hasRefunds,
   });
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -146,6 +149,7 @@ export function useTransactions({
         businessId,
         paymentMethodType,
         searchTerm,
+        hasRefunds,
       });
     }, 150);
 
@@ -154,7 +158,7 @@ export function useTransactions({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [departmentId, fiscalYearId, reconcileFilter, startDate, endDate, entryType, categoryId, personId, businessId, paymentMethodType, searchTerm]);
+  }, [departmentId, fiscalYearId, reconcileFilter, startDate, endDate, entryType, categoryId, personId, businessId, paymentMethodType, searchTerm, hasRefunds]);
 
   // Build GraphQL where clause from debounced filters
   const where = useMemo(() => {
@@ -226,6 +230,10 @@ export function useTransactions({
         baseWhere.and = [];
       }
       baseWhere.and.push(searchFilter);
+    }
+
+    if (debouncedFilters.hasRefunds !== undefined) {
+      baseWhere.hasRefunds = debouncedFilters.hasRefunds;
     }
 
     return baseWhere;
