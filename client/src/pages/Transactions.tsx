@@ -43,6 +43,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { ReceiptManagerDialog } from "../components/ReceiptManagerDialog";
 import EditEntryDialog from "../components/EditEntryDialog";
 import EntryFormDialog from "../components/EntryFormDialog";
@@ -125,6 +126,10 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
 });
+
+const CustomCheckbox = (props: any) => (
+    <Checkbox {...props} icon={<RadioButtonUncheckedIcon />} checkedIcon={<CheckCircleIcon />} />
+);
 
 export default function Transactions() {
     const { departmentId: contextDeptId, fiscalYearId, fiscalYears, setFiscalYearId } = useDepartment();
@@ -1253,7 +1258,10 @@ export default function Transactions() {
                                         isRowSelectable={(params) => !params.row.reconciled}
                                         rowSelectionModel={rowSelectionModel}
                                         onRowSelectionModelChange={(newModel) => setRowSelectionModel(newModel)}
-                                        slots={{ toolbar: GridToolbar }}
+                                        slots={{
+                                            toolbar: GridToolbar,
+                                            baseCheckbox: CustomCheckbox
+                                        }}
                                         slotProps={{
                                             toolbar: {
                                                 showQuickFilter: true,
