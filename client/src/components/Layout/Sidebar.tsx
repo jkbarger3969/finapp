@@ -15,6 +15,7 @@ import {
     Logout as LogoutIcon,
     Person as PersonIcon,
 } from "@mui/icons-material";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useLayout } from "../../context/LayoutContext";
@@ -28,6 +29,8 @@ export default function Sidebar() {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, logout, isSuperAdmin, isDeptAdmin } = useAuth();
+    const { isSidebarCollapsed, toggleSidebar, openEntryDialog } = useLayout();
+    const { mode, toggleTheme } = useThemeMode();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const userMenuOpen = Boolean(anchorEl);
 
