@@ -1296,6 +1296,8 @@ export default function Transactions() {
                                             color: 'text.primary',
                                             '& .MuiDataGrid-cell': {
                                                 borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                                display: 'flex',
+                                                alignItems: 'center',
                                             },
                                             "& .MuiDataGrid-virtualScroller": {
                                                 marginTop: "8px !important",
