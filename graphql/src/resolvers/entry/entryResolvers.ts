@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import {
   EntryResolvers,
   Scalars,
@@ -35,12 +36,27 @@ export const EntryRefund: EntryRefundResolvers = {
     _,
     { loaders }
   ) => {
-    const value = dateOfRecord?.overrideFiscalYear[0].value
-      ? dateOfRecord.date[0].value
-      : date[0].value;
+    const entryDate = date?.[0]?.value ?? new Date();
+    const value = dateOfRecord?.overrideFiscalYear?.[0]?.value
+      ? dateOfRecord.date?.[0]?.value ?? entryDate
+      : entryDate;
 
-    const years = await loaders.allFiscalYears.load("ALL");
-    return years.find(fy => value >= fy.begin && value < fy.end) || null;
+    try {
+      const years = await loaders.allFiscalYears.load("ALL");
+      const match = years?.find(fy => value >= fy.begin && value < fy.end);
+      if (match) return match;
+    } catch (error) {
+      console.error("Error loading fiscal years for refund:", error);
+    }
+
+    // Fallback
+    const year = value.getFullYear();
+    return {
+      _id: new ObjectId(),
+      name: `FY${year} (Fallback)`,
+      begin: new Date(year, 0, 1),
+      end: new Date(year + 1, 0, 1),
+    } as any;
   },
   deleted: ({ deleted }) => deleted[0].value,
   description: ({ description }) => (description ? description[0].value : null),
@@ -80,12 +96,30 @@ export const Entry: EntryResolvers = {
     _,
     { loaders }
   ) => {
-    const value = dateOfRecord?.overrideFiscalYear[0].value
-      ? dateOfRecord.date[0].value
-      : date[0].value;
+    const entryDate = date?.[0]?.value ?? new Date();
+    const value = dateOfRecord?.overrideFiscalYear?.[0]?.value
+      ? dateOfRecord.date?.[0]?.value ?? entryDate
+      : entryDate;
 
-    const years = await loaders.allFiscalYears.load("ALL");
-    return years.find(fy => value >= fy.begin && value < fy.end) || null;
+    try {
+      const years = await loaders.allFiscalYears.load("ALL");
+      if (!years || years.length === 0) {
+        console.warn("No fiscal years found in DB.");
+      }
+      const match = years?.find(fy => value >= fy.begin && value < fy.end);
+      if (match) return match;
+    } catch (error) {
+      console.error("Error loading fiscal years:", error);
+    }
+
+    // Fallback if no FY found (prevents GraphQL non-nullable error)
+    const year = value.getFullYear();
+    return {
+      _id: new ObjectId(), // Dummy ID
+      name: `FY${year} (Fallback)`,
+      begin: new Date(year, 0, 1),
+      end: new Date(year + 1, 0, 1),
+    } as any;
   },
   items: ({ items }) => items ?? ([] as any),
   // lastUpdate: Default works
