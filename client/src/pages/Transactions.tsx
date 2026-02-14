@@ -598,22 +598,26 @@ export default function Transactions() {
             renderCell: (params: any) => {
                 const count = params.row.attachments?.length || 0;
                 return (
-                    <Tooltip title="Manage Receipts">
-                        <IconButton
-                            size="small"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedEntryId(params.row.id);
-                                setReceiptDialogOpen(true);
-                            }}
-                            data-tooltip="Manage receipts and attachments"
-                            data-tooltip-pos="left"
-                        >
-                            <Badge badgeContent={count} color="primary">
-                                <ReceiptLongIcon fontSize="small" />
-                            </Badge>
-                        </IconButton>
-                    </Tooltip>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
+                        <Tooltip title="Manage Receipts">
+                            <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedEntryId(params.row.id);
+                                    setReceiptDialogOpen(true);
+                                }}
+                            >
+                                <Badge badgeContent={count} color="primary">
+                                    <ReceiptLongIcon
+                                        fontSize="small"
+                                        color={count > 0 ? "primary" : "action"}
+                                        sx={{ opacity: count > 0 ? 1 : 0.3 }}
+                                    />
+                                </Badge>
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
                 );
             }
         },
@@ -1280,8 +1284,6 @@ export default function Transactions() {
                                             color: 'text.primary',
                                             '& .MuiDataGrid-cell': {
                                                 borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                                                display: 'flex',
-                                                alignItems: 'center',
                                             },
                                             "& .MuiDataGrid-virtualScroller": {
                                                 marginTop: "8px !important",
