@@ -386,9 +386,7 @@ export default function BudgetAllocationTab() {
         const isExpanded = expandedDepts.has(dept.id);
         const childrenTotal = dept.children.reduce((sum, child) => sum + calcSubtotal(child), 0);
         const deptTotal = dept.budget > 0 ? dept.budget : childrenTotal;
-        const allocationPercent = deptTotal > 0 ? (childrenTotal / deptTotal) * 100 : 0;
         const isOverAllocated = dept.budget > 0 && childrenTotal > dept.budget;
-        const hasDirectBudget = dept.budget > 0;
         const canEdit = hasAdminAccess(dept.id);
 
         return (
