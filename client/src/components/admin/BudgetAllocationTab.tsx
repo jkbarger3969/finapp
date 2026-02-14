@@ -411,19 +411,19 @@ export default function BudgetAllocationTab() {
                                     {formatCurrency(deptTotal)}
                                 </Typography>
                             </Box>
-                            {hasChildren && hasDirectBudget && (
+                            {hasChildren && (
                                 <Box sx={{ textAlign: 'right', minWidth: 120 }}>
                                     <Typography variant="caption" color="text.secondary">Allocated</Typography>
                                     <Typography variant="body1" color={isOverAllocated ? 'error.main' : 'success.main'}>
-                                        {formatCurrency(childrenTotal)} ({allocationPercent.toFixed(0)}%)
+                                        {formatCurrency(childrenTotal)} ({deptTotal > 0 ? (childrenTotal / deptTotal * 100).toFixed(0) : 0}%)
                                     </Typography>
                                 </Box>
                             )}
-                            {hasChildren && hasDirectBudget && (
+                            {hasChildren && (
                                 <Box sx={{ textAlign: 'right', minWidth: 100 }}>
                                     <Typography variant="caption" color="text.secondary">Unallocated</Typography>
                                     <Typography variant="body1" color={isOverAllocated ? 'error.main' : 'text.secondary'}>
-                                        {formatCurrency(dept.budget - childrenTotal)}
+                                        {formatCurrency(deptTotal - childrenTotal)}
                                     </Typography>
                                 </Box>
                             )}
@@ -441,11 +441,11 @@ export default function BudgetAllocationTab() {
                         </Box>
                     </Box>
 
-                    {hasChildren && hasDirectBudget && (
+                    {hasChildren && (
                         <Box sx={{ mt: 1 }}>
                             <LinearProgress
                                 variant="determinate"
-                                value={Math.min(allocationPercent, 100)}
+                                value={deptTotal > 0 ? Math.min((childrenTotal / deptTotal) * 100, 100) : 0}
                                 color={isOverAllocated ? "error" : "primary"}
                                 sx={{ height: 6, borderRadius: 3 }}
                             />
