@@ -7,6 +7,7 @@ type Category {
   ancestors: [Category!]!
   aliases: [Alias!]!
   active: Boolean!
+  hidden: Boolean
 }
 
 input CategoriesWhere {
@@ -16,6 +17,7 @@ input CategoriesWhere {
   type: EntryType
   parent: WhereId
   active: Boolean
+  hidden: Boolean
 
   # Logic Operators
   and: [CategoriesWhere!]
@@ -26,7 +28,20 @@ input CategoriesWhere {
   root: Boolean
 }
 
+input UpdateCategoryInput {
+  hidden: Boolean
+  name: String
+}
+
+type UpdateCategoryPayload {
+  category: Category!
+}
+
 extend type Query {
   categories(where: CategoriesWhere): [Category!]!
   category(id: ID!): Category!
+}
+
+extend type Mutation {
+  updateCategory(id: ID!, input: UpdateCategoryInput!): UpdateCategoryPayload!
 }

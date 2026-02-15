@@ -13,6 +13,7 @@ type Business {
   """
   departments(root: Boolean = false): [Department!]!
   vendor: Vendor
+  hidden: Boolean
 }
 
 input NewBusiness {
@@ -23,11 +24,21 @@ input BusinessesWhere {
   # Fields
   id: WhereId
   name: WhereRegex
+  hidden: Boolean
 
   # Logic
   and: [BusinessesWhere!]
   or: [BusinessesWhere!]
   nor: [BusinessesWhere!]
+}
+
+input UpdateBusinessInput {
+  hidden: Boolean
+  name: String
+}
+
+type UpdateBusinessPayload {
+  business: Business!
 }
 
 extend type Query {
@@ -37,4 +48,5 @@ extend type Query {
 
 extend type Mutation {
   addNewBusiness(input: NewBusiness!): Business!
+  updateBusiness(id: ID!, input: UpdateBusinessInput!): UpdateBusinessPayload!
 }

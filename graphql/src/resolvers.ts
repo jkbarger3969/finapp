@@ -15,7 +15,7 @@ import {
   AccountCreditCard,
 } from "./resolvers/account";
 import { budget, budgets, Budget, BudgetOwner, upsertBudget, deleteBudget } from "./resolvers/budget";
-import { business, businesses, Business } from "./resolvers/business";
+import { business, businesses, Business, updateBusiness } from "./resolvers/business";
 import {
   department,
   departments,
@@ -49,8 +49,8 @@ import {
   PaymentMethodCard,
 } from "./resolvers/paymentMethod";
 import { sources } from "./resolvers/entrySource";
-import { Category, category, categories } from "./resolvers/category/index";
-import { people, person, Person } from "./resolvers/person";
+import { Category, category, categories, updateCategory } from "./resolvers/category/index";
+import { people, person, Person, updatePerson } from "./resolvers/person";
 import { fiscalYear, fiscalYears, FiscalYear, createFiscalYear, archiveFiscalYear, restoreFiscalYear, exportFiscalYear, deleteFiscalYear } from "./resolvers/fiscalYear";
 import { User } from "./resolvers/user";
 import { attachmentResolvers } from "./resolvers/attachment";
@@ -132,6 +132,9 @@ const initialResolvers: Resolvers = {
     archiveFiscalYear,
     restoreFiscalYear,
     deleteFiscalYear,
+    updateCategory,
+    updatePerson,
+    updateBusiness,
   },
   Subscription: {
     // entryUpserted,

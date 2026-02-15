@@ -4,6 +4,9 @@ import PaymentCardsTab from '../components/admin/PaymentCardsTab';
 import UsersTab from '../components/admin/UsersTab';
 import AuditLogTab from '../components/admin/AuditLogTab';
 import FiscalYearTab from '../components/admin/FiscalYearTab';
+import { CategoriesTab } from '../components/admin/CategoriesTab';
+import { PeopleTab } from '../components/admin/PeopleTab';
+import { BusinessesTab } from '../components/admin/BusinessesTab';
 import { useAuth } from '../context/AuthContext';
 
 interface TabPanelProps {
@@ -56,9 +59,12 @@ export default function Admin() {
 
             <Paper sx={{ width: '100%', mb: 2 }}>
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                    <Tabs value={value} onChange={handleChange} aria-label="admin tabs">
+                    <Tabs value={value} onChange={handleChange} aria-label="admin tabs" variant="scrollable" scrollButtons="auto">
                         <Tab label="User Access" disabled={!isSuperAdmin} />
                         <Tab label="Payment Cards" />
+                        <Tab label="Categories" disabled={!isSuperAdmin} />
+                        <Tab label="People" disabled={!isSuperAdmin} />
+                        <Tab label="Businesses" disabled={!isSuperAdmin} />
                         <Tab label="Fiscal Years" disabled={!isSuperAdmin} />
                         <Tab label="Audit Log" disabled={!isSuperAdmin} />
                     </Tabs>
@@ -72,9 +78,18 @@ export default function Admin() {
                 <PaymentCardsTab />
             </CustomTabPanel>
             <CustomTabPanel value={value} index={2}>
-                {isSuperAdmin && <FiscalYearTab />}
+                {isSuperAdmin && <CategoriesTab />}
             </CustomTabPanel>
             <CustomTabPanel value={value} index={3}>
+                {isSuperAdmin && <PeopleTab />}
+            </CustomTabPanel>
+            <CustomTabPanel value={value} index={4}>
+                {isSuperAdmin && <BusinessesTab />}
+            </CustomTabPanel>
+            <CustomTabPanel value={value} index={5}>
+                {isSuperAdmin && <FiscalYearTab />}
+            </CustomTabPanel>
+            <CustomTabPanel value={value} index={6}>
                 {isSuperAdmin && <AuditLogTab />}
             </CustomTabPanel>
         </Box>

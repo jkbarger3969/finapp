@@ -41,6 +41,7 @@ const GET_FORM_DATA = `
       id
       name
       type
+      hidden
     }
     departments {
       id
@@ -57,6 +58,7 @@ const GET_FORM_DATA = `
     businesses {
       id
       name
+      hidden
     }
     people {
       id
@@ -64,6 +66,7 @@ const GET_FORM_DATA = `
         first
         last
       }
+      hidden
     }
   }
 `;
@@ -243,6 +246,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
         const seen = new Set<string>();
         return (data?.people || [])
             .filter((person: any) => {
+                if (person.hidden) return false;
                 const key = `${person.name?.first || ''} ${person.name?.last || ''}`.toLowerCase().trim();
                 if (seen.has(key) || !key) return false;
                 seen.add(key);
@@ -261,6 +265,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
         const seen = new Set<string>();
         return (data?.businesses || [])
             .filter((biz: any) => {
+                if (biz.hidden) return false;
                 const key = (biz.name || '').toLowerCase().trim();
                 if (seen.has(key) || !key) return false;
                 seen.add(key);
@@ -717,7 +722,10 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                         onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
                                         disabled={fetching}
                                     >
-                                        {data?.categories.map((cat: any) => (
+                                        {[...(data?.categories || [])]
+                                            .filter((cat: any) => !cat.hidden)
+                                            .sort((a: any, b: any) => a.name.localeCompare(b.name))
+                                            .map((cat: any) => (
                                             <MenuItem key={cat.id} value={cat.id}>
                                                 {cat.name} ({cat.type})
                                             </MenuItem>
@@ -733,7 +741,9 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                         onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
                                         disabled={fetching}
                                     >
-                                        {data?.departments.map((dept: any) => (
+                                        {[...(data?.departments || [])]
+                                            .sort((a: any, b: any) => a.name.localeCompare(b.name))
+                                            .map((dept: any) => (
                                             <MenuItem key={dept.id} value={dept.id}>
                                                 {dept.name}
                                             </MenuItem>

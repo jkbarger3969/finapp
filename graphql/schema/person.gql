@@ -23,6 +23,7 @@ type Person {
   name: PersonName!
   email: String
   phone: String
+  hidden: Boolean
 }
 
 input PeopleNameWhere {
@@ -34,11 +35,23 @@ input PeopleWhere {
   # Fields
   id: WhereId
   name: PeopleNameWhere
+  hidden: Boolean
 
   # Logical
   and: [PeopleWhere!]
   or: [PeopleWhere!]
   nor: [PeopleWhere!]
+}
+
+input UpdatePersonInput {
+  hidden: Boolean
+  name: PersonNameInput
+  email: String
+  phone: String
+}
+
+type UpdatePersonPayload {
+  person: Person!
 }
 
 extend type Query {
@@ -48,4 +61,5 @@ extend type Query {
 
 extend type Mutation {
   addNewPerson(input: NewPerson!): AddNewPersonPayload!
+  updatePerson(id: ID!, input: UpdatePersonInput!): UpdatePersonPayload!
 }

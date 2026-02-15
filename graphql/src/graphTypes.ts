@@ -305,6 +305,7 @@ export type Business = {
    * are returned.
    */
   departments: Array<Department>;
+  hidden?: Maybe<Scalars['Boolean']['output']>;
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
   vendor?: Maybe<Vendor>;
@@ -317,6 +318,7 @@ export type BusinessDepartmentsArgs = {
 
 export type BusinessesWhere = {
   and?: InputMaybe<Array<BusinessesWhere>>;
+  hidden?: InputMaybe<Scalars['Boolean']['input']>;
   id?: InputMaybe<WhereId>;
   name?: InputMaybe<WhereRegex>;
   nor?: InputMaybe<Array<BusinessesWhere>>;
@@ -326,6 +328,7 @@ export type BusinessesWhere = {
 export type CategoriesWhere = {
   active?: InputMaybe<Scalars['Boolean']['input']>;
   and?: InputMaybe<Array<CategoriesWhere>>;
+  hidden?: InputMaybe<Scalars['Boolean']['input']>;
   id?: InputMaybe<WhereTreeId>;
   name?: InputMaybe<WhereRegex>;
   nor?: InputMaybe<Array<CategoriesWhere>>;
@@ -342,6 +345,7 @@ export type Category = {
   aliases: Array<Alias>;
   ancestors: Array<Category>;
   children: Array<Category>;
+  hidden?: Maybe<Scalars['Boolean']['output']>;
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
   parent?: Maybe<Category>;
@@ -678,8 +682,11 @@ export type Mutation = {
   restoreFiscalYear: RestoreFiscalYearPayload;
   revokePermission: Scalars['Boolean']['output'];
   updateAccountCard: AccountCard;
+  updateBusiness: UpdateBusinessPayload;
+  updateCategory: UpdateCategoryPayload;
   updateEntry: UpdateEntryPayload;
   updateEntryRefund: UpdateEntryRefundPayload;
+  updatePerson: UpdatePersonPayload;
   updateUser: AuthUser;
   /**
    * Upload a receipt file to an entry.
@@ -796,6 +803,18 @@ export type MutationUpdateAccountCardArgs = {
 };
 
 
+export type MutationUpdateBusinessArgs = {
+  id: Scalars['ID']['input'];
+  input: UpdateBusinessInput;
+};
+
+
+export type MutationUpdateCategoryArgs = {
+  id: Scalars['ID']['input'];
+  input: UpdateCategoryInput;
+};
+
+
 export type MutationUpdateEntryArgs = {
   input: UpdateEntry;
 };
@@ -803,6 +822,12 @@ export type MutationUpdateEntryArgs = {
 
 export type MutationUpdateEntryRefundArgs = {
   input: UpdateEntryRefund;
+};
+
+
+export type MutationUpdatePersonArgs = {
+  id: Scalars['ID']['input'];
+  input: UpdatePersonInput;
 };
 
 
@@ -995,6 +1020,7 @@ export type PeopleNameWhere = {
 
 export type PeopleWhere = {
   and?: InputMaybe<Array<PeopleWhere>>;
+  hidden?: InputMaybe<Scalars['Boolean']['input']>;
   id?: InputMaybe<WhereId>;
   name?: InputMaybe<PeopleNameWhere>;
   nor?: InputMaybe<Array<PeopleWhere>>;
@@ -1004,6 +1030,7 @@ export type PeopleWhere = {
 export type Person = {
   __typename?: 'Person';
   email?: Maybe<Scalars['String']['output']>;
+  hidden?: Maybe<Scalars['Boolean']['output']>;
   id: Scalars['ID']['output'];
   name: PersonName;
   phone?: Maybe<Scalars['String']['output']>;
@@ -1275,6 +1302,26 @@ export type UpdateAccountCardInput = {
   type?: InputMaybe<PaymentCardType>;
 };
 
+export type UpdateBusinessInput = {
+  hidden?: InputMaybe<Scalars['Boolean']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdateBusinessPayload = {
+  __typename?: 'UpdateBusinessPayload';
+  business: Business;
+};
+
+export type UpdateCategoryInput = {
+  hidden?: InputMaybe<Scalars['Boolean']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdateCategoryPayload = {
+  __typename?: 'UpdateCategoryPayload';
+  category: Category;
+};
+
 /** Requirers at least ONE optional field. */
 export type UpdateEntry = {
   category?: InputMaybe<Scalars['ID']['input']>;
@@ -1314,6 +1361,18 @@ export type UpdateEntryRefund = {
 export type UpdateEntryRefundPayload = {
   __typename?: 'UpdateEntryRefundPayload';
   updatedEntryRefund: EntryRefund;
+};
+
+export type UpdatePersonInput = {
+  email?: InputMaybe<Scalars['String']['input']>;
+  hidden?: InputMaybe<Scalars['Boolean']['input']>;
+  name?: InputMaybe<PersonNameInput>;
+  phone?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdatePersonPayload = {
+  __typename?: 'UpdatePersonPayload';
+  person: Person;
 };
 
 export type UpdateUserInput = {
@@ -1704,11 +1763,17 @@ export type ResolversTypes = {
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   Subscription: ResolverTypeWrapper<Record<PropertyKey, never>>;
   UpdateAccountCardInput: UpdateAccountCardInput;
+  UpdateBusinessInput: UpdateBusinessInput;
+  UpdateBusinessPayload: ResolverTypeWrapper<Omit<UpdateBusinessPayload, 'business'> & { business: ResolversTypes['Business'] }>;
+  UpdateCategoryInput: UpdateCategoryInput;
+  UpdateCategoryPayload: ResolverTypeWrapper<Omit<UpdateCategoryPayload, 'category'> & { category: ResolversTypes['Category'] }>;
   UpdateEntry: UpdateEntry;
   UpdateEntryDateOfRecord: UpdateEntryDateOfRecord;
   UpdateEntryPayload: ResolverTypeWrapper<Omit<UpdateEntryPayload, 'updatedEntry'> & { updatedEntry: ResolversTypes['Entry'] }>;
   UpdateEntryRefund: UpdateEntryRefund;
   UpdateEntryRefundPayload: ResolverTypeWrapper<Omit<UpdateEntryRefundPayload, 'updatedEntryRefund'> & { updatedEntryRefund: ResolversTypes['EntryRefund'] }>;
+  UpdatePersonInput: UpdatePersonInput;
+  UpdatePersonPayload: ResolverTypeWrapper<Omit<UpdatePersonPayload, 'person'> & { person: ResolversTypes['Person'] }>;
   UpdateUserInput: UpdateUserInput;
   Upload: ResolverTypeWrapper<Scalars['Upload']['output']>;
   UploadReceiptPayload: ResolverTypeWrapper<Omit<UploadReceiptPayload, 'attachment'> & { attachment: ResolversTypes['Attachment'] }>;
@@ -1843,11 +1908,17 @@ export type ResolversParentTypes = {
   String: Scalars['String']['output'];
   Subscription: Record<PropertyKey, never>;
   UpdateAccountCardInput: UpdateAccountCardInput;
+  UpdateBusinessInput: UpdateBusinessInput;
+  UpdateBusinessPayload: Omit<UpdateBusinessPayload, 'business'> & { business: ResolversParentTypes['Business'] };
+  UpdateCategoryInput: UpdateCategoryInput;
+  UpdateCategoryPayload: Omit<UpdateCategoryPayload, 'category'> & { category: ResolversParentTypes['Category'] };
   UpdateEntry: UpdateEntry;
   UpdateEntryDateOfRecord: UpdateEntryDateOfRecord;
   UpdateEntryPayload: Omit<UpdateEntryPayload, 'updatedEntry'> & { updatedEntry: ResolversParentTypes['Entry'] };
   UpdateEntryRefund: UpdateEntryRefund;
   UpdateEntryRefundPayload: Omit<UpdateEntryRefundPayload, 'updatedEntryRefund'> & { updatedEntryRefund: ResolversParentTypes['EntryRefund'] };
+  UpdatePersonInput: UpdatePersonInput;
+  UpdatePersonPayload: Omit<UpdatePersonPayload, 'person'> & { person: ResolversParentTypes['Person'] };
   UpdateUserInput: UpdateUserInput;
   Upload: Scalars['Upload']['output'];
   UploadReceiptPayload: Omit<UploadReceiptPayload, 'attachment'> & { attachment: ResolversParentTypes['Attachment'] };
@@ -2000,6 +2071,7 @@ export type BudgetOwnerResolvers<ContextType = Context, ParentType = ResolversPa
 export type BusinessResolvers<ContextType = Context, ParentType = ResolversParentTypes['Business']> = {
   budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType>;
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, RequireFields<BusinessDepartmentsArgs, 'root'>>;
+  hidden?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   vendor?: Resolver<Maybe<ResolversTypes['Vendor']>, ParentType, ContextType>;
@@ -2011,6 +2083,7 @@ export type CategoryResolvers<ContextType = Context, ParentType = ResolversParen
   aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType>;
   ancestors?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
   children?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
+  hidden?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   parent?: Resolver<Maybe<ResolversTypes['Category']>, ParentType, ContextType>;
@@ -2178,8 +2251,11 @@ export type MutationResolvers<ContextType = Context, ParentType = ResolversParen
   restoreFiscalYear?: Resolver<ResolversTypes['RestoreFiscalYearPayload'], ParentType, ContextType, RequireFields<MutationRestoreFiscalYearArgs, 'id'>>;
   revokePermission?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRevokePermissionArgs, 'input'>>;
   updateAccountCard?: Resolver<ResolversTypes['AccountCard'], ParentType, ContextType, RequireFields<MutationUpdateAccountCardArgs, 'id' | 'input'>>;
+  updateBusiness?: Resolver<ResolversTypes['UpdateBusinessPayload'], ParentType, ContextType, RequireFields<MutationUpdateBusinessArgs, 'id' | 'input'>>;
+  updateCategory?: Resolver<ResolversTypes['UpdateCategoryPayload'], ParentType, ContextType, RequireFields<MutationUpdateCategoryArgs, 'id' | 'input'>>;
   updateEntry?: Resolver<ResolversTypes['UpdateEntryPayload'], ParentType, ContextType, RequireFields<MutationUpdateEntryArgs, 'input'>>;
   updateEntryRefund?: Resolver<ResolversTypes['UpdateEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationUpdateEntryRefundArgs, 'input'>>;
+  updatePerson?: Resolver<ResolversTypes['UpdatePersonPayload'], ParentType, ContextType, RequireFields<MutationUpdatePersonArgs, 'id' | 'input'>>;
   updateUser?: Resolver<ResolversTypes['AuthUser'], ParentType, ContextType, RequireFields<MutationUpdateUserArgs, 'id' | 'input'>>;
   uploadReceipt?: Resolver<ResolversTypes['UploadReceiptPayload'], ParentType, ContextType, RequireFields<MutationUploadReceiptArgs, 'entryId' | 'file'>>;
   upsertBudget?: Resolver<ResolversTypes['UpsertBudgetResult'], ParentType, ContextType, RequireFields<MutationUpsertBudgetArgs, 'input'>>;
@@ -2242,6 +2318,7 @@ export type PaymentMethodUnknownResolvers<ContextType = Context, ParentType = Re
 
 export type PersonResolvers<ContextType = Context, ParentType = ResolversParentTypes['Person']> = {
   email?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  hidden?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['PersonName'], ParentType, ContextType>;
   phone?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -2314,12 +2391,24 @@ export type SubscriptionResolvers<ContextType = Context, ParentType = ResolversP
   entryUpserted?: SubscriptionResolver<ResolversTypes['Entry'], "entryUpserted", ParentType, ContextType>;
 };
 
+export type UpdateBusinessPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['UpdateBusinessPayload']> = {
+  business?: Resolver<ResolversTypes['Business'], ParentType, ContextType>;
+};
+
+export type UpdateCategoryPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['UpdateCategoryPayload']> = {
+  category?: Resolver<ResolversTypes['Category'], ParentType, ContextType>;
+};
+
 export type UpdateEntryPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['UpdateEntryPayload']> = {
   updatedEntry?: Resolver<ResolversTypes['Entry'], ParentType, ContextType>;
 };
 
 export type UpdateEntryRefundPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['UpdateEntryRefundPayload']> = {
   updatedEntryRefund?: Resolver<ResolversTypes['EntryRefund'], ParentType, ContextType>;
+};
+
+export type UpdatePersonPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['UpdatePersonPayload']> = {
+  person?: Resolver<ResolversTypes['Person'], ParentType, ContextType>;
 };
 
 export interface UploadScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['Upload'], any> {
@@ -2413,8 +2502,11 @@ export type Resolvers<ContextType = Context> = {
   RestoreFiscalYearPayload?: RestoreFiscalYearPayloadResolvers<ContextType>;
   Source?: SourceResolvers<ContextType>;
   Subscription?: SubscriptionResolvers<ContextType>;
+  UpdateBusinessPayload?: UpdateBusinessPayloadResolvers<ContextType>;
+  UpdateCategoryPayload?: UpdateCategoryPayloadResolvers<ContextType>;
   UpdateEntryPayload?: UpdateEntryPayloadResolvers<ContextType>;
   UpdateEntryRefundPayload?: UpdateEntryRefundPayloadResolvers<ContextType>;
+  UpdatePersonPayload?: UpdatePersonPayloadResolvers<ContextType>;
   Upload?: GraphQLScalarType;
   UploadReceiptPayload?: UploadReceiptPayloadResolvers<ContextType>;
   UpsertBudgetResult?: UpsertBudgetResultResolvers<ContextType>;

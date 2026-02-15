@@ -333,6 +333,16 @@ declare const resolvers: {
         updateAccountCard?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").PaymentCardDbRecord>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdateAccountCardArgs, "input" | "id">>;
+        updateBusiness?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").UpdateBusinessPayload, "business"> & {
+            business: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").BusinessDbRecord>;
+        }>, Record<PropertyKey, never>, {
+            dataSources: import("./types").DataSources;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdateBusinessArgs, "input" | "id">>;
+        updateCategory?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").UpdateCategoryPayload, "category"> & {
+            category: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").CategoryDbRecord>;
+        }>, Record<PropertyKey, never>, {
+            dataSources: import("./types").DataSources;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdateCategoryArgs, "input" | "id">>;
         updateEntry?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").UpdateEntryPayload, "updatedEntry"> & {
             updatedEntry: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>;
         }>, Record<PropertyKey, never>, {
@@ -343,6 +353,11 @@ declare const resolvers: {
         }>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdateEntryRefundArgs, "input">>;
+        updatePerson?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").UpdatePersonPayload, "person"> & {
+            person: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").PersonDbRecord>;
+        }>, Record<PropertyKey, never>, {
+            dataSources: import("./types").DataSources;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdatePersonArgs, "input" | "id">>;
         uploadReceipt?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").UploadReceiptPayload, "attachment"> & {
             attachment: import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Attachment>;
         }>, Record<PropertyKey, never>, {
@@ -563,6 +578,16 @@ declare const resolvers: {
     Subscription?: import("./graphTypes").SubscriptionResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, Record<PropertyKey, never>>;
+    UpdateBusinessPayload?: import("./graphTypes").UpdateBusinessPayloadResolvers<{
+        dataSources: import("./types").DataSources;
+    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").UpdateBusinessPayload, "business"> & {
+        business: import("./dataSources/accountingDb/types").BusinessDbRecord;
+    }>;
+    UpdateCategoryPayload?: import("./graphTypes").UpdateCategoryPayloadResolvers<{
+        dataSources: import("./types").DataSources;
+    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").UpdateCategoryPayload, "category"> & {
+        category: import("./dataSources/accountingDb/types").CategoryDbRecord;
+    }>;
     UpdateEntryPayload?: import("./graphTypes").UpdateEntryPayloadResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").UpdateEntryPayload, "updatedEntry"> & {
@@ -572,6 +597,11 @@ declare const resolvers: {
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").UpdateEntryRefundPayload, "updatedEntryRefund"> & {
         updatedEntryRefund: import("./dataSources/accountingDb/types").EntryRefundDbRecord;
+    }>;
+    UpdatePersonPayload?: import("./graphTypes").UpdatePersonPayloadResolvers<{
+        dataSources: import("./types").DataSources;
+    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").UpdatePersonPayload, "person"> & {
+        person: import("./dataSources/accountingDb/types").PersonDbRecord;
     }>;
     UploadReceiptPayload?: import("./graphTypes").UploadReceiptPayloadResolvers<{
         dataSources: import("./types").DataSources;

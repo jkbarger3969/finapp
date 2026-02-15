@@ -7,6 +7,7 @@ import {
     Alert,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useMutation } from "urql";
 
 const UPLOAD_RECEIPT_MUTATION = `
@@ -29,6 +30,7 @@ interface ReceiptUploadProps {
 
 export const ReceiptUpload = ({ entryId, onUploadComplete }: ReceiptUploadProps) => {
     const [uploading, setUploading] = useState(false);
+    const [uploadSuccess, setUploadSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [, uploadReceipt] = useMutation(UPLOAD_RECEIPT_MUTATION);
 
@@ -36,6 +38,7 @@ export const ReceiptUpload = ({ entryId, onUploadComplete }: ReceiptUploadProps)
         async (acceptedFiles: File[]) => {
             setUploading(true);
             setError(null);
+            setUploadSuccess(false);
 
             try {
                 for (const file of acceptedFiles) {
@@ -52,8 +55,12 @@ export const ReceiptUpload = ({ entryId, onUploadComplete }: ReceiptUploadProps)
                         throw new Error(result.error.message);
                     }
                 }
+                setUploadSuccess(true);
                 if (onUploadComplete) {
-                    onUploadComplete();
+                    setTimeout(() => {
+                        onUploadComplete();
+                        setUploadSuccess(false);
+                    }, 500);
                 }
             } catch (err: any) {
                 setError(err.message || "Upload failed");
@@ -109,6 +116,15 @@ export const ReceiptUpload = ({ entryId, onUploadComplete }: ReceiptUploadProps)
                     <LinearProgress />
                     <Typography variant="caption" sx={{ mt: 0.5, display: "block" }}>
                         Uploading...
+                    </Typography>
+                </Box>
+            )}
+
+            {uploadSuccess && (
+                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CheckCircleIcon color="success" />
+                    <Typography variant="body2" color="success.main">
+                        Upload complete! Refreshing...
                     </Typography>
                 </Box>
             )}
