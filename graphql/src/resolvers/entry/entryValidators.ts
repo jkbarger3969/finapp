@@ -154,16 +154,11 @@ export const validateEntry = new (class {
 
           if (entryType === "Credit") {
             if (isAccountCheck) {
-              // Cannot receive money with an AccountCheck
+              // Cannot receive money with an AccountCheck (org's own check)
               throw new UserInputError(
                 `Entry "Category" of type "${EntryType.Credit}" and payment method "AccountCheck" are incompatible.`
               );
             }
-          } else if (!isAccountCheck) {
-            // Cannot give money with an PaymentCheck
-            throw new UserInputError(
-              `Entry "Category" of type "${EntryType.Debit}" and payment method "PaymentCheck" are incompatible.`
-            );
           }
         }
 
