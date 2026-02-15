@@ -82,15 +82,18 @@ const GET_FILTER_OPTIONS = `
         first
         last
       }
+      hidden
     }
     businesses {
       id
       name
+      hidden
     }
     categories {
       id
       name
       type
+      hidden
     }
     departments {
       id
@@ -611,7 +614,10 @@ export default function Reporting() {
                                 data-tooltip-pos="top"
                             >
                                 <MenuItem value="">All Categories</MenuItem>
-                                {categories.map((cat: any) => (
+                                {[...categories]
+                                    .filter((cat: any) => !cat.hidden)
+                                    .sort((a: any, b: any) => a.name.localeCompare(b.name))
+                                    .map((cat: any) => (
                                     <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
                                 ))}
                             </TextField>
@@ -631,7 +637,10 @@ export default function Reporting() {
                                 data-tooltip-pos="top"
                             >
                                 <MenuItem value="">All People</MenuItem>
-                                {people.map((person: any) => (
+                                {[...people]
+                                    .filter((person: any) => !person.hidden)
+                                    .sort((a: any, b: any) => `${a.name.first} ${a.name.last}`.localeCompare(`${b.name.first} ${b.name.last}`))
+                                    .map((person: any) => (
                                     <MenuItem key={person.id} value={person.id}>
                                         {person.name.first} {person.name.last}
                                     </MenuItem>
@@ -653,7 +662,10 @@ export default function Reporting() {
                                 data-tooltip-pos="top"
                             >
                                 <MenuItem value="">All Businesses</MenuItem>
-                                {businesses.map((biz: any) => (
+                                {[...businesses]
+                                    .filter((biz: any) => !biz.hidden)
+                                    .sort((a: any, b: any) => a.name.localeCompare(b.name))
+                                    .map((biz: any) => (
                                     <MenuItem key={biz.id} value={biz.id}>{biz.name}</MenuItem>
                                 ))}
                             </TextField>
