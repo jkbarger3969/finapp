@@ -25,7 +25,6 @@ import {
     Divider,
     Autocomplete,
     Fade,
-    ListSubheader,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { useOnlineStatus } from '../context/OnlineStatusContext';
@@ -35,6 +34,7 @@ import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
 import SaveIcon from '@mui/icons-material/Save';
 import { useMutation, useQuery } from 'urql';
+import CategoryAutocomplete from './CategoryAutocomplete';
 
 const GET_FORM_DATA = `
   query GetFormData {
@@ -290,62 +290,17 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
         return businessOptions.find((b: any) => b.id === formData.sourceId) || null;
     }, [businessOptions, formData.sourceId]);
 
-    const groupedCategories = useMemo(() => {
-        const categories = (data?.categories || []).filter((cat: any) => !cat.hidden);
-        
-        const grouped: { [key: string]: any[] } = {};
-        const ungrouped: any[] = [];
-        
-        categories.forEach((cat: any) => {
-            if (cat.groupName) {
-                if (!grouped[cat.groupName]) {
-                    grouped[cat.groupName] = [];
-                }
-                grouped[cat.groupName].push(cat);
-            } else {
-                ungrouped.push(cat);
-            }
-        });
-        
-        Object.keys(grouped).forEach(key => {
-            grouped[key].sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
-        });
-        ungrouped.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
-        
-        const sortedGroupNames = Object.keys(grouped).sort();
-        
-        return { grouped, ungrouped, sortedGroupNames };
+    const categoryOptions = useMemo(() => {
+        return (data?.categories || []).map((cat: any) => ({
+            id: cat.id,
+            name: cat.name,
+            displayName: cat.displayName,
+            type: cat.type,
+            groupName: cat.groupName,
+            sortOrder: cat.sortOrder,
+            hidden: cat.hidden,
+        }));
     }, [data?.categories]);
-
-    const renderCategoryMenuItems = () => {
-        const items: React.ReactNode[] = [];
-        const { grouped, ungrouped, sortedGroupNames } = groupedCategories;
-        
-        ungrouped.forEach((cat: any) => {
-            items.push(
-                <MenuItem key={cat.id} value={cat.id}>
-                    {cat.displayName || cat.name} ({cat.type === 'CREDIT' ? 'Income' : 'Expense'})
-                </MenuItem>
-            );
-        });
-        
-        sortedGroupNames.forEach((groupName: string) => {
-            items.push(
-                <ListSubheader key={`header-${groupName}`} sx={{ bgcolor: 'background.paper', fontWeight: 'bold' }}>
-                    {groupName}
-                </ListSubheader>
-            );
-            grouped[groupName].forEach((cat: any) => {
-                items.push(
-                    <MenuItem key={cat.id} value={cat.id} sx={{ pl: 4 }}>
-                        {cat.name} ({cat.type === 'CREDIT' ? 'Income' : 'Expense'})
-                    </MenuItem>
-                );
-            });
-        });
-        
-        return items;
-    };
 
     const calculateRemainingRefund = (entry: any): number => {
         const total = formatRational(entry.total);
@@ -775,17 +730,13 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
 
                         {entryType === 'transaction' && (
                             <>
-                                <FormControl fullWidth required>
-                                    <InputLabel>Category</InputLabel>
-                                    <Select
-                                        value={formData.categoryId}
-                                        label="Category"
-                                        onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                                        disabled={fetching}
-                                    >
-                                        {renderCategoryMenuItems()}
-                                    </Select>
-                                </FormControl>
+                                <CategoryAutocomplete
+                                    categories={categoryOptions}
+                                    value={formData.categoryId}
+                                    onChange={(categoryId) => setFormData({ ...formData, categoryId })}
+                                    disabled={fetching}
+                                    required
+                                />
 
                                 <FormControl fullWidth required>
                                     <InputLabel>Department</InputLabel>

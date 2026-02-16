@@ -75,8 +75,25 @@ export const EntryRefund: EntryRefundResolvers = {
 
 export const Entry: EntryResolvers = {
   id: ({ _id }) => _id.toString(),
-  category: ({ category }, _, { loaders }) =>
-    loaders.category.load(category[0].value.toString()),
+  category: async ({ category, _id }, _, { loaders }) => {
+    const categoryId = category[0].value.toString();
+    const cat = await loaders.category.load(categoryId);
+    if (!cat) {
+      console.warn(`Entry ${_id} references missing/hidden category: ${categoryId}`);
+      return {
+        _id: new ObjectId(categoryId),
+        name: "Unknown Category",
+        code: "UNKNOWN",
+        externalId: categoryId,
+        type: "Debit",
+        inactive: true,
+        donation: false,
+        active: false,
+        hidden: true,
+      } as any;
+    }
+    return cat;
+  },
 
   date: ({ date }) => date[0].value,
   dateOfRecord: ({ dateOfRecord }) =>
