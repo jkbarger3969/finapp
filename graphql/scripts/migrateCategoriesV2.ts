@@ -8,7 +8,7 @@ interface CategoryMapping {
 }
 
 const CATEGORY_MAPPINGS: CategoryMapping[] = [
-  // INCOME - These should match EXACTLY what's in your database
+  // INCOME - Match EXACT names from your database
   { originalName: "Contribution Income", accountNumber: "41000", sortOrder: 100 },
   { originalName: "Ministry Fees/Income", accountNumber: "43000", sortOrder: 200 },
   { originalName: "Merchandise Sales", accountNumber: "43100", sortOrder: 300 },
@@ -23,8 +23,12 @@ const CATEGORY_MAPPINGS: CategoryMapping[] = [
   { originalName: "Animal Sales", accountNumber: "45030", sortOrder: 1200 },
   { originalName: "Interest Income", accountNumber: "90000", sortOrder: 1300 },
   { originalName: "Dividend Income", accountNumber: "91000", sortOrder: 1400 },
+  { originalName: "Donations", accountNumber: "41001", sortOrder: 150 },
+  { originalName: "Sponsorship Income", accountNumber: "43410", sortOrder: 550 },
+  { originalName: "Camp Registration", accountNumber: "43420", sortOrder: 560 },
+  { originalName: "Lone Star Beef Donations", accountNumber: "45040", sortOrder: 1250 },
 
-  // EXPENSE - Payroll
+  // EXPENSE - Payroll (use groupName for grouping in UI)
   { originalName: "Payroll: Staff wages", accountNumber: "51100", groupName: "Payroll", sortOrder: 100 },
   { originalName: "Payroll: Employer FICA", accountNumber: "51200", groupName: "Payroll", sortOrder: 110 },
   
@@ -39,13 +43,11 @@ const CATEGORY_MAPPINGS: CategoryMapping[] = [
   { originalName: "Property & Liability Insurance", accountNumber: "61300", sortOrder: 310 },
   { originalName: "Workers Comp Insurance", accountNumber: "61400", sortOrder: 320 },
   
-  // Capital Improvements
-  { originalName: "Capital Improvements: Equipment", accountNumber: "61600", groupName: "Capital Improvements", sortOrder: 400 },
-  { originalName: "Capital Improvements: Building", accountNumber: "61650", groupName: "Capital Improvements", sortOrder: 410 },
+  // Capital Improvements - Your DB has just "Capital Improvements"
+  { originalName: "Capital Improvements", accountNumber: "61600", groupName: "Capital Improvements", sortOrder: 400 },
   
-  // Bank Charges
+  // Bank Charges - Your DB has just "Bank Charges"
   { originalName: "Bank Charges", accountNumber: "71100", sortOrder: 500 },
-  { originalName: "Bank Charges: eGive Fees", accountNumber: "71200", groupName: "Bank Charges", sortOrder: 510 },
   
   // General Expenses
   { originalName: "Benevolence Expense", accountNumber: "71300", sortOrder: 600 },
@@ -55,38 +57,25 @@ const CATEGORY_MAPPINGS: CategoryMapping[] = [
   { originalName: "Database Software Fees", accountNumber: "71710", sortOrder: 640 },
   { originalName: "Fundraiser Expense", accountNumber: "71850", sortOrder: 650 },
   
-  // Equipment Expense
+  // Equipment Expense - Your DB has just "Equipment Expense"
   { originalName: "Equipment Expense", accountNumber: "71900", groupName: "Equipment Expense", sortOrder: 700 },
-  { originalName: "Equipment Expense: Audio", accountNumber: "72000", groupName: "Equipment Expense", sortOrder: 710 },
-  { originalName: "Equipment Expense: Lighting", accountNumber: "72200", groupName: "Equipment Expense", sortOrder: 720 },
   { originalName: "Equipment Rental", accountNumber: "72300", groupName: "Equipment Expense", sortOrder: 730 },
   { originalName: "Furnishings", accountNumber: "72400", sortOrder: 740 },
   
-  // Meals
-  { originalName: "Meals: Event Meal", accountNumber: "72650", groupName: "Meals", sortOrder: 800 },
-  { originalName: "Meals: Travel", accountNumber: "72700", groupName: "Meals", sortOrder: 810 },
+  // Meals - Your DB has just "Meals"
+  { originalName: "Meals", accountNumber: "72650", groupName: "Meals", sortOrder: 800 },
+  { originalName: "Catering", accountNumber: "72660", groupName: "Meals", sortOrder: 805 },
   { originalName: "Travel/Lodging", accountNumber: "72710", sortOrder: 820 },
   
-  // Marketing
-  { originalName: "Marketing: Other", accountNumber: "73100", groupName: "Marketing", sortOrder: 900 },
-  { originalName: "Marketing: Printed Materials", accountNumber: "73200", groupName: "Marketing", sortOrder: 910 },
-  { originalName: "Marketing: Promotions/Discounts", accountNumber: "73300", groupName: "Marketing", sortOrder: 920 },
-  { originalName: "Marketing: Social Media", accountNumber: "73400", groupName: "Marketing", sortOrder: 930 },
+  // Marketing - Your DB has just "Marketing"
+  { originalName: "Marketing", accountNumber: "73100", groupName: "Marketing", sortOrder: 900 },
   
   // General 2
   { originalName: "Mileage Reimbursement", accountNumber: "73500", sortOrder: 1000 },
   { originalName: "Miscellaneous", accountNumber: "73600", sortOrder: 1010 },
   
-  // Outside Services
-  { originalName: "Outside Services: Background Check", accountNumber: "73700", groupName: "Outside Services", sortOrder: 1100 },
-  { originalName: "Outside Services: Guest Speaker", accountNumber: "73800", groupName: "Outside Services", sortOrder: 1110 },
-  { originalName: "Outside Services: Security", accountNumber: "74000", groupName: "Outside Services", sortOrder: 1120 },
-  { originalName: "Outside Services: Childcare", accountNumber: "74100", groupName: "Outside Services", sortOrder: 1130 },
-  { originalName: "Outside Services: Contract Services", accountNumber: "74300", groupName: "Outside Services", sortOrder: 1140 },
-  { originalName: "Outside Services: Janitorial", accountNumber: "74400", groupName: "Outside Services", sortOrder: 1150 },
-  { originalName: "Outside Services: Musicians", accountNumber: "74500", groupName: "Outside Services", sortOrder: 1160 },
-  { originalName: "Outside Services: Other", accountNumber: "74600", groupName: "Outside Services", sortOrder: 1170 },
-  { originalName: "Outside Services: Printing", accountNumber: "74700", groupName: "Outside Services", sortOrder: 1180 },
+  // Outside Services - Your DB has just "Outside Services"
+  { originalName: "Outside Services", accountNumber: "73700", groupName: "Outside Services", sortOrder: 1100 },
   
   // General 3
   { originalName: "Postage", accountNumber: "74800", sortOrder: 1200 },
@@ -108,36 +97,39 @@ const CATEGORY_MAPPINGS: CategoryMapping[] = [
   { originalName: "Signage", accountNumber: "75600", sortOrder: 1420 },
   { originalName: "Staff Appreciation", accountNumber: "75700", sortOrder: 1430 },
   
-  // Staff Development
+  // Staff Development - Your DB has "Staff Develop"
   { originalName: "Staff Develop", accountNumber: "75800", groupName: "Staff Development", sortOrder: 1500 },
-  { originalName: "Staff Develop: Conf & Seminars", accountNumber: "75900", groupName: "Staff Development", sortOrder: 1510 },
-  { originalName: "Staff Reimbursement Expense", accountNumber: "75910", groupName: "Staff Development", sortOrder: 1520 },
   
   // General 5
   { originalName: "Subscriptions", accountNumber: "76100", sortOrder: 1600 },
   { originalName: "Flowers and Gifts", accountNumber: "76110", sortOrder: 1610 },
   
-  // Supplies
-  { originalName: "Supplies: Cleaning", accountNumber: "76300", groupName: "Supplies", sortOrder: 1700 },
-  { originalName: "Supplies: Hospitality", accountNumber: "76400", groupName: "Supplies", sortOrder: 1710 },
-  { originalName: "Supplies: Kitchen", accountNumber: "76500", groupName: "Supplies", sortOrder: 1720 },
-  { originalName: "Supplies: Office", accountNumber: "76600", groupName: "Supplies", sortOrder: 1730 },
-  { originalName: "Supplies: Promotional Items", accountNumber: "76700", groupName: "Supplies", sortOrder: 1740 },
-  { originalName: "Supplies: Materials and Supplies", accountNumber: "76800", groupName: "Supplies", sortOrder: 1750 },
-  { originalName: "Supplies: Communion", accountNumber: "76950", groupName: "Supplies", sortOrder: 1760 },
-  { originalName: "Supplies: Baptism", accountNumber: "76960", groupName: "Supplies", sortOrder: 1770 },
+  // Supplies - Your DB has simple names like "Cleaning", "Kitchen" etc.
+  { originalName: "Cleaning", accountNumber: "76300", groupName: "Supplies", sortOrder: 1700 },
+  { originalName: "Hospitality", accountNumber: "76400", groupName: "Supplies", sortOrder: 1710 },
+  { originalName: "Kitchen", accountNumber: "76500", groupName: "Supplies", sortOrder: 1720 },
+  { originalName: "Office", accountNumber: "76600", groupName: "Supplies", sortOrder: 1730 },
+  { originalName: "Promotional Items", accountNumber: "76700", groupName: "Supplies", sortOrder: 1740 },
+  { originalName: "Materials and Supplies", accountNumber: "76800", groupName: "Supplies", sortOrder: 1750 },
+  { originalName: "Communion", accountNumber: "76950", groupName: "Supplies", sortOrder: 1760 },
+  { originalName: "Baptism", accountNumber: "76960", groupName: "Supplies", sortOrder: 1770 },
+  { originalName: "Supplies", accountNumber: "76000", groupName: "Supplies", sortOrder: 1690 },
+  { originalName: "Supplies: Salvation", accountNumber: "76970", groupName: "Supplies", sortOrder: 1780 },
+  { originalName: "Office Hospitality", accountNumber: "76410", groupName: "Supplies", sortOrder: 1715 },
   
   // General 6
   { originalName: "Café Concess/Snack", accountNumber: "77050", sortOrder: 1800 },
   { originalName: "Taxes, Licenses & Permits", accountNumber: "77100", sortOrder: 1810 },
   
-  // Utilities
-  { originalName: "Utilities: Electricity", accountNumber: "77200", groupName: "Utilities", sortOrder: 1900 },
-  { originalName: "Utilities: Gas", accountNumber: "77300", groupName: "Utilities", sortOrder: 1910 },
-  { originalName: "Utilities: Phone", accountNumber: "77400", groupName: "Utilities", sortOrder: 1920 },
-  { originalName: "Utilities: Internet", accountNumber: "77410", groupName: "Utilities", sortOrder: 1930 },
-  { originalName: "Utilities: Refuse", accountNumber: "77500", groupName: "Utilities", sortOrder: 1940 },
-  { originalName: "Utilities: Water & Sewer", accountNumber: "77600", groupName: "Utilities", sortOrder: 1950 },
+  // Utilities - Your DB has simple names like "Electricity", "Gas" etc.
+  { originalName: "Electricity", accountNumber: "77200", groupName: "Utilities", sortOrder: 1900 },
+  { originalName: "Gas", accountNumber: "77300", groupName: "Utilities", sortOrder: 1910 },
+  { originalName: "Phone", accountNumber: "77400", groupName: "Utilities", sortOrder: 1920 },
+  { originalName: "Internet", accountNumber: "77410", groupName: "Utilities", sortOrder: 1930 },
+  { originalName: "Refuse", accountNumber: "77500", groupName: "Utilities", sortOrder: 1940 },
+  { originalName: "Water & Sewer", accountNumber: "77600", groupName: "Utilities", sortOrder: 1950 },
+  { originalName: "Utilities", accountNumber: "77000", groupName: "Utilities", sortOrder: 1890 },
+  { originalName: "Website", accountNumber: "77420", groupName: "Utilities", sortOrder: 1935 },
   
   // Vehicle
   { originalName: "Vehicle Expense", accountNumber: "77700", sortOrder: 2000 },
@@ -167,18 +159,35 @@ const CATEGORY_MAPPINGS: CategoryMapping[] = [
   // Counseling
   { originalName: "Counseling", accountNumber: "81550", sortOrder: 2500 },
   
-  // Ranch/Animals
+  // Ranch/Animals - Your DB has different names
   { originalName: "Meat Purchases", accountNumber: "81605", groupName: "Ranch/Animals", sortOrder: 2600 },
   { originalName: "Animal Purchase", accountNumber: "81610", groupName: "Ranch/Animals", sortOrder: 2610 },
   { originalName: "Animal Processing", accountNumber: "81615", groupName: "Ranch/Animals", sortOrder: 2620 },
   { originalName: "Feed/Hay", accountNumber: "81630", groupName: "Ranch/Animals", sortOrder: 2630 },
   { originalName: "Vaccines", accountNumber: "81635", groupName: "Ranch/Animals", sortOrder: 2640 },
   { originalName: "Pasture Maintenance", accountNumber: "81645", groupName: "Ranch/Animals", sortOrder: 2650 },
+  { originalName: "Feedlot Expense", accountNumber: "81650", groupName: "Ranch/Animals", sortOrder: 2655 },
+  { originalName: "Vet Expense", accountNumber: "81660", groupName: "Ranch/Animals", sortOrder: 2660 },
+  { originalName: "Lone Star Beef", accountNumber: "81670", groupName: "Ranch/Animals", sortOrder: 2665 },
   
   // General 7
   { originalName: "Merchandise: Clothing, CDs", accountNumber: "81700", sortOrder: 2700 },
+  { originalName: "Clothing, CDs", accountNumber: "81700", sortOrder: 2700 },
+  { originalName: "Merchandise", accountNumber: "81710", sortOrder: 2705 },
   { originalName: "Petty Cash Expense", accountNumber: "81750", sortOrder: 2710 },
   { originalName: "Mortgage Principal Adj", accountNumber: "95400", sortOrder: 2800 },
+  
+  // Additional categories from your database
+  { originalName: "Media", accountNumber: "72100", groupName: "Equipment Expense", sortOrder: 715 },
+  { originalName: "Other", accountNumber: "73650", sortOrder: 1015 },
+  { originalName: "VIP Guests", accountNumber: "72670", groupName: "Meals", sortOrder: 815 },
+  { originalName: "Roping Series", accountNumber: "81410", sortOrder: 2305 },
+  { originalName: "Pastor", accountNumber: "51300", groupName: "Payroll", sortOrder: 120 },
+  { originalName: "Broadcast Time", accountNumber: "73450", groupName: "Marketing", sortOrder: 940 },
+  { originalName: "Unknown Debit", accountNumber: "99000", sortOrder: 9000 },
+  { originalName: "Unknown Credit", accountNumber: "99100", sortOrder: 9100 },
+  { originalName: "Credit", accountNumber: "99200", sortOrder: 9200 },
+  { originalName: "Debit", accountNumber: "99300", sortOrder: 9300 },
 ];
 
 async function migrateCategories(db: Db) {
@@ -195,13 +204,8 @@ async function migrateCategories(db: Db) {
   const withAccountNumber = allCategories.filter(c => c.accountNumber);
   const withoutAccountNumber = allCategories.filter(c => !c.accountNumber);
   
-  console.log(`Categories WITH accountNumber (likely duplicates): ${withAccountNumber.length}`);
+  console.log(`Categories WITH accountNumber (likely duplicates from old script): ${withAccountNumber.length}`);
   console.log(`Categories WITHOUT accountNumber (original): ${withoutAccountNumber.length}\n`);
-  
-  console.log("Original categories (without accountNumber):");
-  withoutAccountNumber.forEach(c => {
-    console.log(`  - "${c.name}" (type: ${c.type}, id: ${c._id})`);
-  });
   
   console.log("\n========================================");
   console.log("STEP 2: Delete duplicate categories (with accountNumber)");
@@ -221,8 +225,13 @@ async function migrateCategories(db: Db) {
   let updatedCount = 0;
   let notFoundCount = 0;
   const notFoundCategories: string[] = [];
+  const processedNames = new Set<string>();
   
   for (const mapping of CATEGORY_MAPPINGS) {
+    // Skip if we already processed this name (handles duplicates in mapping)
+    if (processedNames.has(mapping.originalName)) continue;
+    processedNames.add(mapping.originalName);
+    
     const existing = await categoriesCollection.findOne({ name: mapping.originalName });
     
     if (existing) {
@@ -234,14 +243,13 @@ async function migrateCategories(db: Db) {
             groupName: mapping.groupName || null,
             sortOrder: mapping.sortOrder,
             active: true,
-            hidden: false,
+            hidden: existing.hidden || false,
           }
         }
       );
-      console.log(`Updated: "${mapping.originalName}" -> accountNumber: ${mapping.accountNumber}`);
+      console.log(`Updated: "${mapping.originalName}" -> acct#: ${mapping.accountNumber}, group: ${mapping.groupName || 'none'}`);
       updatedCount++;
     } else {
-      console.log(`NOT FOUND: "${mapping.originalName}"`);
       notFoundCategories.push(mapping.originalName);
       notFoundCount++;
     }
@@ -251,23 +259,31 @@ async function migrateCategories(db: Db) {
   console.log("SUMMARY");
   console.log("========================================\n");
   console.log(`Categories updated: ${updatedCount}`);
-  console.log(`Categories not found: ${notFoundCount}`);
+  console.log(`Categories not found in mapping: ${notFoundCount}`);
   
   if (notFoundCategories.length > 0) {
-    console.log("\nCategories not found (check spelling/naming):");
+    console.log("\nCategories in mapping but not in DB:");
     notFoundCategories.forEach(name => console.log(`  - "${name}"`));
   }
   
-  // List any categories in DB that weren't in our mapping
+  // List any categories in DB that weren't updated
   const remainingCategories = await categoriesCollection.find({ 
     accountNumber: { $exists: false },
-    name: { $nin: ["Income", "Expense"] } // Exclude root categories
+    name: { $nin: ["Income", "Expense"] }
   }).toArray();
   
   if (remainingCategories.length > 0) {
-    console.log("\nCategories in DB not in our mapping (may need to add):");
-    remainingCategories.forEach(c => console.log(`  - "${c.name}"`));
+    console.log("\nCategories in DB that still need mapping (not updated):");
+    remainingCategories.forEach(c => console.log(`  - "${c.name}" (type: ${c.type})`));
   }
+  
+  // Final count
+  const finalCategories = await categoriesCollection.find({}).toArray();
+  const withAcct = finalCategories.filter(c => c.accountNumber).length;
+  const withoutAcct = finalCategories.filter(c => !c.accountNumber).length;
+  console.log(`\nFinal state: ${finalCategories.length} total categories`);
+  console.log(`  - With accountNumber: ${withAcct}`);
+  console.log(`  - Without accountNumber: ${withoutAcct} (including Income/Expense root)`);
 }
 
 async function main() {
