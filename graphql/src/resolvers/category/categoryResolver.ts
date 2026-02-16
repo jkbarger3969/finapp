@@ -32,6 +32,11 @@ export const categoryAncestorPath = async function* ({
       options,
     });
 
+    if (!ancestor) {
+      // Category not found, stop iteration
+      break;
+    }
+
     yield ancestor;
 
     fromCategory = ancestor.parent;
@@ -47,14 +52,20 @@ export const categoryAncestorPath = async function* ({
   accountingDb: AccountingDb;
   category: CategoryDbRecord["_id"];
 }): Promise<EntryTypeDbRecord> => {
-  for await (const { type, parent } of categoryAncestorPath({
+  for await (const ancestor of categoryAncestorPath({
     accountingDb,
     fromCategory: category,
   })) {
+    if (!ancestor) {
+      continue;
+    }
+    const { type, parent } = ancestor;
     if (!parent) {
       return type;
     }
   }
+  // Default fallback if no type found
+  return "Debit" as EntryTypeDbRecord;
 };
 
 export const Category: CategoryResolvers = {
