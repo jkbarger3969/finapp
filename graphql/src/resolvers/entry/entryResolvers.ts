@@ -51,12 +51,12 @@ export const EntryItem: EntryItemResolvers = {
 
 export const EntryRefund: EntryRefundResolvers = {
   id: ({ id }) => id.toString(),
-  date: ({ date }) => date[0].value,
+  date: ({ date }) => date?.[0]?.value ?? new Date(),
   dateOfRecord: ({ dateOfRecord }) =>
     dateOfRecord
       ? {
-        date: dateOfRecord.date[0].value,
-        overrideFiscalYear: dateOfRecord.overrideFiscalYear[0].value,
+        date: dateOfRecord.date?.[0]?.value ?? new Date(),
+        overrideFiscalYear: dateOfRecord.overrideFiscalYear?.[0]?.value ?? false,
       }
       : null,
 
@@ -87,8 +87,8 @@ export const EntryRefund: EntryRefundResolvers = {
       end: new Date(year + 1, 0, 1),
     } as any;
   },
-  deleted: ({ deleted }) => deleted[0].value,
-  description: ({ description }) => (description ? description[0].value : null),
+  deleted: ({ deleted }) => deleted?.[0]?.value ?? false,
+  description: ({ description }) => description?.[0]?.value || null,
   entry: ({ id }, _, { dataSources: { accountingDb } }) =>
     accountingDb.findOne({
       collection: "entries",
@@ -97,9 +97,9 @@ export const EntryRefund: EntryRefundResolvers = {
       },
     }),
   // lastUpdate: Default works
-  paymentMethod: ({ paymentMethod }) => paymentMethod[0].value,
-  reconciled: ({ reconciled }) => reconciled[0].value,
-  total: ({ total }) => total[0].value as any,
+  paymentMethod: ({ paymentMethod }) => paymentMethod?.[0]?.value ?? { currency: "USD" },
+  reconciled: ({ reconciled }) => reconciled?.[0]?.value ?? false,
+  total: ({ total }) => total?.[0]?.value as any ?? 0,
 };
 
 export const Entry: EntryResolvers = {
@@ -138,17 +138,22 @@ export const Entry: EntryResolvers = {
     return cat;
   },
 
-  date: ({ date }) => date[0].value,
+  date: ({ date }) => date?.[0]?.value ?? new Date(),
   dateOfRecord: ({ dateOfRecord }) =>
     dateOfRecord
       ? {
-        date: dateOfRecord.date[0].value,
-        overrideFiscalYear: dateOfRecord.overrideFiscalYear[0].value,
+        date: dateOfRecord.date?.[0]?.value ?? new Date(),
+        overrideFiscalYear: dateOfRecord.overrideFiscalYear?.[0]?.value ?? false,
       }
       : null,
-  deleted: ({ deleted }) => deleted[0].value,
-  department: ({ department }, _, { loaders }) =>
-    loaders.department.load(department[0].value.toString()),
+  deleted: ({ deleted }) => deleted?.[0]?.value ?? false,
+  department: async ({ department, _id }, _, { loaders }) => {
+    if (!department?.[0]?.value) {
+      console.warn(`Entry ${_id} has no department`);
+      return null;
+    }
+    return loaders.department.load(department[0].value.toString());
+  },
   description: ({ description }) =>
     description ? description[0]?.value || null : null,
   fiscalYear: async (
@@ -183,8 +188,8 @@ export const Entry: EntryResolvers = {
   },
   items: ({ items }) => items ?? ([] as any),
   // lastUpdate: Default works
-  paymentMethod: ({ paymentMethod }) => paymentMethod[0].value,
-  reconciled: ({ reconciled }) => reconciled[0].value,
+  paymentMethod: ({ paymentMethod }) => paymentMethod?.[0]?.value ?? { currency: "USD" },
+  reconciled: ({ reconciled }) => reconciled?.[0]?.value ?? false,
   refunds: ({ refunds }) => refunds || [],
   source: async ({ source, _id }, _, { loaders }): Promise<any> => {
     if (!source?.[0]?.value) {
@@ -220,7 +225,7 @@ export const Entry: EntryResolvers = {
     console.warn(`Entry source ${type}:${id} not found for entry ${_id}`);
     return { __typename: 'Business', id: id.toString(), name: `Unknown ${type}` } as any;
   },
-  total: ({ total }) => total[0].value as any,
+  total: ({ total }) => total?.[0]?.value as any ?? 0,
   lastEditedAt: (root) => root.lastUpdate,
   lastEditedBy: async (root, _, { loaders }) => {
     // Find the most recent change across all fields

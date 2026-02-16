@@ -17,7 +17,16 @@ export type EntityTypename = "Person" | "Business" | "Department";
 export type EntityDbRecord = NodeDbRecord<EntityTypename>;
 
 export const getEntity = (node: EntityDbRecord, db: Db) => {
+  if (!node) {
+    console.warn("getEntity called with null node");
+    return null;
+  }
   const { type, id } = node;
+
+  if (!type || !id) {
+    console.warn(`getEntity called with invalid node: type=${type}, id=${id}`);
+    return null;
+  }
 
   switch (type) {
     case "Business":
@@ -35,6 +44,9 @@ export const getEntity = (node: EntityDbRecord, db: Db) => {
         type,
         db.collection<PersonDbRecord>("people").findOne({ _id: id })
       );
+    default:
+      console.warn(`getEntity called with unknown type: ${type}`);
+      return null;
   }
 };
 
