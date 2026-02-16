@@ -9,15 +9,44 @@ import { addTypename } from "../utils/queryUtils";
 
 export const EntryItem: EntryItemResolvers = {
   id: ({ id }) => id.toString(),
-  category: ({ category }, _, { loaders }) =>
-    loaders.category.load(category[0].value.toString()),
-  deleted: ({ deleted }) => deleted[0].value,
+  category: async ({ category, id }, _, { loaders }) => {
+    if (!category?.[0]?.value) {
+      console.warn(`EntryItem ${id} has no category`);
+      return {
+        _id: new ObjectId(),
+        name: "Unknown Category",
+        code: "UNKNOWN",
+        externalId: "unknown",
+        type: "Debit",
+        inactive: true,
+        donation: false,
+        active: false,
+        hidden: true,
+      } as any;
+    }
+    const cat = await loaders.category.load(category[0].value.toString());
+    if (!cat) {
+      return {
+        _id: new ObjectId(category[0].value.toString()),
+        name: "Unknown Category",
+        code: "UNKNOWN",
+        externalId: category[0].value.toString(),
+        type: "Debit",
+        inactive: true,
+        donation: false,
+        active: false,
+        hidden: true,
+      } as any;
+    }
+    return cat;
+  },
+  deleted: ({ deleted }) => deleted?.[0]?.value ?? false,
   department: ({ department }, _, { loaders }) =>
-    department ? loaders.department.load(department[0].value.toString()) : null,
-  description: ({ description }) => (description ? description[0].value : null),
+    department?.[0]?.value ? loaders.department.load(department[0].value.toString()) : null,
+  description: ({ description }) => (description ? description[0]?.value || null : null),
   // lastUpdate: Default works
-  total: ({ total }) => total[0].value as any,
-  units: ({ units }) => units[0].value,
+  total: ({ total }) => total?.[0]?.value as any ?? 0,
+  units: ({ units }) => units?.[0]?.value ?? 0,
 };
 
 export const EntryRefund: EntryRefundResolvers = {
@@ -76,6 +105,20 @@ export const EntryRefund: EntryRefundResolvers = {
 export const Entry: EntryResolvers = {
   id: ({ _id }) => _id.toString(),
   category: async ({ category, _id }, _, { loaders }) => {
+    if (!category?.[0]?.value) {
+      console.warn(`Entry ${_id} has no category`);
+      return {
+        _id: new ObjectId(),
+        name: "Unknown Category",
+        code: "UNKNOWN",
+        externalId: "unknown",
+        type: "Debit",
+        inactive: true,
+        donation: false,
+        active: false,
+        hidden: true,
+      } as any;
+    }
     const categoryId = category[0].value.toString();
     const cat = await loaders.category.load(categoryId);
     if (!cat) {
