@@ -27,6 +27,9 @@ import { useDepartment } from '../context/DepartmentContext';
 import { useAuth } from '../context/AuthContext';
 import '../components/reporting/PrintLayout.css';
 import PageHeader from '../components/PageHeader';
+import CategoryAutocomplete from '../components/CategoryAutocomplete';
+import PersonAutocomplete from '../components/PersonAutocomplete';
+import BusinessAutocomplete from '../components/BusinessAutocomplete';
 
 const GET_REPORT_DATA = `
   query GetReportData($where: EntriesWhere!) {
@@ -192,6 +195,34 @@ export default function Reporting() {
         }
         return depts;
     }, [departmentsRaw, user]);
+
+    const categoryOptions = useMemo(() => {
+        return categories.map((cat: any) => ({
+            id: cat.id,
+            name: cat.name,
+            displayName: cat.displayName,
+            type: cat.type,
+            groupName: cat.groupName,
+            sortOrder: cat.sortOrder,
+            hidden: cat.hidden,
+        }));
+    }, [categories]);
+
+    const personOptions = useMemo(() => {
+        return people.map((p: any) => ({
+            id: p.id,
+            label: `${p.name?.first || ''} ${p.name?.last || ''}`.trim(),
+            firstName: p.name?.first || '',
+            lastName: p.name?.last || '',
+        }));
+    }, [people]);
+
+    const businessOptions = useMemo(() => {
+        return businesses.map((b: any) => ({
+            id: b.id,
+            label: b.name || '',
+        }));
+    }, [businesses]);
 
     // Split into Top/Sub
     const topLevelDepartments = useMemo(() => departments.filter((d: any) => d.parent?.__typename === 'Business' || !d.parent), [departments]);
@@ -599,76 +630,45 @@ export default function Reporting() {
                                 <MenuItem value="cash">Cash</MenuItem>
                                 <MenuItem value="online">Online</MenuItem>
                             </TextField>
+                        </Box>
+                        
+                        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "flex-start", pt: 1 }}>
+                            <Box sx={{ minWidth: 220 }}>
+                                <CategoryAutocomplete
+                                    categories={categoryOptions}
+                                    value={selectedCategory?.id || ''}
+                                    onChange={(categoryId) => {
+                                        const cat = categories.find((c: any) => c.id === categoryId);
+                                        setSelectedCategory(cat || null);
+                                    }}
+                                />
+                            </Box>
 
-                            <TextField
-                                select
-                                label="Category"
-                                size="small"
-                                value={selectedCategory?.id || ''}
-                                onChange={(e) => {
-                                    const cat = categories.find((c: any) => c.id === e.target.value);
-                                    setSelectedCategory(cat || null);
-                                }}
-                                sx={{ minWidth: 150 }}
-                                data-tooltip="Filter by specific category"
-                                data-tooltip-pos="top"
-                            >
-                                <MenuItem value="">All Categories</MenuItem>
-                                {[...categories]
-                                    .filter((cat: any) => !cat.hidden)
-                                    .sort((a: any, b: any) => a.name.localeCompare(b.name))
-                                    .map((cat: any) => (
-                                    <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
-                                ))}
-                            </TextField>
+                            <Box sx={{ minWidth: 220 }}>
+                                <PersonAutocomplete
+                                    people={personOptions}
+                                    value={selectedPerson?.id || ''}
+                                    onChange={(personId) => {
+                                        const person = people.find((p: any) => p.id === personId);
+                                        setSelectedPerson(person || null);
+                                        if (person) setSelectedBusiness(null);
+                                    }}
+                                    label="Person"
+                                />
+                            </Box>
 
-                            <TextField
-                                select
-                                label="Person"
-                                size="small"
-                                value={selectedPerson?.id || ''}
-                                onChange={(e) => {
-                                    const person = people.find((p: any) => p.id === e.target.value);
-                                    setSelectedPerson(person || null);
-                                    if (person) setSelectedBusiness(null);
-                                }}
-                                sx={{ minWidth: 150 }}
-                                data-tooltip="Filter by associated person"
-                                data-tooltip-pos="top"
-                            >
-                                <MenuItem value="">All People</MenuItem>
-                                {[...people]
-                                    .filter((person: any) => !person.hidden)
-                                    .sort((a: any, b: any) => `${a.name.first} ${a.name.last}`.localeCompare(`${b.name.first} ${b.name.last}`))
-                                    .map((person: any) => (
-                                    <MenuItem key={person.id} value={person.id}>
-                                        {person.name.first} {person.name.last}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
-
-                            <TextField
-                                select
-                                label="Business"
-                                size="small"
-                                value={selectedBusiness?.id || ''}
-                                onChange={(e) => {
-                                    const biz = businesses.find((b: any) => b.id === e.target.value);
-                                    setSelectedBusiness(biz || null);
-                                    if (biz) setSelectedPerson(null);
-                                }}
-                                sx={{ minWidth: 150 }}
-                                data-tooltip="Filter by associated business"
-                                data-tooltip-pos="top"
-                            >
-                                <MenuItem value="">All Businesses</MenuItem>
-                                {[...businesses]
-                                    .filter((biz: any) => !biz.hidden)
-                                    .sort((a: any, b: any) => a.name.localeCompare(b.name))
-                                    .map((biz: any) => (
-                                    <MenuItem key={biz.id} value={biz.id}>{biz.name}</MenuItem>
-                                ))}
-                            </TextField>
+                            <Box sx={{ minWidth: 220 }}>
+                                <BusinessAutocomplete
+                                    businesses={businessOptions}
+                                    value={selectedBusiness?.id || ''}
+                                    onChange={(businessId) => {
+                                        const biz = businesses.find((b: any) => b.id === businessId);
+                                        setSelectedBusiness(biz || null);
+                                        if (biz) setSelectedPerson(null);
+                                    }}
+                                    label="Business"
+                                />
+                            </Box>
                         </Box>
                         {(startDate || endDate || entryType !== 'ALL' || selectedPerson || selectedBusiness || selectedCategory || filterDepartmentId) && (
                             <Button

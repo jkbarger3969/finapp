@@ -145,11 +145,18 @@ export const Entry: EntryResolvers = {
   refunds: ({ refunds }) => refunds || [],
   source: async ({ source, _id }, _, { loaders }): Promise<any> => {
     if (!source?.[0]?.value) {
-      console.error(`Entry ${_id} has no source`);
+      console.warn(`Entry ${_id} has no source`);
       return { __typename: 'Business', id: 'unknown', name: 'Unknown Source' } as any;
     }
 
-    const { type, id } = source[0].value;
+    const sourceValue = source[0].value;
+    const type = sourceValue?.type;
+    const id = sourceValue?.id;
+
+    if (!type || !id) {
+      console.warn(`Entry ${_id} has invalid source (type: ${type}, id: ${id})`);
+      return { __typename: 'Business', id: id?.toString() || 'unknown', name: 'Unknown Source' } as any;
+    }
 
     let result: any = null;
     switch (type) {
@@ -167,7 +174,7 @@ export const Entry: EntryResolvers = {
         break;
     }
 
-    console.error(`Entry source ${type}:${id} not found for entry ${_id}`);
+    console.warn(`Entry source ${type}:${id} not found for entry ${_id}`);
     return { __typename: 'Business', id: id.toString(), name: `Unknown ${type}` } as any;
   },
   total: ({ total }) => total[0].value as any,

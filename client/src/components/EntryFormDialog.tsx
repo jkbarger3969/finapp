@@ -23,7 +23,6 @@ import {
     Radio,
     FormLabel,
     Divider,
-    Autocomplete,
     Fade,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
@@ -35,6 +34,8 @@ import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
 import SaveIcon from '@mui/icons-material/Save';
 import { useMutation, useQuery } from 'urql';
 import CategoryAutocomplete from './CategoryAutocomplete';
+import PersonAutocomplete from './PersonAutocomplete';
+import BusinessAutocomplete from './BusinessAutocomplete';
 
 const GET_FORM_DATA = `
   query GetFormData {
@@ -281,14 +282,6 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
             }))
             .sort((a: any, b: any) => a.label.localeCompare(b.label));
     }, [data?.businesses]);
-
-    const selectedPerson = useMemo(() => {
-        return personOptions.find((p: any) => p.id === formData.sourceId) || null;
-    }, [personOptions, formData.sourceId]);
-
-    const selectedBusiness = useMemo(() => {
-        return businessOptions.find((b: any) => b.id === formData.sourceId) || null;
-    }, [businessOptions, formData.sourceId]);
 
     const categoryOptions = useMemo(() => {
         return (data?.categories || []).map((cat: any) => ({
@@ -793,74 +786,22 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                 </FormControl>
 
                                 {formData.sourceType === 'person' && (
-                                    <Autocomplete
-                                        options={personOptions}
-                                        value={selectedPerson}
-                                        onChange={(_event, newValue) => {
-                                            setFormData({ ...formData, sourceId: newValue?.id || '' });
-                                        }}
-                                        getOptionLabel={(option) => option.label}
-                                        isOptionEqualToValue={(option, value) => option.id === value.id}
-                                        renderInput={(params) => (
-                                            <TextField
-                                                {...params}
-                                                label="Search Person"
-                                                placeholder="Type to search..."
-                                                InputProps={{
-                                                    ...params.InputProps,
-                                                    startAdornment: (
-                                                        <>
-                                                            <PersonIcon fontSize="small" color="secondary" sx={{ ml: 1 }} />
-                                                            {params.InputProps.startAdornment}
-                                                        </>
-                                                    ),
-                                                }}
-                                            />
-                                        )}
-                                        renderOption={(props, option) => (
-                                            <Box component="li" {...props} key={option.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <PersonIcon fontSize="small" color="secondary" />
-                                                {option.label}
-                                            </Box>
-                                        )}
-                                        fullWidth
-                                        loading={fetching}
+                                    <PersonAutocomplete
+                                        people={personOptions}
+                                        value={formData.sourceId}
+                                        onChange={(personId) => setFormData({ ...formData, sourceId: personId })}
+                                        disabled={fetching}
+                                        label="Search Person"
                                     />
                                 )}
 
                                 {formData.sourceType === 'business' && (
-                                    <Autocomplete
-                                        options={businessOptions}
-                                        value={selectedBusiness}
-                                        onChange={(_event, newValue) => {
-                                            setFormData({ ...formData, sourceId: newValue?.id || '' });
-                                        }}
-                                        getOptionLabel={(option) => option.label}
-                                        isOptionEqualToValue={(option, value) => option.id === value.id}
-                                        renderInput={(params) => (
-                                            <TextField
-                                                {...params}
-                                                label="Search Business"
-                                                placeholder="Type to search..."
-                                                InputProps={{
-                                                    ...params.InputProps,
-                                                    startAdornment: (
-                                                        <>
-                                                            <BusinessIcon fontSize="small" color="primary" sx={{ ml: 1 }} />
-                                                            {params.InputProps.startAdornment}
-                                                        </>
-                                                    ),
-                                                }}
-                                            />
-                                        )}
-                                        renderOption={(props, option) => (
-                                            <Box component="li" {...props} key={option.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <BusinessIcon fontSize="small" color="primary" />
-                                                {option.label}
-                                            </Box>
-                                        )}
-                                        fullWidth
-                                        loading={fetching}
+                                    <BusinessAutocomplete
+                                        businesses={businessOptions}
+                                        value={formData.sourceId}
+                                        onChange={(businessId) => setFormData({ ...formData, sourceId: businessId })}
+                                        disabled={fetching}
+                                        label="Search Business"
                                     />
                                 )}
 
