@@ -149,18 +149,20 @@ export const CategoriesTab = () => {
         const groupCategories = (cats: Category[]): GroupedCategories => {
             const grouped: GroupedCategories = {};
             const ungrouped: Category[] = [];
-            const parentCategoriesMap: Map<string, Category> = new Map();
+            
+            // First, identify all group names that have subcategories
+            const groupNamesWithChildren = new Set<string>();
+            cats.forEach(cat => {
+                if (cat.groupName && cat.name !== cat.groupName && cat.displayName !== cat.groupName) {
+                    groupNamesWithChildren.add(cat.groupName);
+                }
+            });
 
             cats.forEach(cat => {
                 if (cat.groupName) {
                     // Check if this is a parent category (name matches groupName)
                     // e.g., "Supplies" with groupName "Supplies"
                     const isParentCategory = cat.name === cat.groupName || cat.displayName === cat.groupName;
-                    
-                    if (isParentCategory) {
-                        // Store parent category separately to show as group header
-                        parentCategoriesMap.set(cat.groupName, cat);
-                    }
                     
                     if (!grouped[cat.groupName]) {
                         grouped[cat.groupName] = [];
@@ -171,7 +173,14 @@ export const CategoriesTab = () => {
                         grouped[cat.groupName].push(cat);
                     }
                 } else {
-                    ungrouped.push(cat);
+                    // Check if this category's name matches any group name with children
+                    // If so, it's a parent category that should be excluded from ungrouped
+                    const isParentWithoutGroupName = groupNamesWithChildren.has(cat.name) || 
+                                                      groupNamesWithChildren.has(cat.displayName || '');
+                    
+                    if (!isParentWithoutGroupName) {
+                        ungrouped.push(cat);
+                    }
                 }
             });
 

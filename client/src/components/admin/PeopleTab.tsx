@@ -1,28 +1,30 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
     Box,
     Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
     Typography,
     IconButton,
     Chip,
-    TextField,
-    InputAdornment,
     CircularProgress,
     Tooltip,
     Alert,
     Snackbar,
+    Autocomplete,
+    TextField,
+    List,
+    ListItem,
+    ListItemText,
+    ListItemSecondaryAction,
+    Collapse,
+    Divider,
 } from '@mui/material';
 import {
     Visibility as VisibilityIcon,
     VisibilityOff as VisibilityOffIcon,
-    Search as SearchIcon,
     Person as PersonIcon,
+    ExpandLess as ExpandLessIcon,
+    ExpandMore as ExpandMoreIcon,
+    Search as SearchIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, gql } from 'urql';
 import { useOnlineStatus } from '../../context/OnlineStatusContext';
@@ -70,9 +72,14 @@ interface Person {
     hidden?: boolean;
 }
 
+interface GroupedPeople {
+    [letter: string]: Person[];
+}
+
 export const PeopleTab = () => {
     const { isOnline } = useOnlineStatus();
-    const [searchTerm, setSearchTerm] = useState('');
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+    const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
         open: false,
         message: '',
@@ -86,13 +93,15 @@ export const PeopleTab = () => {
 
     const [, updatePerson] = useMutation(UPDATE_PERSON_MUTATION);
 
+    const getFullName = (person: Person) => `${person.name.first} ${person.name.last}`;
+
     const handleToggleHidden = async (person: Person) => {
         if (!isOnline) {
             setSnackbar({ open: true, message: 'Cannot update while offline', severity: 'error' });
             return;
         }
 
-        const fullName = `${person.name.first} ${person.name.last}`;
+        const fullName = getFullName(person);
         const result = await updatePerson({
             id: person.id,
             input: { hidden: !person.hidden },
@@ -110,16 +119,38 @@ export const PeopleTab = () => {
         }
     };
 
-    const getFullName = (person: Person) => `${person.name.first} ${person.name.last}`;
+    const toggleGroup = (letter: string) => {
+        setExpandedGroups(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(letter)) {
+                newSet.delete(letter);
+            } else {
+                newSet.add(letter);
+            }
+            return newSet;
+        });
+    };
 
-    const filteredPeople = (data?.people || []).filter((person: Person) =>
-        getFullName(person).toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (person.email && person.email.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const { allPeople, groupedPeople, visibleCount, hiddenCount } = useMemo(() => {
+        const people: Person[] = data?.people || [];
+        const sorted = [...people].sort((a, b) => getFullName(a).localeCompare(getFullName(b)));
+        
+        const grouped: GroupedPeople = {};
+        sorted.forEach(person => {
+            const letter = person.name.last.charAt(0).toUpperCase() || '#';
+            if (!grouped[letter]) {
+                grouped[letter] = [];
+            }
+            grouped[letter].push(person);
+        });
 
-    const sortedPeople = [...filteredPeople].sort((a: Person, b: Person) =>
-        getFullName(a).localeCompare(getFullName(b))
-    );
+        return {
+            allPeople: sorted,
+            groupedPeople: grouped,
+            visibleCount: people.filter(p => !p.hidden).length,
+            hiddenCount: people.filter(p => p.hidden).length,
+        };
+    }, [data]);
 
     if (error) {
         return <Alert severity="error">Failed to load people: {error.message}</Alert>;
@@ -127,119 +158,168 @@ export const PeopleTab = () => {
 
     return (
         <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6">
                     <PersonIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                     People Management
                 </Typography>
-                <TextField
-                    size="small"
-                    placeholder="Search people..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon />
-                            </InputAdornment>
-                        ),
-                    }}
-                    sx={{ width: 250 }}
-                />
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Chip label={`${visibleCount} visible`} size="small" color="primary" variant="outlined" />
+                    {hiddenCount > 0 && <Chip label={`${hiddenCount} hidden`} size="small" color="default" />}
+                </Box>
             </Box>
 
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Hidden people will not appear in dropdown menus when creating transactions, 
-                but historical data using these people will remain intact.
+                Search for a person to quickly toggle visibility, or browse the alphabetical list below.
             </Typography>
 
+            {/* Quick Search Autocomplete */}
+            <Paper sx={{ p: 2, mb: 3 }}>
+                <Autocomplete
+                    options={allPeople}
+                    getOptionLabel={(option) => getFullName(option)}
+                    value={selectedPerson}
+                    onChange={(_, newValue) => setSelectedPerson(newValue)}
+                    renderInput={(params) => (
+                        <TextField
+                            {...params}
+                            label="Search People"
+                            placeholder="Type to search..."
+                            InputProps={{
+                                ...params.InputProps,
+                                startAdornment: (
+                                    <>
+                                        <SearchIcon sx={{ color: 'action.active', mr: 1 }} />
+                                        {params.InputProps.startAdornment}
+                                    </>
+                                ),
+                            }}
+                        />
+                    )}
+                    renderOption={(props, option) => (
+                        <Box component="li" {...props} sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                                <Typography sx={{ textDecoration: option.hidden ? 'line-through' : 'none' }}>
+                                    {getFullName(option)}
+                                </Typography>
+                                {option.hidden && <Chip label="Hidden" size="small" color="default" />}
+                            </Box>
+                            <Tooltip title={option.hidden ? 'Show in dropdowns' : 'Hide from dropdowns'}>
+                                <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleHidden(option);
+                                    }}
+                                    disabled={!isOnline}
+                                    color={option.hidden ? 'primary' : 'default'}
+                                >
+                                    {option.hidden ? <VisibilityIcon /> : <VisibilityOffIcon />}
+                                </IconButton>
+                            </Tooltip>
+                        </Box>
+                    )}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                    loading={fetching}
+                    noOptionsText="No people found"
+                />
+            </Paper>
+
+            {/* Collapsible Alphabetical List */}
             {fetching && !data ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                     <CircularProgress />
                 </Box>
             ) : (
-                <TableContainer component={Paper}>
-                    <Table size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Name</TableCell>
-                                <TableCell>Email</TableCell>
-                                <TableCell>Phone</TableCell>
-                                <TableCell>Status</TableCell>
-                                <TableCell align="right">Actions</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {sortedPeople.map((person: Person) => (
-                                <TableRow
-                                    key={person.id}
-                                    sx={{
-                                        opacity: person.hidden ? 0.6 : 1,
-                                    }}
-                                >
-                                    <TableCell>
-                                        <Typography
-                                            sx={{
-                                                textDecoration: person.hidden ? 'line-through' : 'none',
-                                                color: person.hidden ? 'text.secondary' : 'text.primary',
-                                            }}
-                                        >
-                                            {getFullName(person)}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography
-                                            variant="body2"
-                                            color="text.secondary"
-                                            sx={{ textDecoration: person.hidden ? 'line-through' : 'none' }}
-                                        >
-                                            {person.email || '-'}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography
-                                            variant="body2"
-                                            color="text.secondary"
-                                            sx={{ textDecoration: person.hidden ? 'line-through' : 'none' }}
-                                        >
-                                            {person.phone || '-'}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        {person.hidden ? (
-                                            <Chip label="Hidden" size="small" color="default" />
-                                        ) : (
-                                            <Chip label="Visible" size="small" color="primary" variant="outlined" />
-                                        )}
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        <Tooltip title={person.hidden ? 'Show in dropdowns' : 'Hide from dropdowns'}>
-                                            <span>
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => handleToggleHidden(person)}
-                                                    disabled={!isOnline}
-                                                    color={person.hidden ? 'primary' : 'default'}
+                <Paper>
+                    <List disablePadding>
+                        {Object.keys(groupedPeople).sort().map((letter, index) => {
+                            const people = groupedPeople[letter];
+                            const isExpanded = expandedGroups.has(letter);
+                            const hiddenInGroup = people.filter(p => p.hidden).length;
+
+                            return (
+                                <Box key={letter}>
+                                    {index > 0 && <Divider />}
+                                    <ListItem
+                                        component="div"
+                                        onClick={() => toggleGroup(letter)}
+                                        sx={{
+                                            bgcolor: 'action.hover',
+                                            cursor: 'pointer',
+                                            '&:hover': { bgcolor: 'action.selected' },
+                                        }}
+                                    >
+                                        <ListItemText
+                                            primary={
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                                    <Typography fontWeight="bold">{letter}</Typography>
+                                                    <Chip label={`${people.length}`} size="small" variant="outlined" />
+                                                    {hiddenInGroup > 0 && (
+                                                        <Chip label={`${hiddenInGroup} hidden`} size="small" color="default" />
+                                                    )}
+                                                </Box>
+                                            }
+                                        />
+                                    </ListItem>
+                                    <Collapse in={isExpanded}>
+                                        <List disablePadding sx={{ pl: 4 }}>
+                                            {people.map(person => (
+                                                <ListItem
+                                                    key={person.id}
+                                                    sx={{ opacity: person.hidden ? 0.6 : 1 }}
                                                 >
-                                                    {person.hidden ? <VisibilityIcon /> : <VisibilityOffIcon />}
-                                                </IconButton>
-                                            </span>
-                                        </Tooltip>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                            {sortedPeople.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={5} align="center">
-                                        <Typography color="text.secondary" sx={{ py: 2 }}>
-                                            {searchTerm ? 'No people match your search' : 'No people found'}
+                                                    <ListItemText
+                                                        primary={
+                                                            <Typography
+                                                                sx={{
+                                                                    textDecoration: person.hidden ? 'line-through' : 'none',
+                                                                    color: person.hidden ? 'text.secondary' : 'text.primary',
+                                                                }}
+                                                            >
+                                                                {getFullName(person)}
+                                                            </Typography>
+                                                        }
+                                                        secondary={person.email || person.phone || null}
+                                                    />
+                                                    <ListItemSecondaryAction>
+                                                        {person.hidden && (
+                                                            <Chip label="Hidden" size="small" color="default" sx={{ mr: 1 }} />
+                                                        )}
+                                                        <Tooltip title={person.hidden ? 'Show in dropdowns' : 'Hide from dropdowns'}>
+                                                            <span>
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={() => handleToggleHidden(person)}
+                                                                    disabled={!isOnline}
+                                                                    color={person.hidden ? 'primary' : 'default'}
+                                                                >
+                                                                    {person.hidden ? <VisibilityIcon /> : <VisibilityOffIcon />}
+                                                                </IconButton>
+                                                            </span>
+                                                        </Tooltip>
+                                                    </ListItemSecondaryAction>
+                                                </ListItem>
+                                            ))}
+                                        </List>
+                                    </Collapse>
+                                </Box>
+                            );
+                        })}
+                        {Object.keys(groupedPeople).length === 0 && (
+                            <ListItem>
+                                <ListItemText
+                                    primary={
+                                        <Typography color="text.secondary" align="center" sx={{ py: 2 }}>
+                                            No people found
                                         </Typography>
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                                    }
+                                />
+                            </ListItem>
+                        )}
+                    </List>
+                </Paper>
             )}
 
             <Snackbar
