@@ -49,7 +49,7 @@ import {
   PaymentMethodCard,
 } from "./resolvers/paymentMethod";
 import { sources } from "./resolvers/entrySource";
-import { Category, category, categories, updateCategory } from "./resolvers/category/index";
+import { Category, category, categories, categoryGroups, updateCategory } from "./resolvers/category/index";
 import { people, person, Person, updatePerson } from "./resolvers/person";
 import { fiscalYear, fiscalYears, FiscalYear, createFiscalYear, archiveFiscalYear, restoreFiscalYear, exportFiscalYear, deleteFiscalYear } from "./resolvers/fiscalYear";
 import { User } from "./resolvers/user";
@@ -107,6 +107,7 @@ const initialResolvers: Resolvers = {
     sources,
     categories,
     category,
+    categoryGroups,
     departments,
     department,
     person,

@@ -65,7 +65,18 @@ export class AuthService {
 
   constructor(db: Db, clientId: string, clientSecret: string, redirectUri: string) {
     this.db = db;
-    this.jwtSecret = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production";
+    
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("FATAL: JWT_SECRET environment variable is required in production. Server cannot start without it.");
+      }
+      console.warn("⚠️  WARNING: JWT_SECRET not set. Using insecure default for development only.");
+      this.jwtSecret = "dev-only-insecure-jwt-secret-do-not-use-in-production";
+    } else {
+      this.jwtSecret = jwtSecret;
+    }
+    
     this.oauth2Client = new OAuth2Client(clientId, clientSecret, redirectUri);
   }
 

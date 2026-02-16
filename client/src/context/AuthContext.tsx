@@ -30,6 +30,15 @@ interface AuthContextType {
     canViewDepartment: (departmentId: string) => boolean;
     canEditDepartment: (departmentId: string) => boolean;
     getAccessibleDepartmentIds: () => string[];
+    canAddTransaction: (departmentId?: string) => boolean;
+    canEditTransaction: (departmentId?: string) => boolean;
+    canDeleteTransaction: (departmentId?: string) => boolean;
+    canIssueRefund: () => boolean;
+    canVoidTransaction: () => boolean;
+    canExportReports: (departmentId?: string) => boolean;
+    canManageBudget: (departmentId?: string) => boolean;
+    canManageUsers: () => boolean;
+    canManageCategories: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -204,6 +213,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return user.departments.map(d => d.departmentId);
     }, [user]);
 
+    const canAddTransaction = useCallback((departmentId?: string): boolean => {
+        if (!user) return false;
+        if (user.role === 'SUPER_ADMIN') return true;
+        if (user.role === 'DEPT_ADMIN') return false;
+        if (!departmentId) return user.departments.some(d => d.accessLevel === 'EDIT' || d.accessLevel === 'ADMIN');
+        const perm = user.departments.find(d => d.departmentId === departmentId);
+        return perm?.accessLevel === 'EDIT' || perm?.accessLevel === 'ADMIN';
+    }, [user]);
+
+    const canEditTransaction = useCallback((departmentId?: string): boolean => {
+        if (!user) return false;
+        if (user.role === 'SUPER_ADMIN') return true;
+        if (user.role === 'DEPT_ADMIN') return false;
+        if (!departmentId) return user.departments.some(d => d.accessLevel === 'EDIT' || d.accessLevel === 'ADMIN');
+        const perm = user.departments.find(d => d.departmentId === departmentId);
+        return perm?.accessLevel === 'EDIT' || perm?.accessLevel === 'ADMIN';
+    }, [user]);
+
+    const canDeleteTransaction = useCallback((_departmentId?: string): boolean => {
+        if (!user) return false;
+        return user.role === 'SUPER_ADMIN';
+    }, [user]);
+
+    const canIssueRefund = useCallback((): boolean => {
+        if (!user) return false;
+        return user.role === 'SUPER_ADMIN';
+    }, [user]);
+
+    const canVoidTransaction = useCallback((): boolean => {
+        if (!user) return false;
+        return user.role === 'SUPER_ADMIN';
+    }, [user]);
+
+    const canExportReports = useCallback((departmentId?: string): boolean => {
+        if (!user) return false;
+        if (user.role === 'SUPER_ADMIN') return true;
+        if (user.role === 'DEPT_ADMIN') {
+            if (!departmentId) return user.departments.length > 0;
+            return user.departments.some(d => d.departmentId === departmentId);
+        }
+        return false;
+    }, [user]);
+
+    const canManageBudget = useCallback((departmentId?: string): boolean => {
+        if (!user) return false;
+        if (user.role === 'SUPER_ADMIN') return true;
+        if (user.role === 'DEPT_ADMIN') {
+            if (!departmentId) return user.departments.some(d => d.accessLevel === 'ADMIN');
+            const perm = user.departments.find(d => d.departmentId === departmentId);
+            return perm?.accessLevel === 'ADMIN';
+        }
+        return false;
+    }, [user]);
+
+    const canManageUsers = useCallback((): boolean => {
+        if (!user) return false;
+        return user.role === 'SUPER_ADMIN';
+    }, [user]);
+
+    const canManageCategories = useCallback((): boolean => {
+        if (!user) return false;
+        return user.role === 'SUPER_ADMIN';
+    }, [user]);
+
     const value: AuthContextType = {
         user,
         token,
@@ -217,6 +290,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         canViewDepartment,
         canEditDepartment,
         getAccessibleDepartmentIds,
+        canAddTransaction,
+        canEditTransaction,
+        canDeleteTransaction,
+        canIssueRefund,
+        canVoidTransaction,
+        canExportReports,
+        canManageBudget,
+        canManageUsers,
+        canManageCategories,
     };
 
     return (

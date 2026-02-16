@@ -121,6 +121,12 @@ export const whereCategories = (
       case "active":
         filterQuery["active"] = categoryWhere[whereKey];
         break;
+      case "hidden":
+        filterQuery["hidden"] = categoryWhere[whereKey];
+        break;
+      case "groupName":
+        filterQuery["groupName"] = whereRegex(categoryWhere[whereKey]);
+        break;
       // Logic
       case "and":
         {

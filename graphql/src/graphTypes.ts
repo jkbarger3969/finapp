@@ -328,6 +328,7 @@ export type BusinessesWhere = {
 export type CategoriesWhere = {
   active?: InputMaybe<Scalars['Boolean']['input']>;
   and?: InputMaybe<Array<CategoriesWhere>>;
+  groupName?: InputMaybe<WhereRegex>;
   hidden?: InputMaybe<Scalars['Boolean']['input']>;
   id?: InputMaybe<WhereTreeId>;
   name?: InputMaybe<WhereRegex>;
@@ -341,14 +342,18 @@ export type CategoriesWhere = {
 
 export type Category = {
   __typename?: 'Category';
+  accountNumber?: Maybe<Scalars['String']['output']>;
   active: Scalars['Boolean']['output'];
   aliases: Array<Alias>;
   ancestors: Array<Category>;
   children: Array<Category>;
+  displayName: Scalars['String']['output'];
+  groupName?: Maybe<Scalars['String']['output']>;
   hidden?: Maybe<Scalars['Boolean']['output']>;
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
   parent?: Maybe<Category>;
+  sortOrder?: Maybe<Scalars['Int']['output']>;
   type: EntryType;
 };
 
@@ -1062,6 +1067,7 @@ export type Query = {
   businesses: Array<Business>;
   categories: Array<Category>;
   category: Category;
+  categoryGroups: Array<Scalars['String']['output']>;
   department: Department;
   departments: Array<Department>;
   entities: Array<Entity>;
@@ -1313,8 +1319,11 @@ export type UpdateBusinessPayload = {
 };
 
 export type UpdateCategoryInput = {
+  displayName?: InputMaybe<Scalars['String']['input']>;
+  groupName?: InputMaybe<Scalars['String']['input']>;
   hidden?: InputMaybe<Scalars['Boolean']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
+  sortOrder?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type UpdateCategoryPayload = {
@@ -2079,14 +2088,18 @@ export type BusinessResolvers<ContextType = Context, ParentType = ResolversParen
 };
 
 export type CategoryResolvers<ContextType = Context, ParentType = ResolversParentTypes['Category']> = {
+  accountNumber?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType>;
   ancestors?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
   children?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
+  displayName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  groupName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   hidden?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   parent?: Resolver<Maybe<ResolversTypes['Category']>, ParentType, ContextType>;
+  sortOrder?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   type?: Resolver<ResolversTypes['EntryType'], ParentType, ContextType>;
 };
 
@@ -2344,6 +2357,7 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   businesses?: Resolver<Array<ResolversTypes['Business']>, ParentType, ContextType, Partial<QueryBusinessesArgs>>;
   categories?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType, Partial<QueryCategoriesArgs>>;
   category?: Resolver<ResolversTypes['Category'], ParentType, ContextType, RequireFields<QueryCategoryArgs, 'id'>>;
+  categoryGroups?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, Partial<QueryDepartmentsArgs>>;
   entities?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType, RequireFields<QueryEntitiesArgs, 'where'>>;

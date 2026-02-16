@@ -22,6 +22,10 @@ import {
     ListItemText,
     Divider,
     TextField,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from "@mui/material";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import type { GridColDef, GridRowSelectionModel, GridRowId } from "@mui/x-data-grid";
@@ -201,13 +205,17 @@ export default function Transactions() {
     const [refundDialogOpen, setRefundDialogOpen] = useState(false);
     const [refundEntry, setRefundEntry] = useState<any>(null);
 
+    // Delete confirmation dialog state
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [entryToDelete, setEntryToDelete] = useState<any>(null);
+
     // Fetch filter options
     const [optionsResult] = useQuery({ query: GET_FILTER_OPTIONS });
     const peopleRaw = optionsResult.data?.people || [];
     const businessesRaw = optionsResult.data?.businesses || [];
     const categories = optionsResult.data?.categories || [];
     const departmentsRaw = optionsResult.data?.departments || [];
-    const { user, canEditDepartment, isSuperAdmin } = useAuth();
+    const { user, canEditTransaction, canDeleteTransaction, canIssueRefund } = useAuth();
 
     // Sort and dedupe people (by full name, alphabetically)
     const people = useMemo(() => {
@@ -1363,7 +1371,7 @@ export default function Transactions() {
                         setActionMenuAnchor(null);
                         setActionMenuEntry(null);
                     }}
-                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
+                    disabled={!canEditTransaction(actionMenuEntry?.department?.id)}
                 >
                     <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
                     <ListItemText>Edit Transaction</ListItemText>
@@ -1386,7 +1394,7 @@ export default function Transactions() {
                         setActionMenuAnchor(null);
                         setActionMenuEntry(null);
                     }}
-                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
+                    disabled={!canEditTransaction(actionMenuEntry?.department?.id)}
                 >
                     <ListItemIcon>
                         <CheckCircleIcon fontSize="small" color={actionMenuEntry?.reconciled ? "disabled" : "success"} />
@@ -1402,34 +1410,27 @@ export default function Transactions() {
                         setActionMenuAnchor(null);
                         setActionMenuEntry(null);
                     }}
-                    disabled={!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id)}
+                    disabled={!canIssueRefund()}
                 >
                     <ListItemIcon><ReplayIcon fontSize="small" color="info" /></ListItemIcon>
                     <ListItemText>Issue Refund</ListItemText>
                 </MenuItem>
                 <Divider />
                 <MenuItem
-                    onClick={async () => {
+                    onClick={() => {
                         if (!isOnline) {
                             enqueueSnackbar('Cannot delete while offline. Please reconnect.', { variant: 'warning' });
                             setActionMenuAnchor(null);
                             setActionMenuEntry(null);
                             return;
                         }
-                        if (actionMenuEntry && window.confirm('Are you sure you want to delete this transaction?')) {
-                            const { error } = await deleteEntry({ id: actionMenuEntry.id });
-                            if (error) {
-                                enqueueSnackbar(`Failed to delete: ${error.message}`, { variant: 'error' });
-                            } else {
-                                enqueueSnackbar('Transaction deleted', { variant: 'success' });
-                                handleReexecute();
-                            }
-                        }
+                        setEntryToDelete(actionMenuEntry);
+                        setDeleteDialogOpen(true);
                         setActionMenuAnchor(null);
                         setActionMenuEntry(null);
                     }}
                     sx={{ color: 'error.main' }}
-                    disabled={(!isOnline) || (!isSuperAdmin && actionMenuEntry?.department?.id && !canEditDepartment(actionMenuEntry.department.id))}
+                    disabled={!isOnline || !canDeleteTransaction(actionMenuEntry?.department?.id)}
                 >
                     <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
                     <ListItemText>Delete Transaction</ListItemText>
@@ -1472,6 +1473,56 @@ export default function Transactions() {
                 open={searchDialogOpen}
                 onClose={() => setSearchDialogOpen(false)}
             />
+
+            <Dialog
+                open={deleteDialogOpen}
+                onClose={() => {
+                    setDeleteDialogOpen(false);
+                    setEntryToDelete(null);
+                }}
+            >
+                <DialogTitle>Delete Transaction</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to delete this transaction? This action cannot be undone.
+                    </Typography>
+                    {entryToDelete && (
+                        <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+                            <Typography variant="body2" color="text.secondary">
+                                Description: {entryToDelete.description}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Amount: {entryToDelete.formattedTotal}
+                            </Typography>
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => {
+                        setDeleteDialogOpen(false);
+                        setEntryToDelete(null);
+                    }}>Cancel</Button>
+                    <Button 
+                        onClick={async () => {
+                            if (entryToDelete) {
+                                const { error } = await deleteEntry({ id: entryToDelete.id });
+                                if (error) {
+                                    enqueueSnackbar(`Failed to delete: ${error.message}`, { variant: 'error' });
+                                } else {
+                                    enqueueSnackbar('Transaction deleted', { variant: 'success' });
+                                    handleReexecute();
+                                }
+                            }
+                            setDeleteDialogOpen(false);
+                            setEntryToDelete(null);
+                        }}
+                        color="error" 
+                        variant="contained"
+                    >
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </LocalizationProvider>
     );
 }

@@ -36,7 +36,7 @@ function CustomTabPanel(props: TabPanelProps) {
 }
 
 export default function Admin() {
-    const { isSuperAdmin, isDeptAdmin } = useAuth();
+    const { isSuperAdmin, isDeptAdmin, canManageUsers, canManageCategories } = useAuth();
     const [value, setValue] = useState(0);
 
     const handleChange = (_: React.SyntheticEvent, newValue: number) => {
@@ -60,9 +60,9 @@ export default function Admin() {
             <Paper sx={{ width: '100%', mb: 2 }}>
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                     <Tabs value={value} onChange={handleChange} aria-label="admin tabs" variant="scrollable" scrollButtons="auto">
-                        <Tab label="User Access" disabled={!isSuperAdmin} />
+                        <Tab label="User Access" disabled={!canManageUsers()} />
                         <Tab label="Payment Cards" />
-                        <Tab label="Categories" disabled={!isSuperAdmin} />
+                        <Tab label="Categories" disabled={!canManageCategories()} />
                         <Tab label="People" disabled={!isSuperAdmin} />
                         <Tab label="Businesses" disabled={!isSuperAdmin} />
                         <Tab label="Fiscal Years" disabled={!isSuperAdmin} />
@@ -72,13 +72,13 @@ export default function Admin() {
             </Paper>
 
             <CustomTabPanel value={value} index={0}>
-                {isSuperAdmin && <UsersTab />}
+                {canManageUsers() && <UsersTab />}
             </CustomTabPanel>
             <CustomTabPanel value={value} index={1}>
                 <PaymentCardsTab />
             </CustomTabPanel>
             <CustomTabPanel value={value} index={2}>
-                {isSuperAdmin && <CategoriesTab />}
+                {canManageCategories() && <CategoriesTab />}
             </CustomTabPanel>
             <CustomTabPanel value={value} index={3}>
                 {isSuperAdmin && <PeopleTab />}

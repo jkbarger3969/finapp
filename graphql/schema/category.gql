@@ -1,6 +1,7 @@
 type Category {
   id: ID!
   name: String!
+  displayName: String!
   type: EntryType!
   parent: Category
   children: [Category!]!
@@ -8,6 +9,9 @@ type Category {
   aliases: [Alias!]!
   active: Boolean!
   hidden: Boolean
+  accountNumber: String
+  groupName: String
+  sortOrder: Int
 }
 
 input CategoriesWhere {
@@ -18,6 +22,7 @@ input CategoriesWhere {
   parent: WhereId
   active: Boolean
   hidden: Boolean
+  groupName: WhereRegex
 
   # Logic Operators
   and: [CategoriesWhere!]
@@ -31,6 +36,9 @@ input CategoriesWhere {
 input UpdateCategoryInput {
   hidden: Boolean
   name: String
+  displayName: String
+  groupName: String
+  sortOrder: Int
 }
 
 type UpdateCategoryPayload {
@@ -40,6 +48,7 @@ type UpdateCategoryPayload {
 extend type Query {
   categories(where: CategoriesWhere): [Category!]!
   category(id: ID!): Category!
+  categoryGroups: [String!]!
 }
 
 extend type Mutation {

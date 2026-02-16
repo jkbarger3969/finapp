@@ -98,6 +98,8 @@ export default function PaymentCardsTab() {
     handleMutationError(deleteResult);
 
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [cardToDelete, setCardToDelete] = useState<string | null>(null);
     const [editingCard, setEditingCard] = useState<any>(null);
     const [formData, setFormData] = useState({
         accountId: '',
@@ -157,10 +159,17 @@ export default function PaymentCardsTab() {
     };
 
     const handleDelete = async (id: string) => {
-        if (window.confirm('Are you sure you want to delete this card?')) {
-            await deleteCard({ id });
+        setCardToDelete(id);
+        setDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (cardToDelete) {
+            await deleteCard({ id: cardToDelete });
             reexecuteQuery({ requestPolicy: 'network-only' });
         }
+        setDeleteDialogOpen(false);
+        setCardToDelete(null);
     };
 
     if (fetching) return <Typography>Loading...</Typography>;
@@ -273,6 +282,22 @@ export default function PaymentCardsTab() {
                 <DialogActions>
                     <Button onClick={handleClose}>Cancel</Button>
                     <Button onClick={handleSubmit} variant="contained">Save</Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
+                open={deleteDialogOpen}
+                onClose={() => setDeleteDialogOpen(false)}
+            >
+                <DialogTitle>Delete Card</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to delete this card? This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={confirmDelete} color="error" variant="contained">Delete</Button>
                 </DialogActions>
             </Dialog>
         </Box>

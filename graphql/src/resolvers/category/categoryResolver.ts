@@ -59,11 +59,17 @@ export const categoryAncestorPath = async function* ({
 
 export const Category: CategoryResolvers = {
   id: ({ _id }) => _id.toString(),
+  displayName: (cat) => {
+    if (cat.groupName && cat.name) {
+      return `${cat.groupName}: ${cat.name}`;
+    }
+    return cat.name;
+  },
   parent: async ({ parent }, _, { dataSources: { accountingDb } }) =>
-    accountingDb.findOne({
+    parent ? accountingDb.findOne({
       collection: "categories",
       filter: { _id: parent },
-    }),
+    }) : null,
 
   type: async ({ _id }, _, { dataSources: { accountingDb } }) => {
     const type = await categoryType({
@@ -90,4 +96,7 @@ export const Category: CategoryResolvers = {
 
     return ancestors;
   },
+  accountNumber: (cat) => cat.accountNumber || null,
+  groupName: (cat) => cat.groupName || null,
+  sortOrder: (cat) => cat.sortOrder ?? 0,
 };

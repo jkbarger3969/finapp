@@ -114,6 +114,11 @@ export interface CategoryDbRecord {
   inactive: boolean;
   donation: boolean;
   parent?: ObjectId | null;
+  active?: boolean;
+  hidden?: boolean;
+  accountNumber?: string;
+  groupName?: string;
+  sortOrder?: number;
 }
 
 export type PaymentCardTypeDbRecord = PascalCase<PaymentCardType>;

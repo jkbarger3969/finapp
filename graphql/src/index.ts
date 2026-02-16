@@ -100,6 +100,7 @@ const RECEIPT_STORAGE_PATH = process.env.RECEIPT_STORAGE_PATH || "/tmp/receipts"
         }
 
         if (!user && process.env.NODE_ENV === "development" && !authService) {
+          console.warn("⚠️  DEV MODE: Using fallback user ID (auth disabled). DO NOT use in production.");
           user = { id: new ObjectId("5de16db089c4360df927a3db") };
         }
 

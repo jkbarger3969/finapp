@@ -18,6 +18,18 @@ export const updateCategory: MutationResolvers["updateCategory"] = async (
     updateFields.name = input.name;
   }
 
+  if (input.displayName !== undefined && input.displayName !== null) {
+    updateFields.displayName = input.displayName;
+  }
+
+  if (input.groupName !== undefined) {
+    updateFields.groupName = input.groupName;
+  }
+
+  if (input.sortOrder !== undefined && input.sortOrder !== null) {
+    updateFields.sortOrder = input.sortOrder;
+  }
+
   if (Object.keys(updateFields).length > 0) {
     await accountingDb.updateOne({
       collection: "categories",

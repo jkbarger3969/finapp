@@ -25,6 +25,7 @@ import {
     Divider,
     Autocomplete,
     Fade,
+    ListSubheader,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { useOnlineStatus } from '../context/OnlineStatusContext';
@@ -40,8 +41,11 @@ const GET_FORM_DATA = `
     categories {
       id
       name
+      displayName
       type
       hidden
+      groupName
+      sortOrder
     }
     departments {
       id
@@ -285,6 +289,63 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
     const selectedBusiness = useMemo(() => {
         return businessOptions.find((b: any) => b.id === formData.sourceId) || null;
     }, [businessOptions, formData.sourceId]);
+
+    const groupedCategories = useMemo(() => {
+        const categories = (data?.categories || []).filter((cat: any) => !cat.hidden);
+        
+        const grouped: { [key: string]: any[] } = {};
+        const ungrouped: any[] = [];
+        
+        categories.forEach((cat: any) => {
+            if (cat.groupName) {
+                if (!grouped[cat.groupName]) {
+                    grouped[cat.groupName] = [];
+                }
+                grouped[cat.groupName].push(cat);
+            } else {
+                ungrouped.push(cat);
+            }
+        });
+        
+        Object.keys(grouped).forEach(key => {
+            grouped[key].sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+        });
+        ungrouped.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+        
+        const sortedGroupNames = Object.keys(grouped).sort();
+        
+        return { grouped, ungrouped, sortedGroupNames };
+    }, [data?.categories]);
+
+    const renderCategoryMenuItems = () => {
+        const items: React.ReactNode[] = [];
+        const { grouped, ungrouped, sortedGroupNames } = groupedCategories;
+        
+        ungrouped.forEach((cat: any) => {
+            items.push(
+                <MenuItem key={cat.id} value={cat.id}>
+                    {cat.displayName || cat.name} ({cat.type === 'CREDIT' ? 'Income' : 'Expense'})
+                </MenuItem>
+            );
+        });
+        
+        sortedGroupNames.forEach((groupName: string) => {
+            items.push(
+                <ListSubheader key={`header-${groupName}`} sx={{ bgcolor: 'background.paper', fontWeight: 'bold' }}>
+                    {groupName}
+                </ListSubheader>
+            );
+            grouped[groupName].forEach((cat: any) => {
+                items.push(
+                    <MenuItem key={cat.id} value={cat.id} sx={{ pl: 4 }}>
+                        {cat.name} ({cat.type === 'CREDIT' ? 'Income' : 'Expense'})
+                    </MenuItem>
+                );
+            });
+        });
+        
+        return items;
+    };
 
     const calculateRemainingRefund = (entry: any): number => {
         const total = formatRational(entry.total);
@@ -722,14 +783,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                         onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
                                         disabled={fetching}
                                     >
-                                        {[...(data?.categories || [])]
-                                            .filter((cat: any) => !cat.hidden)
-                                            .sort((a: any, b: any) => a.name.localeCompare(b.name))
-                                            .map((cat: any) => (
-                                            <MenuItem key={cat.id} value={cat.id}>
-                                                {cat.name} ({cat.type})
-                                            </MenuItem>
-                                        ))}
+                                        {renderCategoryMenuItems()}
                                     </Select>
                                 </FormControl>
 
