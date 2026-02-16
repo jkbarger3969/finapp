@@ -149,13 +149,27 @@ export const CategoriesTab = () => {
         const groupCategories = (cats: Category[]): GroupedCategories => {
             const grouped: GroupedCategories = {};
             const ungrouped: Category[] = [];
+            const parentCategoriesMap: Map<string, Category> = new Map();
 
             cats.forEach(cat => {
                 if (cat.groupName) {
+                    // Check if this is a parent category (name matches groupName)
+                    // e.g., "Supplies" with groupName "Supplies"
+                    const isParentCategory = cat.name === cat.groupName || cat.displayName === cat.groupName;
+                    
+                    if (isParentCategory) {
+                        // Store parent category separately to show as group header
+                        parentCategoriesMap.set(cat.groupName, cat);
+                    }
+                    
                     if (!grouped[cat.groupName]) {
                         grouped[cat.groupName] = [];
                     }
-                    grouped[cat.groupName].push(cat);
+                    
+                    // Only add subcategories to the group list (not parent categories)
+                    if (!isParentCategory) {
+                        grouped[cat.groupName].push(cat);
+                    }
                 } else {
                     ungrouped.push(cat);
                 }
