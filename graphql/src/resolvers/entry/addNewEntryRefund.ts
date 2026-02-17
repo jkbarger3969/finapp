@@ -5,14 +5,20 @@ import { fractionToRational } from "../../utils/mongoRational";
 import { upsertPaymentMethodToDbRecord } from "../paymentMethod";
 import { DocHistory, NewHistoricalDoc } from "../utils/DocHistory";
 import { getUniqueId } from "../utils/mongoUtils";
+import { checkPermission } from "../utils/permissions";
 import { validateEntry } from "./entryValidators";
 
 export const addNewEntryRefund: MutationResolvers["addNewEntryRefund"] = (
   _,
   { input },
-  { dataSources: { accountingDb }, reqDateTime, user, authService, ipAddress, userAgent }
+  context
 ) =>
-  accountingDb.withTransaction(async () => {
+  context.dataSources.accountingDb.withTransaction(async () => {
+    const { dataSources: { accountingDb }, reqDateTime, user, authService, ipAddress, userAgent } = context;
+
+    // Check permission - only SUPER_ADMIN can issue refunds
+    await checkPermission(context, "ISSUE_REFUND");
+
     await validateEntry.newEntryRefund({
       newEntryRefund: input,
       reqDateTime,

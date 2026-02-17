@@ -6,6 +6,7 @@ import { MutationResolvers } from "../../graphTypes";
 import { fractionToRational } from "../../utils/mongoRational";
 import { upsertPaymentMethodToDbRecord } from "../paymentMethod";
 import { DocHistory, UpdateHistoricalDoc } from "../utils/DocHistory";
+import { checkPermission } from "../utils/permissions";
 import { validateEntry } from "./entryValidators";
 import { upsertEntrySourceToEntityDbRecord } from "./upsertEntrySource";
 
@@ -14,9 +15,14 @@ const NULLISH = Symbol();
 export const updateEntry: MutationResolvers["updateEntry"] = async (
   _,
   { input },
-  { reqDateTime, user, dataSources: { accountingDb }, authService, ipAddress, userAgent }
+  context
 ) =>
-  accountingDb.withTransaction(async () => {
+  context.dataSources.accountingDb.withTransaction(async () => {
+    const { reqDateTime, user, dataSources: { accountingDb }, authService, ipAddress, userAgent } = context;
+
+    // Check permission - only SUPER_ADMIN can edit transactions
+    await checkPermission(context, "EDIT_TRANSACTION");
+
     await validateEntry.updateEntry({
       updateEntry: input,
       reqDateTime,

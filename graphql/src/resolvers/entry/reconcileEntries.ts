@@ -7,12 +7,18 @@ import {
 } from "../../dataSources/accountingDb/types";
 import { MutationResolvers } from "../../graphTypes";
 import { DocHistory, UpdateHistoricalDoc } from "../utils/DocHistory";
+import { checkPermission } from "../utils/permissions";
 
 export const reconcileEntries: MutationResolvers["reconcileEntries"] = async (
   _,
   { input },
-  { reqDateTime, user, dataSources: { accountingDb }, authService, ipAddress, userAgent }
+  context
 ) => {
+  const { reqDateTime, user, dataSources: { accountingDb }, authService, ipAddress, userAgent } = context;
+
+  // Check permission - only SUPER_ADMIN can reconcile entries
+  await checkPermission(context, "EDIT_TRANSACTION");
+
   await validateEntry.reconcileEntries({
     reconcileEntries: input,
     accountingDb,
