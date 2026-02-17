@@ -20,23 +20,19 @@ export const departmentBudgetSummaries = async (
   // Get fiscal year date range
   const fiscalYear = await db.collection("fiscalYears").findOne({ _id: fiscalYearObjectId });
   if (!fiscalYear) {
-    console.error(`[departmentBudgetSummaries] Fiscal year not found: ${fiscalYearId}`);
     return [];
   }
 
   const { begin, end } = fiscalYear;
-  console.log(`[departmentBudgetSummaries] Fiscal year: ${fiscalYear.name}, begin: ${begin}, end: ${end}`);
 
   // Get all departments
   const departments = await db.collection("departments").find({}).toArray();
-  console.log(`[departmentBudgetSummaries] Found ${departments.length} departments`);
 
   // Get all budgets for this fiscal year
   const budgets = await db.collection("budgets").find({
     "fiscalYear": fiscalYearObjectId,
     "owner.type": "Department"
   }).toArray();
-  console.log(`[departmentBudgetSummaries] Found ${budgets.length} budgets for fiscal year`);
 
   // Create budget map by department ID
   const budgetByDept = new Map<string, number>();
@@ -49,36 +45,25 @@ export const departmentBudgetSummaries = async (
       budgetByDept.set(deptId, (budgetByDept.get(deptId) || 0) + amount);
     }
   });
-  console.log(`[departmentBudgetSummaries] Budget map entries: ${budgetByDept.size}`);
-
-  // First, let's check the entry structure
-  const sampleEntry = await db.collection("entries").findOne({ deleted: { $ne: true } });
-  console.log(`[departmentBudgetSummaries] Sample entry structure:`, JSON.stringify({
-    department: sampleEntry?.department,
-    category: sampleEntry?.category,
-    total: sampleEntry?.total,
-    date: sampleEntry?.date
-  }, null, 2));
-
-  // Count entries in date range
-  const entriesInRange = await db.collection("entries").countDocuments({
-    deleted: { $ne: true },
-    "date.0.value": { $gte: begin, $lt: end }
-  });
-  console.log(`[departmentBudgetSummaries] Entries in date range: ${entriesInRange}`);
 
   // Aggregate spending by department for this fiscal year (DEBIT entries only)
+  // Note: entries use historical document format where fields are stored as field.0.value
+  // - deleted.0.value (boolean) 
+  // - date.0.value (Date)
+  // - category.0.value (ObjectId)
+  // - department.0.value (ObjectId)
+  // - total.value[0] contains {n, d, s} for rational number
   const spendingAgg = await db.collection("entries").aggregate([
     {
       $match: {
-        deleted: { $ne: true },
+        "deleted.0.value": { $ne: true },
         "date.0.value": { $gte: begin, $lt: end }
       }
     },
     {
       $lookup: {
         from: "categories",
-        localField: "category",
+        localField: "category.0.value",
         foreignField: "_id",
         as: "categoryDoc"
       }
@@ -112,11 +97,6 @@ export const departmentBudgetSummaries = async (
       }
     }
   ]).toArray();
-
-  console.log(`[departmentBudgetSummaries] Spending aggregation results: ${spendingAgg.length} departments`);
-  spendingAgg.forEach((agg: any) => {
-    console.log(`[departmentBudgetSummaries] Dept ${agg._id}: spent=${agg.totalSpent}, count=${agg.count}`);
-  });
 
   // Create spending map by department ID
   const spendingByDept = new Map<string, number>();
