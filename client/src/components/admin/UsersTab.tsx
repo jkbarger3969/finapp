@@ -184,7 +184,7 @@ export default function UsersTab() {
     const [inviteLoading, setInviteLoading] = useState(false);
     const [deleteUserToConfirm, setDeleteUserToConfirm] = useState<User | null>(null);
 
-    const [{ data: usersData, fetching: usersFetching }, refetchUsers] = useQuery({ 
+    const [{ data: usersData, fetching: usersFetching, error: usersError }, refetchUsers] = useQuery({
         query: USERS_QUERY,
         requestPolicy: 'cache-and-network'
     });
@@ -317,12 +317,12 @@ export default function UsersTab() {
         setError(null);
 
         // Update role and canInviteUsers
-        const result = await updateUser({ 
-            id: editUser.id, 
-            input: { 
+        const result = await updateUser({
+            id: editUser.id,
+            input: {
                 role: editRole,
                 canInviteUsers: editCanInviteUsers
-            } 
+            }
         });
         if (result.error) {
             setError(result.error.message);
@@ -463,6 +463,16 @@ export default function UsersTab() {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                 <CircularProgress />
+            </Box>
+        );
+    }
+
+    if (usersError) {
+        return (
+            <Box sx={{ p: 4 }}>
+                <Alert severity="error">
+                    Error loading users: {usersError.message}
+                </Alert>
             </Box>
         );
     }

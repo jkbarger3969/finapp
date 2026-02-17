@@ -20,12 +20,13 @@ export default defineConfig({
           },
           {
             urlPattern: /^https?:\/\/.*\/graphql/,
-            handler: 'StaleWhileRevalidate',
+            handler: 'NetworkFirst',
             options: {
               cacheName: 'graphql-cache',
+              networkTimeoutSeconds: 10,
               expiration: {
                 maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24,
+                maxAgeSeconds: 60 * 5,
               },
               cacheableResponse: {
                 statuses: [0, 200],
