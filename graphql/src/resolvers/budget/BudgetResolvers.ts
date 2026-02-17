@@ -21,6 +21,11 @@ const owner: BudgetResolvers<Context, BudgetDbRecord>["owner"] = (
   _,
   { dataSources: { accountingDb } }
 ) => {
+  if (!owner || !owner.type || !owner.id) {
+    console.warn("Budget has invalid owner:", owner);
+    return { __typename: 'Business', id: 'unknown', name: 'Unknown Owner' } as any;
+  }
+  
   if (owner.type === "Business") {
     return addTypename(
       owner.type,

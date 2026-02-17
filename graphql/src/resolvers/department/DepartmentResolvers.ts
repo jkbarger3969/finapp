@@ -27,6 +27,11 @@ const business: DepartmentResolvers["business"] = async (
   _,
   { dataSources: { accountingDb } }
 ) => {
+  if (!parent || !parent.type || !parent.id) {
+    console.warn("Department has invalid parent:", parent);
+    return null;
+  }
+  
   if (parent.type === "Business") {
     return accountingDb.findOne({
       collection: "businesses",
@@ -39,7 +44,11 @@ const business: DepartmentResolvers["business"] = async (
     filter: { _id: parent.id },
   });
 
-  while (ancestor.parent.type !== "Business") {
+  while (ancestor?.parent?.type !== "Business") {
+    if (!ancestor?.parent?.id) {
+      console.warn("Department ancestor chain broken:", ancestor);
+      return null;
+    }
     ancestor = await accountingDb.findOne({
       collection: "departments",
       filter: { _id: ancestor.parent.id },
@@ -56,8 +65,13 @@ const parent: DepartmentResolvers["parent"] = (
   { parent },
   _,
   { dataSources: { accountingDb } }
-) =>
-  addTypename(
+) => {
+  if (!parent || !parent.type || !parent.id) {
+    console.warn("Department has invalid parent reference:", parent);
+    return null;
+  }
+  
+  return addTypename(
     parent.type,
     accountingDb.findOne({
       collection: parent.type === "Business" ? "businesses" : "departments",
@@ -66,6 +80,7 @@ const parent: DepartmentResolvers["parent"] = (
       },
     })
   );
+};
 
 const children: DepartmentResolvers["children"] = (
   { _id },
@@ -90,6 +105,12 @@ const ancestors: Extract<DepartmentResolvers["ancestors"], Function> = async (
       dataSources: { accountingDb },
     },
   ] = args;
+
+  // Safety check for parent
+  if (!parent || !parent.type || !parent.id) {
+    console.warn("Department ancestors: invalid parent:", parent);
+    return [];
+  }
 
   if (root) {
     const [rootDepartments, ancestorsArr] = await Promise.all([
@@ -138,9 +159,18 @@ const ancestors: Extract<DepartmentResolvers["ancestors"], Function> = async (
     })
   );
 
+  if (!ancestor) {
+    console.warn("Department ancestors: ancestor not found for parent.id:", parent.id);
+    return results;
+  }
+
   results.push(ancestor);
 
-  while (ancestor.parent.type !== "Business") {
+  while (ancestor?.parent?.type !== "Business") {
+    if (!ancestor?.parent?.id) {
+      console.warn("Department ancestors: ancestor chain broken:", ancestor);
+      break;
+    }
     ancestor = await addTypename(
       "Department",
       accountingDb.findOne({
@@ -148,18 +178,23 @@ const ancestors: Extract<DepartmentResolvers["ancestors"], Function> = async (
         filter: { _id: ancestor.parent.id },
       })
     );
+    if (!ancestor) break;
     results.push(ancestor);
   }
 
-  const biz = await addTypename(
-    "Business",
-    accountingDb.findOne({
-      collection: "businesses",
-      filter: { _id: ancestor.parent.id },
-    })
-  );
+  if (ancestor?.parent?.id) {
+    const biz = await addTypename(
+      "Business",
+      accountingDb.findOne({
+        collection: "businesses",
+        filter: { _id: ancestor.parent.id },
+      })
+    );
 
-  results.push(biz);
+    if (biz) {
+      results.push(biz);
+    }
+  }
 
   return results;
 };

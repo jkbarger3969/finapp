@@ -196,8 +196,15 @@ export const Entry: EntryResolvers = {
     }
 
     const sourceValue = source[0].value;
-    const type = sourceValue?.type;
-    const id = sourceValue?.id;
+    
+    // Handle case where sourceValue might be null/undefined or missing type/id
+    if (!sourceValue || typeof sourceValue !== 'object') {
+      console.warn(`Entry ${_id} has invalid source value: ${sourceValue}`);
+      return { __typename: 'Business', id: 'unknown', name: 'Unknown Source' } as any;
+    }
+    
+    const type = sourceValue.type;
+    const id = sourceValue.id;
 
     if (!type || !id) {
       console.warn(`Entry ${_id} has invalid source (type: ${type}, id: ${id})`);
