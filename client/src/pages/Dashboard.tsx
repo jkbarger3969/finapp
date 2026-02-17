@@ -142,9 +142,12 @@ export default function Dashboard() {
             if (entry.department?.id && entry.category?.type === 'DEBIT') {
                 const deptId = entry.department.id;
                 const current = spendingByDept.get(deptId) || 0;
-                spendingByDept.set(deptId, current + Math.abs(parseRational(entry.total)));
+                const amount = Math.abs(parseRational(entry.total));
+                spendingByDept.set(deptId, current + amount);
+                console.log('[Dashboard] Entry spending:', { deptId, deptName: entry.department.name, amount, total: current + amount });
             }
         });
+        console.log('[Dashboard] SpendingByDept map:', Object.fromEntries(spendingByDept));
 
         const budgetByDept = new Map<string, number>();
         data.budgets.forEach((budget: any) => {
@@ -158,14 +161,18 @@ export default function Dashboard() {
 
         data.departments.forEach((dept: any) => {
             const deptAncestors = dept.ancestors?.filter((a: any) => a.__typename === 'Department') || [];
+            const deptSpent = spendingByDept.get(dept.id) || 0;
             deptMap.set(dept.id, {
                 id: dept.id,
                 name: dept.name,
                 budget: budgetByDept.get(dept.id) || 0,
-                spent: spendingByDept.get(dept.id) || 0,
+                spent: deptSpent,
                 children: [],
                 level: deptAncestors.length,
             });
+            if (deptSpent > 0) {
+                console.log('[Dashboard] Dept with spending:', { id: dept.id, name: dept.name, spent: deptSpent });
+            }
         });
 
         data.departments.forEach((dept: any) => {
