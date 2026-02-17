@@ -35,12 +35,13 @@ export const departmentBudgetSummaries = async (
   }).toArray();
 
   // Create budget map by department ID
+  // Note: budgets store amount directly as Rational {s, n, d}, not as historical field
   const budgetByDept = new Map<string, number>();
   budgets.forEach((budget: any) => {
     if (budget.owner?.id) {
       const deptId = budget.owner.id.toString();
-      const amount = budget.amount?.value?.[0] 
-        ? (budget.amount.value[0].n / budget.amount.value[0].d) * budget.amount.value[0].s
+      const amount = budget.amount
+        ? (budget.amount.n / budget.amount.d) * budget.amount.s
         : 0;
       budgetByDept.set(deptId, (budgetByDept.get(deptId) || 0) + amount);
     }
@@ -70,7 +71,7 @@ export const departmentBudgetSummaries = async (
     },
     {
       $match: {
-        "categoryDoc.type": "DEBIT"
+        "categoryDoc.type": "Debit"
       }
     },
     {
@@ -83,12 +84,18 @@ export const departmentBudgetSummaries = async (
                 t: { $arrayElemAt: ["$total.value", 0] }
               },
               in: {
-                $abs: {
-                  $multiply: [
-                    { $cond: [{ $eq: ["$$t.d", 0] }, 0, { $divide: ["$$t.n", "$$t.d"] }] },
-                    { $ifNull: ["$$t.s", 1] }
-                  ]
-                }
+                $cond: [
+                  { $eq: ["$$t", null] },
+                  0,
+                  {
+                    $abs: {
+                      $multiply: [
+                        { $cond: [{ $or: [{ $eq: ["$$t.d", 0] }, { $eq: ["$$t.d", null] }] }, 0, { $divide: [{ $ifNull: ["$$t.n", 0] }, "$$t.d"] }] },
+                        { $ifNull: ["$$t.s", 1] }
+                      ]
+                    }
+                  }
+                ]
               }
             }
           }
