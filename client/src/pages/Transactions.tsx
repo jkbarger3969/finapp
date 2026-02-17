@@ -536,43 +536,11 @@ export default function Transactions() {
                         </Box>
                     );
                 }
-                if (params.row.isRefundDetail) {
-                    const isExpanded = expandedRefunds.has(params.row.id);
-                    return (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <IconButton
-                                size="small"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    const newExpanded = new Set(expandedRefunds);
-                                    if (isExpanded) {
-                                        newExpanded.delete(params.row.id);
-                                    } else {
-                                        newExpanded.add(params.row.id);
-                                    }
-                                    setExpandedRefunds(newExpanded);
-                                }}
-                                data-tooltip={isExpanded ? "Collapse refund details" : "Expand refund details"}
-                                data-tooltip-pos="left"
-                            >
-                                {isExpanded ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
-                            </IconButton>
-                            <Box>
-                                <Typography variant="body2" fontWeight="bold">
-                                    {params.value}
-                                </Typography>
-                                <Typography variant="caption" color="primary.main">
-                                    ↳ Refund Item (Click arrow to show matching entry)
-                                </Typography>
-                            </Box>
-                        </Box>
-                    );
-                }
-                if (params.row.isOriginalEntryForRefund) {
+                if (params.row.isRefundForEntry) {
                     return (
                         <Box sx={{ pl: 6, borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
                             <Typography variant="body2" color="text.secondary">
-                                Original: {params.value}
+                                Refund: {params.value}
                             </Typography>
                         </Box>
                     );
@@ -814,9 +782,9 @@ export default function Transactions() {
         // Server-side filtered already
         const normalRows: any[] = [];
         data.entries.forEach((entry: any) => {
-            // If entry has refunds, show refunds first (like the filter view)
+            // If entry has refunds, show with expand capability
             if (entry.refunds?.length > 0) {
-                // First show the parent entry with indicator
+                // Show the parent entry with indicator
                 normalRows.push({
                     ...entry,
                     id: entry.id,
@@ -824,13 +792,12 @@ export default function Transactions() {
                     hasRefunds: true,
                 });
                 
-                // If expanded, show refund rows below (mimicking the filter view structure)
+                // If expanded, show refund rows below (reverse of filter view)
                 if (expandedRefunds.has(entry.id)) {
                     entry.refunds.forEach((refund: any) => {
-                        const refundRowId = `refund-detail-${refund.id}`;
-                        // The refund row - styled like isRefund in the filter view
+                        // The refund row - shown indented below parent (like "Original:" in filter view)
                         normalRows.push({
-                            id: refundRowId,
+                            id: `refund-for-${refund.id}`,
                             refundId: refund.id,
                             description: refund.description || 'Refund',
                             date: refund.date,
@@ -840,23 +807,10 @@ export default function Transactions() {
                             department: entry.department,
                             paymentMethod: refund.paymentMethod,
                             attachments: [],
-                            isRefund: true,
-                            isRefundDetail: true,
+                            isRefundForEntry: true,
                             parentEntryId: entry.id,
                             rowType: 'CREDIT',
-                            originalEntry: entry,
                         });
-                        
-                        // If refund row is expanded, show the original entry below it
-                        if (expandedRefunds.has(refundRowId)) {
-                            normalRows.push({
-                                ...entry,
-                                id: `original-for-${refund.id}`,
-                                description: entry.description,
-                                isOriginalEntryForRefund: true,
-                                parentRefundId: refundRowId,
-                            });
-                        }
                     });
                 }
             } else {
