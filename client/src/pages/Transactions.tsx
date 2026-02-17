@@ -1245,6 +1245,7 @@ export default function Transactions() {
                                         paginationMode="server"
                                         paginationModel={paginationModel}
                                         onPaginationModelChange={setPaginationModel}
+                                        sortingMode="server" // Ensure server-side sorting for row order stability
                                         sortModel={showMatchingOnly ? [] : sortModel}
                                         onSortModelChange={(model) => !showMatchingOnly && setSortModel(model)}
                                         disableColumnSorting={showMatchingOnly}
@@ -1263,9 +1264,13 @@ export default function Transactions() {
                                             },
                                         }}
                                         getRowClassName={(params) => {
-                                            if (params.row.isRefund) return 'refund-row';
-                                            if (params.row.refunds?.length > 0) return 'has-refunds-row';
-                                            return '';
+                                            let classes = '';
+                                            if (params.row.isRefund) classes += ' refund-row';
+                                            if (params.row.refunds?.length > 0) classes += ' has-refunds-row';
+                                            // Check if this is the last row in the dataset
+                                            const lastRowId = rows.length > 0 ? rows[rows.length - 1].id : null;
+                                            if (params.id === lastRowId) classes += ' last-row';
+                                            return classes.trim();
                                         }}
                                         getRowHeight={() => 'auto'}
                                         getEstimatedRowHeight={() => 100}
@@ -1276,6 +1281,9 @@ export default function Transactions() {
                                                 borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                                                 display: 'flex',
                                                 alignItems: 'center',
+                                            },
+                                            "& .MuiDataGrid-footerContainer": {
+                                                borderTop: "none !important", // Remove border above footer
                                             },
                                             "& .MuiDataGrid-virtualScroller": {
                                                 marginTop: "8px !important",
@@ -1331,12 +1339,11 @@ export default function Transactions() {
                                                 justifyContent: "center !important",
                                             },
 
-                                            "& .MuiDataGrid-virtualScrollerContent .MuiDataGrid-row:last-child .MuiDataGrid-cell": {
+                                            // Remove bottom border from last displayed row (targeted via class)
+                                            "& .last-row .MuiDataGrid-cell": {
                                                 borderBottom: "none !important"
                                             },
-                                            "& .MuiDataGrid-row:last-of-type .MuiDataGrid-cell": {
-                                                borderBottom: "none !important"
-                                            },
+
                                             "& .refund-row": {
                                                 borderLeft: "4px solid",
                                                 borderLeftColor: "success.main",
