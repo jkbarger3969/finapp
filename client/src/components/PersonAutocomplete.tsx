@@ -26,6 +26,7 @@ interface PersonAutocompleteProps {
     helperText?: string;
     label?: string;
     placeholder?: string;
+    size?: 'small' | 'medium';
 }
 
 export default function PersonAutocomplete({
@@ -38,6 +39,7 @@ export default function PersonAutocomplete({
     helperText,
     label = "Person",
     placeholder = "Type to search people...",
+    size = 'medium',
 }: PersonAutocompleteProps) {
     const [browseOpen, setBrowseOpen] = useState(false);
 
@@ -57,6 +59,7 @@ export default function PersonAutocomplete({
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
             <Autocomplete
                 fullWidth
+                size={size}
                 value={selectedPerson}
                 onChange={(_, newValue) => {
                     onChange(newValue?.id || '');
@@ -73,6 +76,7 @@ export default function PersonAutocomplete({
                         error={error}
                         helperText={helperText}
                         placeholder={placeholder}
+                        size={size}
                     />
                 )}
                 renderOption={(props, option) => {

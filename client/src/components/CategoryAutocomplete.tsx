@@ -28,6 +28,7 @@ interface CategoryAutocompleteProps {
     required?: boolean;
     error?: boolean;
     helperText?: string;
+    size?: 'small' | 'medium';
 }
 
 export default function CategoryAutocomplete({
@@ -38,6 +39,7 @@ export default function CategoryAutocomplete({
     required = false,
     error = false,
     helperText,
+    size = 'medium',
 }: CategoryAutocompleteProps) {
     const [browseOpen, setBrowseOpen] = useState(false);
 
@@ -79,6 +81,7 @@ export default function CategoryAutocomplete({
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
             <Autocomplete
                 fullWidth
+                size={size}
                 value={selectedCategory}
                 onChange={(_, newValue) => {
                     onChange(newValue?.id || '');
@@ -96,6 +99,7 @@ export default function CategoryAutocomplete({
                         error={error}
                         helperText={helperText}
                         placeholder="Type to search categories..."
+                        size={size}
                     />
                 )}
                 renderOption={(props, option) => {

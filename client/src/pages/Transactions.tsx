@@ -905,28 +905,14 @@ export default function Transactions() {
                             />
 
                             {/* Stats */}
-                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', ml: 'auto' }}>
-                                <Box sx={{ textAlign: 'right' }}>
-                                    <Typography variant="caption" color="text.secondary" display="block">
-                                        Total Transactions
-                                    </Typography>
-                                    <Typography variant="h6" lineHeight={1}>
-                                        {summary.count}
-                                    </Typography>
-                                </Box>
-                                <Divider orientation="vertical" flexItem sx={{ height: 40 }} />
-                                <Box sx={{ textAlign: 'right' }}>
-                                    <Typography variant="caption" color="text.secondary" display="block">
-                                        Balance
-                                    </Typography>
-                                    <Typography
-                                        variant="h6"
-                                        lineHeight={1}
-                                        color={summary.balance >= 0 ? "success.main" : "error.main"}
-                                    >
-                                        {currencyFormatter.format(summary.balance)}
-                                    </Typography>
-                                </Box>
+                            <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', ml: 'auto' }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    Total Transactions: <Box component="span" sx={{ color: 'text.primary', fontWeight: 500 }}>{summary.count}</Box>
+                                </Typography>
+                                <Divider orientation="vertical" flexItem sx={{ height: 20, my: 'auto' }} />
+                                <Typography variant="body2" color="text.secondary">
+                                    Balance: <Box component="span" sx={{ color: summary.balance >= 0 ? 'success.main' : 'error.main', fontWeight: 500 }}>{currencyFormatter.format(summary.balance)}</Box>
+                                </Typography>
                             </Box>
                         </Box>
 
@@ -1019,7 +1005,7 @@ export default function Transactions() {
                             </TextField>
 
                             {/* Category */}
-                            <Box sx={{ width: 150 }}>
+                            <Box sx={{ width: 250 }}>
                                 <CategoryAutocomplete
                                     categories={categoryOptions.filter((cat: any) => {
                                         if (entryType === 'ALL') return true;
@@ -1032,11 +1018,12 @@ export default function Transactions() {
                                         const cat = categories.find((c: any) => c.id === categoryId);
                                         setSelectedCategory(cat || null);
                                     }}
+                                    size="small"
                                 />
                             </Box>
 
                             {/* Person */}
-                            <Box sx={{ width: 150 }}>
+                            <Box sx={{ width: 250 }}>
                                 <PersonAutocomplete
                                     people={personOptions}
                                     value={selectedPerson?.id || ''}
@@ -1046,11 +1033,12 @@ export default function Transactions() {
                                         if (person) setSelectedBusiness(null);
                                     }}
                                     label="Person"
+                                    size="small"
                                 />
                             </Box>
 
                             {/* Business */}
-                            <Box sx={{ width: 150 }}>
+                            <Box sx={{ width: 250 }}>
                                 <BusinessAutocomplete
                                     businesses={businessOptions}
                                     value={selectedBusiness?.id || ''}
@@ -1060,6 +1048,7 @@ export default function Transactions() {
                                         if (biz) setSelectedPerson(null);
                                     }}
                                     label="Business"
+                                    size="small"
                                 />
                             </Box>
                         </Box>

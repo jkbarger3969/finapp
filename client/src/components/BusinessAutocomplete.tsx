@@ -24,6 +24,7 @@ interface BusinessAutocompleteProps {
     helperText?: string;
     label?: string;
     placeholder?: string;
+    size?: 'small' | 'medium';
 }
 
 export default function BusinessAutocomplete({
@@ -36,6 +37,7 @@ export default function BusinessAutocomplete({
     helperText,
     label = "Business",
     placeholder = "Type to search businesses...",
+    size = 'medium',
 }: BusinessAutocompleteProps) {
     const [browseOpen, setBrowseOpen] = useState(false);
 
@@ -55,6 +57,7 @@ export default function BusinessAutocomplete({
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
             <Autocomplete
                 fullWidth
+                size={size}
                 value={selectedBusiness}
                 onChange={(_, newValue) => {
                     onChange(newValue?.id || '');
@@ -71,6 +74,7 @@ export default function BusinessAutocomplete({
                         error={error}
                         helperText={helperText}
                         placeholder={placeholder}
+                        size={size}
                     />
                 )}
                 renderOption={(props, option) => {
