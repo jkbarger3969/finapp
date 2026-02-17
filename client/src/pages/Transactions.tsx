@@ -425,7 +425,7 @@ export default function Transactions() {
     const columns = [
         {
             field: "actions",
-            headerName: "",
+            headerName: "Menu",
             width: 50,
             sortable: false,
             filterable: false,
@@ -452,7 +452,7 @@ export default function Transactions() {
             field: "reconciled",
             headerName: "Status",
             width: 100,
-            align: 'center',
+            align: 'left',
             headerAlign: 'center',
             renderCell: (params: any) => (
                 <Chip
@@ -467,7 +467,7 @@ export default function Transactions() {
             field: "date",
             headerName: "Date",
             width: 120,
-            align: 'center',
+            align: 'left',
             headerAlign: 'center',
             renderCell: (params: any) => {
                 const txDate = format(new Date(params.value), "MMM dd, yyyy");
@@ -492,7 +492,7 @@ export default function Transactions() {
             headerName: "Description",
             flex: 0.8,
             minWidth: 150,
-            align: 'center',
+            align: 'left',
             headerAlign: 'center',
             renderCell: (params: any) => {
                 if (params.row.isRefund) {
@@ -553,7 +553,7 @@ export default function Transactions() {
             field: "department",
             headerName: "Department",
             width: 140,
-            align: 'center',
+            align: 'left',
             headerAlign: 'center',
             valueGetter: (_value: any, row: any) => row?.department?.name || "",
         },
@@ -561,7 +561,7 @@ export default function Transactions() {
             field: "source",
             headerName: "Source",
             width: 160,
-            align: 'center',
+            align: 'left',
             headerAlign: 'center',
             renderCell: (params: any) => {
                 const source = params.row.source;
@@ -594,7 +594,7 @@ export default function Transactions() {
             field: "category",
             headerName: "Category",
             width: 180,
-            align: 'center',
+            align: 'left',
             headerAlign: 'center',
             renderCell: (params: any) => (
                 <Chip
@@ -609,7 +609,7 @@ export default function Transactions() {
             field: "paymentMethod",
             headerName: "Payment",
             width: 130,
-            align: 'center',
+            align: 'left',
             headerAlign: 'center',
             valueGetter: (val: any) => {
                 const value = val as any;
@@ -629,7 +629,7 @@ export default function Transactions() {
             field: "total",
             headerName: "Amount",
             width: 130,
-            align: "center",
+            align: "left",
             headerAlign: "center",
             valueGetter: (value: any) => parseRational(value),
             renderCell: (params: any) => {
