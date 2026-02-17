@@ -888,256 +888,205 @@ export default function Transactions() {
                     subtitle="View and manage all financial entries"
                 />
 
-                {/* Filter Controls - Expanded Layout */}
+                {/* Filter Controls - Optimized Toolbar Layout */}
                 <Paper sx={{ p: 2, mb: 0.5 }}>
                     <Stack spacing={2}>
-                        {/* Row 1: Fiscal Year, Date Range & Checkbox */}
-                        <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
-                            <Typography variant="subtitle2" sx={{ minWidth: 60 }}>Period:</Typography>
+                        {/* Row 1: Context, Time & Search */}
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                            {/* Period & Time */}
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                <TextField
+                                    select
+                                    label="Fiscal Year"
+                                    size="small"
+                                    value={fiscalYearId || ''}
+                                    onChange={(e) => setFiscalYearId(e.target.value)}
+                                    sx={{ width: 140 }}
+                                    data-tooltip="Select fiscal year"
+                                    data-tooltip-pos="top"
+                                >
+                                    {fiscalYears.map((fy: any) => (
+                                        <MenuItem key={fy.id} value={fy.id}>{fy.name}</MenuItem>
+                                    ))}
+                                </TextField>
+                                <DatePicker
+                                    label="Start"
+                                    value={startDate}
+                                    onChange={(newValue) => setStartDate(newValue)}
+                                    slotProps={{ textField: { size: "small", sx: { width: 130 } } }}
+                                />
+                                <Typography variant="body2" color="text.secondary">-</Typography>
+                                <DatePicker
+                                    label="End"
+                                    value={endDate}
+                                    onChange={(newValue) => setEndDate(newValue)}
+                                    slotProps={{ textField: { size: "small", sx: { width: 130 } } }}
+                                />
+                            </Box>
 
-                            {/* Fiscal Year Selector */}
-                            <TextField
-                                select
-                                label="Fiscal Year"
-                                size="small"
-                                value={fiscalYearId || ''}
-                                onChange={(e) => setFiscalYearId(e.target.value)}
-                                sx={{ minWidth: 150 }}
-                                data-tooltip="Select fiscal year"
-                                data-tooltip-pos="top"
-                            >
-                                {fiscalYears.map((fy: any) => (
-                                    <MenuItem key={fy.id} value={fy.id}>
-                                        {fy.name}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
+                            {/* Search (Flexible) */}
+                            <Box sx={{ flexGrow: 1, minWidth: 200 }}>
+                                <TextField
+                                    fullWidth
+                                    placeholder="Search transactions..."
+                                    size="small"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    InputProps={{
+                                        startAdornment: <Box component="span" sx={{ mr: 1, color: 'text.secondary' }}>🔍</Box>,
+                                        endAdornment: <Box component="span" sx={{ ml: 1, color: 'text.secondary', fontSize: '0.75rem' }}>⌘K</Box>,
+                                    }}
+                                />
+                            </Box>
 
-                            <DatePicker
-                                label="Start Date"
-                                value={startDate}
-                                onChange={(newValue) => setStartDate(newValue)}
-                                slotProps={{
-                                    textField: {
-                                        size: "small",
-                                        sx: { width: 150 },
-                                        inputProps: {
-                                            'data-tooltip': "Filter by start date",
-                                            'data-tooltip-pos': "top"
-                                        }
-                                    },
-                                }}
-                            />
-                            <DatePicker
-                                label="End Date"
-                                value={endDate}
-                                onChange={(newValue) => setEndDate(newValue)}
-                                slotProps={{
-                                    textField: {
-                                        size: "small",
-                                        sx: { width: 150 },
-                                        inputProps: {
-                                            'data-tooltip': "Filter by end date",
-                                            'data-tooltip-pos': "top"
-                                        }
-                                    },
-                                }}
-                            />
-
+                            {/* Actions / Toggles */}
                             <FormControlLabel
                                 control={
                                     <Checkbox
                                         checked={showMatchingOnly}
                                         onChange={(e) => setShowMatchingOnly(e.target.checked)}
                                         size="small"
-                                        inputProps={{
-                                            'data-tooltip': "Group refunds with original transactions",
-                                            'data-tooltip-pos': "top"
-                                        } as any}
                                     />
                                 }
-                                label={<Typography variant="body2">Show Matching (Refunds)</Typography>}
-                            />
-
-                            {/* Search Input - Live filtering */}
-                            <TextField
-                                placeholder="Search transactions..."
-                                size="small"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                sx={{ minWidth: 350 }}
-                                data-tooltip="Search by description, amount, or connected entity (Cmd+K)"
-                                data-tooltip-pos="top"
-                                InputProps={{
-                                    startAdornment: (
-                                        <Box component="span" sx={{ mr: 1, display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                                            🔍
-                                        </Box>
-                                    ),
-                                    endAdornment: (
-                                        <Box component="span" sx={{ ml: 1, display: 'flex', alignItems: 'center', color: 'text.secondary', fontSize: '0.75rem' }}>
-                                            ⌘K / Ctrl+K
-                                        </Box>
-                                    ),
-                                }}
+                                label={<Typography variant="body2" noWrap>Show Matching</Typography>}
                             />
                         </Box>
 
-                        {/* Row 2: Advanced Filters */}
-                        <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
-                            <Typography variant="subtitle2" sx={{ minWidth: 60 }}>Filters:</Typography>
+                        <Divider />
 
-                            {searchTerm && (
-                                <Chip
-                                    label={`Search: "${searchTerm}"`}
-                                    onDelete={() => {
-                                        setSearchTerm('');
-                                        window.history.replaceState({}, document.title);
-                                    }}
-                                    color="primary"
-                                    size="small"
-                                />
-                            )}
-
-                            <TextField
-                                select
-                                label="Type"
-                                size="small"
-                                value={entryType}
-                                onChange={(e) => {
-                                    const newType = e.target.value;
-                                    setEntryType(newType);
-                                    // Clear category if it doesn't match the new type
-                                    if (selectedCategory && newType !== 'ALL' && selectedCategory.type !== newType) {
-                                        setSelectedCategory(null);
-                                    }
-                                }}
-                                sx={{ minWidth: 120 }}
-                                data-tooltip="Filter by Income (Credit) or Expense (Debit)"
-                                data-tooltip-pos="top"
-                            >
-                                <MenuItem value="ALL">All</MenuItem>
-                                <MenuItem value="DEBIT">Expense</MenuItem>
-                                <MenuItem value="CREDIT">Income</MenuItem>
-                            </TextField>
-
-                            <TextField
-                                select
-                                label="Status"
-                                size="small"
-                                value={reconcileFilter}
-                                onChange={(e) => setReconcileFilter(e.target.value)}
-                                sx={{ minWidth: 150 }}
-                                data-tooltip="Filter by reconciliation status"
-                                data-tooltip-pos="top"
-                            >
-                                <MenuItem value="ALL">All Status</MenuItem>
-                                <MenuItem value="RECONCILED">Reconciled</MenuItem>
-                                <MenuItem value="UNRECONCILED">Unreconciled</MenuItem>
-                            </TextField>
-
-                            <TextField
-                                select
-                                label="Top Dept"
-                                size="small"
-                                value={topLevelDeptId}
-                                onChange={(e) => {
-                                    setTopLevelDeptId(e.target.value);
-                                    setSubDeptId('');
-                                }}
-                                sx={{ minWidth: 150 }}
-                                data-tooltip="Filter by top-level department"
-                                data-tooltip-pos="top"
-                            >
-                                <MenuItem value="">All</MenuItem>
-                                {topLevelDepartments.map((dept: any) => (
-                                    <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
-                                ))}
-                            </TextField>
-
-                            {subDepartments.length > 0 && (
+                        {/* Row 2: Filters */}
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
                                 <TextField
                                     select
-                                    label="Sub Dept"
+                                    label="Type"
                                     size="small"
-                                    value={subDeptId}
-                                    onChange={(e) => setSubDeptId(e.target.value)}
-                                    sx={{ minWidth: 150 }}
-                                    data-tooltip="Filter by sub-department"
-                                    data-tooltip-pos="top"
+                                    value={entryType}
+                                    onChange={(e) => {
+                                        const newType = e.target.value;
+                                        setEntryType(newType);
+                                        if (selectedCategory && newType !== 'ALL' && selectedCategory.type !== newType) {
+                                            setSelectedCategory(null);
+                                        }
+                                    }}
+                                    sx={{ width: 100 }}
+                                >
+                                    <MenuItem value="ALL">All</MenuItem>
+                                    <MenuItem value="DEBIT">Expense</MenuItem>
+                                    <MenuItem value="CREDIT">Income</MenuItem>
+                                </TextField>
+
+                                <TextField
+                                    select
+                                    label="Status"
+                                    size="small"
+                                    value={reconcileFilter}
+                                    onChange={(e) => setReconcileFilter(e.target.value)}
+                                    sx={{ width: 130 }}
+                                >
+                                    <MenuItem value="ALL">All</MenuItem>
+                                    <MenuItem value="RECONCILED">Reconciled</MenuItem>
+                                    <MenuItem value="UNRECONCILED">Unreconciled</MenuItem>
+                                </TextField>
+                            </Box>
+
+                            {/* Entity & Category (Flexible) */}
+                            <Box sx={{ display: 'flex', gap: 1, flexGrow: 1, minWidth: 300 }}>
+                                <Box sx={{ flex: 1, minWidth: 150 }}>
+                                    <CategoryAutocomplete
+                                        categories={categoryOptions.filter((cat: any) => {
+                                            if (entryType === 'ALL') return true;
+                                            if (entryType === 'CREDIT') return cat.type === 'CREDIT';
+                                            if (entryType === 'DEBIT') return cat.type === 'DEBIT';
+                                            return true;
+                                        })}
+                                        value={selectedCategory?.id || ''}
+                                        onChange={(categoryId) => {
+                                            const cat = categories.find((c: any) => c.id === categoryId);
+                                            setSelectedCategory(cat || null);
+                                        }}
+                                    />
+                                </Box>
+                                <Box sx={{ flex: 1, minWidth: 150 }}>
+                                    <PersonAutocomplete
+                                        people={personOptions}
+                                        value={selectedPerson?.id || ''}
+                                        onChange={(personId) => {
+                                            const person = people.find((p: any) => p.id === personId);
+                                            setSelectedPerson(person || null);
+                                            if (person) setSelectedBusiness(null);
+                                        }}
+                                        label="Person"
+                                    />
+                                </Box>
+                                <Box sx={{ flex: 1, minWidth: 150 }}>
+                                    <BusinessAutocomplete
+                                        businesses={businessOptions}
+                                        value={selectedBusiness?.id || ''}
+                                        onChange={(businessId) => {
+                                            const biz = businesses.find((b: any) => b.id === businessId);
+                                            setSelectedBusiness(biz || null);
+                                            if (biz) setSelectedPerson(null);
+                                        }}
+                                        label="Business"
+                                    />
+                                </Box>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <TextField
+                                    select
+                                    label="Dept"
+                                    size="small"
+                                    value={topLevelDeptId}
+                                    onChange={(e) => {
+                                        setTopLevelDeptId(e.target.value);
+                                        setSubDeptId('');
+                                    }}
+                                    sx={{ width: 120 }}
                                 >
                                     <MenuItem value="">All</MenuItem>
-                                    {subDepartments.map((dept: any) => (
+                                    {topLevelDepartments.map((dept: any) => (
                                         <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
                                     ))}
                                 </TextField>
-                            )}
 
-                            <TextField
-                                select
-                                label="Payment Type"
-                                size="small"
-                                value={paymentMethodType}
-                                onChange={(e) => setPaymentMethodType(e.target.value)}
-                                sx={{ minWidth: 120 }}
-                                data-tooltip="Filter by payment method"
-                                data-tooltip-pos="top"
-                            >
-                                <MenuItem value="ALL">All Types</MenuItem>
-                                <MenuItem value="check">Check</MenuItem>
-                                <MenuItem value="card">Card</MenuItem>
-                                <MenuItem value="cash">Cash</MenuItem>
-                                <MenuItem value="online">Online</MenuItem>
-                            </TextField>
-                        </Box>
+                                {subDepartments.length > 0 && (
+                                    <TextField
+                                        select
+                                        label="Sub Dept"
+                                        size="small"
+                                        value={subDeptId}
+                                        onChange={(e) => setSubDeptId(e.target.value)}
+                                        sx={{ width: 120 }}
+                                    >
+                                        <MenuItem value="">All</MenuItem>
+                                        {subDepartments.map((dept: any) => (
+                                            <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
+                                        ))}
+                                    </TextField>
+                                )}
 
-                        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "flex-start", pt: 1 }}>
-                            <Box sx={{ minWidth: 220 }}>
-                                <CategoryAutocomplete
-                                    categories={categoryOptions.filter((cat: any) => {
-                                        if (entryType === 'ALL') return true;
-                                        if (entryType === 'CREDIT') return cat.type === 'CREDIT';
-                                        if (entryType === 'DEBIT') return cat.type === 'DEBIT';
-                                        return true;
-                                    })}
-                                    value={selectedCategory?.id || ''}
-                                    onChange={(categoryId) => {
-                                        const cat = categories.find((c: any) => c.id === categoryId);
-                                        setSelectedCategory(cat || null);
-                                    }}
-                                />
-                            </Box>
-
-                            <Box sx={{ minWidth: 220 }}>
-                                <PersonAutocomplete
-                                    people={personOptions}
-                                    value={selectedPerson?.id || ''}
-                                    onChange={(personId) => {
-                                        const person = people.find((p: any) => p.id === personId);
-                                        setSelectedPerson(person || null);
-                                        if (person) setSelectedBusiness(null);
-                                    }}
-                                    label="Person"
-                                />
-                            </Box>
-
-                            <Box sx={{ minWidth: 220 }}>
-                                <BusinessAutocomplete
-                                    businesses={businessOptions}
-                                    value={selectedBusiness?.id || ''}
-                                    onChange={(businessId) => {
-                                        const biz = businesses.find((b: any) => b.id === businessId);
-                                        setSelectedBusiness(biz || null);
-                                        if (biz) setSelectedPerson(null);
-                                    }}
-                                    label="Business"
-                                />
+                                <TextField
+                                    select
+                                    label="Payment"
+                                    size="small"
+                                    value={paymentMethodType}
+                                    onChange={(e) => setPaymentMethodType(e.target.value)}
+                                    sx={{ width: 100 }}
+                                >
+                                    <MenuItem value="ALL">All</MenuItem>
+                                    <MenuItem value="check">Check</MenuItem>
+                                    <MenuItem value="card">Card</MenuItem>
+                                    <MenuItem value="cash">Cash</MenuItem>
+                                    <MenuItem value="online">Online</MenuItem>
+                                </TextField>
                             </Box>
                         </Box>
 
                         {/* Active Filters Display */}
                         {activeFilters.length > 0 && (
-                            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center", pt: 1, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center", pt: 0.5 }}>
                                 <Typography variant="caption" color="text.secondary">
                                     Active:
                                 </Typography>
@@ -1148,13 +1097,13 @@ export default function Transactions() {
                                         size="small"
                                         onDelete={() => handleClearFilter(filter)}
                                         deleteIcon={<CloseIcon />}
+                                        sx={{ height: 24 }}
                                     />
                                 ))}
                                 <Button
                                     size="small"
                                     onClick={handleClearAllFilters}
-                                    data-tooltip="Reset all active filters"
-                                    data-tooltip-pos="top"
+                                    sx={{ minWidth: 'auto', p: 0.5 }}
                                 >
                                     Clear All
                                 </Button>
@@ -1501,7 +1450,7 @@ export default function Transactions() {
                         setDeleteDialogOpen(false);
                         setEntryToDelete(null);
                     }}>Cancel</Button>
-                    <Button 
+                    <Button
                         onClick={async () => {
                             if (entryToDelete) {
                                 const { error } = await deleteEntry({ id: entryToDelete.id });
@@ -1515,7 +1464,7 @@ export default function Transactions() {
                             setDeleteDialogOpen(false);
                             setEntryToDelete(null);
                         }}
-                        color="error" 
+                        color="error"
                         variant="contained"
                     >
                         Delete

@@ -11,7 +11,10 @@ import {
     MenuItem,
     Alert,
     CircularProgress,
-    Stack
+    Stack,
+    Divider,
+    Checkbox,
+    FormControlLabel
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -19,6 +22,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format, parseISO, isValid } from 'date-fns';
 import PrintIcon from '@mui/icons-material/Print';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import CloseIcon from '@mui/icons-material/Close';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     BarChart, Bar, Legend
@@ -432,7 +436,7 @@ export default function Reporting() {
             ].join(',');
         });
 
-        const csvContent = [headers.join(','), ...rows].join('\n');
+        const csvContent = [headers.join(','), ...rows].join('\\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -442,6 +446,19 @@ export default function Reporting() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    };
+
+    const handleClearFilters = () => {
+        setStartDate(null);
+        setEndDate(null);
+        setEntryType('ALL');
+        setSelectedPerson(null);
+        setSelectedBusiness(null);
+        setSelectedCategory(null);
+        setTopLevelDeptId('');
+        setSubDeptId('');
+        setFilterDepartmentId(null);
+        setReconcileFilter('ALL');
     };
 
     if (!fiscalYearId) {
@@ -484,216 +501,197 @@ export default function Reporting() {
                 {/* Filters */}
                 <Paper sx={{ p: 2, mb: 0.5 }}>
                     <Stack spacing={2}>
-                        {/* Row 1: Fiscal Year, Date Range */}
+                        {/* Row 1: Fiscal Year, Date Range & Search */}
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <Typography variant="subtitle2" sx={{ minWidth: 60 }}>Period:</Typography>
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                <Typography variant="subtitle2" sx={{ minWidth: 50, color: 'text.secondary' }}>Period:</Typography>
+                                <TextField
+                                    select
+                                    label="Fiscal Year"
+                                    size="small"
+                                    value={fiscalYearId || ''}
+                                    onChange={(e) => setFiscalYearId(e.target.value)}
+                                    sx={{ width: 140 }}
+                                    data-tooltip="Select fiscal year for report"
+                                    data-tooltip-pos="top"
+                                >
+                                    {fiscalYears.map((fy: any) => (
+                                        <MenuItem key={fy.id} value={fy.id}>{fy.name}</MenuItem>
+                                    ))}
+                                </TextField>
 
-                            {/* Fiscal Year Selector */}
-                            <TextField
-                                select
-                                label="Fiscal Year"
-                                size="small"
-                                value={fiscalYearId || ''}
-                                onChange={(e) => setFiscalYearId(e.target.value)}
-                                sx={{ minWidth: 150 }}
-                                data-tooltip="Select fiscal year for report"
-                                data-tooltip-pos="top"
-                            >
-                                {fiscalYears.map((fy: any) => (
-                                    <MenuItem key={fy.id} value={fy.id}>
-                                        {fy.name}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
+                                <DatePicker
+                                    label="Start Date"
+                                    value={startDate}
+                                    onChange={(newValue) => setStartDate(newValue)}
+                                    slotProps={{ textField: { size: 'small', sx: { width: 130 }, inputProps: { 'data-tooltip': "Filter by start date", 'data-tooltip-pos': "top" } } }}
+                                />
+                                <Typography variant="body2" color="text.secondary">-</Typography>
+                                <DatePicker
+                                    label="End Date"
+                                    value={endDate}
+                                    onChange={(newValue) => setEndDate(newValue)}
+                                    slotProps={{ textField: { size: 'small', sx: { width: 130 }, inputProps: { 'data-tooltip': "Filter by end date", 'data-tooltip-pos': "top" } } }}
+                                />
+                            </Box>
 
-                            <DatePicker
-                                label="Start Date"
-                                value={startDate}
-                                onChange={(newValue) => setStartDate(newValue)}
-                                slotProps={{ textField: { size: 'small', sx: { width: 150 }, inputProps: { 'data-tooltip': "Filter by start date", 'data-tooltip-pos': "top" } } }}
-                            />
-                            <DatePicker
-                                label="End Date"
-                                value={endDate}
-                                onChange={(newValue) => setEndDate(newValue)}
-                                slotProps={{ textField: { size: 'small', sx: { width: 150 }, inputProps: { 'data-tooltip': "Filter by end date", 'data-tooltip-pos': "top" } } }}
-                            />
-
-                            {/* Search Input  */}
-                            <TextField
-                                placeholder="Search transactions..."
-                                size="small"
-                                onClick={() => setSearchDialogOpen(true)}
-                                sx={{ minWidth: 350, cursor: 'pointer' }}
-                                data-tooltip="Search by description, amount, or connected entity (Cmd+K)"
-                                data-tooltip-pos="top"
-                                InputProps={{
-                                    readOnly: true,
-                                    startAdornment: (
-                                        <Box component="span" sx={{ mr: 1, display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                                            🔍
-                                        </Box>
-                                    ),
-                                    endAdornment: (
-                                        <Box component="span" sx={{ ml: 1, display: 'flex', alignItems: 'center', color: 'text.secondary', fontSize: '0.75rem' }}>
-                                            ⌘K / Ctrl+K
-                                        </Box>
-                                    ),
-                                }}
-                            />
+                            <Box sx={{ flexGrow: 1, minWidth: 200 }}>
+                                <TextField
+                                    fullWidth
+                                    placeholder="Search details..."
+                                    size="small"
+                                    onClick={() => setSearchDialogOpen(true)}
+                                    sx={{ cursor: 'pointer' }}
+                                    data-tooltip="Search by description, amount, or connected entity (Cmd+K)"
+                                    data-tooltip-pos="top"
+                                    InputProps={{
+                                        readOnly: true,
+                                        startAdornment: (
+                                            <Box component="span" sx={{ mr: 1, display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                                                🔍
+                                            </Box>
+                                        ),
+                                        endAdornment: (
+                                            <Box component="span" sx={{ ml: 1, display: 'flex', alignItems: 'center', color: 'text.secondary', fontSize: '0.75rem' }}>
+                                                ⌘K
+                                            </Box>
+                                        ),
+                                    }}
+                                />
+                            </Box>
                         </Box>
+
+                        <Divider />
 
                         {/* Row 2: Advanced Filters */}
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <Typography variant="subtitle2" sx={{ minWidth: 60 }}>Filters:</Typography>
-                            <TextField
-                                select
-                                label="Type"
-                                size="small"
-                                value={entryType}
-                                onChange={(e) => setEntryType(e.target.value)}
-                                sx={{ minWidth: 120 }}
-                                data-tooltip="Filter by Income (Credit) or Expense (Debit)"
-                                data-tooltip-pos="top"
-                            >
-                                <MenuItem value="ALL">All Types</MenuItem>
-                                <MenuItem value="DEBIT">Expense</MenuItem>
-                                <MenuItem value="CREDIT">Income</MenuItem>
-                            </TextField>
-
-                            <TextField
-                                select
-                                label="Status"
-                                size="small"
-                                value={reconcileFilter}
-                                onChange={(e) => setReconcileFilter(e.target.value)}
-                                sx={{ minWidth: 150 }}
-                                data-tooltip="Filter by reconciliation status"
-                                data-tooltip-pos="top"
-                            >
-                                <MenuItem value="ALL">All Status</MenuItem>
-                                <MenuItem value="RECONCILED">Reconciled</MenuItem>
-                                <MenuItem value="UNRECONCILED">Unreconciled</MenuItem>
-                            </TextField>
-
-                            <TextField
-                                select
-                                label="Top Dept"
-                                size="small"
-                                value={topLevelDeptId}
-                                onChange={(e) => {
-                                    setTopLevelDeptId(e.target.value);
-                                    setSubDeptId('');
-                                    setSubDeptId('');
-                                }}
-                                sx={{ minWidth: 120 }}
-                                data-tooltip="Filter by top-level department"
-                                data-tooltip-pos="top"
-                            >
-                                <MenuItem value="">All</MenuItem>
-                                {topLevelDepartments.map((dept: any) => (
-                                    <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
-                                ))}
-                            </TextField>
-
-                            {subDepartments.length > 0 && (
+                            <Box sx={{ display: 'flex', gap: 1 }}>
                                 <TextField
                                     select
-                                    label="Sub Dept"
+                                    label="Type"
                                     size="small"
-                                    value={subDeptId}
-                                    onChange={(e) => setSubDeptId(e.target.value)}
-                                    sx={{ minWidth: 120 }}
-                                    data-tooltip="Filter by sub-department"
-                                    data-tooltip-pos="top"
+                                    value={entryType}
+                                    onChange={(e) => {
+                                        const newType = e.target.value;
+                                        setEntryType(newType);
+                                        if (selectedCategory && newType !== 'ALL' && selectedCategory.type !== newType) {
+                                            setSelectedCategory(null);
+                                        }
+                                    }}
+                                    sx={{ width: 100 }}
+                                >
+                                    <MenuItem value="ALL">All</MenuItem>
+                                    <MenuItem value="DEBIT">Expense</MenuItem>
+                                    <MenuItem value="CREDIT">Income</MenuItem>
+                                </TextField>
+
+                                <TextField
+                                    select
+                                    label="Status"
+                                    size="small"
+                                    value={reconcileFilter}
+                                    onChange={(e) => setReconcileFilter(e.target.value)}
+                                    sx={{ width: 130 }}
+                                >
+                                    <MenuItem value="ALL">All</MenuItem>
+                                    <MenuItem value="RECONCILED">Reconciled</MenuItem>
+                                    <MenuItem value="UNRECONCILED">Unreconciled</MenuItem>
+                                </TextField>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', gap: 1, flexGrow: 1, minWidth: 300 }}>
+                                <Box sx={{ flex: 1, minWidth: 150 }}>
+                                    <CategoryAutocomplete
+                                        categories={categoryOptions.filter((cat: any) => {
+                                            if (entryType === 'ALL') return true;
+                                            if (entryType === 'CREDIT') return cat.type === 'CREDIT';
+                                            if (entryType === 'DEBIT') return cat.type === 'DEBIT';
+                                            return true;
+                                        })}
+                                        value={selectedCategory?.id || ''}
+                                        onChange={(categoryId) => {
+                                            const cat = categories.find((c: any) => c.id === categoryId);
+                                            setSelectedCategory(cat || null);
+                                        }}
+                                    />
+                                </Box>
+                                <Box sx={{ flex: 1, minWidth: 150 }}>
+                                    <PersonAutocomplete
+                                        people={personOptions}
+                                        value={selectedPerson?.id || ''}
+                                        onChange={(personId) => {
+                                            const person = people.find((p: any) => p.id === personId);
+                                            setSelectedPerson(person || null);
+                                            if (person) setSelectedBusiness(null);
+                                        }}
+                                        label="Person"
+                                    />
+                                </Box>
+                                <Box sx={{ flex: 1, minWidth: 150 }}>
+                                    <BusinessAutocomplete
+                                        businesses={businessOptions}
+                                        value={selectedBusiness?.id || ''}
+                                        onChange={(businessId) => {
+                                            const biz = businesses.find((b: any) => b.id === businessId);
+                                            setSelectedBusiness(biz || null);
+                                            if (biz) setSelectedPerson(null);
+                                        }}
+                                        label="Business"
+                                    />
+                                </Box>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <TextField
+                                    select
+                                    label="Dept"
+                                    size="small"
+                                    value={topLevelDeptId}
+                                    onChange={(e) => {
+                                        setTopLevelDeptId(e.target.value);
+                                        setSubDeptId('');
+                                    }}
+                                    sx={{ width: 120 }}
                                 >
                                     <MenuItem value="">All</MenuItem>
-                                    {subDepartments.map((dept: any) => (
+                                    {topLevelDepartments.map((dept: any) => (
                                         <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
                                     ))}
                                 </TextField>
+
+                                {subDepartments.length > 0 && (
+                                    <TextField
+                                        select
+                                        label="Sub Dept"
+                                        size="small"
+                                        value={subDeptId}
+                                        onChange={(e) => setSubDeptId(e.target.value)}
+                                        sx={{ width: 120 }}
+                                    >
+                                        <MenuItem value="">All</MenuItem>
+                                        {subDepartments.map((dept: any) => (
+                                            <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
+                                        ))}
+                                    </TextField>
+                                )}
+                            </Box>
+
+                            {(startDate || endDate || entryType !== 'ALL' || selectedPerson || selectedBusiness || selectedCategory || filterDepartmentId) && (
+                                <Button
+                                    size="small"
+                                    onClick={handleClearFilters}
+                                    startIcon={<CloseIcon />}
+                                    sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}
+                                >
+                                    Clear All
+                                </Button>
                             )}
-
-                            <TextField
-                                select
-                                label="Payment Type"
-                                size="small"
-                                value={paymentMethodType}
-                                onChange={(e) => setPaymentMethodType(e.target.value)}
-                                sx={{ minWidth: 120 }}
-                                data-tooltip="Filter by payment method"
-                                data-tooltip-pos="top"
-                            >
-                                <MenuItem value="ALL">All Payments</MenuItem>
-                                <MenuItem value="check">Check</MenuItem>
-                                <MenuItem value="card">Card</MenuItem>
-                                <MenuItem value="cash">Cash</MenuItem>
-                                <MenuItem value="online">Online</MenuItem>
-                            </TextField>
                         </Box>
-                        
-                        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "flex-start", pt: 1 }}>
-                            <Box sx={{ minWidth: 220 }}>
-                                <CategoryAutocomplete
-                                    categories={categoryOptions}
-                                    value={selectedCategory?.id || ''}
-                                    onChange={(categoryId) => {
-                                        const cat = categories.find((c: any) => c.id === categoryId);
-                                        setSelectedCategory(cat || null);
-                                    }}
-                                />
-                            </Box>
-
-                            <Box sx={{ minWidth: 220 }}>
-                                <PersonAutocomplete
-                                    people={personOptions}
-                                    value={selectedPerson?.id || ''}
-                                    onChange={(personId) => {
-                                        const person = people.find((p: any) => p.id === personId);
-                                        setSelectedPerson(person || null);
-                                        if (person) setSelectedBusiness(null);
-                                    }}
-                                    label="Person"
-                                />
-                            </Box>
-
-                            <Box sx={{ minWidth: 220 }}>
-                                <BusinessAutocomplete
-                                    businesses={businessOptions}
-                                    value={selectedBusiness?.id || ''}
-                                    onChange={(businessId) => {
-                                        const biz = businesses.find((b: any) => b.id === businessId);
-                                        setSelectedBusiness(biz || null);
-                                        if (biz) setSelectedPerson(null);
-                                    }}
-                                    label="Business"
-                                />
-                            </Box>
-                        </Box>
-                        {(startDate || endDate || entryType !== 'ALL' || selectedPerson || selectedBusiness || selectedCategory || filterDepartmentId) && (
-                            <Button
-                                size="small"
-                                color="inherit"
-                                onClick={() => {
-                                    setStartDate(null);
-                                    setEndDate(null);
-                                    setEntryType('ALL');
-                                    setSelectedPerson(null);
-                                    setSelectedBusiness(null);
-                                    setSelectedCategory(null);
-                                    setFilterDepartmentId(null);
-                                }}
-                                data-tooltip="Reset all active filters"
-                                data-tooltip-pos="top"
-                            >
-                                Clear All
-                            </Button>
-                        )}
                     </Stack>
-                </Paper >
+                </Paper>
 
                 {/* Printable Content Area */}
-                < div id="printable-area" ref={printRef} >
+                <div id="printable-area" ref={printRef}>
                     {fetching && <CircularProgress sx={{ display: 'block', mx: 'auto', my: 4 }} />}
 
                     {error && <Alert severity="error">Error loading report data: {error.message}</Alert>}
@@ -708,7 +706,7 @@ export default function Reporting() {
                         !fetching && !error && filteredEntries.length > 0 && (
                             <Grid container spacing={3}>
                                 {/* Summary Cards */}
-                                <Grid size={{ xs: 12, md: 4 }}>
+                                <Grid item xs={12} md={4}>
                                     <Paper sx={{ p: 3, textAlign: 'center', height: '100%', borderTop: '4px solid #00E5FF' }}>
                                         <Typography color="text.secondary" gutterBottom>Total Income</Typography>
                                         <Typography variant="h4" color="success.main" fontWeight="bold">
@@ -716,7 +714,7 @@ export default function Reporting() {
                                         </Typography>
                                     </Paper>
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 4 }}>
+                                <Grid item xs={12} md={4}>
                                     <Paper sx={{ p: 3, textAlign: 'center', height: '100%', borderTop: '4px solid #F65161' }}>
                                         <Typography color="text.secondary" gutterBottom>Total Expenses</Typography>
                                         <Typography variant="h4" color="error.main" fontWeight="bold">
@@ -724,7 +722,7 @@ export default function Reporting() {
                                         </Typography>
                                     </Paper>
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 4 }}>
+                                <Grid item xs={12} md={4}>
                                     <Paper sx={{ p: 3, textAlign: 'center', height: '100%', borderTop: `4px solid ${aggregatedData.net >= 0 ? '#00E5FF' : '#F65161'}` }}>
                                         <Typography color="text.secondary" gutterBottom>Net Position</Typography>
                                         <Typography variant="h4" color={aggregatedData.net >= 0 ? 'success.main' : 'error.main'} fontWeight="bold">
@@ -734,7 +732,7 @@ export default function Reporting() {
                                 </Grid>
 
                                 {/* Trends Chart */}
-                                <Grid size={{ xs: 12 }}>
+                                <Grid item xs={12}>
                                     <Paper sx={{ p: 3 }}>
                                         <Typography variant="h6" gutterBottom>Income vs Expenses (Trend)</Typography>
                                         <Box sx={{ height: 300, mt: 2 }}>
@@ -757,7 +755,7 @@ export default function Reporting() {
                                 </Grid>
 
                                 {/* Top Categories Chart */}
-                                <Grid size={{ xs: 12, md: 6 }}>
+                                <Grid item xs={12} md={6}>
                                     <Paper sx={{ p: 3 }}>
                                         <Typography variant="h6" gutterBottom>Top Spending Categories</Typography>
                                         <Box sx={{ height: 300, mt: 2 }}>
@@ -779,7 +777,7 @@ export default function Reporting() {
                                 </Grid>
 
                                 {/* Detailed Transaction List (Print Only or Table) */}
-                                <Grid size={{ xs: 12 }}>
+                                <Grid item xs={12}>
                                     <Paper sx={{ p: 3 }}>
                                         <Typography variant="h6" gutterBottom>Transaction Details</Typography>
                                         <Box sx={{ overflowX: 'auto' }}>
@@ -816,13 +814,13 @@ export default function Reporting() {
                             </Grid>
                         )
                     }
-                </div >
-            </Box >
+                </div>
+            </Box>
 
             <SearchDialog
                 open={searchDialogOpen}
                 onClose={() => setSearchDialogOpen(false)}
             />
-        </LocalizationProvider >
+        </LocalizationProvider>
     );
 }
