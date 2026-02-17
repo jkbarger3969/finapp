@@ -161,6 +161,9 @@ declare const resolvers: {
         department?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").DepartmentDbRecord>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QueryDepartmentArgs, "id">>;
+        departmentBudgetSummaries?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").DepartmentBudgetSummary>[], Record<PropertyKey, never>, {
+            dataSources: import("./types").DataSources;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QueryDepartmentBudgetSummariesArgs, "fiscalYearId">>;
         departments?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").DepartmentDbRecord>[], Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, Partial<import("./graphTypes").QueryDepartmentsArgs>>;
@@ -487,6 +490,9 @@ declare const resolvers: {
     DepartmentAncestor?: import("./graphTypes").DepartmentAncestorResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord>;
+    DepartmentBudgetSummary?: import("./graphTypes").DepartmentBudgetSummaryResolvers<{
+        dataSources: import("./types").DataSources;
+    } & import("./types").ContextBase, import("./graphTypes").DepartmentBudgetSummary>;
     EditHistoryEntry?: import("./graphTypes").EditHistoryEntryResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").EditHistoryEntry>;

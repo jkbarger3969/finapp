@@ -22,6 +22,7 @@ import {
   Department,
   DepartmentAncestor,
 } from "./resolvers/department";
+import { departmentBudgetSummaries } from "./resolvers/department/departmentBudgetSummaries";
 import { Entity, entities } from "./resolvers/entity";
 import {
   addNewEntry,
@@ -112,6 +113,7 @@ const initialResolvers: Resolvers = {
     categoryGroups,
     departments,
     department,
+    departmentBudgetSummaries,
     person,
     people,
     fiscalYear,

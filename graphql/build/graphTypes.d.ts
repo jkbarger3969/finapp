@@ -423,6 +423,15 @@ export declare type DepartmentAncestorsArgs = {
     root?: InputMaybe<DepartmentsWhere>;
 };
 export declare type DepartmentAncestor = Business | Department;
+export declare type DepartmentBudgetSummary = {
+    __typename?: 'DepartmentBudgetSummary';
+    budget: Scalars['Float']['output'];
+    id: Scalars['ID']['output'];
+    level: Scalars['Int']['output'];
+    name: Scalars['String']['output'];
+    parentId?: Maybe<Scalars['ID']['output']>;
+    spent: Scalars['Float']['output'];
+};
 export declare type DepartmentsWhere = {
     and?: InputMaybe<Array<DepartmentsWhere>>;
     /** Matches all departments that are a decedents of the business. */
@@ -948,6 +957,7 @@ export declare type Query = {
     category: Category;
     categoryGroups: Array<Scalars['String']['output']>;
     department: Department;
+    departmentBudgetSummaries: Array<DepartmentBudgetSummary>;
     departments: Array<Department>;
     entities: Array<Entity>;
     /**
@@ -1017,6 +1027,9 @@ export declare type QueryCategoryArgs = {
 };
 export declare type QueryDepartmentArgs = {
     id: Scalars['ID']['input'];
+};
+export declare type QueryDepartmentBudgetSummariesArgs = {
+    fiscalYearId: Scalars['ID']['input'];
 };
 export declare type QueryDepartmentsArgs = {
     where?: InputMaybe<DepartmentsWhere>;
@@ -1443,6 +1456,7 @@ export declare type ResolversTypes = {
     DeleteFiscalYearPayload: ResolverTypeWrapper<DeleteFiscalYearPayload>;
     Department: ResolverTypeWrapper<DepartmentDbRecord>;
     DepartmentAncestor: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['DepartmentAncestor']>;
+    DepartmentBudgetSummary: ResolverTypeWrapper<DepartmentBudgetSummary>;
     DepartmentsWhere: DepartmentsWhere;
     EditHistoryEntry: ResolverTypeWrapper<EditHistoryEntry>;
     EntitiesWhere: EntitiesWhere;
@@ -1655,6 +1669,7 @@ export declare type ResolversParentTypes = {
     DeleteFiscalYearPayload: DeleteFiscalYearPayload;
     Department: DepartmentDbRecord;
     DepartmentAncestor: ResolversUnionTypes<ResolversParentTypes>['DepartmentAncestor'];
+    DepartmentBudgetSummary: DepartmentBudgetSummary;
     DepartmentsWhere: DepartmentsWhere;
     EditHistoryEntry: EditHistoryEntry;
     EntitiesWhere: EntitiesWhere;
@@ -1965,6 +1980,14 @@ export declare type DepartmentResolvers<ContextType = Context, ParentType = Reso
 export declare type DepartmentAncestorResolvers<ContextType = Context, ParentType = ResolversParentTypes['DepartmentAncestor']> = {
     __resolveType?: TypeResolveFn<'Business' | 'Department', ParentType, ContextType>;
 };
+export declare type DepartmentBudgetSummaryResolvers<ContextType = Context, ParentType = ResolversParentTypes['DepartmentBudgetSummary']> = {
+    budget?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+    id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+    level?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+    name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+    parentId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+    spent?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+};
 export declare type EditHistoryEntryResolvers<ContextType = Context, ParentType = ResolversParentTypes['EditHistoryEntry']> = {
     changes?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
     editedAt?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
@@ -2151,6 +2174,7 @@ export declare type QueryResolvers<ContextType = Context, ParentType = Resolvers
     category?: Resolver<ResolversTypes['Category'], ParentType, ContextType, RequireFields<QueryCategoryArgs, 'id'>>;
     categoryGroups?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
     department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
+    departmentBudgetSummaries?: Resolver<Array<ResolversTypes['DepartmentBudgetSummary']>, ParentType, ContextType, RequireFields<QueryDepartmentBudgetSummariesArgs, 'fiscalYearId'>>;
     departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, Partial<QueryDepartmentsArgs>>;
     entities?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType, RequireFields<QueryEntitiesArgs, 'where'>>;
     entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, 'filterRefunds' | 'limit' | 'offset'>>;
@@ -2262,6 +2286,7 @@ export declare type Resolvers<ContextType = Context> = {
     DeleteFiscalYearPayload?: DeleteFiscalYearPayloadResolvers<ContextType>;
     Department?: DepartmentResolvers<ContextType>;
     DepartmentAncestor?: DepartmentAncestorResolvers<ContextType>;
+    DepartmentBudgetSummary?: DepartmentBudgetSummaryResolvers<ContextType>;
     EditHistoryEntry?: EditHistoryEntryResolvers<ContextType>;
     Entity?: EntityResolvers<ContextType>;
     EntriesSummary?: EntriesSummaryResolvers<ContextType>;

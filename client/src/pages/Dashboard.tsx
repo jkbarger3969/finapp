@@ -24,53 +24,21 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { useDepartment } from "../context/DepartmentContext";
 import { useAuth } from "../context/AuthContext";
-import { formatCurrency, parseRational } from "../utils/currency";
+import { formatCurrency } from "../utils/currency";
 import PageHeader from "../components/PageHeader";
 import EntryFormDialog from "../components/EntryFormDialog";
 import SearchDialog from "../components/SearchDialog";
 import { DashboardSkeleton } from "../components/common/DashboardSkeleton";
 
 const GET_BUDGET_DATA = `
-    query GetBudgetData($entriesWhere: EntriesWhere, $budgetsWhere: BudgetsWhere) {
-        entries(where: $entriesWhere, limit: 0) {
-            id
-            total
-            category {
-                type
-            }
-            department {
-                id
-                name
-            }
-        }
-        budgets(where: $budgetsWhere) {
-            id
-            amount
-            owner {
-                __typename
-                ... on Department {
-                    id
-                    name
-                }
-            }
-            fiscalYear {
-                id
-                name
-            }
-        }
-        departments {
+    query GetBudgetData($fiscalYearId: ID!) {
+        departmentBudgetSummaries(fiscalYearId: $fiscalYearId) {
             id
             name
-            ancestors {
-                __typename
-                ... on Department {
-                    id
-                    name
-                }
-                ... on Business {
-                    id
-                }
-            }
+            budget
+            spent
+            level
+            parentId
         }
         fiscalYears(where: { archived: false }) {
             id
@@ -99,17 +67,9 @@ export default function Dashboard() {
     const [entryDialogOpen, setEntryDialogOpen] = useState(false);
     const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
 
-    const entriesWhere: any = { deleted: false };
-    const budgetsWhere: any = {};
-
-    if (fiscalYearId) {
-        entriesWhere.fiscalYear = { id: { eq: fiscalYearId } };
-        budgetsWhere.fiscalYear = { id: { eq: fiscalYearId } };
-    }
-
     const [result] = useQuery({
         query: GET_BUDGET_DATA,
-        variables: { entriesWhere, budgetsWhere },
+        variables: { fiscalYearId },
         pause: !fiscalYearId,
         requestPolicy: 'cache-and-network'
     });
@@ -131,54 +91,39 @@ export default function Dashboard() {
         rawDepartments: (user as any)?.departments
     });
 
-    // Build department tree with budget and spending data
+    // Build department tree with budget and spending data from server-side aggregation
     const { topLevelDepts, totalBudget, totalSpent, topLevelDepartments, subDepartments } = (() => {
-        if (!data?.entries || !data?.budgets || !data?.departments) {
+        if (!data?.departmentBudgetSummaries) {
             return { topLevelDepts: [], totalBudget: 0, totalSpent: 0, topLevelDepartments: [], subDepartments: [] };
         }
-
-        const spendingByDept = new Map<string, number>();
-        data.entries.forEach((entry: any) => {
-            if (entry.department?.id && entry.category?.type === 'DEBIT') {
-                const deptId = entry.department.id;
-                const current = spendingByDept.get(deptId) || 0;
-                spendingByDept.set(deptId, current + Math.abs(parseRational(entry.total)));
-            }
-        });
-
-        const budgetByDept = new Map<string, number>();
-        data.budgets.forEach((budget: any) => {
-            if (budget.owner?.__typename === 'Department' && budget.owner?.id) {
-                budgetByDept.set(budget.owner.id, parseRational(budget.amount));
-            }
-        });
 
         const deptMap = new Map<string, DeptNode>();
         const rootDepts: DeptNode[] = [];
 
-        data.departments.forEach((dept: any) => {
-            const deptAncestors = dept.ancestors?.filter((a: any) => a.__typename === 'Department') || [];
+        // First pass: create all nodes
+        data.departmentBudgetSummaries.forEach((dept: any) => {
             deptMap.set(dept.id, {
                 id: dept.id,
                 name: dept.name,
-                budget: budgetByDept.get(dept.id) || 0,
-                spent: spendingByDept.get(dept.id) || 0,
+                budget: dept.budget || 0,
+                spent: dept.spent || 0,
                 children: [],
-                level: deptAncestors.length,
+                level: dept.level || 0,
             });
         });
 
-        data.departments.forEach((dept: any) => {
+        // Second pass: build tree structure
+        data.departmentBudgetSummaries.forEach((dept: any) => {
             const node = deptMap.get(dept.id)!;
-            const deptAncestors = dept.ancestors?.filter((a: any) => a.__typename === 'Department') || [];
-
-            if (deptAncestors.length === 0) {
+            if (!dept.parentId) {
                 rootDepts.push(node);
             } else {
-                const parentId = deptAncestors[deptAncestors.length - 1]?.id;
-                const parent = parentId ? deptMap.get(parentId) : null;
+                const parent = deptMap.get(dept.parentId);
                 if (parent) {
                     parent.children.push(node);
+                } else {
+                    // Parent not found, treat as root
+                    rootDepts.push(node);
                 }
             }
         });
@@ -186,12 +131,21 @@ export default function Dashboard() {
         // Filter by user access
         const canAccessDept = (deptId: string): boolean => {
             if (isSuperAdmin) return true;
-            if (userDepartments.length === 0) return false; // No access = no departments shown
+            if (userDepartments.length === 0) return false;
             if (userDepartments.includes(deptId)) return true;
 
-            const dept = data.departments.find((d: any) => d.id === deptId);
-            const ancestors = dept?.ancestors?.filter((a: any) => a.__typename === 'Department')?.map((a: any) => a.id) || [];
-            return ancestors.some((ancestorId: string) => userDepartments.includes(ancestorId));
+            // Check if any ancestor is accessible
+            const dept = data.departmentBudgetSummaries.find((d: any) => d.id === deptId);
+            if (dept?.parentId && userDepartments.includes(dept.parentId)) return true;
+            
+            // Recursively check parent chain
+            let currentParentId = dept?.parentId;
+            while (currentParentId) {
+                if (userDepartments.includes(currentParentId)) return true;
+                const parentDept = data.departmentBudgetSummaries.find((d: any) => d.id === currentParentId);
+                currentParentId = parentDept?.parentId;
+            }
+            return false;
         };
 
         // Check if user has access to a department OR any of its descendants

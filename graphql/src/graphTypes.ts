@@ -433,6 +433,16 @@ export type DepartmentAncestorsArgs = {
 
 export type DepartmentAncestor = Business | Department;
 
+export type DepartmentBudgetSummary = {
+  __typename?: 'DepartmentBudgetSummary';
+  budget: Scalars['Float']['output'];
+  id: Scalars['ID']['output'];
+  level: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  parentId?: Maybe<Scalars['ID']['output']>;
+  spent: Scalars['Float']['output'];
+};
+
 export type DepartmentsWhere = {
   and?: InputMaybe<Array<DepartmentsWhere>>;
   /** Matches all departments that are a decedents of the business. */
@@ -1076,6 +1086,7 @@ export type Query = {
   category: Category;
   categoryGroups: Array<Scalars['String']['output']>;
   department: Department;
+  departmentBudgetSummaries: Array<DepartmentBudgetSummary>;
   departments: Array<Department>;
   entities: Array<Entity>;
   /**
@@ -1173,6 +1184,11 @@ export type QueryCategoryArgs = {
 
 export type QueryDepartmentArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type QueryDepartmentBudgetSummariesArgs = {
+  fiscalYearId: Scalars['ID']['input'];
 };
 
 
@@ -1712,6 +1728,7 @@ export type ResolversTypes = {
   DeleteFiscalYearPayload: ResolverTypeWrapper<DeleteFiscalYearPayload>;
   Department: ResolverTypeWrapper<DepartmentDbRecord>;
   DepartmentAncestor: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['DepartmentAncestor']>;
+  DepartmentBudgetSummary: ResolverTypeWrapper<DepartmentBudgetSummary>;
   DepartmentsWhere: DepartmentsWhere;
   EditHistoryEntry: ResolverTypeWrapper<EditHistoryEntry>;
   EntitiesWhere: EntitiesWhere;
@@ -1864,6 +1881,7 @@ export type ResolversParentTypes = {
   DeleteFiscalYearPayload: DeleteFiscalYearPayload;
   Department: DepartmentDbRecord;
   DepartmentAncestor: ResolversUnionTypes<ResolversParentTypes>['DepartmentAncestor'];
+  DepartmentBudgetSummary: DepartmentBudgetSummary;
   DepartmentsWhere: DepartmentsWhere;
   EditHistoryEntry: EditHistoryEntry;
   EntitiesWhere: EntitiesWhere;
@@ -2171,6 +2189,15 @@ export type DepartmentAncestorResolvers<ContextType = Context, ParentType = Reso
   __resolveType?: TypeResolveFn<'Business' | 'Department', ParentType, ContextType>;
 };
 
+export type DepartmentBudgetSummaryResolvers<ContextType = Context, ParentType = ResolversParentTypes['DepartmentBudgetSummary']> = {
+  budget?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  level?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  parentId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+  spent?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+};
+
 export type EditHistoryEntryResolvers<ContextType = Context, ParentType = ResolversParentTypes['EditHistoryEntry']> = {
   changes?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   editedAt?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
@@ -2382,6 +2409,7 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   category?: Resolver<ResolversTypes['Category'], ParentType, ContextType, RequireFields<QueryCategoryArgs, 'id'>>;
   categoryGroups?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
   department?: Resolver<ResolversTypes['Department'], ParentType, ContextType, RequireFields<QueryDepartmentArgs, 'id'>>;
+  departmentBudgetSummaries?: Resolver<Array<ResolversTypes['DepartmentBudgetSummary']>, ParentType, ContextType, RequireFields<QueryDepartmentBudgetSummariesArgs, 'fiscalYearId'>>;
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, Partial<QueryDepartmentsArgs>>;
   entities?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType, RequireFields<QueryEntitiesArgs, 'where'>>;
   entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, 'filterRefunds' | 'limit' | 'offset'>>;
@@ -2510,6 +2538,7 @@ export type Resolvers<ContextType = Context> = {
   DeleteFiscalYearPayload?: DeleteFiscalYearPayloadResolvers<ContextType>;
   Department?: DepartmentResolvers<ContextType>;
   DepartmentAncestor?: DepartmentAncestorResolvers<ContextType>;
+  DepartmentBudgetSummary?: DepartmentBudgetSummaryResolvers<ContextType>;
   EditHistoryEntry?: EditHistoryEntryResolvers<ContextType>;
   Entity?: EntityResolvers<ContextType>;
   EntriesSummary?: EntriesSummaryResolvers<ContextType>;
