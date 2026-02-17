@@ -577,7 +577,7 @@ export default function Transactions() {
                         </Box>
                     );
                 }
-                if (params.row.refunds?.length > 0) {
+                if (params.row.hasRefunds) {
                     const isExpanded = expandedRefunds.has(params.row.id);
                     return (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -601,7 +601,7 @@ export default function Transactions() {
                             <Box>
                                 <Typography variant="body2">{params.value}</Typography>
                                 <Typography variant="caption" color="primary.main">
-                                    Has {params.row.refunds.length} refund(s) (Click arrow to show)
+                                    Has {params.row.refunds?.length || 0} refund(s) (Click arrow to show)
                                 </Typography>
                             </Box>
                         </Box>
@@ -814,44 +814,57 @@ export default function Transactions() {
         // Server-side filtered already
         const normalRows: any[] = [];
         data.entries.forEach((entry: any) => {
-            normalRows.push({
-                ...entry,
-                id: entry.id,
-                isRefund: false,
-            });
-            
-            // If entry has refunds and is expanded, show the refund details
-            if (entry.refunds?.length > 0 && expandedRefunds.has(entry.id)) {
-                entry.refunds.forEach((refund: any) => {
-                    const refundRowId = `refund-detail-${refund.id}`;
-                    normalRows.push({
-                        id: refundRowId,
-                        refundId: refund.id,
-                        description: refund.description || 'Refund',
-                        date: refund.date,
-                        reconciled: refund.reconciled,
-                        total: refund.total,
-                        category: { name: 'Refund', type: 'CREDIT' },
-                        department: entry.department,
-                        paymentMethod: refund.paymentMethod,
-                        attachments: [],
-                        isRefund: true,
-                        isRefundDetail: true,
-                        parentEntryId: entry.id,
-                        rowType: 'CREDIT',
-                        originalEntry: entry,
-                    });
-                    
-                    // If refund row is expanded, show the original entry below it
-                    if (expandedRefunds.has(refundRowId)) {
+            // If entry has refunds, show refunds first (like the filter view)
+            if (entry.refunds?.length > 0) {
+                // First show the parent entry with indicator
+                normalRows.push({
+                    ...entry,
+                    id: entry.id,
+                    isRefund: false,
+                    hasRefunds: true,
+                });
+                
+                // If expanded, show refund rows below (mimicking the filter view structure)
+                if (expandedRefunds.has(entry.id)) {
+                    entry.refunds.forEach((refund: any) => {
+                        const refundRowId = `refund-detail-${refund.id}`;
+                        // The refund row - styled like isRefund in the filter view
                         normalRows.push({
-                            ...entry,
-                            id: `original-for-${refund.id}`,
-                            description: entry.description,
-                            isOriginalEntryForRefund: true,
-                            parentRefundId: refundRowId,
+                            id: refundRowId,
+                            refundId: refund.id,
+                            description: refund.description || 'Refund',
+                            date: refund.date,
+                            reconciled: refund.reconciled,
+                            total: refund.total,
+                            category: { name: 'Refund', type: 'CREDIT' },
+                            department: entry.department,
+                            paymentMethod: refund.paymentMethod,
+                            attachments: [],
+                            isRefund: true,
+                            isRefundDetail: true,
+                            parentEntryId: entry.id,
+                            rowType: 'CREDIT',
+                            originalEntry: entry,
                         });
-                    }
+                        
+                        // If refund row is expanded, show the original entry below it
+                        if (expandedRefunds.has(refundRowId)) {
+                            normalRows.push({
+                                ...entry,
+                                id: `original-for-${refund.id}`,
+                                description: entry.description,
+                                isOriginalEntryForRefund: true,
+                                parentRefundId: refundRowId,
+                            });
+                        }
+                    });
+                }
+            } else {
+                // Regular entry without refunds
+                normalRows.push({
+                    ...entry,
+                    id: entry.id,
+                    isRefund: false,
                 });
             }
         });
