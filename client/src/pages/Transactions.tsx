@@ -791,7 +791,7 @@ export default function Transactions() {
                     isRefund: false,
                     hasRefunds: true,
                 });
-                
+
                 // If expanded, show refund rows below (reverse of filter view)
                 if (expandedRefunds.has(entry.id)) {
                     entry.refunds.forEach((refund: any) => {
@@ -1305,6 +1305,12 @@ export default function Transactions() {
                                                         backgroundColor: 'rgba(108, 93, 211, 0.2) !important',
                                                     }
                                                 }
+                                            },
+                                            "& .MuiDataGrid-columnHeaderCheckbox .MuiDataGrid-columnHeaderTitleContainer": {
+                                                justifyContent: "center"
+                                            },
+                                            "& .MuiDataGrid-row:last-child .MuiDataGrid-cell": {
+                                                borderBottom: "none"
                                             },
                                             "& .refund-row": {
                                                 borderLeft: "4px solid",
