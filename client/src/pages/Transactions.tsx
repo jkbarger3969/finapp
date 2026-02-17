@@ -1223,7 +1223,9 @@ export default function Transactions() {
                                     background: 'rgba(255, 255, 255, 0.05)',
                                     backdropFilter: 'blur(20px)',
                                     border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    borderBottom: 'none', // Remove bottom border to eliminate last row line
                                     boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+                                    overflow: 'hidden', // Clip any internal borders
                                 }}
                             >
                                 {fetching && !entries.length ? (
@@ -1285,8 +1287,15 @@ export default function Transactions() {
                                             "& .MuiDataGrid-footerContainer": {
                                                 borderTop: "none !important", // Remove border above footer
                                             },
+                                            "& .MuiDataGrid-main": {
+                                                borderBottom: "none !important",
+                                            },
                                             "& .MuiDataGrid-virtualScroller": {
                                                 marginTop: "8px !important",
+                                                borderBottom: "none !important",
+                                            },
+                                            "& .MuiDataGrid-virtualScrollerContent": {
+                                                borderBottom: "none !important",
                                             },
                                             "& .MuiDataGrid-columnHeaders": {
                                                 backgroundColor: 'rgba(0, 0, 0, 0.2)',
@@ -1339,8 +1348,14 @@ export default function Transactions() {
                                                 justifyContent: "center !important",
                                             },
 
-                                            // Remove bottom border from last displayed row (targeted via class)
+                                            // Nuclear option - remove border from last row using ALL possible selectors
                                             "& .last-row .MuiDataGrid-cell": {
+                                                borderBottom: "none !important"
+                                            },
+                                            "& .MuiDataGrid-row:last-child .MuiDataGrid-cell": {
+                                                borderBottom: "none !important"
+                                            },
+                                            "& .MuiDataGrid-row:last-of-type .MuiDataGrid-cell": {
                                                 borderBottom: "none !important"
                                             },
 
