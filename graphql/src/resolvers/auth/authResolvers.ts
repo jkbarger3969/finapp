@@ -331,6 +331,19 @@ export const authResolvers = {
       _args: unknown,
       context: Context<unknown>
     ): Promise<AuthUser> => {
+      // Handle null/undefined grantedBy for old permissions
+      if (!parent.grantedBy) {
+        return {
+          _id: new ObjectId(),
+          email: 'system@user',
+          name: 'System',
+          role: 'USER',
+          canInviteUsers: false,
+          status: 'ACTIVE',
+          createdAt: new Date(),
+        } as AuthUser;
+      }
+      
       try {
         const grantedById = parent.grantedBy instanceof ObjectId
           ? parent.grantedBy
@@ -351,7 +364,15 @@ export const authResolvers = {
         return user;
       } catch (error) {
         console.error(`UserPermission.grantedBy error:`, error);
-        throw error;
+        return {
+          _id: new ObjectId(),
+          email: 'unknown@user',
+          name: 'Unknown User',
+          role: 'USER',
+          canInviteUsers: false,
+          status: 'DISABLED',
+          createdAt: new Date(),
+        } as AuthUser;
       }
     },
   },
