@@ -537,10 +537,42 @@ export default function Transactions() {
                     );
                 }
                 if (params.row.isRefundDetail) {
+                    const isExpanded = expandedRefunds.has(params.row.id);
                     return (
-                        <Box sx={{ pl: 4, borderLeft: '2px solid', borderColor: 'success.main' }}>
-                            <Typography variant="body2" color="success.main">
-                                ↳ Refund: {params.value}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const newExpanded = new Set(expandedRefunds);
+                                    if (isExpanded) {
+                                        newExpanded.delete(params.row.id);
+                                    } else {
+                                        newExpanded.add(params.row.id);
+                                    }
+                                    setExpandedRefunds(newExpanded);
+                                }}
+                                data-tooltip={isExpanded ? "Collapse refund details" : "Expand refund details"}
+                                data-tooltip-pos="left"
+                            >
+                                {isExpanded ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
+                            </IconButton>
+                            <Box>
+                                <Typography variant="body2" fontWeight="bold">
+                                    {params.value}
+                                </Typography>
+                                <Typography variant="caption" color="primary.main">
+                                    ↳ Refund Item (Click arrow to show matching entry)
+                                </Typography>
+                            </Box>
+                        </Box>
+                    );
+                }
+                if (params.row.isOriginalEntryForRefund) {
+                    return (
+                        <Box sx={{ pl: 6, borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
+                            <Typography variant="body2" color="text.secondary">
+                                Original: {params.value}
                             </Typography>
                         </Box>
                     );
@@ -561,17 +593,14 @@ export default function Transactions() {
                                     }
                                     setExpandedRefunds(newExpanded);
                                 }}
-                                sx={{ 
-                                    p: 0.5,
-                                    color: 'success.main',
-                                    '&:hover': { bgcolor: 'action.hover' }
-                                }}
+                                data-tooltip={isExpanded ? "Collapse refund details" : "Expand refund details"}
+                                data-tooltip-pos="left"
                             >
                                 {isExpanded ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
                             </IconButton>
                             <Box>
                                 <Typography variant="body2">{params.value}</Typography>
-                                <Typography variant="caption" color="success.main">
+                                <Typography variant="caption" color="primary.main">
                                     Has {params.row.refunds.length} refund(s) (Click arrow to show)
                                 </Typography>
                             </Box>
@@ -794,8 +823,9 @@ export default function Transactions() {
             // If entry has refunds and is expanded, show the refund details
             if (entry.refunds?.length > 0 && expandedRefunds.has(entry.id)) {
                 entry.refunds.forEach((refund: any) => {
+                    const refundRowId = `refund-detail-${refund.id}`;
                     normalRows.push({
-                        id: `refund-detail-${refund.id}`,
+                        id: refundRowId,
                         refundId: refund.id,
                         description: refund.description || 'Refund',
                         date: refund.date,
@@ -811,6 +841,17 @@ export default function Transactions() {
                         rowType: 'CREDIT',
                         originalEntry: entry,
                     });
+                    
+                    // If refund row is expanded, show the original entry below it
+                    if (expandedRefunds.has(refundRowId)) {
+                        normalRows.push({
+                            ...entry,
+                            id: `original-for-${refund.id}`,
+                            description: entry.description,
+                            isOriginalEntryForRefund: true,
+                            parentRefundId: refundRowId,
+                        });
+                    }
                 });
             }
         });
