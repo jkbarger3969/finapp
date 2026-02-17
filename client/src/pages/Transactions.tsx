@@ -1306,18 +1306,36 @@ export default function Transactions() {
                                                     }
                                                 }
                                             },
-                                            "& .MuiDataGrid-columnHeaderCheckbox": {
+                                            // Header Checkbox Centering
+                                            "& .MuiDataGrid-columnHeader--selectionInput": {
                                                 padding: "0 !important",
                                                 justifyContent: "center !important",
                                                 alignItems: "center !important",
                                             },
-                                            "& .MuiDataGrid-columnHeaderCheckbox .MuiDataGrid-columnHeaderTitleContainer": {
+                                            "& .MuiDataGrid-columnHeader--selectionInput .MuiDataGrid-columnHeaderTitleContainer": {
                                                 display: "flex",
                                                 justifyContent: "center !important",
                                                 padding: "0 !important",
                                                 width: "100%",
+                                                flex: 1,
                                             },
-                                            "& .MuiDataGrid-row:last-child .MuiDataGrid-cell, & .MuiDataGrid-row:last-of-type .MuiDataGrid-cell": {
+                                            "& .MuiDataGrid-columnHeader.MuiDataGrid-columnHeader--checkboxSelection": {
+                                                padding: "0 !important",
+                                                justifyContent: "center !important",
+                                                alignItems: "center !important",
+                                            },
+                                            "& .MuiDataGrid-columnHeader.MuiDataGrid-columnHeader--checkboxSelection .MuiDataGrid-columnHeaderTitleContainer": {
+                                                justifyContent: "center !important",
+                                            },
+
+                                            // Remove bottom border from last displayed row
+                                            "& .MuiDataGrid-virtualScrollerContent .MuiDataGrid-row:last-child .MuiDataGrid-cell": {
+                                                borderBottom: "none !important"
+                                            },
+                                            "& .MuiDataGrid-row:last-child .MuiDataGrid-cell": {
+                                                borderBottom: "none !important"
+                                            },
+                                            "& .MuiDataGrid-row:last-of-type .MuiDataGrid-cell": {
                                                 borderBottom: "none !important"
                                             },
                                             "& .refund-row": {
