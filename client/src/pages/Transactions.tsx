@@ -426,7 +426,7 @@ export default function Transactions() {
         {
             field: "actions",
             headerName: "Menu",
-            width: 50,
+            width: 80,
             sortable: false,
             filterable: false,
             disableColumnMenu: true,
@@ -490,7 +490,7 @@ export default function Transactions() {
         {
             field: "description",
             headerName: "Description",
-            flex: 0.8,
+            flex: 0.7,
             minWidth: 150,
             align: 'left',
             headerAlign: 'center',
@@ -920,12 +920,12 @@ export default function Transactions() {
 
                             {/* Stats */}
                             <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', ml: 'auto' }}>
-                                <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'white' }}>
-                                    Total Transactions: <Box component="span" sx={{ color: 'white' }}>{summary.count}</Box>
+                                <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                                    Total Transactions: <Box component="span" sx={{ color: 'text.primary' }}>{summary.count}</Box>
                                 </Typography>
-                                <Divider orientation="vertical" flexItem sx={{ height: 24, my: 'auto', borderColor: 'rgba(255, 255, 255, 0.5)' }} />
-                                <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'white' }}>
-                                    Balance: <Box component="span" sx={{ color: summary.balance >= 0 ? 'success.light' : 'error.light' }}>{currencyFormatter.format(summary.balance)}</Box>
+                                <Divider orientation="vertical" flexItem sx={{ height: 24, my: 'auto', borderColor: 'divider' }} />
+                                <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                                    Balance: <Box component="span" sx={{ color: summary.balance >= 0 ? 'success.main' : 'error.main' }}>{currencyFormatter.format(summary.balance)}</Box>
                                 </Typography>
                             </Box>
                         </Box>
@@ -1225,6 +1225,7 @@ export default function Transactions() {
                                                 transition: "all 0.2s",
                                                 borderRadius: '8px', // Round the rows
                                                 mb: 0.5, // Markdown between rows
+                                                borderLeft: '4px solid transparent', // Reserve space for selection border
                                                 "&:hover": {
                                                     backgroundColor: 'rgba(255, 255, 255, 0.05) !important',
                                                     transform: "scale(1.002)",
@@ -1241,7 +1242,6 @@ export default function Transactions() {
                                             "& .refund-row": {
                                                 borderLeft: "4px solid",
                                                 borderLeftColor: "success.main",
-                                                pl: 1,
                                                 bgcolor: 'rgba(0, 229, 255, 0.02)',
                                             },
                                             "& .has-refunds-row": {
