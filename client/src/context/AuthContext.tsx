@@ -4,7 +4,7 @@ interface DepartmentPermission {
     id: string;
     departmentId: string;
     departmentName: string;
-    accessLevel: 'VIEW' | 'EDIT' | 'ADMIN';
+    accessLevel: 'VIEW' | 'EDIT';
 }
 
 interface User {
@@ -12,8 +12,9 @@ interface User {
     email: string;
     name: string;
     picture?: string;
-    role: 'SUPER_ADMIN' | 'DEPT_ADMIN' | 'USER';
+    role: 'SUPER_ADMIN' | 'USER';
     status: 'INVITED' | 'ACTIVE' | 'DISABLED';
+    canInviteUsers: boolean;
     departments: DepartmentPermission[];
 }
 
@@ -26,17 +27,16 @@ interface AuthContextType {
     logout: () => void;
     refreshUser: () => Promise<void>;
     isSuperAdmin: boolean;
-    isDeptAdmin: boolean;
+    canInviteUsers: boolean;
     canViewDepartment: (departmentId: string) => boolean;
     canEditDepartment: (departmentId: string) => boolean;
     getAccessibleDepartmentIds: () => string[];
-    canAddTransaction: (departmentId?: string) => boolean;
-    canEditTransaction: (departmentId?: string) => boolean;
-    canDeleteTransaction: (departmentId?: string) => boolean;
+    canAddTransaction: () => boolean;
+    canEditTransaction: () => boolean;
+    canDeleteTransaction: () => boolean;
     canIssueRefund: () => boolean;
-    canVoidTransaction: () => boolean;
-    canExportReports: (departmentId?: string) => boolean;
-    canManageBudget: (departmentId?: string) => boolean;
+    canExportReports: () => boolean;
+    canManageBudget: () => boolean;
     canManageUsers: () => boolean;
     canManageCategories: () => boolean;
 }
@@ -53,6 +53,7 @@ const USER_FRAGMENT = `
     picture
     role
     status
+    canInviteUsers
     departments {
         id
         department {
@@ -76,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             picture: userData.picture,
             role: userData.role,
             status: userData.status,
+            canInviteUsers: userData.canInviteUsers ?? false,
             departments: (userData.departments || []).map((d: any) => ({
                 id: d.id,
                 departmentId: d.department.id,
@@ -204,7 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!user) return false;
         if (user.role === 'SUPER_ADMIN') return true;
         const perm = user.departments.find(d => d.departmentId === departmentId);
-        return perm?.accessLevel === 'EDIT' || perm?.accessLevel === 'ADMIN';
+        return perm?.accessLevel === 'EDIT';
     }, [user]);
 
     const getAccessibleDepartmentIds = useCallback((): string[] => {
@@ -213,58 +215,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return user.departments.map(d => d.departmentId);
     }, [user]);
 
-    const canAddTransaction = useCallback((departmentId?: string): boolean => {
-        if (!user) return false;
-        if (user.role === 'SUPER_ADMIN') return true;
-        if (user.role === 'DEPT_ADMIN') return false;
-        if (!departmentId) return user.departments.some(d => d.accessLevel === 'EDIT' || d.accessLevel === 'ADMIN');
-        const perm = user.departments.find(d => d.departmentId === departmentId);
-        return perm?.accessLevel === 'EDIT' || perm?.accessLevel === 'ADMIN';
+    const canAddTransaction = useCallback((): boolean => {
+        return !!user;
     }, [user]);
 
-    const canEditTransaction = useCallback((departmentId?: string): boolean => {
-        if (!user) return false;
-        if (user.role === 'SUPER_ADMIN') return true;
-        if (user.role === 'DEPT_ADMIN') return false;
-        if (!departmentId) return user.departments.some(d => d.accessLevel === 'EDIT' || d.accessLevel === 'ADMIN');
-        const perm = user.departments.find(d => d.departmentId === departmentId);
-        return perm?.accessLevel === 'EDIT' || perm?.accessLevel === 'ADMIN';
+    const canEditTransaction = useCallback((): boolean => {
+        return !!user;
     }, [user]);
 
-    const canDeleteTransaction = useCallback((_departmentId?: string): boolean => {
-        if (!user) return false;
-        return user.role === 'SUPER_ADMIN';
+    const canDeleteTransaction = useCallback((): boolean => {
+        return !!user;
     }, [user]);
 
     const canIssueRefund = useCallback((): boolean => {
+        return !!user;
+    }, [user]);
+
+    const canExportReports = useCallback((): boolean => {
+        return !!user;
+    }, [user]);
+
+    const canManageBudget = useCallback((): boolean => {
         if (!user) return false;
         return user.role === 'SUPER_ADMIN';
-    }, [user]);
-
-    const canVoidTransaction = useCallback((): boolean => {
-        if (!user) return false;
-        return user.role === 'SUPER_ADMIN';
-    }, [user]);
-
-    const canExportReports = useCallback((departmentId?: string): boolean => {
-        if (!user) return false;
-        if (user.role === 'SUPER_ADMIN') return true;
-        if (user.role === 'DEPT_ADMIN') {
-            if (!departmentId) return user.departments.length > 0;
-            return user.departments.some(d => d.departmentId === departmentId);
-        }
-        return false;
-    }, [user]);
-
-    const canManageBudget = useCallback((departmentId?: string): boolean => {
-        if (!user) return false;
-        if (user.role === 'SUPER_ADMIN') return true;
-        if (user.role === 'DEPT_ADMIN') {
-            if (!departmentId) return user.departments.some(d => d.accessLevel === 'ADMIN');
-            const perm = user.departments.find(d => d.departmentId === departmentId);
-            return perm?.accessLevel === 'ADMIN';
-        }
-        return false;
     }, [user]);
 
     const canManageUsers = useCallback((): boolean => {
@@ -286,7 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         refreshUser,
         isSuperAdmin: user?.role === 'SUPER_ADMIN',
-        isDeptAdmin: user?.role === 'DEPT_ADMIN' || user?.role === 'SUPER_ADMIN',
+        canInviteUsers: user?.canInviteUsers || user?.role === 'SUPER_ADMIN',
         canViewDepartment,
         canEditDepartment,
         getAccessibleDepartmentIds,
@@ -294,7 +267,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         canEditTransaction,
         canDeleteTransaction,
         canIssueRefund,
-        canVoidTransaction,
         canExportReports,
         canManageBudget,
         canManageUsers,

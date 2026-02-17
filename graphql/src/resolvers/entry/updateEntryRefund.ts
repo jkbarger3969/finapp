@@ -5,7 +5,6 @@ import { MutationResolvers } from "../../graphTypes";
 import { fractionToRational } from "../../utils/mongoRational";
 import { upsertPaymentMethodToDbRecord } from "../paymentMethod";
 import { DocHistory, UpdateHistoricalDoc } from "../utils/DocHistory";
-import { checkPermission } from "../utils/permissions";
 import { validateEntry } from "./entryValidators";
 
 const NULLISH = Symbol();
@@ -18,8 +17,9 @@ export const updateEntryRefund: MutationResolvers["updateEntryRefund"] = (
   context.dataSources.accountingDb.withTransaction(async () => {
     const { dataSources: { accountingDb }, reqDateTime, user, authService, ipAddress, userAgent } = context;
 
-    // Check permission - only SUPER_ADMIN can edit refunds
-    await checkPermission(context, "EDIT_TRANSACTION");
+    if (!user?.id) {
+      throw new Error("Unauthorized: Please log in");
+    }
 
     await validateEntry.updateEntryRefund({
       accountingDb,

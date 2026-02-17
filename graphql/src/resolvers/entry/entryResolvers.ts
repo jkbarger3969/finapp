@@ -96,8 +96,7 @@ export const EntryRefund: EntryRefundResolvers = {
         "refunds.id": id,
       },
     }),
-  // lastUpdate: Default works
-  paymentMethod: ({ paymentMethod }) => paymentMethod?.[0]?.value ?? { currency: "USD" },
+  paymentMethod: ({ paymentMethod }) => paymentMethod?.[0]?.value as any ?? { currency: "USD" },
   reconciled: ({ reconciled }) => reconciled?.[0]?.value ?? false,
   total: ({ total }) => total?.[0]?.value as any ?? 0,
 };
@@ -187,8 +186,7 @@ export const Entry: EntryResolvers = {
     } as any;
   },
   items: ({ items }) => items ?? ([] as any),
-  // lastUpdate: Default works
-  paymentMethod: ({ paymentMethod }) => paymentMethod?.[0]?.value ?? { currency: "USD" },
+  paymentMethod: ({ paymentMethod }) => paymentMethod?.[0]?.value as any ?? { currency: "USD" },
   reconciled: ({ reconciled }) => reconciled?.[0]?.value ?? false,
   refunds: ({ refunds }) => refunds || [],
   source: async ({ source, _id }, _, { loaders }): Promise<any> => {

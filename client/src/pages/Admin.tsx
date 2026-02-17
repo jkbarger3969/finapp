@@ -36,14 +36,14 @@ function CustomTabPanel(props: TabPanelProps) {
 }
 
 export default function Admin() {
-    const { isSuperAdmin, isDeptAdmin, canManageUsers, canManageCategories } = useAuth();
+    const { isSuperAdmin, canManageUsers, canManageCategories } = useAuth();
     const [value, setValue] = useState(0);
 
     const handleChange = (_: React.SyntheticEvent, newValue: number) => {
         setValue(newValue);
     };
 
-    if (!isSuperAdmin && !isDeptAdmin) {
+    if (!isSuperAdmin) {
         return (
             <Box sx={{ width: '100%', textAlign: 'center', py: 4 }}>
                 <Typography variant="h5" color="text.secondary">

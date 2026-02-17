@@ -22,8 +22,8 @@ export const authResolvers = {
     ): Promise<AuthUser[]> => {
       const currentUser = await requireAuth(context);
 
-      if (currentUser.role !== "SUPER_ADMIN" && currentUser.role !== "DEPT_ADMIN") {
-        throw new Error("Unauthorized: Only admins can view user list");
+      if (currentUser.role !== "SUPER_ADMIN") {
+        throw new Error("Unauthorized: Only super admins can view user list");
       }
 
       return context.authService!.getUsers(args.where);
@@ -99,23 +99,21 @@ export const authResolvers = {
 
     inviteUser: async (
       _parent: unknown,
-      args: { input: { email: string; name: string; role?: string; permissions?: { departmentId: string; accessLevel: string }[] } },
+      args: { input: { email: string; name: string; role?: string; canInviteUsers?: boolean; permissions?: { departmentId: string; accessLevel: string }[] } },
       context: Context<unknown>
     ): Promise<AuthUser> => {
       const currentUser = await requireAuth(context);
 
-      if (currentUser.role !== "SUPER_ADMIN" && currentUser.role !== "DEPT_ADMIN") {
-        throw new Error("Unauthorized: Only admins can invite users");
-      }
-
-      if (args.input.role === "SUPER_ADMIN" && currentUser.role !== "SUPER_ADMIN") {
-        throw new Error("Unauthorized: Only super admins can create other super admins");
+      // Check if user has permission to invite
+      if (currentUser.role !== "SUPER_ADMIN" && !currentUser.canInviteUsers) {
+        throw new Error("Unauthorized: You do not have permission to invite users");
       }
 
       return context.authService!.inviteUser(
         args.input.email,
         args.input.name,
-        (args.input.role as "SUPER_ADMIN" | "DEPT_ADMIN" | "USER") || "USER",
+        (args.input.role as "SUPER_ADMIN" | "USER") || "USER",
+        args.input.canInviteUsers || false,
         new ObjectId(currentUser._id),
         args.input.permissions
       );
@@ -123,13 +121,14 @@ export const authResolvers = {
 
     updateUser: async (
       _parent: unknown,
-      args: { id: string; input: { name?: string; role?: string; status?: string } },
+      args: { id: string; input: { name?: string; role?: string; status?: string; canInviteUsers?: boolean } },
       context: Context<unknown>
     ): Promise<AuthUser> => {
       const currentUser = await requireAuth(context);
 
-      if (currentUser.role !== "SUPER_ADMIN" && currentUser.role !== "DEPT_ADMIN") {
-        throw new Error("Unauthorized: Only admins can update users");
+      // Only SUPER_ADMIN can update users
+      if (currentUser.role !== "SUPER_ADMIN") {
+        throw new Error("Unauthorized: Only super admins can update users");
       }
 
       const targetUser = await context.authService!.getUserById(args.id);
@@ -137,22 +136,15 @@ export const authResolvers = {
         throw new Error("User not found");
       }
 
-      if (targetUser.role === "SUPER_ADMIN" && currentUser.role !== "SUPER_ADMIN") {
-        throw new Error("Unauthorized: Only super admins can modify other super admins");
-      }
-
-      if (args.input.role === "SUPER_ADMIN" && currentUser.role !== "SUPER_ADMIN") {
-        throw new Error("Unauthorized: Only super admins can grant super admin role");
-      }
-
       const updates: Record<string, unknown> = {};
       if (args.input.name) updates.name = args.input.name;
       if (args.input.role) updates.role = args.input.role;
       if (args.input.status) updates.status = args.input.status;
+      if (args.input.canInviteUsers !== undefined) updates.canInviteUsers = args.input.canInviteUsers;
 
       return context.authService!.updateUser(
         new ObjectId(args.id),
-        updates as Partial<Pick<AuthUser, "name" | "role" | "status">>,
+        updates as Partial<Pick<AuthUser, "name" | "role" | "status" | "canInviteUsers">>,
         new ObjectId(currentUser._id)
       );
     },
@@ -205,38 +197,33 @@ export const authResolvers = {
     ): Promise<UserPermission> => {
       const currentUser = await requireAuth(context);
 
-      if (currentUser.role === "USER") {
-        throw new Error("Unauthorized: Only admins can grant permissions");
-      }
-
-      if (currentUser.role === "DEPT_ADMIN") {
-        const canAdmin = await context.authService!.canAccessDepartment(
+      // Check if user has permission to grant access
+      if (currentUser.role !== "SUPER_ADMIN") {
+        // Non-super-admins need canInviteUsers permission
+        if (!currentUser.canInviteUsers) {
+          throw new Error("Unauthorized: You don't have permission to grant access");
+        }
+        
+        // Can only grant to departments they have access to
+        const canAccess = await context.authService!.canAccessDepartment(
           new ObjectId(currentUser._id),
           new ObjectId(args.input.departmentId),
-          "ADMIN"
+          "VIEW"
         );
-        if (!canAdmin) {
-          throw new Error("Unauthorized: You don't have admin access to this department");
+        if (!canAccess) {
+          throw new Error("Unauthorized: You don't have access to this department");
         }
-      }
-
-      const targetUser = await context.authService!.getUserById(args.input.userId);
-
-      if (targetUser?.role === "DEPT_ADMIN" && args.input.accessLevel === "ADMIN") {
-        await context.authService!.grantDeptAdminWithSubdepartments(
-          new ObjectId(args.input.userId),
-          new ObjectId(args.input.departmentId),
-          new ObjectId(currentUser._id)
-        );
-
-        const permission = await context.authService!.getUserPermissions(new ObjectId(args.input.userId));
-        return permission.find(p => p.departmentId.toString() === args.input.departmentId)!;
+        
+        // Can only grant VIEW or EDIT (not ADMIN)
+        if (args.input.accessLevel !== "VIEW" && args.input.accessLevel !== "EDIT") {
+          throw new Error("You can only grant VIEW or EDIT access");
+        }
       }
 
       return context.authService!.grantPermission(
         new ObjectId(args.input.userId),
         new ObjectId(args.input.departmentId),
-        args.input.accessLevel as "VIEW" | "EDIT" | "ADMIN",
+        args.input.accessLevel as "VIEW" | "EDIT",
         new ObjectId(currentUser._id)
       );
     },
@@ -248,30 +235,9 @@ export const authResolvers = {
     ): Promise<boolean> => {
       const currentUser = await requireAuth(context);
 
-      if (currentUser.role === "USER") {
-        throw new Error("Unauthorized: Only admins can revoke permissions");
-      }
-
-      if (currentUser.role === "DEPT_ADMIN") {
-        const canAdmin = await context.authService!.canAccessDepartment(
-          new ObjectId(currentUser._id),
-          new ObjectId(args.input.departmentId),
-          "ADMIN"
-        );
-        if (!canAdmin) {
-          throw new Error("Unauthorized: You don't have admin access to this department");
-        }
-      }
-
-      const targetUser = await context.authService!.getUserById(args.input.userId);
-
-      if (targetUser?.role === "DEPT_ADMIN") {
-        await context.authService!.revokeDeptAdminWithSubdepartments(
-          new ObjectId(args.input.userId),
-          new ObjectId(args.input.departmentId),
-          new ObjectId(currentUser._id)
-        );
-        return true;
+      // Only SUPER_ADMIN can revoke permissions
+      if (currentUser.role !== "SUPER_ADMIN") {
+        throw new Error("Unauthorized: Only super admins can revoke permissions");
       }
 
       return context.authService!.revokePermission(

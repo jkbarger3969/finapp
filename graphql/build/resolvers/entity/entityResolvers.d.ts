@@ -5,7 +5,7 @@ import { PersonDbRecord } from "../person";
 import { NodeDbRecord } from "../utils/queryUtils";
 export declare type EntityTypename = "Person" | "Business" | "Department";
 export declare type EntityDbRecord = NodeDbRecord<EntityTypename>;
-export declare const getEntity: (node: EntityDbRecord, db: Db) => Promise<Pick<BusinessDbRecord, "name" | "vendor" | "budget"> & {
+export declare const getEntity: (node: EntityDbRecord, db: Db) => Promise<Pick<BusinessDbRecord, "name" | "budget" | "vendor"> & {
     _id: import("bson").ObjectID;
 } & {
     __typename: "Business";
@@ -13,12 +13,12 @@ export declare const getEntity: (node: EntityDbRecord, db: Db) => Promise<Pick<B
     _id: import("bson").ObjectID;
 } & {
     __typename: "Department";
-}> | Promise<Pick<PersonDbRecord, "name" | "email" | "phone"> & {
+}> | Promise<Pick<PersonDbRecord, "email" | "name" | "phone"> & {
     _id: import("bson").ObjectID;
 } & {
     __typename: "Person";
 }>;
-export declare const getEntities: (nodes: EntityDbRecord[], db: Db) => Promise<((Pick<BusinessDbRecord, "name" | "vendor" | "budget"> & {
+export declare const getEntities: (nodes: EntityDbRecord[], db: Db) => Promise<((Pick<BusinessDbRecord, "name" | "budget" | "vendor"> & {
     _id: import("bson").ObjectID;
 } & {
     __typename: "Business";
@@ -26,11 +26,11 @@ export declare const getEntities: (nodes: EntityDbRecord[], db: Db) => Promise<(
     _id: import("bson").ObjectID;
 } & {
     __typename: "Department";
-}) | (Pick<PersonDbRecord, "name" | "email" | "phone"> & {
+}) | (Pick<PersonDbRecord, "email" | "name" | "phone"> & {
     _id: import("bson").ObjectID;
 } & {
     __typename: "Person";
 }))[]>;
 export declare const Entity: EntityResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, BusinessDbRecord | DepartmentDbRecord | import("../../dataSources/accountingDb/types").PersonDbRecord>;
+} & import("../../types").ContextBase, DepartmentDbRecord | BusinessDbRecord | import("../../dataSources/accountingDb/types").PersonDbRecord>;

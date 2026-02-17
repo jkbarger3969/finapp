@@ -1370,7 +1370,7 @@ export default function Transactions() {
                         setActionMenuAnchor(null);
                         setActionMenuEntry(null);
                     }}
-                    disabled={!canEditTransaction(actionMenuEntry?.department?.id)}
+                    disabled={!canEditTransaction()}
                 >
                     <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
                     <ListItemText>Edit Transaction</ListItemText>
@@ -1393,7 +1393,7 @@ export default function Transactions() {
                         setActionMenuAnchor(null);
                         setActionMenuEntry(null);
                     }}
-                    disabled={!canEditTransaction(actionMenuEntry?.department?.id)}
+                    disabled={!canEditTransaction()}
                 >
                     <ListItemIcon>
                         <CheckCircleIcon fontSize="small" color={actionMenuEntry?.reconciled ? "disabled" : "success"} />
@@ -1429,7 +1429,7 @@ export default function Transactions() {
                         setActionMenuEntry(null);
                     }}
                     sx={{ color: 'error.main' }}
-                    disabled={!isOnline || !canDeleteTransaction(actionMenuEntry?.department?.id)}
+                    disabled={!isOnline || !canDeleteTransaction()}
                 >
                     <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
                     <ListItemText>Delete Transaction</ListItemText>

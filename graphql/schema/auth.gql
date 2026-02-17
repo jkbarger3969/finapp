@@ -1,6 +1,5 @@
 enum UserRole {
   SUPER_ADMIN
-  DEPT_ADMIN
   USER
 }
 
@@ -13,7 +12,6 @@ enum UserStatus {
 enum AccessLevel {
   VIEW
   EDIT
-  ADMIN
 }
 
 enum AuditAction {
@@ -47,6 +45,7 @@ type AuthUser {
   picture: String
   role: UserRole!
   status: UserStatus!
+  canInviteUsers: Boolean!
   departments: [UserPermission!]!
   invitedBy: AuthUser
   invitedAt: Date
@@ -93,6 +92,7 @@ input InviteUserInput {
   email: String!
   name: String!
   role: UserRole
+  canInviteUsers: Boolean
   permissions: [InviteUserPermissionInput!]
 }
 
@@ -100,6 +100,7 @@ input UpdateUserInput {
   name: String
   role: UserRole
   status: UserStatus
+  canInviteUsers: Boolean
 }
 
 input GrantPermissionInput {

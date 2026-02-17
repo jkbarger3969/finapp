@@ -6,7 +6,6 @@ import { MutationResolvers } from "../../graphTypes";
 import { fractionToRational } from "../../utils/mongoRational";
 import { upsertPaymentMethodToDbRecord } from "../paymentMethod";
 import { DocHistory, UpdateHistoricalDoc } from "../utils/DocHistory";
-import { checkPermission } from "../utils/permissions";
 import { validateEntry } from "./entryValidators";
 import { upsertEntrySourceToEntityDbRecord } from "./upsertEntrySource";
 
@@ -20,8 +19,9 @@ export const updateEntry: MutationResolvers["updateEntry"] = async (
   context.dataSources.accountingDb.withTransaction(async () => {
     const { reqDateTime, user, dataSources: { accountingDb }, authService, ipAddress, userAgent } = context;
 
-    // Check permission - only SUPER_ADMIN can edit transactions
-    await checkPermission(context, "EDIT_TRANSACTION");
+    if (!user?.id) {
+      throw new Error("Unauthorized: Please log in");
+    }
 
     await validateEntry.updateEntry({
       updateEntry: input,

@@ -31,7 +31,6 @@ export type Scalars = {
 };
 
 export enum AccessLevel {
-  Admin = 'ADMIN',
   Edit = 'EDIT',
   View = 'VIEW'
 }
@@ -263,6 +262,7 @@ export type AuthPayload = {
 
 export type AuthUser = {
   __typename?: 'AuthUser';
+  canInviteUsers: Scalars['Boolean']['output'];
   createdAt: Scalars['Date']['output'];
   departments: Array<UserPermission>;
   email: Scalars['String']['output'];
@@ -648,6 +648,7 @@ export type GrantPermissionInput = {
 };
 
 export type InviteUserInput = {
+  canInviteUsers?: InputMaybe<Scalars['Boolean']['input']>;
   email: Scalars['String']['input'];
   name: Scalars['String']['input'];
   permissions?: InputMaybe<Array<InviteUserPermissionInput>>;
@@ -1385,6 +1386,7 @@ export type UpdatePersonPayload = {
 };
 
 export type UpdateUserInput = {
+  canInviteUsers?: InputMaybe<Scalars['Boolean']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
   role?: InputMaybe<UserRole>;
   status?: InputMaybe<UserStatus>;
@@ -1443,7 +1445,6 @@ export type UserPermission = {
 };
 
 export enum UserRole {
-  DeptAdmin = 'DEPT_ADMIN',
   SuperAdmin = 'SUPER_ADMIN',
   User = 'USER'
 }
@@ -2052,6 +2053,7 @@ export type AuthPayloadResolvers<ContextType = Context, ParentType = ResolversPa
 };
 
 export type AuthUserResolvers<ContextType = Context, ParentType = ResolversParentTypes['AuthUser']> = {
+  canInviteUsers?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   createdAt?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
   departments?: Resolver<Array<ResolversTypes['UserPermission']>, ParentType, ContextType>;
   email?: Resolver<ResolversTypes['String'], ParentType, ContextType>;

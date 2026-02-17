@@ -3,7 +3,6 @@ import { EntryRefundDbRecord } from "../../dataSources/accountingDb/types";
 
 import { MutationResolvers } from "../../graphTypes";
 import { DocHistory, UpdateHistoricalDoc } from "../utils/DocHistory";
-import { checkPermission } from "../utils/permissions";
 import { validateEntry } from "./entryValidators";
 
 export const deleteEntryRefund: MutationResolvers["deleteEntryRefund"] = (
@@ -14,8 +13,9 @@ export const deleteEntryRefund: MutationResolvers["deleteEntryRefund"] = (
   context.dataSources.accountingDb.withTransaction(async () => {
     const { dataSources: { accountingDb }, reqDateTime, user, authService, ipAddress, userAgent } = context;
 
-    // Check permission - only SUPER_ADMIN can delete refunds
-    await checkPermission(context, "DELETE_REFUND");
+    if (!user?.id) {
+      throw new Error("Unauthorized: Please log in");
+    }
 
     const refundId = new ObjectId(id);
 

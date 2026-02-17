@@ -28,7 +28,7 @@ export default function Sidebar() {
     const theme = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
-    const { user, logout, isSuperAdmin, isDeptAdmin } = useAuth();
+    const { user, logout, isSuperAdmin } = useAuth();
     const { isSidebarCollapsed, toggleSidebar, openEntryDialog } = useLayout();
     const { mode, toggleTheme } = useThemeMode();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -48,7 +48,7 @@ export default function Sidebar() {
         navigate('/login');
     };
     // Re-check useAuth destructuring in Sidebar
-    // const { user, isSuperAdmin, isDeptAdmin } = useAuth(); // It misses logout!
+    // const { user, isSuperAdmin, canInviteUsers } = useAuth(); // It misses logout!
 
 
     const menuItems = [
@@ -56,7 +56,7 @@ export default function Sidebar() {
         { text: "Transactions", path: "/transactions", icon: <ReceiptIcon /> },
         { text: "Budget Allocations", path: "/budget", icon: <PieChartIcon /> },
         { text: "Reports", path: "/reporting", icon: <AssessmentIcon /> },
-        ...(isSuperAdmin || isDeptAdmin ? [{ text: "Admin", path: "/admin", icon: <AdminPanelSettingsIcon /> }] : []),
+        ...(isSuperAdmin ? [{ text: "Admin", path: "/admin", icon: <AdminPanelSettingsIcon /> }] : []),
     ];
 
     const drawerWidth = isSidebarCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH;

@@ -29,8 +29,9 @@ export interface AuthUser {
   googleId?: string;
   name: string;
   picture?: string;
-  role: "SUPER_ADMIN" | "DEPT_ADMIN" | "USER";
+  role: "SUPER_ADMIN" | "USER";
   status: "INVITED" | "ACTIVE" | "DISABLED";
+  canInviteUsers: boolean;
   invitedBy?: ObjectId;
   invitedAt?: Date;
   lastLoginAt?: Date;
@@ -41,7 +42,7 @@ export interface UserPermission {
   _id: ObjectId;
   userId: ObjectId;
   departmentId: ObjectId;
-  accessLevel: "VIEW" | "EDIT" | "ADMIN";
+  accessLevel: "VIEW" | "EDIT";
   grantedBy: ObjectId;
   grantedAt: Date;
 }
@@ -144,6 +145,7 @@ export class AuthService {
         picture: googleUser.picture,
         role: "SUPER_ADMIN",
         status: "ACTIVE",
+        canInviteUsers: true,
         lastLoginAt: new Date(),
         createdAt: new Date(),
       };
@@ -245,7 +247,8 @@ export class AuthService {
   async inviteUser(
     email: string,
     name: string,
-    role: "SUPER_ADMIN" | "DEPT_ADMIN" | "USER" = "USER",
+    role: "SUPER_ADMIN" | "USER" = "USER",
+    canInviteUsers: boolean = false,
     invitedBy: ObjectId,
     permissions?: { departmentId: string; accessLevel: string }[]
   ): Promise<AuthUser> {
@@ -258,11 +261,52 @@ export class AuthService {
       throw new Error("User with this email already exists");
     }
 
+    // Get inviter to check their permissions
+    const inviter = await this.getUserById(invitedBy);
+    if (!inviter) {
+      throw new Error("Inviter not found");
+    }
+
+    // Non-SUPER_ADMIN inviters have restrictions
+    if (inviter.role !== "SUPER_ADMIN") {
+      // Must have canInviteUsers permission
+      if (!inviter.canInviteUsers) {
+        throw new Error("You do not have permission to invite users");
+      }
+      
+      // Cannot set role to SUPER_ADMIN
+      if (role === "SUPER_ADMIN") {
+        throw new Error("Only Super Admins can create other Super Admins");
+      }
+      
+      // Cannot grant canInviteUsers permission
+      if (canInviteUsers) {
+        throw new Error("Only Super Admins can grant invite permissions");
+      }
+      
+      // Can only assign departments they have access to
+      if (permissions && permissions.length > 0) {
+        const inviterPermissions = await this.getUserPermissions(invitedBy);
+        const inviterDeptIds = new Set(inviterPermissions.map(p => p.departmentId.toString()));
+        
+        for (const p of permissions) {
+          if (!inviterDeptIds.has(p.departmentId)) {
+            throw new Error(`You do not have access to department ${p.departmentId}`);
+          }
+          // Can only assign VIEW or EDIT
+          if (p.accessLevel !== "VIEW" && p.accessLevel !== "EDIT") {
+            throw new Error("You can only assign VIEW or EDIT access levels");
+          }
+        }
+      }
+    }
+
     const newUser: Omit<AuthUser, "_id"> = {
       email,
       name,
       role,
       status: "INVITED",
+      canInviteUsers: inviter.role === "SUPER_ADMIN" ? canInviteUsers : false,
       invitedBy,
       invitedAt: new Date(),
       createdAt: new Date(),
@@ -287,7 +331,7 @@ export class AuthService {
     }
 
     // Grant permissions and gather details for email
-    const emailPermissions: { departmentId: string; departmentName: string; accessLevel: "VIEW" | "EDIT" | "ADMIN" }[] = [];
+    const emailPermissions: { departmentId: string; departmentName: string; accessLevel: "VIEW" | "EDIT" }[] = [];
 
     if (permissions && permissions.length > 0) {
       for (const p of permissions) {
@@ -295,7 +339,7 @@ export class AuthService {
         await this.grantPermission(
           user._id,
           new ObjectId(p.departmentId),
-          p.accessLevel as "VIEW" | "EDIT" | "ADMIN",
+          p.accessLevel as "VIEW" | "EDIT",
           invitedBy
         );
 
@@ -305,15 +349,13 @@ export class AuthService {
           emailPermissions.push({
             departmentId: p.departmentId,
             departmentName: dept.name,
-            accessLevel: p.accessLevel as "VIEW" | "EDIT" | "ADMIN"
+            accessLevel: p.accessLevel as "VIEW" | "EDIT"
           });
         }
       }
     }
 
-    // Send invite email with detailed permissions
-    const inviter = await this.getUserById(invitedBy);
-
+    // Send invite email with detailed permissions (inviter already fetched above)
     try {
       await sendInviteEmail({
         toEmail: email,
@@ -331,9 +373,20 @@ export class AuthService {
 
   async updateUser(
     id: ObjectId,
-    updates: Partial<Pick<AuthUser, "name" | "role" | "status">>,
+    updates: Partial<Pick<AuthUser, "name" | "role" | "status" | "canInviteUsers">>,
     updatedBy: ObjectId
   ): Promise<AuthUser> {
+    // Get the updater to check permissions
+    const updater = await this.getUserById(updatedBy);
+    if (!updater) {
+      throw new Error("Updater not found");
+    }
+    
+    // Only SUPER_ADMIN can update users
+    if (updater.role !== "SUPER_ADMIN") {
+      throw new Error("Only Super Admins can update user profiles");
+    }
+    
     await this.db.collection<AuthUser>("users").updateOne({ _id: id }, { $set: updates });
 
     await this.logAudit({
@@ -362,7 +415,7 @@ export class AuthService {
   async grantPermission(
     userId: ObjectId,
     departmentId: ObjectId,
-    accessLevel: "VIEW" | "EDIT" | "ADMIN",
+    accessLevel: "VIEW" | "EDIT",
     grantedBy: ObjectId
   ): Promise<UserPermission> {
     const existing = await this.db
@@ -478,36 +531,10 @@ export class AuthService {
     return subdepts;
   }
 
-  async grantDeptAdminWithSubdepartments(
-    userId: ObjectId,
-    departmentId: ObjectId,
-    grantedBy: ObjectId
-  ): Promise<void> {
-    await this.grantPermission(userId, departmentId, "ADMIN", grantedBy);
-
-    const subdeptIds = await this.getSubdepartmentIds(departmentId);
-    for (const subdeptId of subdeptIds) {
-      await this.grantPermission(userId, subdeptId, "ADMIN", grantedBy);
-    }
-  }
-
-  async revokeDeptAdminWithSubdepartments(
-    userId: ObjectId,
-    departmentId: ObjectId,
-    revokedBy: ObjectId
-  ): Promise<void> {
-    await this.revokePermission(userId, departmentId, revokedBy);
-
-    const subdeptIds = await this.getSubdepartmentIds(departmentId);
-    for (const subdeptId of subdeptIds) {
-      await this.revokePermission(userId, subdeptId, revokedBy);
-    }
-  }
-
   async canAccessDepartment(
     userId: ObjectId,
     departmentId: ObjectId,
-    requiredLevel: "VIEW" | "EDIT" | "ADMIN" = "VIEW"
+    requiredLevel: "VIEW" | "EDIT" = "VIEW"
   ): Promise<boolean> {
     const user = await this.getUserById(userId);
     if (!user) return false;
@@ -520,7 +547,7 @@ export class AuthService {
 
     if (!permission) return false;
 
-    const levelHierarchy = { VIEW: 1, EDIT: 2, ADMIN: 3 };
+    const levelHierarchy = { VIEW: 1, EDIT: 2 };
     return levelHierarchy[permission.accessLevel] >= levelHierarchy[requiredLevel];
   }
 

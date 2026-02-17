@@ -2,7 +2,6 @@ import { ObjectId } from "mongodb";
 import { EntryDbRecord } from "../../dataSources/accountingDb/types";
 import { MutationResolvers } from "../../graphTypes";
 import { DocHistory, UpdateHistoricalDoc } from "../utils/DocHistory";
-import { checkPermission } from "../utils/permissions";
 import { validateEntry } from "./entryValidators";
 
 export const deleteEntry: MutationResolvers["deleteEntry"] = async (
@@ -13,8 +12,9 @@ export const deleteEntry: MutationResolvers["deleteEntry"] = async (
   context.dataSources.accountingDb.withTransaction(async () => {
     const { reqDateTime, user, dataSources: { accountingDb }, authService, ipAddress, userAgent } = context;
 
-    // Check permission - only SUPER_ADMIN can delete transactions
-    await checkPermission(context, "DELETE_TRANSACTION");
+    if (!user?.id) {
+      throw new Error("Unauthorized: Please log in");
+    }
 
     const entry = new ObjectId(id);
 

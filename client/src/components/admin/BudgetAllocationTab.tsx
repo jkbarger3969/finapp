@@ -164,7 +164,7 @@ export default function BudgetAllocationTab() {
     const hasAdminAccess = useCallback((deptId: string): boolean => {
         if (isSuperAdmin) return true;
         const perm = user?.departments.find(d => d.departmentId === deptId);
-        return perm?.accessLevel === 'ADMIN';
+        return perm?.accessLevel === 'EDIT';
     }, [user, isSuperAdmin]);
 
     const canAccessDept = useCallback((deptId: string): boolean => {

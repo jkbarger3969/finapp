@@ -31,6 +31,7 @@ export declare const authResolvers: {
                 email: string;
                 name: string;
                 role?: string;
+                canInviteUsers?: boolean;
                 permissions?: {
                     departmentId: string;
                     accessLevel: string;
@@ -43,6 +44,7 @@ export declare const authResolvers: {
                 name?: string;
                 role?: string;
                 status?: string;
+                canInviteUsers?: boolean;
             };
         }, context: Context<unknown>) => Promise<AuthUser>;
         deleteUser: (_parent: unknown, args: {

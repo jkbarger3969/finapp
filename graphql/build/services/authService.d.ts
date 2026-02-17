@@ -17,8 +17,9 @@ export interface AuthUser {
     googleId?: string;
     name: string;
     picture?: string;
-    role: "SUPER_ADMIN" | "DEPT_ADMIN" | "USER";
+    role: "SUPER_ADMIN" | "USER";
     status: "INVITED" | "ACTIVE" | "DISABLED";
+    canInviteUsers: boolean;
     invitedBy?: ObjectId;
     invitedAt?: Date;
     lastLoginAt?: Date;
@@ -28,7 +29,7 @@ export interface UserPermission {
     _id: ObjectId;
     userId: ObjectId;
     departmentId: ObjectId;
-    accessLevel: "VIEW" | "EDIT" | "ADMIN";
+    accessLevel: "VIEW" | "EDIT";
     grantedBy: ObjectId;
     grantedAt: Date;
 }
@@ -58,19 +59,17 @@ export declare class AuthService {
     getUserById(id: string | ObjectId): Promise<AuthUser | null>;
     getUserByEmail(email: string): Promise<AuthUser | null>;
     getUsers(where?: Record<string, unknown>): Promise<AuthUser[]>;
-    inviteUser(email: string, name: string, role: "SUPER_ADMIN" | "DEPT_ADMIN" | "USER", invitedBy: ObjectId, permissions?: {
+    inviteUser(email: string, name: string, role: "SUPER_ADMIN" | "USER", canInviteUsers: boolean, invitedBy: ObjectId, permissions?: {
         departmentId: string;
         accessLevel: string;
     }[]): Promise<AuthUser>;
-    updateUser(id: ObjectId, updates: Partial<Pick<AuthUser, "name" | "role" | "status">>, updatedBy: ObjectId): Promise<AuthUser>;
+    updateUser(id: ObjectId, updates: Partial<Pick<AuthUser, "name" | "role" | "status" | "canInviteUsers">>, updatedBy: ObjectId): Promise<AuthUser>;
     getUserPermissions(userId: ObjectId): Promise<UserPermission[]>;
-    grantPermission(userId: ObjectId, departmentId: ObjectId, accessLevel: "VIEW" | "EDIT" | "ADMIN", grantedBy: ObjectId): Promise<UserPermission>;
+    grantPermission(userId: ObjectId, departmentId: ObjectId, accessLevel: "VIEW" | "EDIT", grantedBy: ObjectId): Promise<UserPermission>;
     revokePermission(userId: ObjectId, departmentId: ObjectId, revokedBy: ObjectId): Promise<boolean>;
     getAccessibleDepartmentIds(userId: ObjectId): Promise<ObjectId[]>;
     getSubdepartmentIds(parentDeptId: ObjectId): Promise<ObjectId[]>;
-    grantDeptAdminWithSubdepartments(userId: ObjectId, departmentId: ObjectId, grantedBy: ObjectId): Promise<void>;
-    revokeDeptAdminWithSubdepartments(userId: ObjectId, departmentId: ObjectId, revokedBy: ObjectId): Promise<void>;
-    canAccessDepartment(userId: ObjectId, departmentId: ObjectId, requiredLevel?: "VIEW" | "EDIT" | "ADMIN"): Promise<boolean>;
+    canAccessDepartment(userId: ObjectId, departmentId: ObjectId, requiredLevel?: "VIEW" | "EDIT"): Promise<boolean>;
     logAudit(entry: Omit<AuditLogEntry, "_id">): Promise<void>;
     getAuditLog(where?: Record<string, unknown>, limit?: number, offset?: number): Promise<AuditLogEntry[]>;
 }
