@@ -52,7 +52,8 @@ export const departmentBudgetSummaries = async (
   const debitCategoryIds = debitCategories.map((cat: any) => cat._id);
 
   // Aggregate spending by department for this fiscal year (DEBIT entries only)
-  // Note: entries use historical document format where fields are stored as field.0.value
+  // Note: In MongoDB aggregation, "$field.0.value" doesn't work - must use $arrayElemAt
+  // department.value returns array of all value props, then $arrayElemAt gets first
   const spendingAgg = await db.collection("entries").aggregate([
     {
       $match: {
@@ -63,7 +64,7 @@ export const departmentBudgetSummaries = async (
     },
     {
       $group: {
-        _id: "$department.0.value",
+        _id: { $arrayElemAt: ["$department.value", 0] },
         totalSpent: {
           $sum: {
             $let: {
