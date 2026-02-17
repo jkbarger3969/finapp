@@ -1306,11 +1306,19 @@ export default function Transactions() {
                                                     }
                                                 }
                                             },
-                                            "& .MuiDataGrid-columnHeaderCheckbox .MuiDataGrid-columnHeaderTitleContainer": {
-                                                justifyContent: "center"
+                                            "& .MuiDataGrid-columnHeaderCheckbox": {
+                                                padding: "0 !important",
+                                                justifyContent: "center !important",
+                                                alignItems: "center !important",
                                             },
-                                            "& .MuiDataGrid-row:last-child .MuiDataGrid-cell": {
-                                                borderBottom: "none"
+                                            "& .MuiDataGrid-columnHeaderCheckbox .MuiDataGrid-columnHeaderTitleContainer": {
+                                                display: "flex",
+                                                justifyContent: "center !important",
+                                                padding: "0 !important",
+                                                width: "100%",
+                                            },
+                                            "& .MuiDataGrid-row:last-child .MuiDataGrid-cell, & .MuiDataGrid-row:last-of-type .MuiDataGrid-cell": {
+                                                borderBottom: "none !important"
                                             },
                                             "& .refund-row": {
                                                 borderLeft: "4px solid",
