@@ -521,7 +521,7 @@ export default function Transactions() {
                                     {params.value}
                                 </Typography>
                                 <Typography variant="caption" color="primary.main">
-                                    ↳ Refund Item (Click arrow to matching entry)
+                                    ↳ Refund Item (Click arrow to show matching entry)
                                 </Typography>
                             </Box>
                         </Box>
@@ -536,13 +536,45 @@ export default function Transactions() {
                         </Box>
                     );
                 }
-                if (params.row.refunds?.length > 0) {
+                if (params.row.isRefundDetail) {
                     return (
-                        <Box>
-                            <Typography variant="body2">{params.value}</Typography>
-                            <Typography variant="caption" color="success.main">
-                                Has {params.row.refunds.length} refund(s)
+                        <Box sx={{ pl: 4, borderLeft: '2px solid', borderColor: 'success.main' }}>
+                            <Typography variant="body2" color="success.main">
+                                ↳ Refund: {params.value}
                             </Typography>
+                        </Box>
+                    );
+                }
+                if (params.row.refunds?.length > 0) {
+                    const isExpanded = expandedRefunds.has(params.row.id);
+                    return (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const newExpanded = new Set(expandedRefunds);
+                                    if (isExpanded) {
+                                        newExpanded.delete(params.row.id);
+                                    } else {
+                                        newExpanded.add(params.row.id);
+                                    }
+                                    setExpandedRefunds(newExpanded);
+                                }}
+                                sx={{ 
+                                    p: 0.5,
+                                    color: 'success.main',
+                                    '&:hover': { bgcolor: 'action.hover' }
+                                }}
+                            >
+                                {isExpanded ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
+                            </IconButton>
+                            <Box>
+                                <Typography variant="body2">{params.value}</Typography>
+                                <Typography variant="caption" color="success.main">
+                                    Has {params.row.refunds.length} refund(s) (Click arrow to show)
+                                </Typography>
+                            </Box>
                         </Box>
                     );
                 }
@@ -751,11 +783,38 @@ export default function Transactions() {
 
         // Normal mode
         // Server-side filtered already
-        return data.entries.map((entry: any) => ({
-            ...entry,
-            id: entry.id,
-            isRefund: false,
-        }));
+        const normalRows: any[] = [];
+        data.entries.forEach((entry: any) => {
+            normalRows.push({
+                ...entry,
+                id: entry.id,
+                isRefund: false,
+            });
+            
+            // If entry has refunds and is expanded, show the refund details
+            if (entry.refunds?.length > 0 && expandedRefunds.has(entry.id)) {
+                entry.refunds.forEach((refund: any) => {
+                    normalRows.push({
+                        id: `refund-detail-${refund.id}`,
+                        refundId: refund.id,
+                        description: refund.description || 'Refund',
+                        date: refund.date,
+                        reconciled: refund.reconciled,
+                        total: refund.total,
+                        category: { name: 'Refund', type: 'CREDIT' },
+                        department: entry.department,
+                        paymentMethod: refund.paymentMethod,
+                        attachments: [],
+                        isRefund: true,
+                        isRefundDetail: true,
+                        parentEntryId: entry.id,
+                        rowType: 'CREDIT',
+                        originalEntry: entry,
+                    });
+                });
+            }
+        });
+        return normalRows;
     }, [data, showMatchingOnly, expandedRefunds]);
 
 
