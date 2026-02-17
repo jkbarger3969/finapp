@@ -138,6 +138,10 @@ export default function Dashboard() {
         }
 
         const spendingByDept = new Map<string, number>();
+        console.log('[Dashboard] Total entries:', data.entries.length);
+        console.log('[Dashboard] Total departments:', data.departments.length);
+        console.log('[Dashboard] All entry departments:', data.entries.map((e: any) => ({ id: e.department?.id, name: e.department?.name, total: e.total, catType: e.category?.type })));
+        
         data.entries.forEach((entry: any) => {
             if (entry.department?.id && entry.category?.type === 'DEBIT') {
                 const deptId = entry.department.id;
