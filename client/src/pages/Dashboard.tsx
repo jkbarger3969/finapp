@@ -111,7 +111,7 @@ export default function Dashboard() {
         query: GET_BUDGET_DATA,
         variables: { entriesWhere, budgetsWhere },
         pause: !fiscalYearId,
-        requestPolicy: 'cache-first'
+        requestPolicy: 'cache-and-network'
     });
 
     const { data, fetching, error } = result;
@@ -281,7 +281,6 @@ export default function Dashboard() {
                 <Paper
                     sx={{
                         p: 2,
-                        height: '100%',
                         borderTop: 4,
                         borderColor: percentUsed > 100 ? 'error.main' : percentUsed > 80 ? 'warning.main' : 'success.main',
                         display: 'flex',
