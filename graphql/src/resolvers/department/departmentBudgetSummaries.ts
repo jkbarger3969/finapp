@@ -17,6 +17,15 @@ export const departmentBudgetSummaries = async (
 ): Promise<DepartmentBudgetSummary[]> => {
   const fiscalYearObjectId = new ObjectId(fiscalYearId);
 
+  // Get fiscal year date range
+  const fiscalYear = await db.collection("fiscalYears").findOne({ _id: fiscalYearObjectId });
+  if (!fiscalYear) {
+    console.error(`[departmentBudgetSummaries] Fiscal year not found: ${fiscalYearId}`);
+    return [];
+  }
+
+  const { begin, end } = fiscalYear;
+
   // Get all departments
   const departments = await db.collection("departments").find({}).toArray();
 
@@ -39,11 +48,20 @@ export const departmentBudgetSummaries = async (
   });
 
   // Aggregate spending by department for this fiscal year (DEBIT entries only)
+  // Match entries by date range (fiscal year) and join with categories to filter DEBIT
   const spendingAgg = await db.collection("entries").aggregate([
     {
       $match: {
-        fiscalYear: fiscalYearObjectId,
-        deleted: { $ne: true }
+        deleted: { $ne: true },
+        $or: [
+          // Match by date
+          { "date.0.value": { $gte: begin, $lt: end } },
+          // Or match by dateOfRecord if overridden
+          { 
+            "dateOfRecord.overrideFiscalYear": true,
+            "dateOfRecord.date.0.value": { $gte: begin, $lt: end }
+          }
+        ]
       }
     },
     {
@@ -61,7 +79,7 @@ export const departmentBudgetSummaries = async (
     },
     {
       $group: {
-        _id: "$department",
+        _id: "$department.0.value",
         totalSpent: {
           $sum: {
             $let: {
@@ -71,7 +89,7 @@ export const departmentBudgetSummaries = async (
               in: {
                 $abs: {
                   $multiply: [
-                    { $divide: ["$$t.n", "$$t.d"] },
+                    { $cond: [{ $eq: ["$$t.d", 0] }, 0, { $divide: ["$$t.n", "$$t.d"] }] },
                     "$$t.s"
                   ]
                 }
