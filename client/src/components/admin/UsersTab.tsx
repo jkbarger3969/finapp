@@ -184,7 +184,7 @@ export default function UsersTab() {
     const [inviteLoading, setInviteLoading] = useState(false);
     const [deleteUserToConfirm, setDeleteUserToConfirm] = useState<User | null>(null);
 
-    const [{ data: usersData, fetching: usersFetching, error: usersError }, refetchUsers] = useQuery({
+    const [{ data: usersData, fetching: usersFetching }, refetchUsers] = useQuery({
         query: USERS_QUERY,
         requestPolicy: 'cache-and-network'
     });
@@ -463,16 +463,6 @@ export default function UsersTab() {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                 <CircularProgress />
-            </Box>
-        );
-    }
-
-    if (usersError) {
-        return (
-            <Box sx={{ p: 4 }}>
-                <Alert severity="error">
-                    Error loading users: {usersError.message}
-                </Alert>
             </Box>
         );
     }
