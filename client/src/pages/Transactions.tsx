@@ -906,12 +906,12 @@ export default function Transactions() {
 
                             {/* Stats */}
                             <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', ml: 'auto' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                    Total Transactions: <Box component="span" sx={{ color: 'text.primary', fontWeight: 500 }}>{summary.count}</Box>
+                                <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 'bold' }}>
+                                    Total Transactions: <Box component="span" sx={{ color: 'text.primary' }}>{summary.count}</Box>
                                 </Typography>
-                                <Divider orientation="vertical" flexItem sx={{ height: 20, my: 'auto' }} />
-                                <Typography variant="body2" color="text.secondary">
-                                    Balance: <Box component="span" sx={{ color: summary.balance >= 0 ? 'success.main' : 'error.main', fontWeight: 500 }}>{currencyFormatter.format(summary.balance)}</Box>
+                                <Divider orientation="vertical" flexItem sx={{ height: 24, my: 'auto' }} />
+                                <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 'bold' }}>
+                                    Balance: <Box component="span" sx={{ color: summary.balance >= 0 ? 'success.main' : 'error.main' }}>{currencyFormatter.format(summary.balance)}</Box>
                                 </Typography>
                             </Box>
                         </Box>
