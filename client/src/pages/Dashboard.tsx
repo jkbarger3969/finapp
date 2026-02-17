@@ -32,7 +32,7 @@ import { DashboardSkeleton } from "../components/common/DashboardSkeleton";
 
 const GET_BUDGET_DATA = `
     query GetBudgetData($entriesWhere: EntriesWhere, $budgetsWhere: BudgetsWhere) {
-        entries(where: $entriesWhere, limit: 10000) {
+        entries(where: $entriesWhere, limit: 0) {
             id
             total
             category {

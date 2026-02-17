@@ -1049,9 +1049,11 @@ export const entries: QueryResolvers["entries"] = async (
     pipeline.push({ $skip: offset });
   }
 
-  // Safe limit
-  const safeLimit = Math.min(Math.max(limit, 1), 1000);
-  pipeline.push({ $limit: safeLimit });
+  // Safe limit - 0 means no limit (for Dashboard aggregations)
+  if (limit !== 0) {
+    const safeLimit = Math.min(Math.max(limit, 1), 1000);
+    pipeline.push({ $limit: safeLimit });
+  }
 
   return accountingDb
     .getCollection("entries")
