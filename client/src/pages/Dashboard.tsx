@@ -32,7 +32,7 @@ import { DashboardSkeleton } from "../components/common/DashboardSkeleton";
 
 const GET_BUDGET_DATA = `
     query GetBudgetData($entriesWhere: EntriesWhere, $budgetsWhere: BudgetsWhere) {
-        entries(where: $entriesWhere) {
+        entries(where: $entriesWhere, limit: 10000) {
             id
             total
             category {
@@ -138,20 +138,13 @@ export default function Dashboard() {
         }
 
         const spendingByDept = new Map<string, number>();
-        console.log('[Dashboard] Total entries:', data.entries.length);
-        console.log('[Dashboard] Total departments:', data.departments.length);
-        console.log('[Dashboard] All entry departments:', data.entries.map((e: any) => ({ id: e.department?.id, name: e.department?.name, total: e.total, catType: e.category?.type })));
-        
         data.entries.forEach((entry: any) => {
             if (entry.department?.id && entry.category?.type === 'DEBIT') {
                 const deptId = entry.department.id;
                 const current = spendingByDept.get(deptId) || 0;
-                const amount = Math.abs(parseRational(entry.total));
-                spendingByDept.set(deptId, current + amount);
-                console.log('[Dashboard] Entry spending:', { deptId, deptName: entry.department.name, amount, total: current + amount });
+                spendingByDept.set(deptId, current + Math.abs(parseRational(entry.total)));
             }
         });
-        console.log('[Dashboard] SpendingByDept map:', Object.fromEntries(spendingByDept));
 
         const budgetByDept = new Map<string, number>();
         data.budgets.forEach((budget: any) => {
@@ -165,18 +158,14 @@ export default function Dashboard() {
 
         data.departments.forEach((dept: any) => {
             const deptAncestors = dept.ancestors?.filter((a: any) => a.__typename === 'Department') || [];
-            const deptSpent = spendingByDept.get(dept.id) || 0;
             deptMap.set(dept.id, {
                 id: dept.id,
                 name: dept.name,
                 budget: budgetByDept.get(dept.id) || 0,
-                spent: deptSpent,
+                spent: spendingByDept.get(dept.id) || 0,
                 children: [],
                 level: deptAncestors.length,
             });
-            if (deptSpent > 0) {
-                console.log('[Dashboard] Dept with spending:', { id: dept.id, name: dept.name, spent: deptSpent });
-            }
         });
 
         data.departments.forEach((dept: any) => {
