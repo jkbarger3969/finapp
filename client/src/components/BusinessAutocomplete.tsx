@@ -54,7 +54,7 @@ export default function BusinessAutocomplete({
     };
 
     return (
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Autocomplete
                 fullWidth
                 size={size}
@@ -94,7 +94,6 @@ export default function BusinessAutocomplete({
                 <IconButton
                     onClick={() => setBrowseOpen(true)}
                     disabled={disabled}
-                    sx={{ mt: 1 }}
                 >
                     <ListIcon />
                 </IconButton>

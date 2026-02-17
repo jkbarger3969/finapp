@@ -78,7 +78,7 @@ export default function CategoryAutocomplete({
     };
 
     return (
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Autocomplete
                 fullWidth
                 size={size}
@@ -152,7 +152,6 @@ export default function CategoryAutocomplete({
                 <IconButton
                     onClick={() => setBrowseOpen(true)}
                     disabled={disabled}
-                    sx={{ mt: 1 }}
                 >
                     <ListIcon />
                 </IconButton>

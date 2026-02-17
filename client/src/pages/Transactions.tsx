@@ -452,6 +452,8 @@ export default function Transactions() {
             field: "reconciled",
             headerName: "Status",
             width: 100,
+            align: 'center',
+            headerAlign: 'center',
             renderCell: (params: any) => (
                 <Chip
                     label={params.value ? "Reconciled" : "Pending"}
@@ -465,6 +467,8 @@ export default function Transactions() {
             field: "date",
             headerName: "Date",
             width: 120,
+            align: 'center',
+            headerAlign: 'center',
             renderCell: (params: any) => {
                 const txDate = format(new Date(params.value), "MMM dd, yyyy");
                 const postedDate = params.row.dateOfRecord?.date;
@@ -486,8 +490,10 @@ export default function Transactions() {
         {
             field: "description",
             headerName: "Description",
-            flex: 1,
-            minWidth: 180,
+            flex: 0.8,
+            minWidth: 150,
+            align: 'center',
+            headerAlign: 'center',
             renderCell: (params: any) => {
                 if (params.row.isRefund) {
                     const isExpanded = expandedRefunds.has(params.row.id);
@@ -547,12 +553,16 @@ export default function Transactions() {
             field: "department",
             headerName: "Department",
             width: 140,
+            align: 'center',
+            headerAlign: 'center',
             valueGetter: (_value: any, row: any) => row?.department?.name || "",
         },
         {
             field: "source",
             headerName: "Source",
             width: 160,
+            align: 'center',
+            headerAlign: 'center',
             renderCell: (params: any) => {
                 const source = params.row.source;
                 if (!source) return <Typography variant="body2" color="text.secondary">-</Typography>;
@@ -583,7 +593,9 @@ export default function Transactions() {
         {
             field: "category",
             headerName: "Category",
-            width: 130,
+            width: 180,
+            align: 'center',
+            headerAlign: 'center',
             renderCell: (params: any) => (
                 <Chip
                     label={params.value?.name || "Uncategorized"}
@@ -597,6 +609,8 @@ export default function Transactions() {
             field: "paymentMethod",
             headerName: "Payment",
             width: 130,
+            align: 'center',
+            headerAlign: 'center',
             valueGetter: (val: any) => {
                 const value = val as any;
                 if (!value) return "Unknown";
@@ -615,8 +629,8 @@ export default function Transactions() {
             field: "total",
             headerName: "Amount",
             width: 130,
-            align: "right",
-            headerAlign: "right",
+            align: "center",
+            headerAlign: "center",
             valueGetter: (value: any) => parseRational(value),
             renderCell: (params: any) => {
                 const amount = params.value as number;
@@ -906,12 +920,12 @@ export default function Transactions() {
 
                             {/* Stats */}
                             <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', ml: 'auto' }}>
-                                <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 'bold' }}>
-                                    Total Transactions: <Box component="span" sx={{ color: 'text.primary' }}>{summary.count}</Box>
+                                <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'white' }}>
+                                    Total Transactions: <Box component="span" sx={{ color: 'white' }}>{summary.count}</Box>
                                 </Typography>
-                                <Divider orientation="vertical" flexItem sx={{ height: 24, my: 'auto' }} />
-                                <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 'bold' }}>
-                                    Balance: <Box component="span" sx={{ color: summary.balance >= 0 ? 'success.main' : 'error.main' }}>{currencyFormatter.format(summary.balance)}</Box>
+                                <Divider orientation="vertical" flexItem sx={{ height: 24, my: 'auto', borderColor: 'rgba(255, 255, 255, 0.5)' }} />
+                                <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'white' }}>
+                                    Balance: <Box component="span" sx={{ color: summary.balance >= 0 ? 'success.light' : 'error.light' }}>{currencyFormatter.format(summary.balance)}</Box>
                                 </Typography>
                             </Box>
                         </Box>

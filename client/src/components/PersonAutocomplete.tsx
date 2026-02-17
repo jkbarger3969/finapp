@@ -56,7 +56,7 @@ export default function PersonAutocomplete({
     };
 
     return (
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Autocomplete
                 fullWidth
                 size={size}
@@ -96,7 +96,6 @@ export default function PersonAutocomplete({
                 <IconButton
                     onClick={() => setBrowseOpen(true)}
                     disabled={disabled}
-                    sx={{ mt: 1 }}
                 >
                     <ListIcon />
                 </IconButton>
