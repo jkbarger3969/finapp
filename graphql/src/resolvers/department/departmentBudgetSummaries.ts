@@ -25,15 +25,18 @@ export const departmentBudgetSummaries = async (
   }
 
   const { begin, end } = fiscalYear;
+  console.log(`[departmentBudgetSummaries] Fiscal year: ${fiscalYear.name}, begin: ${begin}, end: ${end}`);
 
   // Get all departments
   const departments = await db.collection("departments").find({}).toArray();
+  console.log(`[departmentBudgetSummaries] Found ${departments.length} departments`);
 
   // Get all budgets for this fiscal year
   const budgets = await db.collection("budgets").find({
     "fiscalYear": fiscalYearObjectId,
     "owner.type": "Department"
   }).toArray();
+  console.log(`[departmentBudgetSummaries] Found ${budgets.length} budgets for fiscal year`);
 
   // Create budget map by department ID
   const budgetByDept = new Map<string, number>();
@@ -46,22 +49,30 @@ export const departmentBudgetSummaries = async (
       budgetByDept.set(deptId, (budgetByDept.get(deptId) || 0) + amount);
     }
   });
+  console.log(`[departmentBudgetSummaries] Budget map entries: ${budgetByDept.size}`);
+
+  // First, let's check the entry structure
+  const sampleEntry = await db.collection("entries").findOne({ deleted: { $ne: true } });
+  console.log(`[departmentBudgetSummaries] Sample entry structure:`, JSON.stringify({
+    department: sampleEntry?.department,
+    category: sampleEntry?.category,
+    total: sampleEntry?.total,
+    date: sampleEntry?.date
+  }, null, 2));
+
+  // Count entries in date range
+  const entriesInRange = await db.collection("entries").countDocuments({
+    deleted: { $ne: true },
+    "date.0.value": { $gte: begin, $lt: end }
+  });
+  console.log(`[departmentBudgetSummaries] Entries in date range: ${entriesInRange}`);
 
   // Aggregate spending by department for this fiscal year (DEBIT entries only)
-  // Match entries by date range (fiscal year) and join with categories to filter DEBIT
   const spendingAgg = await db.collection("entries").aggregate([
     {
       $match: {
         deleted: { $ne: true },
-        $or: [
-          // Match by date
-          { "date.0.value": { $gte: begin, $lt: end } },
-          // Or match by dateOfRecord if overridden
-          { 
-            "dateOfRecord.overrideFiscalYear": true,
-            "dateOfRecord.date.0.value": { $gte: begin, $lt: end }
-          }
-        ]
+        "date.0.value": { $gte: begin, $lt: end }
       }
     },
     {
@@ -90,16 +101,22 @@ export const departmentBudgetSummaries = async (
                 $abs: {
                   $multiply: [
                     { $cond: [{ $eq: ["$$t.d", 0] }, 0, { $divide: ["$$t.n", "$$t.d"] }] },
-                    "$$t.s"
+                    { $ifNull: ["$$t.s", 1] }
                   ]
                 }
               }
             }
           }
-        }
+        },
+        count: { $sum: 1 }
       }
     }
   ]).toArray();
+
+  console.log(`[departmentBudgetSummaries] Spending aggregation results: ${spendingAgg.length} departments`);
+  spendingAgg.forEach((agg: any) => {
+    console.log(`[departmentBudgetSummaries] Dept ${agg._id}: spent=${agg.totalSpent}, count=${agg.count}`);
+  });
 
   // Create spending map by department ID
   const spendingByDept = new Map<string, number>();
