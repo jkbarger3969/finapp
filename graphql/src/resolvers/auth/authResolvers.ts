@@ -289,8 +289,16 @@ export const authResolvers = {
           : new ObjectId((parent.userId as any).toString());
         const user = await context.authService!.getUserById(userId);
         if (!user) {
-          console.error(`UserPermission.user: User not found: ${userId}`);
-          throw new Error(`User not found: ${userId}`);
+          console.warn(`UserPermission.user: User not found: ${userId}`);
+          return {
+            _id: userId,
+            email: 'deleted@user',
+            name: 'Deleted User',
+            role: 'USER',
+            canInviteUsers: false,
+            status: 'DISABLED',
+            createdAt: new Date(),
+          } as AuthUser;
         }
         return user;
       } catch (error) {
@@ -309,8 +317,8 @@ export const authResolvers = {
           : new ObjectId((parent.departmentId as any).toString());
         const dept = await context.db.collection("departments").findOne({ _id: deptId });
         if (!dept) {
-          console.error(`UserPermission.department: Department not found: ${deptId}`);
-          throw new Error(`Department not found: ${deptId}`);
+          console.warn(`UserPermission.department: Department not found: ${deptId}`);
+          return { _id: deptId, name: 'Deleted Department', parent: null };
         }
         return dept;
       } catch (error) {
@@ -329,8 +337,16 @@ export const authResolvers = {
           : new ObjectId((parent.grantedBy as any).toString());
         const user = await context.authService!.getUserById(grantedById);
         if (!user) {
-          console.error(`UserPermission.grantedBy: User not found: ${grantedById}`);
-          throw new Error(`GrantedBy user not found: ${grantedById}`);
+          console.warn(`UserPermission.grantedBy: User not found: ${grantedById}`);
+          return {
+            _id: grantedById,
+            email: 'deleted@user',
+            name: 'Deleted User',
+            role: 'USER',
+            canInviteUsers: false,
+            status: 'DISABLED',
+            createdAt: new Date(),
+          } as AuthUser;
         }
         return user;
       } catch (error) {
@@ -349,7 +365,16 @@ export const authResolvers = {
     ): Promise<AuthUser> => {
       const user = await context.authService!.getUserById(parent.userId);
       if (!user) {
-        throw new Error(`User not found: ${parent.userId}`);
+        console.warn(`AuditLogEntry.user: User not found: ${parent.userId}`);
+        return {
+          _id: parent.userId,
+          email: 'deleted@user',
+          name: 'Deleted User',
+          role: 'USER',
+          canInviteUsers: false,
+          status: 'DISABLED',
+          createdAt: new Date(),
+        } as AuthUser;
       }
       return user;
     },
