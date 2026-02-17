@@ -10,6 +10,8 @@ import {
     DialogTitle,
     Divider,
     FormControl,
+    FormControlLabel,
+    Checkbox,
     IconButton,
     InputLabel,
     MenuItem,
@@ -49,6 +51,7 @@ const USERS_QUERY = gql`
             name
             picture
             role
+            canInviteUsers
             status
             lastLoginAt
             createdAt
@@ -91,6 +94,7 @@ const INVITE_USER_MUTATION = gql`
             email
             name
             role
+            canInviteUsers
             status
         }
     }
@@ -101,6 +105,7 @@ const UPDATE_USER_MUTATION = gql`
         updateUser(id: $id, input: $input) {
             id
             role
+            canInviteUsers
             status
         }
     }
@@ -132,13 +137,14 @@ interface User {
     email: string;
     name: string;
     picture?: string;
-    role: 'SUPER_ADMIN' | 'DEPT_ADMIN' | 'USER';
+    role: 'SUPER_ADMIN' | 'USER';
+    canInviteUsers: boolean;
     status: 'INVITED' | 'ACTIVE' | 'DISABLED';
     lastLoginAt?: string;
     createdAt: string;
     departments: {
         id: string;
-        accessLevel: 'VIEW' | 'EDIT' | 'ADMIN';
+        accessLevel: 'VIEW' | 'EDIT';
         department: {
             id: string;
             name: string;
@@ -161,16 +167,17 @@ export default function UsersTab() {
     const { isOnline } = useOnlineStatus();
     const [inviteOpen, setInviteOpen] = useState(false);
     const [editUser, setEditUser] = useState<User | null>(null);
-    const [editRole, setEditRole] = useState<'SUPER_ADMIN' | 'DEPT_ADMIN' | 'USER'>('USER');
-    const [editDepartments, setEditDepartments] = useState<{ departmentId: string; accessLevel: 'VIEW' | 'EDIT' | 'ADMIN' }[]>([]);
+    const [editRole, setEditRole] = useState<'SUPER_ADMIN' | 'USER'>('USER');
+    const [editCanInviteUsers, setEditCanInviteUsers] = useState(false);
+    const [editDepartments, setEditDepartments] = useState<{ departmentId: string; accessLevel: 'VIEW' | 'EDIT' }[]>([]);
     const [permissionUser, setPermissionUser] = useState<User | null>(null);
-    const [newPermission, setNewPermission] = useState<{ departmentId: string; accessLevel: 'VIEW' | 'EDIT' | 'ADMIN' }>({ departmentId: '', accessLevel: 'VIEW' });
+    const [newPermission, setNewPermission] = useState<{ departmentId: string; accessLevel: 'VIEW' | 'EDIT' }>({ departmentId: '', accessLevel: 'VIEW' });
     const [inviteForm, setInviteForm] = useState<{
         email: string;
         name: string;
-        role: 'SUPER_ADMIN' | 'DEPT_ADMIN' | 'USER';
-        departments: { departmentId: string; accessLevel: 'VIEW' | 'EDIT' | 'ADMIN' }[];
-    }>({ email: '', name: '', role: 'USER', departments: [] });
+        canInviteUsers: boolean;
+        departments: { departmentId: string; accessLevel: 'VIEW' | 'EDIT' }[];
+    }>({ email: '', name: '', canInviteUsers: false, departments: [] });
 
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -230,8 +237,8 @@ export default function UsersTab() {
             return;
         }
 
-        // Validate departments for non-super-admin
-        if (inviteForm.role !== 'SUPER_ADMIN' && inviteForm.departments.length === 0) {
+        // Validate departments
+        if (inviteForm.departments.length === 0) {
             setError('Please select at least one department');
             setInviteLoading(false);
             return;
@@ -249,7 +256,8 @@ export default function UsersTab() {
                 input: {
                     email: inviteForm.email,
                     name: inviteForm.name,
-                    role: inviteForm.role,
+                    role: 'USER',
+                    canInviteUsers: inviteForm.canInviteUsers,
                     permissions: permissions
                 }
             });
@@ -262,7 +270,7 @@ export default function UsersTab() {
 
             setSuccessMessage(`Successfully invited ${inviteForm.name}! Invitation email sent to ${inviteForm.email}`);
             setInviteOpen(false);
-            setInviteForm({ email: '', name: '', role: 'USER', departments: [] });
+            setInviteForm({ email: '', name: '', canInviteUsers: false, departments: [] });
             setTimeout(() => refetchUsers({ requestPolicy: 'network-only' }), 300);
         } catch (err) {
             setError('An unexpected error occurred');
@@ -286,16 +294,13 @@ export default function UsersTab() {
     };
 
     // Auto-add subdepartments when selecting a top-level department
-    const addDepartmentWithSubdepts = (departmentId: string, accessLevel: 'VIEW' | 'EDIT' | 'ADMIN', isInvite: boolean) => {
+    const addDepartmentWithSubdepts = (departmentId: string, accessLevel: 'VIEW' | 'EDIT', isInvite: boolean) => {
         const subdepts = getAllSubdepartments(departmentId);
-        console.log(`Adding department ${departmentId} with ${subdepts.length} subdepartments:`, subdepts.map(s => s.name));
 
         const newDepts = [
             { departmentId, accessLevel },
             ...subdepts.map(sub => ({ departmentId: sub.id, accessLevel }))
         ];
-
-        console.log('New departments to add:', newDepts);
 
         if (isInvite) {
             setInviteForm({
@@ -311,8 +316,14 @@ export default function UsersTab() {
         if (!editUser) return;
         setError(null);
 
-        // Update role
-        const result = await updateUser({ id: editUser.id, input: { role: editRole } });
+        // Update role and canInviteUsers
+        const result = await updateUser({ 
+            id: editUser.id, 
+            input: { 
+                role: editRole,
+                canInviteUsers: editCanInviteUsers
+            } 
+        });
         if (result.error) {
             setError(result.error.message);
             return;
@@ -349,12 +360,14 @@ export default function UsersTab() {
 
         setEditUser(null);
         setEditDepartments([]);
+        setEditCanInviteUsers(false);
         refetchUsers({ requestPolicy: 'network-only' });
     };
 
     const openEditRole = (user: User) => {
         setEditUser(user);
         setEditRole(user.role);
+        setEditCanInviteUsers(user.canInviteUsers);
         // Load current department permissions
         setEditDepartments(user.departments.map(d => ({
             departmentId: d.department.id,
@@ -433,7 +446,6 @@ export default function UsersTab() {
     const getRoleColor = (role: string) => {
         switch (role) {
             case 'SUPER_ADMIN': return 'error';
-            case 'DEPT_ADMIN': return 'warning';
             default: return 'default';
         }
     };
@@ -507,11 +519,20 @@ export default function UsersTab() {
                                     </Box>
                                 </TableCell>
                                 <TableCell>
-                                    <Chip
-                                        label={user.role.replace('_', ' ')}
-                                        size="small"
-                                        color={getRoleColor(user.role)}
-                                    />
+                                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                                        <Chip
+                                            label={user.role.replace('_', ' ')}
+                                            size="small"
+                                            color={getRoleColor(user.role)}
+                                        />
+                                        {user.canInviteUsers && user.role !== 'SUPER_ADMIN' && (
+                                            <Chip
+                                                label="Can Invite"
+                                                size="small"
+                                                color="info"
+                                            />
+                                        )}
+                                    </Box>
                                 </TableCell>
                                 <TableCell>
                                     <Chip
@@ -647,243 +668,179 @@ export default function UsersTab() {
                         onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
                         sx={{ mb: 2 }}
                     />
-                    <FormControl fullWidth sx={{ mb: 3 }}>
-                        <InputLabel>Role</InputLabel>
-                        <Select
-                            value={inviteForm.role}
-                            label="Role"
-                            onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value as 'USER' | 'DEPT_ADMIN' | 'SUPER_ADMIN' })}
-                        >
-                            <MenuItem value="USER">User</MenuItem>
-                            <MenuItem value="DEPT_ADMIN">Department Admin</MenuItem>
-                            {isSuperAdmin && <MenuItem value="SUPER_ADMIN">Super Admin</MenuItem>}
-                        </Select>
-                    </FormControl>
 
-                    {inviteForm.role !== 'SUPER_ADMIN' && (
-                        <>
-                            <Divider sx={{ my: 2 }} />
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={inviteForm.canInviteUsers}
+                                onChange={(e) => setInviteForm({ ...inviteForm, canInviteUsers: e.target.checked })}
+                            />
+                        }
+                        label="Allow this user to invite others (limited to their departments)"
+                        sx={{ mb: 2 }}
+                    />
 
-                            {inviteForm.role === 'DEPT_ADMIN' ? (
-                                <>
-                                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                                        Department Admin Access
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                        Select top-level departments this admin will manage. They will have full admin access to selected departments and ALL subdepartments underneath.
-                                    </Typography>
+                    <Divider sx={{ my: 2 }} />
 
-                                    <Paper variant="outlined" sx={{ p: 2 }}>
-                                        {topLevelDepartments.map((topDept) => {
-                                            const subdepts = getSubdepartments(topDept.id);
-                                            const isSelected = inviteForm.departments.some(d => d.departmentId === topDept.id);
+                    <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                        Department Access
+                    </Typography>
 
-                                            return (
-                                                <Box key={topDept.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 1.5, pb: 1.5, borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { mb: 0, pb: 0, border: 'none' } }}>
-                                                    <Button
-                                                        variant={isSelected ? "contained" : "outlined"}
-                                                        size="small"
-                                                        onClick={() => {
-                                                            if (isSelected) {
-                                                                removeDepartmentFromInvite(topDept.id);
-                                                            } else {
-                                                                setInviteForm({
-                                                                    ...inviteForm,
-                                                                    departments: [...inviteForm.departments, { departmentId: topDept.id, accessLevel: 'ADMIN' }]
-                                                                });
-                                                            }
-                                                        }}
-                                                        sx={{ minWidth: 120 }}
-                                                    >
-                                                        {isSelected ? '✓ ' : ''}{topDept.name}
-                                                    </Button>
-                                                    {subdepts.length > 0 && (
-                                                        <Typography variant="caption" color="text.secondary" sx={{ pt: 0.5 }}>
-                                                            Includes: {subdepts.map(s => s.name).join(', ')}
+                    {inviteForm.departments.length > 0 && (
+                        <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Department</TableCell>
+                                        <TableCell>Access Level</TableCell>
+                                        <TableCell align="right">Remove</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {inviteForm.departments.map((dept) => {
+                                        const deptInfo = departments.find(d => d.id === dept.departmentId);
+                                        const parentName = deptInfo?.parent?.__typename === 'Department'
+                                            ? getDepartmentName(deptInfo.parent.id)
+                                            : null;
+                                        return (
+                                            <TableRow key={dept.departmentId}>
+                                                <TableCell>
+                                                    {parentName && (
+                                                        <Typography variant="caption" color="text.secondary" display="block">
+                                                            {parentName}
                                                         </Typography>
                                                     )}
-                                                </Box>
-                                            );
-                                        })}
-                                    </Paper>
+                                                    {deptInfo?.name || dept.departmentId}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Chip label={dept.accessLevel} size="small" />
+                                                </TableCell>
+                                                <TableCell align="right">
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => removeDepartmentFromInvite(dept.departmentId)}
+                                                    >
+                                                        <BlockIcon fontSize="small" />
+                                                    </IconButton>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
 
-                                    {inviteForm.departments.length === 0 && (
-                                        <Alert severity="info" sx={{ mt: 2 }}>
-                                            Select at least one department for this admin to manage.
-                                        </Alert>
-                                    )}
-                                </>
-                            ) : (
-                                <>
-                                    <Typography variant="subtitle2" sx={{ mb: 2 }}>
-                                        Department Access
-                                    </Typography>
+                    <Paper variant="outlined" sx={{ p: 2 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Select departments to grant access:
+                        </Typography>
 
-                                    {inviteForm.departments.length > 0 && (
-                                        <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-                                            <Table size="small">
-                                                <TableHead>
-                                                    <TableRow>
-                                                        <TableCell>Department</TableCell>
-                                                        <TableCell>Access Level</TableCell>
-                                                        <TableCell align="right">Remove</TableCell>
-                                                    </TableRow>
-                                                </TableHead>
-                                                <TableBody>
-                                                    {inviteForm.departments.map((dept) => {
-                                                        const deptInfo = departments.find(d => d.id === dept.departmentId);
-                                                        const parentName = deptInfo?.parent?.__typename === 'Department'
-                                                            ? getDepartmentName(deptInfo.parent.id)
-                                                            : null;
-                                                        return (
-                                                            <TableRow key={dept.departmentId}>
-                                                                <TableCell>
-                                                                    {parentName && (
-                                                                        <Typography variant="caption" color="text.secondary" display="block">
-                                                                            {parentName}
-                                                                        </Typography>
-                                                                    )}
-                                                                    {deptInfo?.name || dept.departmentId}
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    <Chip label={dept.accessLevel} size="small" />
-                                                                </TableCell>
-                                                                <TableCell align="right">
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        onClick={() => removeDepartmentFromInvite(dept.departmentId)}
-                                                                    >
-                                                                        <BlockIcon fontSize="small" />
-                                                                    </IconButton>
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        );
-                                                    })}
-                                                </TableBody>
-                                            </Table>
-                                        </TableContainer>
-                                    )}
+                        {topLevelDepartments.map((topDept) => {
+                            const subdepts = getSubdepartments(topDept.id);
+                            const isTopSelected = inviteForm.departments.some(d => d.departmentId === topDept.id);
 
-                                    <Paper variant="outlined" sx={{ p: 2 }}>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                            Select departments to grant access:
+                            return (
+                                <Box key={topDept.id} sx={{ mb: 2 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', minWidth: 150 }}>
+                                            {topDept.name}
                                         </Typography>
+                                        {!isTopSelected ? (
+                                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    onClick={() => addDepartmentWithSubdepts(topDept.id, 'VIEW', true)}
+                                                >
+                                                    +View
+                                                </Button>
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    onClick={() => addDepartmentWithSubdepts(topDept.id, 'EDIT', true)}
+                                                >
+                                                    +Edit
+                                                </Button>
+                                            </Box>
+                                        ) : (
+                                            <Chip
+                                                label={inviteForm.departments.find(d => d.departmentId === topDept.id)?.accessLevel}
+                                                size="small"
+                                                color="primary"
+                                                onDelete={() => removeDepartmentFromInvite(topDept.id)}
+                                            />
+                                        )}
+                                    </Box>
 
-                                        {topLevelDepartments.map((topDept) => {
-                                            const subdepts = getSubdepartments(topDept.id);
-                                            const isTopSelected = inviteForm.departments.some(d => d.departmentId === topDept.id);
-
-                                            return (
-                                                <Box key={topDept.id} sx={{ mb: 2 }}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', minWidth: 150 }}>
-                                                            {topDept.name}
+                                    {subdepts.length > 0 && (
+                                        <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider' }}>
+                                            {subdepts.map((subDept) => {
+                                                const isSubSelected = inviteForm.departments.some(d => d.departmentId === subDept.id);
+                                                return (
+                                                    <Box key={subDept.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
+                                                        <Typography variant="body2" sx={{ minWidth: 140 }}>
+                                                            {subDept.name}
                                                         </Typography>
-                                                        {!isTopSelected ? (
+                                                        {!isSubSelected ? (
                                                             <Box sx={{ display: 'flex', gap: 0.5 }}>
                                                                 <Button
                                                                     size="small"
-                                                                    variant="outlined"
-                                                                    onClick={() => addDepartmentWithSubdepts(topDept.id, 'VIEW', true)}
+                                                                    variant="text"
+                                                                    onClick={() => setInviteForm({
+                                                                        ...inviteForm,
+                                                                        departments: [...inviteForm.departments, { departmentId: subDept.id, accessLevel: 'VIEW' }]
+                                                                    })}
+                                                                    sx={{ minWidth: 'auto', px: 1 }}
                                                                 >
                                                                     +View
                                                                 </Button>
                                                                 <Button
                                                                     size="small"
-                                                                    variant="outlined"
-                                                                    onClick={() => addDepartmentWithSubdepts(topDept.id, 'EDIT', true)}
+                                                                    variant="text"
+                                                                    onClick={() => setInviteForm({
+                                                                        ...inviteForm,
+                                                                        departments: [...inviteForm.departments, { departmentId: subDept.id, accessLevel: 'EDIT' }]
+                                                                    })}
+                                                                    sx={{ minWidth: 'auto', px: 1 }}
                                                                 >
                                                                     +Edit
                                                                 </Button>
                                                             </Box>
                                                         ) : (
                                                             <Chip
-                                                                label={inviteForm.departments.find(d => d.departmentId === topDept.id)?.accessLevel}
+                                                                label={inviteForm.departments.find(d => d.departmentId === subDept.id)?.accessLevel}
                                                                 size="small"
                                                                 color="primary"
-                                                                onDelete={() => removeDepartmentFromInvite(topDept.id)}
+                                                                onDelete={() => removeDepartmentFromInvite(subDept.id)}
                                                             />
                                                         )}
                                                     </Box>
-
-                                                    {subdepts.length > 0 && (
-                                                        <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider' }}>
-                                                            {subdepts.map((subDept) => {
-                                                                const isSubSelected = inviteForm.departments.some(d => d.departmentId === subDept.id);
-                                                                return (
-                                                                    <Box key={subDept.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
-                                                                        <Typography variant="body2" sx={{ minWidth: 140 }}>
-                                                                            {subDept.name}
-                                                                        </Typography>
-                                                                        {!isSubSelected ? (
-                                                                            <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                                                                <Button
-                                                                                    size="small"
-                                                                                    variant="text"
-                                                                                    onClick={() => setInviteForm({
-                                                                                        ...inviteForm,
-                                                                                        departments: [...inviteForm.departments, { departmentId: subDept.id, accessLevel: 'VIEW' }]
-                                                                                    })}
-                                                                                    sx={{ minWidth: 'auto', px: 1 }}
-                                                                                >
-                                                                                    +View
-                                                                                </Button>
-                                                                                <Button
-                                                                                    size="small"
-                                                                                    variant="text"
-                                                                                    onClick={() => setInviteForm({
-                                                                                        ...inviteForm,
-                                                                                        departments: [...inviteForm.departments, { departmentId: subDept.id, accessLevel: 'EDIT' }]
-                                                                                    })}
-                                                                                    sx={{ minWidth: 'auto', px: 1 }}
-                                                                                >
-                                                                                    +Edit
-                                                                                </Button>
-                                                                            </Box>
-                                                                        ) : (
-                                                                            <Chip
-                                                                                label={inviteForm.departments.find(d => d.departmentId === subDept.id)?.accessLevel}
-                                                                                size="small"
-                                                                                color="primary"
-                                                                                onDelete={() => removeDepartmentFromInvite(subDept.id)}
-                                                                            />
-                                                                        )}
-                                                                    </Box>
-                                                                );
-                                                            })}
-                                                        </Box>
-                                                    )}
-                                                </Box>
-                                            );
-                                        })}
-                                    </Paper>
-
-                                    {inviteForm.departments.length === 0 && (
-                                        <Alert severity="info" sx={{ mt: 2 }}>
-                                            Add at least one department so the user can access the system.
-                                        </Alert>
+                                                );
+                                            })}
+                                        </Box>
                                     )}
-                                </>
-                            )}
-                        </>
-                    )}
+                                </Box>
+                            );
+                        })}
+                    </Paper>
 
-                    {inviteForm.role === 'SUPER_ADMIN' && (
-                        <Alert severity="warning" sx={{ mt: 2 }}>
-                            Super Admins have access to all departments automatically.
+                    {inviteForm.departments.length === 0 && (
+                        <Alert severity="info" sx={{ mt: 2 }}>
+                            Add at least one department so the user can access the system.
                         </Alert>
                     )}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => {
                         setInviteOpen(false);
-                        setInviteForm({ email: '', name: '', role: 'USER', departments: [] });
+                        setInviteForm({ email: '', name: '', canInviteUsers: false, departments: [] });
                         setError(null);
                     }}>Cancel</Button>
                     <Button
                         onClick={handleInvite}
                         variant="contained"
-                        disabled={inviteLoading || !inviteForm.email || !inviteForm.name || (inviteForm.role !== 'SUPER_ADMIN' && inviteForm.departments.length === 0)}
+                        disabled={inviteLoading || !inviteForm.email || !inviteForm.name || inviteForm.departments.length === 0}
                         startIcon={inviteLoading ? <CircularProgress size={20} color="inherit" /> : null}
                     >
                         {inviteLoading ? 'Sending Invite...' : 'Invite User'}
@@ -895,28 +852,20 @@ export default function UsersTab() {
                 <DialogTitle>Edit User</DialogTitle>
                 <DialogContent>
                     <Typography sx={{ mb: 2 }}>
-                        Change role for <strong>{editUser?.name}</strong> ({editUser?.email})
+                        Edit settings for <strong>{editUser?.name}</strong> ({editUser?.email})
                     </Typography>
                     <FormControl fullWidth sx={{ mt: 1 }}>
                         <InputLabel>Role</InputLabel>
                         <Select
                             value={editRole}
                             label="Role"
-                            onChange={(e) => setEditRole(e.target.value as 'SUPER_ADMIN' | 'DEPT_ADMIN' | 'USER')}
+                            onChange={(e) => setEditRole(e.target.value as 'SUPER_ADMIN' | 'USER')}
                         >
                             <MenuItem value="USER">
                                 <Box>
                                     <Typography>User</Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                        Can view and edit assigned departments only
-                                    </Typography>
-                                </Box>
-                            </MenuItem>
-                            <MenuItem value="DEPT_ADMIN">
-                                <Box>
-                                    <Typography>Department Admin</Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Can manage users within their assigned departments
+                                        Full access to transactions, refunds, and reports
                                     </Typography>
                                 </Box>
                             </MenuItem>
@@ -924,12 +873,26 @@ export default function UsersTab() {
                                 <Box>
                                     <Typography>Super Admin</Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                        Full access to all departments and settings
+                                        Full access including Admin tab and user management
                                     </Typography>
                                 </Box>
                             </MenuItem>
                         </Select>
                     </FormControl>
+
+                    {editRole !== 'SUPER_ADMIN' && (
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={editCanInviteUsers}
+                                    onChange={(e) => setEditCanInviteUsers(e.target.checked)}
+                                />
+                            }
+                            label="Allow this user to invite others (limited to their departments)"
+                            sx={{ mt: 2, display: 'block' }}
+                        />
+                    )}
+
                     {editRole === 'SUPER_ADMIN' && editUser?.role !== 'SUPER_ADMIN' && (
                         <Alert severity="warning" sx={{ mt: 2 }}>
                             Granting Super Admin access will give this user full control over all departments and system settings.
@@ -1193,13 +1156,12 @@ export default function UsersTab() {
                                 onChange={(e) =>
                                     setNewPermission({
                                         ...newPermission,
-                                        accessLevel: e.target.value as 'VIEW' | 'EDIT' | 'ADMIN',
+                                        accessLevel: e.target.value as 'VIEW' | 'EDIT',
                                     })
                                 }
                             >
                                 <MenuItem value="VIEW">View</MenuItem>
                                 <MenuItem value="EDIT">Edit</MenuItem>
-                                <MenuItem value="ADMIN">Admin</MenuItem>
                             </Select>
                         </FormControl>
                         <Button
