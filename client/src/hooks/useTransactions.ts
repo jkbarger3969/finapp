@@ -76,6 +76,10 @@ const GET_ENTRIES_BY_DEPARTMENT = `
       }
     }
     entriesCount(where: $where)
+    entriesSummary(where: $where) {
+      count
+      balance
+    }
   }
 `;
 
@@ -257,6 +261,7 @@ export function useTransactions({
   return {
     entries: result.data?.entries || [],
     totalCount: result.data?.entriesCount || 0,
+    summary: result.data?.entriesSummary || { count: 0, balance: 0 },
     fetching: result.fetching,
     error: result.error,
     refresh,

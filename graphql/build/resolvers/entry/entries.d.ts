@@ -8,3 +8,4 @@ export declare const whereEntries: (entriesWhere: EntriesWhere, db: Db, { exclud
 export declare const entries: QueryResolvers["entries"];
 export declare const searchEntries: QueryResolvers["searchEntries"];
 export declare const entriesCount: QueryResolvers["entriesCount"];
+export declare const entriesSummary: QueryResolvers["entriesSummary"];

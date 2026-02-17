@@ -250,6 +250,12 @@ type Query {
   """
   searchEntries(query: String!, limit: Int = 50): [Entry!]!
   entriesCount(where: EntriesWhere, filterRefunds: Boolean): Int!
+  entriesSummary(where: EntriesWhere): EntriesSummary!
+}
+
+type EntriesSummary {
+  count: Int!
+  balance: Float!
 }
 
 type AddNewEntryPayload {

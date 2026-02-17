@@ -385,7 +385,7 @@ export default function Transactions() {
     const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 25 });
 
     // Use Custom Hook for data fetching
-    const { entries, totalCount, fetching, error, refresh } = useTransactions({
+    const { entries, totalCount, summary, fetching, error, refresh } = useTransactions({
         departmentId: filterDepartmentId || contextDeptId,
         fiscalYearId,
         reconcileFilter,
@@ -744,55 +744,7 @@ export default function Transactions() {
         }));
     }, [data, showMatchingOnly, expandedRefunds]);
 
-    // Calculate summary
-    const summary = useMemo(() => {
-        if (!rows.length) return { total: 0, count: 0, balance: 0 };
 
-        // Avoid double counting if original is shown!
-        // We should only sum "real" rows.
-        // If isOriginalForRefund is true, it's a duplicate visualization. Don't sum it?
-        // Wait, normally we sum everything.
-        // In "Show Matching", we show Refund AND Original (if expanded? No, currently we filtered based on expanded).
-        // If not expanded, we don't see original.
-        // The original logic pushed originals ALWAYS.
-        // My new logic only pushes original if expanded.
-        // BUT, a refund is a credit (positive?). Original is debit (negative).
-        // Balance = Sum.
-        // If I hide original, balance is just Refunds (positive).
-        // If I show original, balance is (Original + Refund) ~ 0.
-        // Users "Show Matching Transactions" likely want to see the net effect (0).
-        // So I should probably include original even if collapsed?
-        // But DataGrid only shows rows in `rows`.
-        // If row is not in `rows`, user doesn't see it.
-        // If I want to sum it, I need to calculate sum based on data, not rows.
-        // But `summary` is usually "Summary of visible rows".
-        // I'll stick to summing visible rows. If they expand, balance changes? That's confusing.
-        // Maybe I should calculate summary from `data.entries` filtered by query?
-        // But client-side `showMatchingOnly` filters the view.
-        // If `showMatchingOnly`, we are looking at specific subset.
-        // I think summing visible rows is standard for this grid.
-        // EXCEPT `isOriginalForRefund`.
-        // If I expand, I see the original.
-        // I'll filter out `isOriginalForRefund` from summary to avoid confusion? 
-        // No, if I see it, I expect it to be in the total.
-        // I'll sum everything visible.
-
-        const balance = rows.reduce((sum: number, row: any) => {
-            // Don't double count if we have parent-child visual dups?
-            // `isOriginalForRefund` is a visual copy of the original entry.
-            // Pure refunds `isRefund` are real transactions (added locally relative to entry).
-            // `entry.refunds`.
-            // Real logic: calculated from `row.total`.
-            const amount = parseRational(row.total);
-            const isCredit = row.category?.type === "CREDIT";
-            return sum + (isCredit ? amount : -amount);
-        }, 0);
-
-        return {
-            count: rows.length,
-            balance,
-        };
-    }, [rows]);
 
     // Count active filters
     const activeFilters = useMemo(() => {
@@ -886,31 +838,6 @@ export default function Transactions() {
                 <PageHeader
                     title="Transactions"
                     subtitle="View and manage all financial entries"
-                    actions={
-                        <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                            <Box sx={{ textAlign: 'right' }}>
-                                <Typography variant="caption" color="text.secondary" display="block">
-                                    Total Transactions
-                                </Typography>
-                                <Typography variant="h6" lineHeight={1}>
-                                    {summary.count}
-                                </Typography>
-                            </Box>
-                            <Divider orientation="vertical" flexItem />
-                            <Box sx={{ textAlign: 'right' }}>
-                                <Typography variant="caption" color="text.secondary" display="block">
-                                    Balance
-                                </Typography>
-                                <Typography
-                                    variant="h6"
-                                    lineHeight={1}
-                                    color={summary.balance >= 0 ? "success.main" : "error.main"}
-                                >
-                                    {currencyFormatter.format(summary.balance)}
-                                </Typography>
-                            </Box>
-                        </Box>
-                    }
                 />
 
                 {/* Filter Controls - Optimized Toolbar Layout */}
@@ -976,137 +903,164 @@ export default function Transactions() {
                                 }
                                 label={<Typography variant="body2" noWrap>Show Transactions with Refunds</Typography>}
                             />
+
+                            {/* Stats */}
+                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', ml: 'auto' }}>
+                                <Box sx={{ textAlign: 'right' }}>
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                        Total Transactions
+                                    </Typography>
+                                    <Typography variant="h6" lineHeight={1}>
+                                        {summary.count}
+                                    </Typography>
+                                </Box>
+                                <Divider orientation="vertical" flexItem sx={{ height: 40 }} />
+                                <Box sx={{ textAlign: 'right' }}>
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                        Balance
+                                    </Typography>
+                                    <Typography
+                                        variant="h6"
+                                        lineHeight={1}
+                                        color={summary.balance >= 0 ? "success.main" : "error.main"}
+                                    >
+                                        {currencyFormatter.format(summary.balance)}
+                                    </Typography>
+                                </Box>
+                            </Box>
                         </Box>
 
                         <Divider />
 
                         {/* Row 2: Filters */}
-                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                            {/* Dept */}
+                            <TextField
+                                select
+                                label="Dept"
+                                size="small"
+                                value={topLevelDeptId}
+                                onChange={(e) => {
+                                    setTopLevelDeptId(e.target.value);
+                                    setSubDeptId('');
+                                }}
+                                sx={{ width: 120 }}
+                            >
+                                <MenuItem value="">All</MenuItem>
+                                {topLevelDepartments.map((dept: any) => (
+                                    <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
+                                ))}
+                            </TextField>
+
+                            {subDepartments.length > 0 && (
                                 <TextField
                                     select
-                                    label="Type"
+                                    label="Sub Dept"
                                     size="small"
-                                    value={entryType}
-                                    onChange={(e) => {
-                                        const newType = e.target.value;
-                                        setEntryType(newType);
-                                        if (selectedCategory && newType !== 'ALL' && selectedCategory.type !== newType) {
-                                            setSelectedCategory(null);
-                                        }
-                                    }}
-                                    sx={{ width: 100 }}
-                                >
-                                    <MenuItem value="ALL">All</MenuItem>
-                                    <MenuItem value="DEBIT">Expense</MenuItem>
-                                    <MenuItem value="CREDIT">Income</MenuItem>
-                                </TextField>
-
-                                <TextField
-                                    select
-                                    label="Status"
-                                    size="small"
-                                    value={reconcileFilter}
-                                    onChange={(e) => setReconcileFilter(e.target.value)}
-                                    sx={{ width: 130 }}
-                                >
-                                    <MenuItem value="ALL">All</MenuItem>
-                                    <MenuItem value="RECONCILED">Reconciled</MenuItem>
-                                    <MenuItem value="UNRECONCILED">Unreconciled</MenuItem>
-                                </TextField>
-                            </Box>
-
-                            {/* Entity & Category (Flexible) */}
-                            <Box sx={{ display: 'flex', gap: 1, flexGrow: 1, minWidth: 300 }}>
-                                <Box sx={{ flex: 1, minWidth: 150 }}>
-                                    <CategoryAutocomplete
-                                        categories={categoryOptions.filter((cat: any) => {
-                                            if (entryType === 'ALL') return true;
-                                            if (entryType === 'CREDIT') return cat.type === 'CREDIT';
-                                            if (entryType === 'DEBIT') return cat.type === 'DEBIT';
-                                            return true;
-                                        })}
-                                        value={selectedCategory?.id || ''}
-                                        onChange={(categoryId) => {
-                                            const cat = categories.find((c: any) => c.id === categoryId);
-                                            setSelectedCategory(cat || null);
-                                        }}
-                                    />
-                                </Box>
-                                <Box sx={{ flex: 1, minWidth: 150 }}>
-                                    <PersonAutocomplete
-                                        people={personOptions}
-                                        value={selectedPerson?.id || ''}
-                                        onChange={(personId) => {
-                                            const person = people.find((p: any) => p.id === personId);
-                                            setSelectedPerson(person || null);
-                                            if (person) setSelectedBusiness(null);
-                                        }}
-                                        label="Person"
-                                    />
-                                </Box>
-                                <Box sx={{ flex: 1, minWidth: 150 }}>
-                                    <BusinessAutocomplete
-                                        businesses={businessOptions}
-                                        value={selectedBusiness?.id || ''}
-                                        onChange={(businessId) => {
-                                            const biz = businesses.find((b: any) => b.id === businessId);
-                                            setSelectedBusiness(biz || null);
-                                            if (biz) setSelectedPerson(null);
-                                        }}
-                                        label="Business"
-                                    />
-                                </Box>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                                <TextField
-                                    select
-                                    label="Dept"
-                                    size="small"
-                                    value={topLevelDeptId}
-                                    onChange={(e) => {
-                                        setTopLevelDeptId(e.target.value);
-                                        setSubDeptId('');
-                                    }}
+                                    value={subDeptId}
+                                    onChange={(e) => setSubDeptId(e.target.value)}
                                     sx={{ width: 120 }}
                                 >
                                     <MenuItem value="">All</MenuItem>
-                                    {topLevelDepartments.map((dept: any) => (
+                                    {subDepartments.map((dept: any) => (
                                         <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
                                     ))}
                                 </TextField>
+                            )}
 
-                                {subDepartments.length > 0 && (
-                                    <TextField
-                                        select
-                                        label="Sub Dept"
-                                        size="small"
-                                        value={subDeptId}
-                                        onChange={(e) => setSubDeptId(e.target.value)}
-                                        sx={{ width: 120 }}
-                                    >
-                                        <MenuItem value="">All</MenuItem>
-                                        {subDepartments.map((dept: any) => (
-                                            <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
-                                        ))}
-                                    </TextField>
-                                )}
+                            {/* Type */}
+                            <TextField
+                                select
+                                label="Type"
+                                size="small"
+                                value={entryType}
+                                onChange={(e) => {
+                                    const newType = e.target.value;
+                                    setEntryType(newType);
+                                    if (selectedCategory && newType !== 'ALL' && selectedCategory.type !== newType) {
+                                        setSelectedCategory(null);
+                                    }
+                                }}
+                                sx={{ width: 120 }}
+                            >
+                                <MenuItem value="ALL">All</MenuItem>
+                                <MenuItem value="DEBIT">Expense</MenuItem>
+                                <MenuItem value="CREDIT">Income</MenuItem>
+                            </TextField>
 
-                                <TextField
-                                    select
-                                    label="Payment"
-                                    size="small"
-                                    value={paymentMethodType}
-                                    onChange={(e) => setPaymentMethodType(e.target.value)}
-                                    sx={{ width: 100 }}
-                                >
-                                    <MenuItem value="ALL">All</MenuItem>
-                                    <MenuItem value="check">Check</MenuItem>
-                                    <MenuItem value="card">Card</MenuItem>
-                                    <MenuItem value="cash">Cash</MenuItem>
-                                    <MenuItem value="online">Online</MenuItem>
-                                </TextField>
+                            {/* Status */}
+                            <TextField
+                                select
+                                label="Status"
+                                size="small"
+                                value={reconcileFilter}
+                                onChange={(e) => setReconcileFilter(e.target.value)}
+                                sx={{ width: 120 }}
+                            >
+                                <MenuItem value="ALL">All</MenuItem>
+                                <MenuItem value="RECONCILED">Reconciled</MenuItem>
+                                <MenuItem value="UNRECONCILED">Unreconciled</MenuItem>
+                            </TextField>
+
+                            {/* Payment */}
+                            <TextField
+                                select
+                                label="Payment"
+                                size="small"
+                                value={paymentMethodType}
+                                onChange={(e) => setPaymentMethodType(e.target.value)}
+                                sx={{ width: 120 }}
+                            >
+                                <MenuItem value="ALL">All</MenuItem>
+                                <MenuItem value="CARD">Card</MenuItem>
+                                <MenuItem value="CHECK">Check</MenuItem>
+                                <MenuItem value="cash">Cash</MenuItem>
+                                <MenuItem value="online">Online</MenuItem>
+                            </TextField>
+
+                            {/* Category */}
+                            <Box sx={{ width: 150 }}>
+                                <CategoryAutocomplete
+                                    categories={categoryOptions.filter((cat: any) => {
+                                        if (entryType === 'ALL') return true;
+                                        if (entryType === 'CREDIT') return cat.type === 'CREDIT';
+                                        if (entryType === 'DEBIT') return cat.type === 'DEBIT';
+                                        return true;
+                                    })}
+                                    value={selectedCategory?.id || ''}
+                                    onChange={(categoryId) => {
+                                        const cat = categories.find((c: any) => c.id === categoryId);
+                                        setSelectedCategory(cat || null);
+                                    }}
+                                />
+                            </Box>
+
+                            {/* Person */}
+                            <Box sx={{ width: 150 }}>
+                                <PersonAutocomplete
+                                    people={personOptions}
+                                    value={selectedPerson?.id || ''}
+                                    onChange={(personId) => {
+                                        const person = people.find((p: any) => p.id === personId);
+                                        setSelectedPerson(person || null);
+                                        if (person) setSelectedBusiness(null);
+                                    }}
+                                    label="Person"
+                                />
+                            </Box>
+
+                            {/* Business */}
+                            <Box sx={{ width: 150 }}>
+                                <BusinessAutocomplete
+                                    businesses={businessOptions}
+                                    value={selectedBusiness?.id || ''}
+                                    onChange={(businessId) => {
+                                        const biz = businesses.find((b: any) => b.id === businessId);
+                                        setSelectedBusiness(biz || null);
+                                        if (biz) setSelectedPerson(null);
+                                    }}
+                                    label="Business"
+                                />
                             </Box>
                         </Box>
 

@@ -456,6 +456,11 @@ export declare enum EntityType {
     Department = "DEPARTMENT",
     Person = "PERSON"
 }
+export declare type EntriesSummary = {
+    __typename?: 'EntriesSummary';
+    balance: Scalars['Float']['output'];
+    count: Scalars['Int']['output'];
+};
 export declare type EntriesWhere = {
     and?: InputMaybe<Array<EntriesWhere>>;
     category?: InputMaybe<CategoriesWhere>;
@@ -951,6 +956,7 @@ export declare type Query = {
      */
     entries: Array<Entry>;
     entriesCount: Scalars['Int']['output'];
+    entriesSummary: EntriesSummary;
     entry?: Maybe<Entry>;
     entryItem?: Maybe<EntryItem>;
     entryRefund?: Maybe<EntryRefund>;
@@ -1026,6 +1032,9 @@ export declare type QueryEntriesArgs = {
 };
 export declare type QueryEntriesCountArgs = {
     filterRefunds?: InputMaybe<Scalars['Boolean']['input']>;
+    where?: InputMaybe<EntriesWhere>;
+};
+export declare type QueryEntriesSummaryArgs = {
     where?: InputMaybe<EntriesWhere>;
 };
 export declare type QueryEntryArgs = {
@@ -1440,6 +1449,7 @@ export declare type ResolversTypes = {
     Entity: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['Entity']>;
     EntityInput: EntityInput;
     EntityType: EntityType;
+    EntriesSummary: ResolverTypeWrapper<EntriesSummary>;
     EntriesWhere: EntriesWhere;
     EntriesWhereDateOfRecord: EntriesWhereDateOfRecord;
     EntriesWhereSource: EntriesWhereSource;
@@ -1457,6 +1467,7 @@ export declare type ResolversTypes = {
         fiscalYear: ResolversTypes['FiscalYear'];
     }>;
     FiscalYearsWhere: FiscalYearsWhere;
+    Float: ResolverTypeWrapper<Scalars['Float']['output']>;
     GoogleAuthUrl: ResolverTypeWrapper<GoogleAuthUrl>;
     GrantPermissionInput: GrantPermissionInput;
     ID: ResolverTypeWrapper<Scalars['ID']['output']>;
@@ -1649,6 +1660,7 @@ export declare type ResolversParentTypes = {
     EntitiesWhere: EntitiesWhere;
     Entity: ResolversUnionTypes<ResolversParentTypes>['Entity'];
     EntityInput: EntityInput;
+    EntriesSummary: EntriesSummary;
     EntriesWhere: EntriesWhere;
     EntriesWhereDateOfRecord: EntriesWhereDateOfRecord;
     EntriesWhereSource: EntriesWhereSource;
@@ -1665,6 +1677,7 @@ export declare type ResolversParentTypes = {
         fiscalYear: ResolversParentTypes['FiscalYear'];
     };
     FiscalYearsWhere: FiscalYearsWhere;
+    Float: Scalars['Float']['output'];
     GoogleAuthUrl: GoogleAuthUrl;
     GrantPermissionInput: GrantPermissionInput;
     ID: Scalars['ID']['output'];
@@ -1961,6 +1974,10 @@ export declare type EditHistoryEntryResolvers<ContextType = Context, ParentType 
 export declare type EntityResolvers<ContextType = Context, ParentType = ResolversParentTypes['Entity']> = {
     __resolveType?: TypeResolveFn<'Business' | 'Department' | 'Person', ParentType, ContextType>;
 };
+export declare type EntriesSummaryResolvers<ContextType = Context, ParentType = ResolversParentTypes['EntriesSummary']> = {
+    balance?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+    count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
 export declare type EntryResolvers<ContextType = Context, ParentType = ResolversParentTypes['Entry']> = {
     attachments?: Resolver<Array<ResolversTypes['Attachment']>, ParentType, ContextType>;
     category?: Resolver<ResolversTypes['Category'], ParentType, ContextType>;
@@ -2138,6 +2155,7 @@ export declare type QueryResolvers<ContextType = Context, ParentType = Resolvers
     entities?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType, RequireFields<QueryEntitiesArgs, 'where'>>;
     entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, 'filterRefunds' | 'limit' | 'offset'>>;
     entriesCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType, Partial<QueryEntriesCountArgs>>;
+    entriesSummary?: Resolver<ResolversTypes['EntriesSummary'], ParentType, ContextType, Partial<QueryEntriesSummaryArgs>>;
     entry?: Resolver<Maybe<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntryArgs, 'id'>>;
     entryItem?: Resolver<Maybe<ResolversTypes['EntryItem']>, ParentType, ContextType, RequireFields<QueryEntryItemArgs, 'id'>>;
     entryRefund?: Resolver<Maybe<ResolversTypes['EntryRefund']>, ParentType, ContextType, RequireFields<QueryEntryRefundArgs, 'id'>>;
@@ -2246,6 +2264,7 @@ export declare type Resolvers<ContextType = Context> = {
     DepartmentAncestor?: DepartmentAncestorResolvers<ContextType>;
     EditHistoryEntry?: EditHistoryEntryResolvers<ContextType>;
     Entity?: EntityResolvers<ContextType>;
+    EntriesSummary?: EntriesSummaryResolvers<ContextType>;
     Entry?: EntryResolvers<ContextType>;
     EntryDateOfRecord?: EntryDateOfRecordResolvers<ContextType>;
     EntryItem?: EntryItemResolvers<ContextType>;
