@@ -430,6 +430,8 @@ export default function Transactions() {
             sortable: false,
             filterable: false,
             disableColumnMenu: true,
+            align: 'center',
+            headerAlign: 'center',
             renderCell: (params: any) => {
                 if (params.row.isRefund) return null;
                 return (
@@ -1287,6 +1289,7 @@ export default function Transactions() {
                                                 letterSpacing: '0.1em',
                                                 fontSize: '0.75rem',
                                                 fontWeight: 700,
+                                                borderLeft: '4px solid transparent', // Match row offset
                                             },
                                             "& .MuiDataGrid-row": {
                                                 transition: "all 0.2s",
@@ -1328,11 +1331,7 @@ export default function Transactions() {
                                                 justifyContent: "center !important",
                                             },
 
-                                            // Remove bottom border from last displayed row
                                             "& .MuiDataGrid-virtualScrollerContent .MuiDataGrid-row:last-child .MuiDataGrid-cell": {
-                                                borderBottom: "none !important"
-                                            },
-                                            "& .MuiDataGrid-row:last-child .MuiDataGrid-cell": {
                                                 borderBottom: "none !important"
                                             },
                                             "& .MuiDataGrid-row:last-of-type .MuiDataGrid-cell": {
