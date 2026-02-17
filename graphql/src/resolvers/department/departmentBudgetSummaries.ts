@@ -47,31 +47,18 @@ export const departmentBudgetSummaries = async (
     }
   });
 
+  // Get all DEBIT category IDs for filtering expenses
+  const debitCategories = await db.collection("categories").find({ type: "Debit" }).toArray();
+  const debitCategoryIds = debitCategories.map((cat: any) => cat._id);
+
   // Aggregate spending by department for this fiscal year (DEBIT entries only)
   // Note: entries use historical document format where fields are stored as field.0.value
-  // - deleted.0.value (boolean) 
-  // - date.0.value (Date)
-  // - category.0.value (ObjectId)
-  // - department.0.value (ObjectId)
-  // - total.value[0] contains {n, d, s} for rational number
   const spendingAgg = await db.collection("entries").aggregate([
     {
       $match: {
         "deleted.0.value": { $ne: true },
-        "date.0.value": { $gte: begin, $lt: end }
-      }
-    },
-    {
-      $lookup: {
-        from: "categories",
-        localField: "category.0.value",
-        foreignField: "_id",
-        as: "categoryDoc"
-      }
-    },
-    {
-      $match: {
-        "categoryDoc.type": "Debit"
+        "date.0.value": { $gte: begin, $lt: end },
+        "category.0.value": { $in: debitCategoryIds }
       }
     },
     {
