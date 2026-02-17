@@ -250,6 +250,7 @@ export const authResolvers = {
 
   AuthUser: {
     id: (parent: AuthUser) => parent._id.toString(),
+    canInviteUsers: (parent: AuthUser) => parent.canInviteUsers ?? false,
     departments: async (
       parent: AuthUser,
       _args: unknown,

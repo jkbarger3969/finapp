@@ -66,6 +66,7 @@ export declare const authResolvers: {
     };
     AuthUser: {
         id: (parent: AuthUser) => string;
+        canInviteUsers: (parent: AuthUser) => boolean;
         departments: (parent: AuthUser, _args: unknown, context: Context<unknown>) => Promise<UserPermission[]>;
         invitedBy: (parent: AuthUser, _args: unknown, context: Context<unknown>) => Promise<AuthUser | null>;
     };
