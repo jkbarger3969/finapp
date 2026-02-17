@@ -886,6 +886,31 @@ export default function Transactions() {
                 <PageHeader
                     title="Transactions"
                     subtitle="View and manage all financial entries"
+                    actions={
+                        <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                            <Box sx={{ textAlign: 'right' }}>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                    Total Transactions
+                                </Typography>
+                                <Typography variant="h6" lineHeight={1}>
+                                    {summary.count}
+                                </Typography>
+                            </Box>
+                            <Divider orientation="vertical" flexItem />
+                            <Box sx={{ textAlign: 'right' }}>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                    Balance
+                                </Typography>
+                                <Typography
+                                    variant="h6"
+                                    lineHeight={1}
+                                    color={summary.balance >= 0 ? "success.main" : "error.main"}
+                                >
+                                    {currencyFormatter.format(summary.balance)}
+                                </Typography>
+                            </Box>
+                        </Box>
+                    }
                 />
 
                 {/* Filter Controls - Optimized Toolbar Layout */}
@@ -925,11 +950,12 @@ export default function Transactions() {
                             </Box>
 
                             {/* Search (Flexible) */}
-                            <Box sx={{ flexGrow: 1, minWidth: 200 }}>
+                            <Box>
                                 <TextField
                                     fullWidth
                                     placeholder="Search transactions..."
                                     size="small"
+                                    sx={{ width: 300 }}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     InputProps={{
@@ -948,7 +974,7 @@ export default function Transactions() {
                                         size="small"
                                     />
                                 }
-                                label={<Typography variant="body2" noWrap>Show Matching</Typography>}
+                                label={<Typography variant="body2" noWrap>Show Transactions with Refunds</Typography>}
                             />
                         </Box>
 
@@ -1161,36 +1187,7 @@ export default function Transactions() {
                 ) : (
                     <Fade in timeout={600}>
                         <Box>
-                            {/* Summary Bar */}
-                            <Paper sx={{ p: 2, mb: 2, display: "flex", gap: 4 }}>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Total Transactions
-                                    </Typography>
-                                    <Typography variant="h6">{summary.count}</Typography>
-                                </Box>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Balance
-                                    </Typography>
-                                    <Typography
-                                        variant="h6"
-                                        color={summary.balance >= 0 ? "success.main" : "error.main"}
-                                    >
-                                        {currencyFormatter.format(summary.balance)}
-                                    </Typography>
-                                </Box>
-                                {reconcileFilter === "UNRECONCILED" && (
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Unreconciled
-                                        </Typography>
-                                        <Typography variant="h6" color="warning.main">
-                                            {summary.count}
-                                        </Typography>
-                                    </Box>
-                                )}
-                            </Paper>
+
 
                             {/* Data Grid */}
                             <Paper
