@@ -12,9 +12,7 @@ import {
     Alert,
     CircularProgress,
     Stack,
-    Divider,
-    Checkbox,
-    FormControlLabel
+    Divider
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -144,7 +142,7 @@ export default function Reporting() {
     const [selectedBusiness, setSelectedBusiness] = useState<any | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<any | null>(null);
     const [filterDepartmentId, setFilterDepartmentId] = useState<string | null>(null);
-    const [paymentMethodType, setPaymentMethodType] = useState<string>('ALL');
+    const [paymentMethodType] = useState<string>('ALL');
     const [reconcileFilter, setReconcileFilter] = useState<string>('ALL');
     const [searchDialogOpen, setSearchDialogOpen] = useState(false);
 
@@ -706,7 +704,7 @@ export default function Reporting() {
                         !fetching && !error && filteredEntries.length > 0 && (
                             <Grid container spacing={3}>
                                 {/* Summary Cards */}
-                                <Grid item xs={12} md={4}>
+                                <Grid size={{ xs: 12, md: 4 }}>
                                     <Paper sx={{ p: 3, textAlign: 'center', height: '100%', borderTop: '4px solid #00E5FF' }}>
                                         <Typography color="text.secondary" gutterBottom>Total Income</Typography>
                                         <Typography variant="h4" color="success.main" fontWeight="bold">
@@ -714,7 +712,7 @@ export default function Reporting() {
                                         </Typography>
                                     </Paper>
                                 </Grid>
-                                <Grid item xs={12} md={4}>
+                                <Grid size={{ xs: 12, md: 4 }}>
                                     <Paper sx={{ p: 3, textAlign: 'center', height: '100%', borderTop: '4px solid #F65161' }}>
                                         <Typography color="text.secondary" gutterBottom>Total Expenses</Typography>
                                         <Typography variant="h4" color="error.main" fontWeight="bold">
@@ -722,7 +720,7 @@ export default function Reporting() {
                                         </Typography>
                                     </Paper>
                                 </Grid>
-                                <Grid item xs={12} md={4}>
+                                <Grid size={{ xs: 12, md: 4 }}>
                                     <Paper sx={{ p: 3, textAlign: 'center', height: '100%', borderTop: `4px solid ${aggregatedData.net >= 0 ? '#00E5FF' : '#F65161'}` }}>
                                         <Typography color="text.secondary" gutterBottom>Net Position</Typography>
                                         <Typography variant="h4" color={aggregatedData.net >= 0 ? 'success.main' : 'error.main'} fontWeight="bold">
@@ -732,7 +730,7 @@ export default function Reporting() {
                                 </Grid>
 
                                 {/* Trends Chart */}
-                                <Grid item xs={12}>
+                                <Grid size={{ xs: 12 }}>
                                     <Paper sx={{ p: 3 }}>
                                         <Typography variant="h6" gutterBottom>Income vs Expenses (Trend)</Typography>
                                         <Box sx={{ height: 300, mt: 2 }}>
@@ -755,7 +753,7 @@ export default function Reporting() {
                                 </Grid>
 
                                 {/* Top Categories Chart */}
-                                <Grid item xs={12} md={6}>
+                                <Grid size={{ xs: 12, md: 6 }}>
                                     <Paper sx={{ p: 3 }}>
                                         <Typography variant="h6" gutterBottom>Top Spending Categories</Typography>
                                         <Box sx={{ height: 300, mt: 2 }}>
@@ -777,7 +775,7 @@ export default function Reporting() {
                                 </Grid>
 
                                 {/* Detailed Transaction List (Print Only or Table) */}
-                                <Grid item xs={12}>
+                                <Grid size={{ xs: 12 }}>
                                     <Paper sx={{ p: 3 }}>
                                         <Typography variant="h6" gutterBottom>Transaction Details</Typography>
                                         <Box sx={{ overflowX: 'auto' }}>
