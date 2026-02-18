@@ -168,10 +168,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
         reconciled: false,
         paymentType: 'CASH',
         checkNumber: '',
-        cardType: 'VISA',
-        cardLast4: '',
         selectedCardId: '',
-        useSavedCard: true,
         sourceType: 'person' as 'person' | 'business' | 'new_person' | 'new_business',
         sourceId: '',
         newPersonFirst: '',
@@ -315,22 +312,12 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                     check: { checkNumber: formData.checkNumber }
                 }
             }),
-            ...(formData.paymentType === 'CARD' && (
-                formData.useSavedCard && formData.selectedCardId ? {
-                    accountCard: {
-                        card: formData.selectedCardId,
-                        currency: 'USD'
-                    }
-                } : {
-                    card: {
-                        currency: 'USD',
-                        card: {
-                            type: formData.cardType,
-                            trailingDigits: formData.cardLast4
-                        }
-                    }
+            ...(formData.paymentType === 'CARD' && formData.selectedCardId && {
+                accountCard: {
+                    card: formData.selectedCardId,
+                    currency: 'USD'
                 }
-            )),
+            }),
             ...(formData.paymentType === 'ONLINE' && { online: { currency: 'USD' } }),
         };
     };
@@ -374,15 +361,12 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
             postedDate: '',
             usePostedDateForFiscalYear: false,
             categoryId: '',
-            departmentId: prev.departmentId, // Keep department for convenience
+            departmentId: prev.departmentId,
             amount: '',
             reconciled: false,
             paymentType: 'CASH',
             checkNumber: '',
-            cardType: 'VISA',
-            cardLast4: '',
             selectedCardId: '',
-            useSavedCard: true,
             sourceType: 'person',
             sourceId: '',
             newPersonFirst: '',
@@ -941,18 +925,6 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                         </Box>
 
                         {formData.paymentType === 'CARD' && (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <FormControlLabel
-                                    control={
-                                        <Checkbox
-                                            checked={formData.useSavedCard}
-                                            onChange={(e) => setFormData({ ...formData, useSavedCard: e.target.checked })}
-                                        />
-                                    }
-                                    label="Use Saved Card"
-                                />
-
-                                {formData.useSavedCard ? (
                                     <FormControl fullWidth required>
                                         <InputLabel>Select Card</InputLabel>
                                         <Select
@@ -967,32 +939,6 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                             ))}
                                         </Select>
                                     </FormControl>
-                                ) : (
-                                    <Box sx={{ display: 'flex', gap: 2 }}>
-                                        <FormControl fullWidth required>
-                                            <InputLabel>Card Type</InputLabel>
-                                            <Select
-                                                value={formData.cardType}
-                                                label="Card Type"
-                                                onChange={(e) => setFormData({ ...formData, cardType: e.target.value })}
-                                            >
-                                                <MenuItem value="VISA">Visa</MenuItem>
-                                                <MenuItem value="MASTER_CARD">MasterCard</MenuItem>
-                                                <MenuItem value="AMERICAN_EXPRESS">Amex</MenuItem>
-                                                <MenuItem value="DISCOVER">Discover</MenuItem>
-                                            </Select>
-                                        </FormControl>
-                                        <TextField
-                                            label="Last 4 Digits"
-                                            value={formData.cardLast4}
-                                            onChange={(e) => setFormData({ ...formData, cardLast4: e.target.value })}
-                                            required
-                                            fullWidth
-                                            inputProps={{ maxLength: 4 }}
-                                        />
-                                    </Box>
-                                )}
-                            </Box>
                         )}
 
                         <FormControlLabel
