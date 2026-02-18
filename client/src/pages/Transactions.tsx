@@ -101,8 +101,11 @@ const GET_FILTER_OPTIONS = `
     categories {
       id
       name
+      displayName
       type
       hidden
+      groupName
+      sortOrder
     }
     departments {
       id
