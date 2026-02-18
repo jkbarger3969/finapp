@@ -240,9 +240,9 @@ export const CategoriesTab = () => {
                             size="small"
                             onClick={() => handleToggleHidden(category)}
                             disabled={!isOnline}
-                            color={category.hidden ? 'primary' : 'default'}
+                            color={category.hidden ? 'default' : 'success'}
                         >
-                            {category.hidden ? <VisibilityIcon /> : <VisibilityOffIcon />}
+                            {category.hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
                         </IconButton>
                     </span>
                 </Tooltip>

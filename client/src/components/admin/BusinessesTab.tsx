@@ -194,9 +194,9 @@ export const BusinessesTab = () => {
                                         handleToggleHidden(option);
                                     }}
                                     disabled={!isOnline}
-                                    color={option.hidden ? 'primary' : 'default'}
+                                    color={option.hidden ? 'default' : 'success'}
                                 >
-                                    {option.hidden ? <VisibilityIcon /> : <VisibilityOffIcon />}
+                                    {option.hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
                                 </IconButton>
                             </Tooltip>
                         </Box>
