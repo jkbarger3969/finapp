@@ -34,6 +34,7 @@ const GET_CARDS = `
       id
       trailingDigits
       type
+      label
       active
       account {
         id
@@ -59,6 +60,7 @@ const CREATE_CARD = `
       id
       trailingDigits
       type
+      label
       active
     }
   }
@@ -70,6 +72,7 @@ const UPDATE_CARD = `
       id
       trailingDigits
       type
+      label
       active
     }
   }
@@ -105,6 +108,7 @@ export default function PaymentCardsTab() {
         accountId: '',
         type: 'VISA',
         trailingDigits: '',
+        label: '',
         active: true
     });
 
@@ -115,6 +119,7 @@ export default function PaymentCardsTab() {
                 accountId: card.account.id,
                 type: card.type,
                 trailingDigits: card.trailingDigits,
+                label: card.label || '',
                 active: card.active
             });
         } else {
@@ -123,6 +128,7 @@ export default function PaymentCardsTab() {
                 accountId: '', // Needs to be selected
                 type: 'VISA',
                 trailingDigits: '',
+                label: '',
                 active: true
             });
         }
@@ -141,6 +147,7 @@ export default function PaymentCardsTab() {
                 input: {
                     type: formData.type,
                     trailingDigits: formData.trailingDigits,
+                    label: formData.label || null,
                     active: formData.active
                 }
             });
@@ -150,6 +157,7 @@ export default function PaymentCardsTab() {
                     accountId: formData.accountId,
                     type: formData.type,
                     trailingDigits: formData.trailingDigits,
+                    label: formData.label || null,
                     active: formData.active
                 }
             });
@@ -192,9 +200,10 @@ export default function PaymentCardsTab() {
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>Bank Account</TableCell>
-                            <TableCell>Card Type</TableCell>
+                            <TableCell>Label</TableCell>
                             <TableCell>Last 4 Digits</TableCell>
+                            <TableCell>Card Type</TableCell>
+                            <TableCell>Bank Account</TableCell>
                             <TableCell>Status</TableCell>
                             <TableCell align="right">Actions</TableCell>
                         </TableRow>
@@ -202,9 +211,14 @@ export default function PaymentCardsTab() {
                     <TableBody>
                         {data?.accountCards.map((card: any) => (
                             <TableRow key={card.id}>
-                                <TableCell>{card.account?.name || 'Unknown'}</TableCell>
-                                <TableCell>{card.type}</TableCell>
+                                <TableCell>
+                                    <Typography fontWeight={card.label ? 600 : 400} color={card.label ? 'text.primary' : 'text.secondary'}>
+                                        {card.label || '—'}
+                                    </Typography>
+                                </TableCell>
                                 <TableCell>**** {card.trailingDigits}</TableCell>
+                                <TableCell>{card.type}</TableCell>
+                                <TableCell>{card.account?.name || 'Unknown'}</TableCell>
                                 <TableCell>
                                     <Chip
                                         label={card.active ? "Active" : "Inactive"}
@@ -263,6 +277,14 @@ export default function PaymentCardsTab() {
                         value={formData.trailingDigits}
                         onChange={(e) => setFormData({ ...formData, trailingDigits: e.target.value })}
                         inputProps={{ maxLength: 4 }}
+                        fullWidth
+                    />
+
+                    <TextField
+                        label="Card Label"
+                        value={formData.label}
+                        onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+                        placeholder="e.g., General, Kids, Students"
                         fullWidth
                     />
 

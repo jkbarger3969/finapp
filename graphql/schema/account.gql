@@ -13,6 +13,7 @@ type AccountCard implements PaymentCardInterface & Aliasable {
   authorizedUsers: [Entity!]!
   trailingDigits: String!
   type: PaymentCardType!
+  label: String
   aliases(where: AliasesWhere): [Alias!]!
 }
 
@@ -112,11 +113,13 @@ input CreateAccountCardInput {
   accountId: ID!
   type: PaymentCardType!
   trailingDigits: String!
+  label: String
   active: Boolean
 }
 
 input UpdateAccountCardInput {
   trailingDigits: String
   type: PaymentCardType
+  label: String
   active: Boolean
 }

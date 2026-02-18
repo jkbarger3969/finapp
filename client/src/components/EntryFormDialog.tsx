@@ -56,6 +56,7 @@ const GET_FORM_DATA = `
       id
       trailingDigits
       type
+      label
       account {
         name
       }
@@ -961,7 +962,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                         >
                                             {data?.accountCards.map((card: any) => (
                                                 <MenuItem key={card.id} value={card.id}>
-                                                    {card.type} ****{card.trailingDigits} ({card.account?.name})
+                                                    {card.label ? `${card.label} - ` : ''}{card.type} ****{card.trailingDigits}
                                                 </MenuItem>
                                             ))}
                                         </Select>

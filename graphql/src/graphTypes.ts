@@ -42,6 +42,7 @@ export type AccountCard = Aliasable & PaymentCardInterface & {
   aliases: Array<Alias>;
   authorizedUsers: Array<Entity>;
   id: Scalars['ID']['output'];
+  label?: Maybe<Scalars['String']['output']>;
   trailingDigits: Scalars['String']['output'];
   type: PaymentCardType;
 };
@@ -360,6 +361,7 @@ export type Category = {
 export type CreateAccountCardInput = {
   accountId: Scalars['ID']['input'];
   active?: InputMaybe<Scalars['Boolean']['input']>;
+  label?: InputMaybe<Scalars['String']['input']>;
   trailingDigits: Scalars['String']['input'];
   type: PaymentCardType;
 };
@@ -1333,6 +1335,7 @@ export type Subscription = {
 
 export type UpdateAccountCardInput = {
   active?: InputMaybe<Scalars['Boolean']['input']>;
+  label?: InputMaybe<Scalars['String']['input']>;
   trailingDigits?: InputMaybe<Scalars['String']['input']>;
   type?: InputMaybe<PaymentCardType>;
 };
@@ -1989,6 +1992,7 @@ export type AccountCardResolvers<ContextType = Context, ParentType = ResolversPa
   aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType, Partial<AccountCardAliasesArgs>>;
   authorizedUsers?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  label?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   trailingDigits?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   type?: Resolver<ResolversTypes['PaymentCardType'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
