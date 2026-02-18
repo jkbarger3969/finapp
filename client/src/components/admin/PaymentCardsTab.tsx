@@ -209,7 +209,19 @@ export default function PaymentCardsTab() {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {data?.accountCards.map((card: any) => (
+                        {[...(data?.accountCards || [])]
+                            .sort((a: any, b: any) => {
+                                // Active cards first, then by label
+                                if (a.active !== b.active) return a.active ? -1 : 1;
+                                // Then by label (cards with labels first)
+                                if (a.label && !b.label) return -1;
+                                if (!a.label && b.label) return 1;
+                                // Then alphabetically by label
+                                if (a.label && b.label) return a.label.localeCompare(b.label);
+                                // Finally by trailing digits
+                                return a.trailingDigits.localeCompare(b.trailingDigits);
+                            })
+                            .map((card: any) => (
                             <TableRow key={card.id}>
                                 <TableCell>
                                     <Typography fontWeight={card.label ? 600 : 400} color={card.label ? 'text.primary' : 'text.secondary'}>
