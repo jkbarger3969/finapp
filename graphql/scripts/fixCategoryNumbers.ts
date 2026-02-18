@@ -1,229 +1,224 @@
 import { MongoClient } from "mongodb";
 
-// Income categories - map name to account number
+// Income categories - EXACT names from database
 const INCOME_CATEGORIES: Record<string, string> = {
-  "Contribution Income": "41000",
-  "Ministry Fees/Income": "43000",
-  "Merchandise Sales": "43100",
-  "Music Sales": "43200",
-  "Scholarship Income": "43400",
-  "Fundraiser Income": "43450",
-  "Reimbursement Income": "43500",
-  "Facility/Rent Income": "44000",
-  "Unrealized Gain/Loss Investments": "44500",
-  "Other Income": "45000",
-  "Stock Fees": "45020",
   "Animal Sales": "45030",
+  "Camp Registration": "43400",  // Using Scholarship Income number
+  "Contribution Income": "41000",
+  "Credit": "41000",  // Generic credit
+  "Donations": "41000",  // Same as Contribution
+  "Facility/Rent Income": "44000",
+  "Fundraiser Income": "43450",
+  "Income transfer": "45000",  // Other Income
+  "Lone Star Beef Donations": "45030",  // Animal Sales related
+  "Merchandise Sales": "43100",
+  "Ministry Fees/Income": "43000",
+  "Music Sales": "43200",
+  "Other Income": "45000",
+  "Refund": "43500",  // Reimbursement Income
+  "Reimbursement Income": "43500",
+  "Scholarship Income": "43400",
+  "Sponsorship Income": "43450",  // Fundraiser related
+  "Stock Fees": "45020",
+  "Unknown Credit": "45000",  // Other Income
+  "Unrealized Gain/Loss Investments": "44500",
   "Interest Income": "90000",
   "Dividend Income": "91000",
 };
 
-// Expense categories - map name to account number
-// Names match your database names (with colons for grouped items)
+// Expense categories - EXACT names from database
 const EXPENSE_CATEGORIES: Record<string, string> = {
-  // Payroll
-  "Payroll: Staff wages": "51100",
-  "Staff Wages": "51100",
-  "Payroll: Employer FICA": "51200",
-  "Employer FICA": "51200",
+  // Animals/Ranch
+  "Animal Processing": "81615",
+  "Animal Purchase": "81610",
+  "Feed/Hay": "81630",
+  "Feedlot Expense": "81630",
+  "Lone Star Beef": "81605",
+  "Meat Purchases": "81605",
+  "Pasture Maintenance": "81645",
+  "Vaccines": "81635",
+  "Vet Expense": "81635",
   
-  // Benefits
-  "Benefits: Medical": "51500",
-  "Medical": "51500",
-  "Benefits: Dental and Vision": "51600",
-  "Dental and Vision": "51600",
-  "Benefits: Child Care Match Expense": "51610",
-  "Child Care Match Expense": "51610",
-  "Benefits: Life": "51700",
-  "Life": "51700",
-  
-  // Property & Insurance
-  "Mortgage Principle/Interest": "61100",
-  "Mortgage Principal/Interest": "61100",
-  "Property & Liability Insurance": "61300",
-  "Workers Comp Insurance": "61400",
-  
-  // Capital Improvements
-  "Capital Improvements: Equipment": "61600",
-  "Capital Improvements: Building": "61650",
-  
-  // Bank Charges
-  "Bank Charges": "71100",
-  "Bank Charges: eGive Fees": "71200",
-  "eGive Fees": "71200",
-  
-  // General Expenses
-  "Benevolence Expense": "71300",
-  "Curriculum & Resources": "71600",
-  "Global Courses": "71620",
-  "Dues & Fees": "71700",
-  "Database Software Fees": "71710",
-  "Fundraiser Expense": "71850",
-  
-  // Equipment Expense
-  "Equipment Expense": "71900",
-  "Equipment Expense: Audio": "72000",
+  // Audio/Video/Equipment
+  "Arena": "72300",
   "Audio": "72000",
-  "Equipment Expense: Lighting": "72200",
-  "Lighting": "72200",
+  "Equipment": "61600",
+  "Equipment Expense": "71900",
   "Equipment Rental": "72300",
   "Furnishings": "72400",
+  "Lighting": "72200",
+  "Media": "72000",
+  "Stage Design": "72400",
+  "Video": "72200",
   
-  // Meals
-  "Meals: Event Meal": "72650",
-  "Event Meal": "72650",
-  "Meals: Travel": "72700",
-  "Travel": "72700",
-  "Travel/Lodging": "72710",
+  // Bank
+  "Bank Charges": "71100",
+  "eGive Fees": "71200",
   
-  // Marketing
-  "Marketing: Other": "73100",
-  "Marketing: Printed Materials": "73200",
-  "Printed Materials": "73200",
-  "Marketing: Promotions/Discounts": "73300",
-  "Promotions/Discounts": "73300",
-  "Marketing: Social Media": "73400",
-  "Social Media": "73400",
+  // Benefits - using Payroll numbers since Benefits not in original list
+  "Education Reimbursement": "75910",
   
-  // General
-  "Mileage Reimbursement": "73500",
-  "Miscellaneous": "73600",
-  
-  // Outside Services
-  "Outside Services: Background Check": "73700",
-  "Background Check": "73700",
-  "Outside Services: Guest Speaker": "73800",
-  "Guest Speaker": "73800",
-  "Outside Services: Security": "74000",
-  "Security": "74000",
-  "Outside Services: Childcare": "74100",
-  "Childcare": "74100",
-  "Outside Services: Contract Services": "74300",
-  "Contract Services": "74300",
-  "Outside Services: Janitorial": "74400",
-  "Janitorial": "74400",
-  "Outside Services: Musicians": "74500",
-  "Musicians": "74500",
-  "Outside Services: Other": "74600",
-  "Outside Services: Printing": "74700",
-  "Printing": "74700",
-  
-  // General
-  "Postage": "74800",
-  "Prizes and Gifts": "74900",
-  "Games": "74910",
-  "Professional Services": "75000",
-  "Refund": "75050",
-  "Staffing Placement Fees": "75100",
-  "Rentals (non equipment)": "75200",
-  
-  // Repair & Maintenance
-  "Repair & Maint": "75300",
-  "Repair & Maintenance": "75300",
-  "Grounds Maint/Repair": "75340",
-  "Grounds": "75340",
+  // Building/Property
+  "Building": "61650",
   "Building Maint/Repair": "75350",
-  "Building": "75350",
-  
-  // General
-  "Sponsorship Expense": "75410",
-  "Sermon Illustration": "75500",
-  "Signage": "75600",
-  "Staff Appreciation": "75700",
-  
-  // Staff Development
-  "Staff Develop": "75800",
-  "Staff Development": "75800",
-  "Staff Develop: Conf & Seminars": "75900",
-  "Conferences & Seminars": "75900",
-  "Staff Reimbursement Expense": "75910",
-  "Reimbursement Expense": "75910",
-  
-  // General
-  "Subscriptions": "76100",
-  "Flowers and Gifts": "76110",
-  
-  // Supplies
-  "Supplies: Cleaning": "76300",
-  "Cleaning": "76300",
-  "Supplies: Hospitality": "76400",
-  "Hospitality": "76400",
-  "Supplies: Kitchen": "76500",
-  "Kitchen": "76500",
-  "Supplies: Office": "76600",
-  "Office": "76600",
-  "Supplies: Promotional Items": "76700",
-  "Promotional Items": "76700",
-  "Supplies: Materials and Supplies": "76800",
-  "Materials and Supplies": "76800",
-  "Supplies: Communion": "76950",
-  "Communion": "76950",
-  "Supplies: Baptism": "76960",
-  "Baptism": "76960",
-  
-  // General
-  "Café Concess/Snack": "77050",
-  "Café Concession/Snack": "77050",
-  "Taxes, Licenses & Permits": "77100",
-  
-  // Utilities
-  "Utilities: Electricity": "77200",
-  "Electricity": "77200",
-  "Utilities: Gas": "77300",
-  "Gas": "77300",
-  "Utilities: Phone": "77400",
-  "Phone": "77400",
-  "Utilities: Internet": "77410",
-  "Internet": "77410",
-  "Utilities: Refuse": "77500",
-  "Refuse": "77500",
-  "Utilities: Water & Sewer": "77600",
-  "Water & Sewer": "77600",
-  
-  // Vehicle
-  "Vehicle Expense": "77700",
-  "Gas/Fuel": "77750",
-  
-  // Ministry
-  "Special Projects": "81100",
-  
-  // Missions
-  "Missions Designated Support": "81200",
-  "Designated Support": "81200",
-  "Missions Designated Benevolence": "81250",
-  "Designated Benevolence": "81250",
-  "Missionaries": "81300",
-  "Missions Local projects": "81350",
-  "Local Projects": "81350",
-  "Mission trips": "81375",
-  "Mission Trips": "81375",
-  
-  // Ministry Programs
-  "Special Events": "81400",
-  "Discipleship/Bible Study": "81450",
+  "Capital Improvements": "61600",
+  "Grounds Maint/Repair": "75340",
+  "Insurance Claims Expense": "61300",
+  "Property Tax & Assessments": "77100",
+  "Repair & Maint": "75300",
   
   // Children's Ministry
-  "Nursery 0-2": "81510",
+  "Comfort Zone": "81540",
   "Early Childhood 3-5": "81520",
   "Elementary 6-11": "81530",
-  "Comfort Zone": "81540",
   "Kids Clubs": "81545",
+  "Nursery 0-2": "81510",
   
   // Counseling
   "Counseling": "81550",
   
-  // Ranch/Animals
-  "Meat Purchases": "81605",
-  "Animal Purchase": "81610",
-  "Animal Processing": "81615",
-  "Feed/Hay": "81630",
-  "Vaccines": "81635",
-  "Pasture Maintenance": "81645",
+  // Curriculum
+  "Curriculum & Resources": "71600",
+  "Global Courses": "71620",
+  "Sponsored Courses": "71620",
+  "Unsponsored Courses": "71620",
   
-  // General
-  "Merchandise: Clothing, CDs": "81700",
+  // Dues/Fees
+  "Database Software Fees": "71710",
+  "Dues & Fees": "71700",
+  
+  // Food/Café
+  "Café Concess/Snack": "77050",
+  "Catering": "72650",
+  "Event Meal": "72650",
+  
+  // Fundraiser
+  "Fundraiser Expense": "71850",
+  
+  // Games/Gifts
+  "Flowers and Gifts": "76110",
+  "Games": "74910",
+  "Prizes and Gifts": "74900",
+  
+  // Generic
+  "Debit": "73600",
+  "Miscellaneous": "73600",
+  "Unknown Debit": "73600",
+  
+  // Marketing
+  "Billboards": "73100",
+  "Broadcast Time": "73100",
+  "Graphic Design": "73200",
+  "Live Streaming Fee": "73400",
+  "Marketing": "73100",
+  "Printed Materials": "73200",
+  "Promotions/Discounts": "73300",
+  "Radio": "73100",
+  "Social Media": "73400",
+  "TV": "73100",
+  "Website": "73400",
+  
+  // Meals/Travel
+  "Meals": "72650",
+  "Mileage Reimbursement": "73500",
+  "Travel": "72700",
+  "Travel/Lodging": "72710",
+  "Travel/Moving Reimb": "73500",
+  
+  // Merchandise
+  "Clothing, CDs": "81700",
+  "Merchandise": "81700",
+  
+  // Missions
+  "Discipleship/Bible Study": "81450",
+  "Mission trips": "81375",
+  "Missionaries": "81300",
+  "Missions Designated Benevolence": "81250",
+  "Missions Designated Support": "81200",
+  "Missions Local projects": "81350",
+  
+  // Outside Services
+  "Background Check": "73700",
+  "Childcare": "74100",
+  "Contract Services": "74300",
+  "Guest Speaker": "73800",
+  "Janitorial": "74400",
+  "Musicians": "74500",
+  "Other": "74600",
+  "Outside Services": "74600",
+  "Printing": "74700",
+  "Security": "74000",
+  
+  // Pastoral
+  "Benevolence Expense": "71300",
+  "Pastor": "73800",
+  "Sermon Illustration": "75500",
+  "VIP Guests": "73800",
+  
+  // Petty Cash
   "Petty Cash Expense": "81750",
-  "Mortgage Principal Adj": "95400",
+  
+  // Postage
+  "Postage": "74800",
+  
+  // Professional Services
+  "Professional Services": "75000",
+  "Staffing Placement Fees": "75100",
+  
+  // Refund
+  "Refund": "75050",
+  
+  // Rentals
+  "Rentals (non equipment)": "75200",
+  "Roping Series": "75200",
+  
+  // Signage
+  "Signage": "75600",
+  
+  // Special Events/Projects
+  "Special Events": "81400",
+  "Special Projects": "81100",
+  
+  // Sponsorship
+  "Sponsorship Expense": "75410",
+  
+  // Staff
+  "Staff Appreciation": "75700",
+  "Staff Develop": "75800",
+  "Conf & Seminars": "75900",
+  "Staff Reimbursement Expense": "75910",
+  
+  // Subscriptions
+  "Subscriptions": "76100",
+  
+  // Supplies
+  "Baptism": "76960",
+  "Cleaning": "76300",
+  "Communion": "76950",
+  "Hospitality": "76400",
+  "Kitchen": "76500",
+  "Materials and Supplies": "76800",
+  "Office": "76600",
+  "Office Hospitality": "76400",
+  "Promotional Items": "76700",
+  "Supplies": "76800",
+  "Supplies: Salvation": "76800",
+  
+  // Taxes
+  "Taxes, Licenses & Permits": "77100",
+  
+  // Utilities
+  "Electricity": "77200",
+  "Gas": "77300",
+  "Gas/Fuel": "77750",
+  "Internet": "77410",
+  "Phone": "77400",
+  "Refuse": "77500",
+  "Utilities": "77200",
+  "Water & Sewer": "77600",
+  
+  // Vehicle
+  "Vehicle Expense": "77700",
 };
 
 async function main() {
@@ -244,7 +239,7 @@ async function main() {
 
   try {
     await client.connect();
-    console.log("Connected to MongoDB");
+    console.log("Connected to MongoDB\n");
 
     const db = client.db("accounting");
     const categoriesCollection = db.collection("categories");
@@ -254,7 +249,7 @@ async function main() {
     let notFoundNames: string[] = [];
 
     // Process Income Categories
-    console.log("\n=== Processing Income Categories (Credit) ===\n");
+    console.log("=== Processing Income Categories (Credit) ===\n");
     for (const [name, accountNumber] of Object.entries(INCOME_CATEGORIES)) {
       const existing = await categoriesCollection.findOne({
         name: name,
@@ -263,77 +258,63 @@ async function main() {
 
       if (existing) {
         if (existing.accountNumber === accountNumber) {
-          console.log(`✓ Already set: ${accountNumber} - ${name}`);
+          console.log(`  ✓ Already set: ${accountNumber} - ${name}`);
           alreadySetCount++;
         } else {
           await categoriesCollection.updateOne(
             { _id: existing._id },
             { $set: { accountNumber: accountNumber } }
           );
-          console.log(`✓ Updated: ${accountNumber} - ${name}`);
+          console.log(`  ✓ Updated: ${accountNumber} - ${name}`);
           updatedCount++;
         }
-      } else {
-        notFoundNames.push(`Income: ${name}`);
       }
     }
 
     // Process Expense Categories
     console.log("\n=== Processing Expense Categories (Debit) ===\n");
-    const processedExpenseNumbers = new Set<string>();
     
     for (const [name, accountNumber] of Object.entries(EXPENSE_CATEGORIES)) {
-      // Skip if we already processed this account number
-      if (processedExpenseNumbers.has(accountNumber)) continue;
-      
-      const existing = await categoriesCollection.findOne({
+      // Find all matching categories (there might be duplicates)
+      const existingCursor = categoriesCollection.find({
         name: name,
         type: "Debit"
       });
-
-      if (existing) {
-        processedExpenseNumbers.add(accountNumber);
+      
+      const existingList = await existingCursor.toArray();
+      
+      for (const existing of existingList) {
         if (existing.accountNumber === accountNumber) {
-          console.log(`✓ Already set: ${accountNumber} - ${name}`);
+          console.log(`  ✓ Already set: ${accountNumber} - ${name}`);
           alreadySetCount++;
         } else {
           await categoriesCollection.updateOne(
             { _id: existing._id },
             { $set: { accountNumber: accountNumber } }
           );
-          console.log(`✓ Updated: ${accountNumber} - ${name}`);
+          console.log(`  ✓ Updated: ${accountNumber} - ${name}`);
           updatedCount++;
         }
       }
     }
 
-    // Find expense categories without account numbers
-    const expenseWithoutNumbers = await categoriesCollection.find({
-      type: "Debit",
+    // Find any categories still without account numbers
+    console.log("\n=== Categories Still Missing Account Numbers ===\n");
+    
+    const stillMissing = await categoriesCollection.find({
       $or: [
         { accountNumber: { $exists: false } },
         { accountNumber: null },
         { accountNumber: "" }
       ]
-    }).toArray();
+    }).sort({ type: 1, name: 1 }).toArray();
 
-    if (expenseWithoutNumbers.length > 0) {
-      console.log("\n=== Expense Categories Missing Account Numbers ===");
-      for (const cat of expenseWithoutNumbers) {
-        // Try to find a match in our mapping
-        const accountNumber = EXPENSE_CATEGORIES[cat.name];
-        if (accountNumber) {
-          await categoriesCollection.updateOne(
-            { _id: cat._id },
-            { $set: { accountNumber: accountNumber } }
-          );
-          console.log(`✓ Fixed: ${accountNumber} - ${cat.name}`);
-          updatedCount++;
-        } else {
-          console.log(`✗ No mapping for: ${cat.name}`);
-          notFoundNames.push(`Expense: ${cat.name}`);
-        }
+    if (stillMissing.length > 0) {
+      for (const cat of stillMissing) {
+        console.log(`  ✗ ${cat.type}: "${cat.name}"`);
       }
+    } else {
+      console.log("  None! All categories have account numbers.");
     }
 
     // Summary
@@ -342,11 +323,7 @@ async function main() {
     console.log("=".repeat(50));
     console.log(`Updated: ${updatedCount}`);
     console.log(`Already set: ${alreadySetCount}`);
-    
-    if (notFoundNames.length > 0) {
-      console.log(`\nCategories not found in database (${notFoundNames.length}):`);
-      notFoundNames.forEach(n => console.log(`  - ${n}`));
-    }
+    console.log(`Still missing: ${stillMissing.length}`);
 
     // Final verification
     console.log("\n=== Final Verification ===");
