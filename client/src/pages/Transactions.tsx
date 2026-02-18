@@ -1348,15 +1348,17 @@ export default function Transactions() {
                                                 justifyContent: "center !important",
                                             },
 
-                                            // Nuclear option - remove border from last row using ALL possible selectors
-                                            "& .last-row .MuiDataGrid-cell": {
-                                                borderBottom: "none !important"
+                                            // Remove border from last row - use data-rowindex attribute for virtualized grid
+                                            "& .MuiDataGrid-row.last-row > .MuiDataGrid-cell": {
+                                                borderBottom: "none !important",
                                             },
-                                            "& .MuiDataGrid-row:last-child .MuiDataGrid-cell": {
-                                                borderBottom: "none !important"
+                                            // Target via data attribute (more reliable for virtualized grids)
+                                            "& .MuiDataGrid-virtualScrollerRenderZone > .MuiDataGrid-row:last-child > .MuiDataGrid-cell": {
+                                                borderBottom: "none !important",
                                             },
-                                            "& .MuiDataGrid-row:last-of-type .MuiDataGrid-cell": {
-                                                borderBottom: "none !important"
+                                            // Fallback: target any row with last-row class at any nesting level
+                                            "& .last-row.MuiDataGrid-row .MuiDataGrid-cell": {
+                                                borderBottom: "none !important",
                                             },
 
                                             "& .refund-row": {
