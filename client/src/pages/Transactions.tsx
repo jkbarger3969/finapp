@@ -777,8 +777,12 @@ export default function Transactions() {
             // This is a limitation of filtering on Parent only.
             // But typically Entry and Refund match? Or simpler: filter applies to Entry.
 
-            // Add invisible spacer row at the end to absorb the bottom border
+            // Mark the last data row and add invisible spacer row
             if (matchingRows.length > 0) {
+                // Mark the actual last data row
+                matchingRows[matchingRows.length - 1].isLastDataRow = true;
+                
+                // Add invisible spacer row at the end
                 matchingRows.push({
                     id: '__spacer__',
                     isSpacerRow: true,
@@ -841,8 +845,12 @@ export default function Transactions() {
             }
         });
         
-        // Add invisible spacer row at the end to absorb the bottom border
+        // Mark the last data row and add invisible spacer row
         if (normalRows.length > 0) {
+            // Mark the actual last data row
+            normalRows[normalRows.length - 1].isLastDataRow = true;
+            
+            // Add invisible spacer row at the end
             normalRows.push({
                 id: '__spacer__',
                 isSpacerRow: true,
@@ -1303,11 +1311,13 @@ export default function Transactions() {
                                             if (params.row.isSpacerRow) classes += ' spacer-row';
                                             if (params.row.isRefund) classes += ' refund-row';
                                             if (params.row.refunds?.length > 0) classes += ' has-refunds-row';
+                                            // Mark the row before spacer as last-data-row
+                                            if (params.row.isLastDataRow) classes += ' last-data-row';
                                             return classes.trim();
                                         }}
                                         getRowHeight={(params) => {
-                                            // Make spacer row very small (just enough to absorb border)
-                                            if (params.model?.isSpacerRow) return 1;
+                                            // Hide spacer row completely
+                                            if (params.model?.isSpacerRow) return 0;
                                             return 'auto';
                                         }}
                                         getEstimatedRowHeight={() => 100}
@@ -1383,17 +1393,23 @@ export default function Transactions() {
                                                 justifyContent: "center !important",
                                             },
 
-                                            // Invisible spacer row to absorb bottom border
+                                            // Hide spacer row and remove border from last data row
                                             "& .spacer-row": {
-                                                height: "1px !important",
-                                                minHeight: "1px !important",
-                                                maxHeight: "1px !important",
-                                                visibility: "hidden",
-                                                "& .MuiDataGrid-cell": {
-                                                    borderBottom: "none !important",
-                                                    padding: "0 !important",
-                                                    minHeight: "1px !important",
-                                                },
+                                                display: "none !important",
+                                            },
+                                            "& .MuiDataGrid-row.spacer-row": {
+                                                display: "none !important",
+                                                height: "0 !important",
+                                            },
+                                            // Remove border from last data row (marked explicitly)
+                                            "& .last-data-row .MuiDataGrid-cell": {
+                                                borderBottom: "none !important",
+                                            },
+                                            "& .MuiDataGrid-row.last-data-row .MuiDataGrid-cell": {
+                                                borderBottom: "none !important",
+                                            },
+                                            "& .MuiDataGrid-row.last-data-row > .MuiDataGrid-cell": {
+                                                borderBottom: "none !important",
                                             },
 
                                             "& .refund-row": {
