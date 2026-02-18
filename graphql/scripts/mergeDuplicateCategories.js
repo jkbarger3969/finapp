@@ -182,6 +182,14 @@ async function main() {
     console.log(`  Income (Credit): ${creditCount}`);
     console.log(`  Expense (Debit): ${debitCount}`);
 
+    // Fix missing 'active' field on all categories
+    console.log('\n=== FIXING MISSING ACTIVE FIELD ===\n');
+    const activeFixResult = await cats.updateMany(
+      { active: { $exists: false } },
+      { $set: { active: true } }
+    );
+    console.log(`Set active: true on ${activeFixResult.modifiedCount} categories`);
+
   } catch (error) {
     console.error('Error:', error);
     process.exit(1);
