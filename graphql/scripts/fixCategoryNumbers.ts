@@ -351,7 +351,7 @@ async function main() {
     // Final verification
     console.log("\n=== Final Verification ===");
     const withNumbers = await categoriesCollection.countDocuments({
-      accountNumber: { $exists: true, $ne: null, $ne: "" }
+      accountNumber: { $exists: true, $nin: [null, ""] }
     });
     const withoutNumbers = await categoriesCollection.countDocuments({
       $or: [
