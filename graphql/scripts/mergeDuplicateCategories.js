@@ -1,102 +1,87 @@
 const { MongoClient, ObjectId } = require('mongodb');
 
-// Mapping of OLD category names to NEW proper category names
-// Format: { oldName: newName }
+// Mapping of OLD category names to NEW proper category names (based on remote database)
 const MERGE_MAP = {
-  // Income duplicates - keep the proper names
-  "Credit": "Contribution Income",
-  "Donations": "Contribution Income",
+  // === INCOME (Credit) duplicates ===
+  "Credit: Donations": "Contribution Income",
+  "Credit: Camp Registration": "Scholarship Income",  // Both are 43400
+  "Credit: Sponsorship Income": "Fundraiser Income",  // Both are 43450
+  "Credit: Income transfer": "Other Income",  // Both are 45000
+  "Credit: Unknown Credit": "Other Income",  // Both are 45000
+  "Credit: Lone Star Beef Donations": "Animal Sales",  // Both are 45030
+
+  // === EXPENSE (Debit) duplicates ===
+  // 61300
+  "Debit: Insurance Claims Expense": "Property & Liability Insurance",
   
-  // Supplies - merge short names to "Supplies: X" format
-  "Cleaning": "Supplies: Cleaning",
-  "Hospitality": "Supplies: Hospitality",
-  "Office Hospitality": "Supplies: Hospitality",
-  "Kitchen": "Supplies: Kitchen",
-  "Office": "Supplies: Office",
-  "Promotional Items": "Supplies: Promotional Items",
-  "Materials and Supplies": "Supplies: Materials and Supplies",
-  "Supplies": "Supplies: Materials and Supplies",
-  "Supplies: Salvation": "Supplies: Materials and Supplies",
-  "Communion": "Supplies: Communion",
-  "Baptism": "Supplies: Baptism",
+  // 71620
+  "Debit: Sponsored Courses": "Global Courses",
+  "Debit: Unsponsored Courses": "Global Courses",
   
-  // Equipment Expense - merge to "Equipment Expense: X" format
-  "Audio": "Equipment Expense: Audio",
-  "Media": "Equipment Expense: Audio",
-  "Lighting": "Equipment Expense: Lighting",
-  "Video": "Equipment Expense: Lighting",  // Video and Lighting share same account number
+  // 72000
+  "Supplies: Media": "Equipment Expense: Audio",
   
-  // Capital Improvements
-  "Equipment": "Capital Improvements: Equipment",
-  "Capital Improvements": "Capital Improvements: Equipment",
-  "Building": "Capital Improvements: Building",
+  // 72200
+  "Equipment Expense: Video": "Equipment Expense: Lighting",  // Same account number
   
-  // Bank Charges
-  "eGive Fees": "Bank Charges: eGive Fees",
+  // 72300
+  "Outside Services: Arena": "Equipment Rental",
   
-  // Meals
-  "Event Meal": "Meals: Event Meal",
-  "Catering": "Meals: Event Meal",
-  "Meals": "Meals: Event Meal",
-  "Travel": "Meals: Travel",
+  // 72400
+  "Debit: Stage Design": "Furnishings",
   
-  // Marketing
-  "Marketing": "Marketing: Other",
-  "Other": "Marketing: Other",  // Note: "Other" has multiple meanings, defaulting to Marketing
-  "Billboards": "Marketing: Other",
-  "Broadcast Time": "Marketing: Other",
-  "Radio": "Marketing: Other",
-  "TV": "Marketing: Other",
-  "Graphic Design": "Marketing: Printed Materials",
-  "Printed Materials": "Marketing: Printed Materials",
-  "Promotions/Discounts": "Marketing: Promotions/Discounts",
-  "Social Media": "Marketing: Social Media",
-  "Live Streaming Fee": "Marketing: Social Media",
-  "Website": "Marketing: Social Media",
+  // 72650
+  "Supplies: Catering": "Meals: Event Meal",
   
-  // Outside Services
-  "Background Check": "Outside Services: Background Check",
-  "Guest Speaker": "Outside Services: Guest Speaker",
-  "Pastor": "Outside Services: Guest Speaker",
-  "VIP Guests": "Outside Services: Guest Speaker",
-  "Security": "Outside Services: Security",
-  "Childcare": "Outside Services: Childcare",
-  "Contract Services": "Outside Services: Contract Services",
-  "Janitorial": "Outside Services: Janitorial",
-  "Musicians": "Outside Services: Musicians",
-  "Outside Services": "Outside Services: Other",
-  "Printing": "Outside Services: Printing",
+  // 73100
+  "Broadcast Time: Radio": "Marketing: Other",
+  "Broadcast Time: TV": "Marketing: Other",
+  "Marketing: Billboards": "Marketing: Other",
+  "Supplies: Other": "Marketing: Other",
   
-  // Staff Develop
-  "Conf & Seminars": "Staff Develop: Conf & Seminars",
+  // 73200
+  "Outside Services: Graphic Design": "Marketing: Printed Materials",
   
-  // Utilities
-  "Utilities": "Utilities: Electricity",
-  "Electricity": "Utilities: Electricity",
-  "Gas": "Utilities: Gas",
-  "Phone": "Utilities: Phone",
-  "Internet": "Utilities: Internet",
-  "Refuse": "Utilities: Refuse",
-  "Water & Sewer": "Utilities: Water & Sewer",
+  // 73400
+  "Debit: Live Streaming Fee": "Marketing: Social Media",
+  "Debit: Website": "Marketing: Social Media",
   
-  // Ranch/Animals
-  "Lone Star Beef": "Meat Purchases",
-  "Feedlot Expense": "Feed/Hay",
-  "Vet Expense": "Vaccines",
+  // 73500
+  "Debit: Travel/Moving Reimb": "Mileage Reimbursement",
   
-  // Merchandise
-  "Clothing, CDs": "Merchandise: Clothing, CDs",
-  "Merchandise": "Merchandise: Clothing, CDs",
+  // 73600
+  "Debit: Unknown Debit": "Miscellaneous",
   
-  // Misc duplicates
-  "Debit": "Miscellaneous",
-  "Unknown Debit": "Miscellaneous",
-  "Education Reimbursement": "Staff Reimbursement Expense",
-  "Roping Series": "Rentals (non equipment)",
-  "Insurance Claims Expense": "Property & Liability Insurance",
-  "Arena": "Equipment Rental",
-  "Stage Design": "Furnishings",
-  "Travel/Moving Reimb": "Mileage Reimbursement",
+  // 73800
+  "Debit: VIP Guests": "Outside Services: Guest Speaker",
+  "Merchandise: Pastor": "Outside Services: Guest Speaker",
+  
+  // 75050
+  "Debit: Refund": "Refund",
+  
+  // 75200
+  "Debit: Roping Series": "Rentals (non equipment)",
+  
+  // 75910
+  "Debit: Education Reimbursement": "Staff Reimbursement Expense",
+  
+  // 76400
+  "Supplies: Office Hospitality": "Supplies: Hospitality",
+  
+  // 76800
+  "Debit: Supplies: Salvation": "Supplies: Materials and Supplies",
+  
+  // 77100
+  "Debit: Property Tax & Assessments": "Taxes, Licenses & Permits",
+  
+  // 81605
+  "Debit: Lone Star Beef": "Meat Purchases",
+  
+  // 81630
+  "Debit: Feedlot Expense": "Feed/Hay",
+  
+  // 81635
+  "Debit: Vet Expense": "Vaccines",
 };
 
 async function main() {
@@ -137,79 +122,51 @@ async function main() {
     console.log('=== MERGING DUPLICATE CATEGORIES ===\n');
 
     for (const [oldName, newName] of Object.entries(MERGE_MAP)) {
-      // Find both old and new categories (check both Credit and Debit)
-      for (const type of ['Credit', 'Debit']) {
-        const oldKey = `${type}:${oldName}`;
-        const newKey = `${type}:${newName}`;
-        
-        const oldCat = catByName[oldKey];
-        const newCat = catByName[newKey];
-        
-        if (!oldCat) continue; // Old category doesn't exist for this type
-        
-        if (!newCat) {
-          // New category doesn't exist - just rename the old one
-          await cats.updateOne(
-            { _id: oldCat._id },
-            { $set: { name: newName } }
-          );
-          console.log(`  Renamed: "${oldName}" -> "${newName}" (${type})`);
-          continue;
-        }
-        
-        if (oldCat._id.equals(newCat._id)) continue; // Same category
-        
-        // Update all entries that reference the old category to use the new one
-        // Entries store category as historical field: category: [{ value: ObjectId, ... }]
-        const updateResult = await entries.updateMany(
-          { "category.value": oldCat._id },
-          { $set: { "category.$[elem].value": newCat._id } },
-          { arrayFilters: [{ "elem.value": oldCat._id }] }
+      // Determine type based on prefix or default to Debit
+      let type = 'Debit';
+      if (oldName.startsWith('Credit:')) {
+        type = 'Credit';
+      }
+      
+      const oldKey = `${type}:${oldName}`;
+      const newKey = `${type}:${newName}`;
+      
+      const oldCat = catByName[oldKey];
+      const newCat = catByName[newKey];
+      
+      if (!oldCat) {
+        console.log(`  - Skipped (not found): "${oldName}"`);
+        continue;
+      }
+      
+      if (!newCat) {
+        // New category doesn't exist - just rename the old one
+        await cats.updateOne(
+          { _id: oldCat._id },
+          { $set: { name: newName } }
         );
-        
-        if (updateResult.modifiedCount > 0) {
-          console.log(`  Migrated ${updateResult.modifiedCount} entries: "${oldName}" -> "${newName}" (${type})`);
-          transactionsUpdated += updateResult.modifiedCount;
-        }
-        
-        // Delete the old category
-        await cats.deleteOne({ _id: oldCat._id });
-        console.log(`  Deleted duplicate: "${oldName}" (${type})`);
-        categoriesDeleted++;
+        console.log(`  Renamed: "${oldName}" -> "${newName}"`);
+        continue;
       }
-    }
-
-    // Also handle duplicate "Staff Develop" and "Equipment Expense" entries
-    console.log('\n=== Removing exact duplicates ===\n');
-    
-    const duplicateNames = ["Staff Develop", "Equipment Expense", "Bank Charges", "Other"];
-    for (const name of duplicateNames) {
-      for (const type of ['Credit', 'Debit']) {
-        const dups = allCats.filter(c => c.name === name && c.type === type);
-        if (dups.length > 1) {
-          // Keep the first one, merge others into it
-          const keepCat = dups[0];
-          for (let i = 1; i < dups.length; i++) {
-            const dupCat = dups[i];
-            
-            // Update entries
-            const updateResult = await entries.updateMany(
-              { "category.value": dupCat._id },
-              { $set: { "category.$[elem].value": keepCat._id } },
-              { arrayFilters: [{ "elem.value": dupCat._id }] }
-            );
-            
-            if (updateResult.modifiedCount > 0) {
-              console.log(`  Migrated ${updateResult.modifiedCount} entries from duplicate "${name}"`);
-              transactionsUpdated += updateResult.modifiedCount;
-            }
-            
-            await cats.deleteOne({ _id: dupCat._id });
-            console.log(`  Deleted exact duplicate: "${name}" (${type})`);
-            categoriesDeleted++;
-          }
-        }
+      
+      if (oldCat._id.equals(newCat._id)) continue; // Same category
+      
+      // Update all entries that reference the old category to use the new one
+      const updateResult = await entries.updateMany(
+        { "category.value": oldCat._id },
+        { $set: { "category.$[elem].value": newCat._id } },
+        { arrayFilters: [{ "elem.value": oldCat._id }] }
+      );
+      
+      if (updateResult.modifiedCount > 0) {
+        console.log(`  Migrated ${updateResult.modifiedCount} entries: "${oldName}" -> "${newName}"`);
+        transactionsUpdated += updateResult.modifiedCount;
       }
+      
+      // Delete the old category
+      await cats.deleteOne({ _id: oldCat._id });
+      console.log(`  Deleted: "${oldName}"`);
+      categoriesDeleted++;
     }
 
     console.log(`\n=== SUMMARY ===`);
