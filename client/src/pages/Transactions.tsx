@@ -1324,13 +1324,14 @@ export default function Transactions() {
                                         sx={{
                                             border: "none",
                                             color: 'text.primary',
+                                            // Remove ALL cell borders - use row borders instead
                                             '& .MuiDataGrid-cell': {
-                                                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                                borderBottom: 'none',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                             },
                                             "& .MuiDataGrid-footerContainer": {
-                                                borderTop: "none !important", // Remove border above footer
+                                                borderTop: "none !important",
                                             },
                                             "& .MuiDataGrid-main": {
                                                 borderBottom: "none !important",
@@ -1345,19 +1346,20 @@ export default function Transactions() {
                                             "& .MuiDataGrid-columnHeaders": {
                                                 backgroundColor: 'rgba(0, 0, 0, 0.2)',
                                                 borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                                                borderRadius: '8px', // Round the headers
+                                                borderRadius: '8px',
                                                 color: 'text.secondary',
                                                 textTransform: 'uppercase',
                                                 letterSpacing: '0.1em',
                                                 fontSize: '0.75rem',
                                                 fontWeight: 700,
-                                                borderLeft: '4px solid transparent', // Match row offset
+                                                borderLeft: '4px solid transparent',
                                             },
+                                            // Use row border-bottom instead of cell border-bottom
                                             "& .MuiDataGrid-row": {
                                                 transition: "all 0.2s",
-                                                borderRadius: '8px', // Round the rows
-                                                mb: 0.5, // Markdown between rows
-                                                borderLeft: '4px solid transparent', // Reserve space for selection border
+                                                borderRadius: '8px',
+                                                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                                borderLeft: '4px solid transparent',
                                                 "&:hover": {
                                                     backgroundColor: 'rgba(255, 255, 255, 0.05) !important',
                                                     transform: "scale(1.002)",
@@ -1393,22 +1395,13 @@ export default function Transactions() {
                                                 justifyContent: "center !important",
                                             },
 
-                                            // Hide spacer row and remove border from last data row
-                                            "& .spacer-row": {
-                                                display: "none !important",
-                                            },
-                                            "& .MuiDataGrid-row.spacer-row": {
+                                            // Hide spacer row completely
+                                            "& .spacer-row, & .MuiDataGrid-row.spacer-row": {
                                                 display: "none !important",
                                                 height: "0 !important",
                                             },
-                                            // Remove border from last data row (marked explicitly)
-                                            "& .last-data-row .MuiDataGrid-cell": {
-                                                borderBottom: "none !important",
-                                            },
-                                            "& .MuiDataGrid-row.last-data-row .MuiDataGrid-cell": {
-                                                borderBottom: "none !important",
-                                            },
-                                            "& .MuiDataGrid-row.last-data-row > .MuiDataGrid-cell": {
+                                            // Remove border from last data row (border is now on row, not cell)
+                                            "& .MuiDataGrid-row.last-data-row": {
                                                 borderBottom: "none !important",
                                             },
 
