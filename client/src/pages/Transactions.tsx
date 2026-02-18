@@ -777,6 +777,22 @@ export default function Transactions() {
             // This is a limitation of filtering on Parent only.
             // But typically Entry and Refund match? Or simpler: filter applies to Entry.
 
+            // Add invisible spacer row at the end to absorb the bottom border
+            if (matchingRows.length > 0) {
+                matchingRows.push({
+                    id: '__spacer__',
+                    isSpacerRow: true,
+                    description: '',
+                    date: new Date().toISOString(),
+                    reconciled: false,
+                    total: '{"s":1,"n":0,"d":1}',
+                    category: null,
+                    department: null,
+                    paymentMethod: null,
+                    attachments: [],
+                });
+            }
+
             return matchingRows;
         }
 
@@ -824,6 +840,23 @@ export default function Transactions() {
                 });
             }
         });
+        
+        // Add invisible spacer row at the end to absorb the bottom border
+        if (normalRows.length > 0) {
+            normalRows.push({
+                id: '__spacer__',
+                isSpacerRow: true,
+                description: '',
+                date: new Date().toISOString(),
+                reconciled: false,
+                total: '{"s":1,"n":0,"d":1}',
+                category: null,
+                department: null,
+                paymentMethod: null,
+                attachments: [],
+            });
+        }
+        
         return normalRows;
     }, [data, showMatchingOnly, expandedRefunds]);
 
@@ -1252,7 +1285,7 @@ export default function Transactions() {
                                         onSortModelChange={(model) => !showMatchingOnly && setSortModel(model)}
                                         disableColumnSorting={showMatchingOnly}
                                         checkboxSelection
-                                        isRowSelectable={(params) => !params.row.reconciled}
+                                        isRowSelectable={(params) => !params.row.reconciled && !params.row.isSpacerRow}
                                         rowSelectionModel={rowSelectionModel}
                                         onRowSelectionModelChange={(newModel) => setRowSelectionModel(newModel)}
                                         slots={{
@@ -1267,14 +1300,16 @@ export default function Transactions() {
                                         }}
                                         getRowClassName={(params) => {
                                             let classes = '';
+                                            if (params.row.isSpacerRow) classes += ' spacer-row';
                                             if (params.row.isRefund) classes += ' refund-row';
                                             if (params.row.refunds?.length > 0) classes += ' has-refunds-row';
-                                            // Check if this is the last row in the dataset
-                                            const lastRowId = rows.length > 0 ? rows[rows.length - 1].id : null;
-                                            if (params.id === lastRowId) classes += ' last-row';
                                             return classes.trim();
                                         }}
-                                        getRowHeight={() => 'auto'}
+                                        getRowHeight={(params) => {
+                                            // Make spacer row very small (just enough to absorb border)
+                                            if (params.model?.isSpacerRow) return 1;
+                                            return 'auto';
+                                        }}
                                         getEstimatedRowHeight={() => 100}
                                         sx={{
                                             border: "none",
@@ -1348,17 +1383,17 @@ export default function Transactions() {
                                                 justifyContent: "center !important",
                                             },
 
-                                            // Remove border from last row - use data-rowindex attribute for virtualized grid
-                                            "& .MuiDataGrid-row.last-row > .MuiDataGrid-cell": {
-                                                borderBottom: "none !important",
-                                            },
-                                            // Target via data attribute (more reliable for virtualized grids)
-                                            "& .MuiDataGrid-virtualScrollerRenderZone > .MuiDataGrid-row:last-child > .MuiDataGrid-cell": {
-                                                borderBottom: "none !important",
-                                            },
-                                            // Fallback: target any row with last-row class at any nesting level
-                                            "& .last-row.MuiDataGrid-row .MuiDataGrid-cell": {
-                                                borderBottom: "none !important",
+                                            // Invisible spacer row to absorb bottom border
+                                            "& .spacer-row": {
+                                                height: "1px !important",
+                                                minHeight: "1px !important",
+                                                maxHeight: "1px !important",
+                                                visibility: "hidden",
+                                                "& .MuiDataGrid-cell": {
+                                                    borderBottom: "none !important",
+                                                    padding: "0 !important",
+                                                    minHeight: "1px !important",
+                                                },
                                             },
 
                                             "& .refund-row": {
