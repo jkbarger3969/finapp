@@ -281,7 +281,9 @@ export default function BudgetAllocationTab() {
 
     const startEditing = (dept: DepartmentNode) => {
         setEditingDept(dept);
-        setEditParentBudget(dept.budget.toString());
+        const childrenTotal = dept.children.reduce((sum, child) => sum + calcSubtotal(child), 0);
+        const effectiveBudget = dept.budget > 0 ? dept.budget : childrenTotal;
+        setEditParentBudget(effectiveBudget.toString());
         const amounts: Record<string, string> = {};
         dept.children.forEach(child => {
             amounts[child.id] = calcSubtotal(child).toString();
@@ -350,16 +352,6 @@ export default function BudgetAllocationTab() {
         setError(null);
 
         try {
-            const parentAmount = getParentBudgetNum();
-            await upsertBudget({
-                input: {
-                    id: editingDept.budgetId || undefined,
-                    amount: toRationalString(parentAmount),
-                    owner: { type: 'Department', id: editingDept.id },
-                    fiscalYear: selectedFiscalYear,
-                },
-            });
-
             for (const child of editingDept.children) {
                 const childAmount = parseFloat(editAmounts[child.id]) || 0;
                 await upsertBudget({
@@ -597,36 +589,17 @@ export default function BudgetAllocationTab() {
                 </DialogTitle>
                 <DialogContent>
                     <Stack spacing={3} sx={{ mt: 1 }}>
-                        {/* Top Level Department Budget - Only Super Admins can edit */}
+                        {/* Top Level Department Budget - Read Only (set in Admin panel) */}
                         <Paper sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
                             <Typography variant="subtitle2" sx={{ mb: 1 }}>
                                 Total Budget for {editingDept?.name}
                             </Typography>
-                            {isSuperAdmin ? (
-                                <TextField
-                                    type="number"
-                                    value={editParentBudget}
-                                    onChange={(e) => setEditParentBudget(e.target.value)}
-                                    onFocus={(e) => e.target.select()}
-                                    fullWidth
-                                    variant="outlined"
-                                    placeholder="Enter budget amount"
-                                    InputProps={{
-                                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                                        sx: { bgcolor: 'white', borderRadius: 1 }
-                                    }}
-                                    inputProps={{ min: 0, step: 0.01 }}
-                                />
-                            ) : (
-                                <Typography variant="h5" sx={{ bgcolor: 'white', p: 1.5, borderRadius: 1, color: 'text.primary' }}>
-                                    {formatCurrency(getParentBudgetNum())}
-                                </Typography>
-                            )}
-                            {!isSuperAdmin && (
-                                <Typography variant="caption" sx={{ mt: 1, display: 'block', opacity: 0.9 }}>
-                                    Only Super Admins can modify the total budget amount
-                                </Typography>
-                            )}
+                            <Typography variant="h5" sx={{ bgcolor: 'white', p: 1.5, borderRadius: 1, color: 'text.primary' }}>
+                                {formatCurrency(getParentBudgetNum())}
+                            </Typography>
+                            <Typography variant="caption" sx={{ mt: 1, display: 'block', opacity: 0.9 }}>
+                                Top-level department budgets are set in the Admin panel under "Department Budgets"
+                            </Typography>
                         </Paper>
 
                         {/* Remaining Budget Display */}
