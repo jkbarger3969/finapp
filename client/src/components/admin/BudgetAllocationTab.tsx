@@ -230,7 +230,7 @@ export default function BudgetAllocationTab() {
             if (deptAncestors.length === 0) {
                 rootDepts.push(node);
             } else {
-                const parentId = deptAncestors[deptAncestors.length - 1]?.id;
+                const parentId = deptAncestors[0]?.id;
                 const parent = parentId ? map.get(parentId) : null;
                 if (parent) {
                     parent.children.push(node);

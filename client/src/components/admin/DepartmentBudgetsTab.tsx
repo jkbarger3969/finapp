@@ -40,11 +40,17 @@ const GET_BUDGET_DATA = gql`
         departments {
             id
             name
-            ancestors {
-                id
+            parent {
+                __typename
+                ... on Department {
+                    id
+                }
+                ... on Business {
+                    id
+                }
             }
         }
-        budgets(fiscalYearId: $fiscalYearId) {
+        budgets(where: { fiscalYear: { id: { eq: $fiscalYearId } } }) {
             id
             amount
             owner {
@@ -53,6 +59,9 @@ const GET_BUDGET_DATA = gql`
                     id
                     name
                 }
+            }
+            fiscalYear {
+                id
             }
         }
     }
@@ -79,7 +88,10 @@ const UPSERT_BUDGET = gql`
 interface Department {
     id: string;
     name: string;
-    ancestors: { id: string }[];
+    parent: {
+        __typename: string;
+        id: string;
+    } | null;
 }
 
 interface Budget {
@@ -150,7 +162,7 @@ export default function DepartmentBudgetsTab() {
     const topLevelDepartments: Department[] = useMemo(() => {
         if (!data?.departments) return [];
         return data.departments
-            .filter((d: Department) => d.ancestors.length === 0)
+            .filter((d: Department) => d.parent?.__typename === 'Business')
             .sort((a: Department, b: Department) => a.name.localeCompare(b.name));
     }, [data?.departments]);
 
