@@ -23,6 +23,18 @@ import {
 import SaveIcon from '@mui/icons-material/Save';
 import { gql, useQuery, useMutation } from 'urql';
 
+const GET_FISCAL_YEARS = gql`
+    query GetFiscalYears {
+        fiscalYears {
+            id
+            name
+            begin
+            end
+            archived
+        }
+    }
+`;
+
 const GET_BUDGET_DATA = gql`
     query GetBudgetData($fiscalYearId: ID!) {
         departments {
@@ -42,13 +54,6 @@ const GET_BUDGET_DATA = gql`
                     name
                 }
             }
-        }
-        fiscalYears {
-            id
-            name
-            begin
-            end
-            archived
         }
     }
 `;
@@ -121,22 +126,26 @@ export default function DepartmentBudgetsTab() {
     const [success, setSuccess] = useState<string | null>(null);
     const [hasChanges, setHasChanges] = useState(false);
 
+    const [{ data: fyData, fetching: fyFetching }] = useQuery({
+        query: GET_FISCAL_YEARS,
+    });
+
     const [{ data, fetching, error: queryError }, reexecuteQuery] = useQuery({
         query: GET_BUDGET_DATA,
-        variables: { fiscalYearId: selectedFiscalYear || 'none' },
+        variables: { fiscalYearId: selectedFiscalYear },
         pause: !selectedFiscalYear,
     });
 
     const [, upsertBudget] = useMutation(UPSERT_BUDGET);
 
     const fiscalYears: FiscalYear[] = useMemo(() => {
-        if (!data?.fiscalYears) return [];
-        return [...data.fiscalYears]
+        if (!fyData?.fiscalYears) return [];
+        return [...fyData.fiscalYears]
             .filter((fy: FiscalYear) => !fy.archived)
             .sort((a: FiscalYear, b: FiscalYear) => 
                 new Date(b.begin).getTime() - new Date(a.begin).getTime()
             );
-    }, [data?.fiscalYears]);
+    }, [fyData?.fiscalYears]);
 
     const topLevelDepartments: Department[] = useMemo(() => {
         if (!data?.departments) return [];
@@ -280,7 +289,7 @@ export default function DepartmentBudgetsTab() {
                 </Alert>
             )}
 
-            {fetching ? (
+            {(fetching || fyFetching) ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                     <CircularProgress />
                 </Box>

@@ -281,9 +281,7 @@ export default function BudgetAllocationTab() {
 
     const startEditing = (dept: DepartmentNode) => {
         setEditingDept(dept);
-        const childrenTotal = dept.children.reduce((sum, child) => sum + calcSubtotal(child), 0);
-        const effectiveBudget = dept.budget > 0 ? dept.budget : childrenTotal;
-        setEditParentBudget(effectiveBudget.toString());
+        setEditParentBudget(dept.budget.toString());
         const amounts: Record<string, string> = {};
         dept.children.forEach(child => {
             amounts[child.id] = calcSubtotal(child).toString();
@@ -377,13 +375,15 @@ export default function BudgetAllocationTab() {
         const hasChildren = dept.children.length > 0;
         const isExpanded = expandedDepts.has(dept.id);
         const childrenTotal = dept.children.reduce((sum, child) => sum + calcSubtotal(child), 0);
-        const deptTotal = dept.budget > 0 ? dept.budget : childrenTotal;
-        const isOverAllocated = dept.budget > 0 && childrenTotal > dept.budget;
+        const hasBudgetSet = dept.budget > 0;
+        const deptTotal = hasBudgetSet ? dept.budget : childrenTotal;
+        const isOverAllocated = hasBudgetSet && childrenTotal > dept.budget;
         const canEdit = hasAdminAccess(dept.id);
+        const allocationPercent = hasBudgetSet && dept.budget > 0 ? (childrenTotal / dept.budget * 100).toFixed(0) : (childrenTotal > 0 ? 'N/A' : '0');
 
         return (
             <Box key={dept.id} sx={{ mb: 2 }}>
-                <Paper sx={{ p: 2, borderLeft: 4, borderColor: isOverAllocated ? 'error.main' : 'primary.main' }}>
+                <Paper sx={{ p: 2, borderLeft: 4, borderColor: isOverAllocated ? 'error.main' : (hasBudgetSet ? 'primary.main' : 'warning.main') }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             {hasChildren && (
@@ -392,28 +392,33 @@ export default function BudgetAllocationTab() {
                                 </IconButton>
                             )}
                             <Typography variant="h6" fontWeight="bold">{dept.name}</Typography>
+                            {!hasBudgetSet && (
+                                <Typography variant="caption" sx={{ bgcolor: 'warning.light', px: 1, py: 0.5, borderRadius: 1, ml: 1 }}>
+                                    No budget set
+                                </Typography>
+                            )}
                         </Box>
 
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                             <Box sx={{ textAlign: 'right', minWidth: 140 }}>
                                 <Typography variant="caption" color="text.secondary">Total Budget</Typography>
-                                <Typography variant="h5" color="primary.main" fontWeight="bold">
-                                    {formatCurrency(deptTotal)}
+                                <Typography variant="h5" color={hasBudgetSet ? 'primary.main' : 'warning.main'} fontWeight="bold">
+                                    {hasBudgetSet ? formatCurrency(deptTotal) : '$0.00'}
                                 </Typography>
                             </Box>
                             {hasChildren && (
                                 <Box sx={{ textAlign: 'right', minWidth: 120 }}>
                                     <Typography variant="caption" color="text.secondary">Allocated</Typography>
                                     <Typography variant="body1" color={isOverAllocated ? 'error.main' : 'success.main'}>
-                                        {formatCurrency(childrenTotal)} ({deptTotal > 0 ? (childrenTotal / deptTotal * 100).toFixed(0) : 0}%)
+                                        {formatCurrency(childrenTotal)} ({allocationPercent}%)
                                     </Typography>
                                 </Box>
                             )}
-                            {hasChildren && (
+                            {hasChildren && hasBudgetSet && (
                                 <Box sx={{ textAlign: 'right', minWidth: 100 }}>
                                     <Typography variant="caption" color="text.secondary">Unallocated</Typography>
                                     <Typography variant="body1" color={isOverAllocated ? 'error.main' : 'text.secondary'}>
-                                        {formatCurrency(deptTotal - childrenTotal)}
+                                        {formatCurrency(dept.budget - childrenTotal)}
                                     </Typography>
                                 </Box>
                             )}
@@ -431,11 +436,11 @@ export default function BudgetAllocationTab() {
                         </Box>
                     </Box>
 
-                    {hasChildren && (
+                    {hasChildren && hasBudgetSet && (
                         <Box sx={{ mt: 1 }}>
                             <LinearProgress
                                 variant="determinate"
-                                value={deptTotal > 0 ? Math.min((childrenTotal / deptTotal) * 100, 100) : 0}
+                                value={dept.budget > 0 ? Math.min((childrenTotal / dept.budget) * 100, 100) : 0}
                                 color={isOverAllocated ? "error" : "primary"}
                                 sx={{ height: 6, borderRadius: 3 }}
                             />
@@ -590,15 +595,17 @@ export default function BudgetAllocationTab() {
                 <DialogContent>
                     <Stack spacing={3} sx={{ mt: 1 }}>
                         {/* Top Level Department Budget - Read Only (set in Admin panel) */}
-                        <Paper sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-                            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                        <Paper sx={{ p: 2, bgcolor: getParentBudgetNum() > 0 ? 'primary.main' : 'warning.main', color: 'white' }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, color: 'white' }}>
                                 Total Budget for {editingDept?.name}
                             </Typography>
-                            <Typography variant="h5" sx={{ bgcolor: 'white', p: 1.5, borderRadius: 1, color: 'text.primary' }}>
+                            <Typography variant="h5" sx={{ bgcolor: 'white', p: 1.5, borderRadius: 1, color: getParentBudgetNum() > 0 ? 'primary.main' : 'warning.main', fontWeight: 'bold' }}>
                                 {formatCurrency(getParentBudgetNum())}
                             </Typography>
-                            <Typography variant="caption" sx={{ mt: 1, display: 'block', opacity: 0.9 }}>
-                                Top-level department budgets are set in the Admin panel under "Department Budgets"
+                            <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'rgba(255,255,255,0.85)' }}>
+                                {getParentBudgetNum() > 0 
+                                    ? 'Top-level department budgets are set in the Admin panel under "Department Budgets"'
+                                    : 'No budget has been set for this department. Contact an Admin to set a budget in the Admin panel.'}
                             </Typography>
                         </Paper>
 
