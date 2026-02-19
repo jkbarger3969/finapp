@@ -118,8 +118,11 @@ function rationalToNumber(rational: { s: number; n: number; d: number } | null):
 }
 
 function toRationalString(amount: number): string {
-    const cents = Math.round(amount * 100);
-    return `${cents >= 0 ? 1 : -1} ${Math.abs(cents)} 100`;
+    return JSON.stringify({
+        s: amount >= 0 ? 1 : -1,
+        n: Math.abs(Math.round(amount * 100)),
+        d: 100,
+    });
 }
 
 function formatCurrency(amount: number): string {

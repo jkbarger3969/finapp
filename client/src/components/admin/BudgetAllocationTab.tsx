@@ -56,6 +56,17 @@ const GET_BUDGET_DATA = `
         departments {
             id
             name
+            parent {
+                __typename
+                ... on Department {
+                    id
+                    name
+                }
+                ... on Business {
+                    id
+                    name
+                }
+            }
             ancestors {
                 __typename
                 ... on Department {
@@ -212,31 +223,32 @@ export default function BudgetAllocationTab() {
 
         data.departments.forEach((dept: any) => {
             const budgetData = budgetByDeptId.get(dept.id);
-            const ancestors = dept.ancestors?.filter((a: any) => a.__typename === 'Department') || [];
             map.set(dept.id, {
                 id: dept.id,
                 name: dept.name,
                 children: [],
                 budget: budgetData?.amount || 0,
                 budgetId: budgetData?.id,
-                level: ancestors.length,
+                level: 0,
             });
         });
 
         data.departments.forEach((dept: any) => {
             const node = map.get(dept.id)!;
-            const deptAncestors = dept.ancestors?.filter((a: any) => a.__typename === 'Department') || [];
 
-            if (deptAncestors.length === 0) {
+            if (dept.parent?.__typename === 'Business') {
+                node.level = 0;
                 rootDepts.push(node);
-            } else {
-                const parentId = deptAncestors[0]?.id;
-                const parent = parentId ? map.get(parentId) : null;
+            } else if (dept.parent?.__typename === 'Department') {
+                const parent = map.get(dept.parent.id);
                 if (parent) {
+                    node.level = parent.level + 1;
                     parent.children.push(node);
                 } else {
                     rootDepts.push(node);
                 }
+            } else {
+                rootDepts.push(node);
             }
         });
 
@@ -401,12 +413,14 @@ export default function BudgetAllocationTab() {
 
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                             <Box sx={{ textAlign: 'right', minWidth: 140 }}>
-                                <Typography variant="caption" color="text.secondary">Total Budget</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {hasBudgetSet ? 'Total Budget' : 'Subdept Total'}
+                                </Typography>
                                 <Typography variant="h5" color={hasBudgetSet ? 'primary.main' : 'warning.main'} fontWeight="bold">
-                                    {hasBudgetSet ? formatCurrency(deptTotal) : '$0.00'}
+                                    {formatCurrency(deptTotal)}
                                 </Typography>
                             </Box>
-                            {hasChildren && (
+                            {hasChildren && hasBudgetSet && (
                                 <Box sx={{ textAlign: 'right', minWidth: 120 }}>
                                     <Typography variant="caption" color="text.secondary">Allocated</Typography>
                                     <Typography variant="body1" color={isOverAllocated ? 'error.main' : 'success.main'}>
