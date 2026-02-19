@@ -96,7 +96,7 @@ interface Department {
 
 interface Budget {
     id: string;
-    amount: { s: number; n: number; d: number };
+    amount: { s: number; n: number; d: number } | string;
     owner: {
         __typename: string;
         id?: string;
@@ -112,9 +112,14 @@ interface FiscalYear {
     archived: boolean;
 }
 
-function rationalToNumber(rational: { s: number; n: number; d: number } | null): number {
+function rationalToNumber(rational: { s: number; n: number; d: number } | string | null): number {
     if (!rational) return 0;
-    return (rational.s * rational.n) / rational.d;
+    try {
+        const r = typeof rational === 'string' ? JSON.parse(rational) : rational;
+        return (r.s * r.n) / r.d;
+    } catch {
+        return 0;
+    }
 }
 
 function toRationalString(amount: number): string {
