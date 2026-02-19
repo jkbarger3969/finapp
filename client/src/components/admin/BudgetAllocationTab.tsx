@@ -414,7 +414,7 @@ export default function BudgetAllocationTab() {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                             <Box sx={{ textAlign: 'right', minWidth: 140 }}>
                                 <Typography variant="caption" color="text.secondary">
-                                    {hasBudgetSet ? 'Total Budget' : 'Subdept Total'}
+                                    {hasBudgetSet ? 'Total Budget' : 'Children Total'}
                                 </Typography>
                                 <Typography variant="h5" color={hasBudgetSet ? 'primary.main' : 'warning.main'} fontWeight="bold">
                                     {formatCurrency(deptTotal)}
