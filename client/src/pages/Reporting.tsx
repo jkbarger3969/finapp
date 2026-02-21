@@ -35,7 +35,7 @@ import BusinessAutocomplete from '../components/BusinessAutocomplete';
 
 const GET_REPORT_DATA = `
   query GetReportData($where: EntriesWhere!) {
-    entries(where: $where) {
+    entries(where: $where, limit: 0) {
       id
       description
       date
