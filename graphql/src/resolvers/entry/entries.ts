@@ -1347,3 +1347,124 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
   }
   return { count: 0, balance: 0 };
 };
+
+export const entriesReport: QueryResolvers["entriesReport"] = async (
+  _,
+  { where },
+  context
+) => {
+  const { dataSources: { accountingDb }, authService, user } = context as Context;
+
+  const pipeline: any[] = [];
+
+  // Permission filtering for non-SuperAdmin users
+  if (authService && user?.id) {
+    const authUser = await authService.getUserById(user.id);
+
+    if (authUser && authUser.role !== "SUPER_ADMIN") {
+      const accessibleDeptIds = await authService.getAccessibleDepartmentIds(user.id);
+
+      if (accessibleDeptIds.length === 0) {
+        return { count: 0, totalIncome: 0, totalExpenses: 0, netPosition: 0 };
+      }
+
+      const allAccessibleIds = new Set<string>();
+      for (const deptId of accessibleDeptIds) {
+        allAccessibleIds.add(deptId.toString());
+        const descendants = await getDescendantDeptIds(deptId, accountingDb.db);
+        descendants.forEach((id) => allAccessibleIds.add(id.toString()));
+      }
+
+      const permittedDeptIds = Array.from(allAccessibleIds).map((id) => new ObjectId(id));
+
+      pipeline.push({
+        $match: {
+          "department.0.value": { $in: permittedDeptIds },
+        },
+      });
+    }
+  }
+
+  // Apply where filters
+  if (where) {
+    pipeline.push({
+      $match: await whereEntries(where, accountingDb.db),
+    });
+  }
+
+  // Lookup category to determine Credit vs Debit
+  pipeline.push({
+    $lookup: {
+      from: "categories",
+      localField: "category.0.value",
+      foreignField: "_id",
+      as: "categoryDoc"
+    }
+  });
+
+  // Aggregate by category type
+  pipeline.push({
+    $group: {
+      _id: null,
+      count: { $sum: 1 },
+      totalIncome: {
+        $sum: {
+          $cond: [
+            { $eq: [{ $toUpper: { $arrayElemAt: ["$categoryDoc.type", 0] } }, "CREDIT"] },
+            {
+              $abs: {
+                $let: {
+                  vars: { t: { $arrayElemAt: ["$total.value", 0] } },
+                  in: {
+                    $cond: [
+                      { $or: [{ $eq: ["$$t.d", 0] }, { $eq: ["$$t.d", null] }] },
+                      0,
+                      { $multiply: [{ $divide: ["$$t.n", "$$t.d"] }, "$$t.s"] }
+                    ]
+                  }
+                }
+              }
+            },
+            0
+          ]
+        }
+      },
+      totalExpenses: {
+        $sum: {
+          $cond: [
+            { $ne: [{ $toUpper: { $arrayElemAt: ["$categoryDoc.type", 0] } }, "CREDIT"] },
+            {
+              $abs: {
+                $let: {
+                  vars: { t: { $arrayElemAt: ["$total.value", 0] } },
+                  in: {
+                    $cond: [
+                      { $or: [{ $eq: ["$$t.d", 0] }, { $eq: ["$$t.d", null] }] },
+                      0,
+                      { $multiply: [{ $divide: ["$$t.n", "$$t.d"] }, "$$t.s"] }
+                    ]
+                  }
+                }
+              }
+            },
+            0
+          ]
+        }
+      }
+    }
+  });
+
+  const result = await accountingDb.getCollection("entries").aggregate(pipeline).toArray();
+  
+  if (result.length > 0) {
+    const { count, totalIncome, totalExpenses } = result[0];
+    return {
+      count,
+      totalIncome,
+      totalExpenses,
+      netPosition: totalIncome - totalExpenses
+    };
+  }
+  
+  return { count: 0, totalIncome: 0, totalExpenses: 0, netPosition: 0 };
+};

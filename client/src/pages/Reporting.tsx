@@ -76,6 +76,12 @@ const GET_REPORT_DATA = `
         }
       }
     }
+    entriesReport(where: $where) {
+      count
+      totalIncome
+      totalExpenses
+      netPosition
+    }
   }
 `;
 
@@ -392,6 +398,7 @@ export default function Reporting() {
 
     const { data, fetching, error } = result;
     const entries = data?.entries || [];
+    const serverReport = data?.entriesReport || { count: 0, totalIncome: 0, totalExpenses: 0, netPosition: 0 };
 
     // Filter entries by payment method (client-side)
     const filteredEntries = useMemo(() => {
@@ -408,12 +415,10 @@ export default function Reporting() {
         });
     }, [entries, paymentMethodType]);
 
-    // Aggregations
+    // Aggregations for charts (client-side breakdowns only - totals come from server)
     const aggregatedData = useMemo(() => {
         const byCategory: Record<string, number> = {};
         const byMonth: Record<string, { income: number; expenses: number }> = {};
-        let totalIncome = 0;
-        let totalExpenses = 0;
 
         filteredEntries.forEach((entry: any) => {
             const amount = Math.abs(parseRational(entry.total));
@@ -429,10 +434,8 @@ export default function Reporting() {
             if (!byMonth[monthKey]) byMonth[monthKey] = { income: 0, expenses: 0 };
             if (isCredit) {
                 byMonth[monthKey].income += amount;
-                totalIncome += amount;
             } else {
                 byMonth[monthKey].expenses += amount;
-                totalExpenses += amount;
             }
         });
 
@@ -448,14 +451,15 @@ export default function Reporting() {
             }))
             .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
 
+        // Use server-side totals for accuracy (handles all entries, not just first 50)
         return {
-            totalIncome,
-            totalExpenses,
-            net: totalIncome - totalExpenses,
+            totalIncome: serverReport.totalIncome,
+            totalExpenses: serverReport.totalExpenses,
+            net: serverReport.netPosition,
             categoryChartData,
             trendChartData
         };
-    }, [filteredEntries]);
+    }, [filteredEntries, serverReport]);
 
     const handlePrint = () => {
         window.print();

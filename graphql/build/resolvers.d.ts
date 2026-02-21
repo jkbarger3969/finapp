@@ -72,7 +72,7 @@ declare const resolvers: {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, Record<PropertyKey, never>>;
         paymentMethod?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").PaymentMethodCash | import("./graphTypes").PaymentMethodCombination | import("./graphTypes").PaymentMethodOnline | import("./graphTypes").PaymentMethodUnknown | (import("./graphTypes").Omit<import("./graphTypes").PaymentMethodCard, "card"> & {
-            card: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").PaymentCardDbRecord | import("./graphTypes").PaymentCard>;
+            card: import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").PaymentCard | import("./dataSources/accountingDb/types").PaymentCardDbRecord>;
         }) | (import("./graphTypes").Omit<import("./graphTypes").PaymentMethodCheck, "check"> & {
             check: import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").PaymentCheck | (import("./graphTypes").Omit<import("./graphTypes").AccountCheck, "account"> & {
                 account: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").AccountDbRecord>;
@@ -176,6 +176,9 @@ declare const resolvers: {
         entriesCount?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<number>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, Partial<import("./graphTypes").QueryEntriesCountArgs>>;
+        entriesReport?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").EntriesReport>, Record<PropertyKey, never>, {
+            dataSources: import("./types").DataSources;
+        } & import("./types").ContextBase, Partial<import("./graphTypes").QueryEntriesReportArgs>>;
         entriesSummary?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").EntriesSummary>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, Partial<import("./graphTypes").QueryEntriesSummaryArgs>>;
@@ -191,7 +194,7 @@ declare const resolvers: {
         entryRefunds?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryRefundDbRecord>[], Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, Partial<import("./graphTypes").QueryEntryRefundsArgs>>;
-        exportFiscalYear?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "budgets" | "entries" | "fiscalYear"> & {
+        exportFiscalYear?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "fiscalYear" | "budgets" | "entries"> & {
             budgets: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").BudgetDbRecord>[];
             entries: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>[];
             fiscalYear: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").FiscalYearDbRecord>;
@@ -344,17 +347,17 @@ declare const resolvers: {
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationRestoreFiscalYearArgs, "id">>;
         updateAccountCard?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").PaymentCardDbRecord>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
-        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdateAccountCardArgs, "id" | "input">>;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdateAccountCardArgs, "input" | "id">>;
         updateBusiness?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").UpdateBusinessPayload, "business"> & {
             business: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").BusinessDbRecord>;
         }>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
-        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdateBusinessArgs, "id" | "input">>;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdateBusinessArgs, "input" | "id">>;
         updateCategory?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").UpdateCategoryPayload, "category"> & {
             category: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").CategoryDbRecord>;
         }>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
-        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdateCategoryArgs, "id" | "input">>;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdateCategoryArgs, "input" | "id">>;
         updateEntry?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").UpdateEntryPayload, "updatedEntry"> & {
             updatedEntry: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>;
         }>, Record<PropertyKey, never>, {
@@ -369,7 +372,7 @@ declare const resolvers: {
             person: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").PersonDbRecord>;
         }>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
-        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdatePersonArgs, "id" | "input">>;
+        } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").MutationUpdatePersonArgs, "input" | "id">>;
         uploadReceipt?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").UploadReceiptPayload, "attachment"> & {
             attachment: import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Attachment>;
         }>, Record<PropertyKey, never>, {
@@ -394,7 +397,7 @@ declare const resolvers: {
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").AccountDbRecord>;
     AccountCreditCard?: import("./graphTypes").AccountCreditCardResolvers<{
         dataSources: import("./types").DataSources;
-    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").AccountCreditCard, "owner" | "cards"> & {
+    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").AccountCreditCard, "cards" | "owner"> & {
         cards: import("./dataSources/accountingDb/types").PaymentCardDbRecord[];
         owner: import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord;
     }>;
@@ -499,6 +502,9 @@ declare const resolvers: {
     Entity?: import("./graphTypes").EntityResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord>;
+    EntriesReport?: import("./graphTypes").EntriesReportResolvers<{
+        dataSources: import("./types").DataSources;
+    } & import("./types").ContextBase, import("./graphTypes").EntriesReport>;
     EntriesSummary?: import("./graphTypes").EntriesSummaryResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").EntriesSummary>;
@@ -516,7 +522,7 @@ declare const resolvers: {
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").FiscalYearDbRecord>;
     FiscalYearExport?: import("./graphTypes").FiscalYearExportResolvers<{
         dataSources: import("./types").DataSources;
-    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "budgets" | "entries" | "fiscalYear"> & {
+    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "fiscalYear" | "budgets" | "entries"> & {
         budgets: import("./dataSources/accountingDb/types").BudgetDbRecord[];
         entries: import("./dataSources/accountingDb/types").EntryDbRecord[];
         fiscalYear: import("./dataSources/accountingDb/types").FiscalYearDbRecord;
@@ -530,7 +536,7 @@ declare const resolvers: {
     } & import("./types").ContextBase, import("./graphTypes").PaymentCard>;
     PaymentCardInterface?: import("./graphTypes").PaymentCardInterfaceResolvers<{
         dataSources: import("./types").DataSources;
-    } & import("./types").ContextBase, import("./dataSources/accountingDb/types").PaymentCardDbRecord | import("./graphTypes").PaymentCard>;
+    } & import("./types").ContextBase, import("./graphTypes").PaymentCard | import("./dataSources/accountingDb/types").PaymentCardDbRecord>;
     PaymentCheck?: import("./graphTypes").PaymentCheckResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").PaymentCheck>;
@@ -542,7 +548,7 @@ declare const resolvers: {
     PaymentMethodCard?: import("./graphTypes").PaymentMethodCardResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").PaymentMethodCard, "card"> & {
-        card: import("./dataSources/accountingDb/types").PaymentCardDbRecord | import("./graphTypes").PaymentCard;
+        card: import("./graphTypes").PaymentCard | import("./dataSources/accountingDb/types").PaymentCardDbRecord;
     }>;
     PaymentMethodCash?: import("./graphTypes").PaymentMethodCashResolvers<{
         dataSources: import("./types").DataSources;
@@ -560,7 +566,7 @@ declare const resolvers: {
     PaymentMethodInterface?: import("./graphTypes").PaymentMethodInterfaceResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").PaymentMethodCash | import("./graphTypes").PaymentMethodCombination | import("./graphTypes").PaymentMethodOnline | import("./graphTypes").PaymentMethodUnknown | (import("./graphTypes").Omit<import("./graphTypes").PaymentMethodCard, "card"> & {
-        card: import("./dataSources/accountingDb/types").PaymentCardDbRecord | import("./graphTypes").PaymentCard;
+        card: import("./graphTypes").PaymentCard | import("./dataSources/accountingDb/types").PaymentCardDbRecord;
     }) | (import("./graphTypes").Omit<import("./graphTypes").PaymentMethodCheck, "check"> & {
         check: import("./graphTypes").PaymentCheck | (import("./graphTypes").Omit<import("./graphTypes").AccountCheck, "account"> & {
             account: import("./dataSources/accountingDb/types").AccountDbRecord;

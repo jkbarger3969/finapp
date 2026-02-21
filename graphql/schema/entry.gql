@@ -251,11 +251,19 @@ type Query {
   searchEntries(query: String!, limit: Int = 50): [Entry!]!
   entriesCount(where: EntriesWhere, filterRefunds: Boolean): Int!
   entriesSummary(where: EntriesWhere): EntriesSummary!
+  entriesReport(where: EntriesWhere): EntriesReport!
 }
 
 type EntriesSummary {
   count: Int!
   balance: Float!
+}
+
+type EntriesReport {
+  count: Int!
+  totalIncome: Float!
+  totalExpenses: Float!
+  netPosition: Float!
 }
 
 type AddNewEntryPayload {

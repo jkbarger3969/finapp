@@ -9,3 +9,4 @@ export declare const entries: QueryResolvers["entries"];
 export declare const searchEntries: QueryResolvers["searchEntries"];
 export declare const entriesCount: QueryResolvers["entriesCount"];
 export declare const entriesSummary: QueryResolvers["entriesSummary"];
+export declare const entriesReport: QueryResolvers["entriesReport"];
