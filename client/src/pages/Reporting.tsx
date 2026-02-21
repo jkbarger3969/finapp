@@ -308,6 +308,19 @@ export default function Reporting() {
         }
     }, [contextDeptId, departments, topLevelDeptId, subDeptId]);
 
+    // Auto-select department for users with limited access
+    useEffect(() => {
+        // Skip if user already selected something or if coming from context
+        if (topLevelDeptId || subDeptId || contextDeptId) return;
+        if (user?.role === 'SUPER_ADMIN') return; // SuperAdmin sees all
+        if (topLevelDepartments.length === 0) return;
+
+        // If user only has access to ONE top-level department, auto-select it
+        if (topLevelDepartments.length === 1) {
+            setTopLevelDeptId(topLevelDepartments[0].id);
+        }
+    }, [topLevelDepartments, user, topLevelDeptId, subDeptId, contextDeptId]);
+
     // Global keyboard shortcut for search (Cmd/Ctrl + K)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {

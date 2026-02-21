@@ -192,6 +192,15 @@ export default function Dashboard() {
         setExpandedDepts(newExpanded);
     };
 
+    // Get department's own budget/spent (NOT including children)
+    const getDeptOwnValues = (dept: DeptNode): { budget: number; spent: number } => {
+        return {
+            budget: dept.budget,
+            spent: dept.spent,
+        };
+    };
+
+    // Get total including children (for display when needed)
     const calcSubtotals = (dept: DeptNode): { budget: number; spent: number } => {
         const childTotals = dept.children.reduce((acc, child) => {
             const childSubtotals = calcSubtotals(child);
@@ -207,16 +216,56 @@ export default function Dashboard() {
         };
     };
 
+    // Determine if user has subdepartment-only access under a SINGLE parent
+    const userAccessInfo = useMemo(() => {
+        if (isSuperAdmin) {
+            return { hasSubdeptOnlyAccess: false, singleParentId: null, subdeptIds: [] as string[] };
+        }
+        
+        // Find which departments user has DIRECT access to (from their permissions)
+        const directAccessIds = new Set(userDepartments);
+        if (directAccessIds.size === 0) {
+            return { hasSubdeptOnlyAccess: false, singleParentId: null, subdeptIds: [] as string[] };
+        }
+        
+        // Check if user has direct access to any top-level departments
+        const hasTopLevelAccess = topLevelDepts.some(d => directAccessIds.has(d.id));
+        
+        if (hasTopLevelAccess) {
+            return { hasSubdeptOnlyAccess: false, singleParentId: null, subdeptIds: [] as string[] };
+        }
+        
+        // User only has subdepartment access - find which subdepts and their parents
+        const subdeptsWithAccess: { id: string; parentId: string | null }[] = [];
+        
+        topLevelDepts.forEach(topDept => {
+            topDept.children.forEach(child => {
+                if (directAccessIds.has(child.id)) {
+                    subdeptsWithAccess.push({ id: child.id, parentId: topDept.id });
+                }
+            });
+        });
+        
+        // Check if all subdepts belong to the same parent
+        const parentIds = new Set(subdeptsWithAccess.map(s => s.parentId));
+        const singleParent = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
+        
+        return {
+            hasSubdeptOnlyAccess: subdeptsWithAccess.length > 0 && !hasTopLevelAccess,
+            singleParentId: singleParent,
+            subdeptIds: subdeptsWithAccess.map(s => s.id),
+        };
+    }, [isSuperAdmin, userDepartments, topLevelDepts]);
+
     const navigateToTransactions = (departmentId: string) => {
         navigate('/transactions', { state: { departmentId } });
     };
 
-    const renderDeptCard = (dept: DeptNode) => {
-        const hasChildren = dept.children.length > 0;
-        const isExpanded = expandedDepts.has(dept.id);
-        const subtotals = calcSubtotals(dept);
-        const percentUsed = subtotals.budget > 0 ? (subtotals.spent / subtotals.budget) * 100 : 0;
-        const remaining = subtotals.budget - subtotals.spent;
+    // Render a subdepartment card (used for subdepartment-only users)
+    const renderSubdeptCard = (dept: DeptNode) => {
+        const ownValues = getDeptOwnValues(dept);
+        const percentUsed = ownValues.budget > 0 ? (ownValues.spent / ownValues.budget) * 100 : 0;
+        const remaining = ownValues.budget - ownValues.spent;
 
         return (
             <Grid size={{ xs: 12, md: 6, lg: 4 }} key={dept.id}>
@@ -250,11 +299,82 @@ export default function Dashboard() {
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
                         <Box>
                             <Typography variant="caption" color="text.secondary">Budget</Typography>
-                            <Typography variant="subtitle1" fontWeight="medium">{formatCurrency(subtotals.budget)}</Typography>
+                            <Typography variant="subtitle1" fontWeight="medium">{formatCurrency(ownValues.budget)}</Typography>
                         </Box>
                         <Box sx={{ textAlign: 'right' }}>
                             <Typography variant="caption" color="text.secondary">Spent</Typography>
-                            <Typography variant="subtitle1" color="error.main">{formatCurrency(subtotals.spent)}</Typography>
+                            <Typography variant="subtitle1" color="error.main">{formatCurrency(ownValues.spent)}</Typography>
+                        </Box>
+                    </Box>
+
+                    <Box sx={{ mt: 'auto', pt: 1, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" color="text.secondary">Remaining</Typography>
+                        <Typography variant="body1" fontWeight="bold" color={remaining < 0 ? 'error.main' : 'success.main'}>
+                            {formatCurrency(remaining)}
+                        </Typography>
+                    </Box>
+
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<ReceiptLongIcon />}
+                        onClick={() => navigateToTransactions(dept.id)}
+                        sx={{ mt: 2 }}
+                        fullWidth
+                    >
+                        View Transactions
+                    </Button>
+                </Paper>
+            </Grid>
+        );
+    };
+
+    // Render a top-level department card with expandable children
+    const renderDeptCard = (dept: DeptNode) => {
+        const hasChildren = dept.children.length > 0;
+        const isExpanded = expandedDepts.has(dept.id);
+        // Show department's own budget, NOT summed with children
+        const ownValues = getDeptOwnValues(dept);
+        const percentUsed = ownValues.budget > 0 ? (ownValues.spent / ownValues.budget) * 100 : 0;
+        const remaining = ownValues.budget - ownValues.spent;
+
+        return (
+            <Grid size={{ xs: 12, md: 6, lg: 4 }} key={dept.id}>
+                <Paper
+                    sx={{
+                        p: 2,
+                        borderTop: 4,
+                        borderColor: percentUsed > 100 ? 'error.main' : percentUsed > 80 ? 'warning.main' : 'success.main',
+                        display: 'flex',
+                        flexDirection: 'column',
+                    }}
+                >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                        <Typography variant="h6" fontWeight="bold" noWrap title={dept.name} sx={{ maxWidth: '70%' }}>
+                            {dept.name}
+                        </Typography>
+                        <Chip
+                            label={`${Math.round(percentUsed)}%`}
+                            size="small"
+                            color={percentUsed > 100 ? 'error' : percentUsed > 80 ? 'warning' : 'success'}
+                        />
+                    </Box>
+
+                    <LinearProgress
+                        variant="determinate"
+                        value={Math.min(percentUsed, 100)}
+                        color={percentUsed > 100 ? 'error' : percentUsed > 80 ? 'warning' : 'success'}
+                        sx={{ height: 6, borderRadius: 3, mb: 2 }}
+                    />
+
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+                        <Box>
+                            <Typography variant="caption" color="text.secondary">Budget</Typography>
+                            <Typography variant="subtitle1" fontWeight="medium">{formatCurrency(ownValues.budget)}</Typography>
+                        </Box>
+                        <Box sx={{ textAlign: 'right' }}>
+                            <Typography variant="caption" color="text.secondary">Spent</Typography>
+                            <Typography variant="subtitle1" color="error.main">{formatCurrency(ownValues.spent)}</Typography>
                         </Box>
                     </Box>
 
@@ -289,8 +409,8 @@ export default function Dashboard() {
                             <Collapse in={isExpanded}>
                                 <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
                                     {dept.children.map(child => {
-                                        const childSubtotals = calcSubtotals(child);
-                                        const cPercent = childSubtotals.budget > 0 ? (childSubtotals.spent / childSubtotals.budget) * 100 : 0;
+                                        const childOwnValues = getDeptOwnValues(child);
+                                        const cPercent = childOwnValues.budget > 0 ? (childOwnValues.spent / childOwnValues.budget) * 100 : 0;
 
                                         return (
                                             <Paper 
@@ -316,8 +436,8 @@ export default function Dashboard() {
                                                     sx={{ height: 4, borderRadius: 2 }}
                                                 />
                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                                                    <Typography variant="caption" color="text.secondary">{formatCurrency(childSubtotals.spent)} spent</Typography>
-                                                    <Typography variant="caption" color="text.secondary">of {formatCurrency(childSubtotals.budget)}</Typography>
+                                                    <Typography variant="caption" color="text.secondary">{formatCurrency(childOwnValues.spent)} spent</Typography>
+                                                    <Typography variant="caption" color="text.secondary">of {formatCurrency(childOwnValues.budget)}</Typography>
                                                 </Box>
                                             </Paper>
                                         );
@@ -349,21 +469,38 @@ export default function Dashboard() {
 
     const displayedDepts = getDisplayedDepts();
 
-    // Calculate totals based on displayed departments using the same recursive logic as cards
+    // For subdept-only users with single parent: get the subdepartments directly
+    const subdeptOnlyCards = useMemo(() => {
+        if (!userAccessInfo.hasSubdeptOnlyAccess || !userAccessInfo.singleParentId) {
+            return [];
+        }
+        // Find the parent dept and return only the accessible subdepts
+        const parentDept = topLevelDepts.find(d => d.id === userAccessInfo.singleParentId);
+        if (!parentDept) return [];
+        return parentDept.children.filter(child => userAccessInfo.subdeptIds.includes(child.id));
+    }, [userAccessInfo, topLevelDepts]);
+
+    // Calculate totals based on displayed departments - use OWN budget values only (not children summed)
     const { displayedTotalBudget, displayedTotalSpent } = useMemo(() => {
-        // Use calcSubtotals to get the total for each displayed department (includes all descendants)
-        // Sum up all displayed departments' subtotals
         let budget = 0;
         let spent = 0;
         
-        displayedDepts.forEach(dept => {
-            const subtotals = calcSubtotals(dept);
-            budget += subtotals.budget;
-            spent += subtotals.spent;
-        });
+        // For subdept-only users with single parent, use their subdept cards
+        if (userAccessInfo.hasSubdeptOnlyAccess && userAccessInfo.singleParentId && !topLevelDeptId && !subDeptId) {
+            subdeptOnlyCards.forEach(dept => {
+                budget += dept.budget;
+                spent += dept.spent;
+            });
+        } else {
+            // Sum up displayed departments' OWN budgets (not children)
+            displayedDepts.forEach(dept => {
+                budget += dept.budget;
+                spent += dept.spent;
+            });
+        }
         
         return { displayedTotalBudget: budget, displayedTotalSpent: spent };
-    }, [displayedDepts]);
+    }, [displayedDepts, subdeptOnlyCards, userAccessInfo, topLevelDeptId, subDeptId]);
 
     const totalRemaining = displayedTotalBudget - displayedTotalSpent;
     useEffect(() => {
@@ -513,9 +650,17 @@ export default function Dashboard() {
                     </Grid>
                 )}
 
-                {!fetching && !error && displayedDepts.map(dept => renderDeptCard(dept))}
+                {/* For subdept-only users with single parent: show separate subdept cards */}
+                {!fetching && !error && userAccessInfo.hasSubdeptOnlyAccess && userAccessInfo.singleParentId && !topLevelDeptId && !subDeptId && (
+                    subdeptOnlyCards.map(dept => renderSubdeptCard(dept))
+                )}
 
-                {!fetching && !error && displayedDepts.length === 0 && (
+                {/* For all other users or when filters are applied: show normal cards */}
+                {!fetching && !error && (!userAccessInfo.hasSubdeptOnlyAccess || !userAccessInfo.singleParentId || topLevelDeptId || subDeptId) && (
+                    displayedDepts.map(dept => renderDeptCard(dept))
+                )}
+
+                {!fetching && !error && displayedDepts.length === 0 && subdeptOnlyCards.length === 0 && (
                     <Grid size={12}>
                         <Alert severity="info">
                             No budget allocations found for your accessible departments.
