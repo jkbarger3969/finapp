@@ -260,8 +260,20 @@ export default function Reporting() {
     const [subDeptId, setSubDeptId] = useState<string>('');
 
     const subDepartments = useMemo(() => {
-        return topLevelDeptId ? allChildDepartments.filter((d: any) => d.parent?.id === topLevelDeptId) : [];
-    }, [topLevelDeptId, allChildDepartments]);
+        if (!topLevelDeptId) return [];
+        // Get all subdepartments of the selected top-level department
+        let subs = allChildDepartments.filter((d: any) => d.parent?.id === topLevelDeptId);
+        // For non-admins, further filter to only show subdepartments they have access to
+        if (user?.role !== 'SUPER_ADMIN') {
+            const userDeptIds = (user as any)?.departments?.map((d: any) => d.departmentId) || [];
+            if (userDeptIds.length > 0) {
+                subs = subs.filter((d: any) => 
+                    userDeptIds.includes(d.id) || userDeptIds.includes(topLevelDeptId)
+                );
+            }
+        }
+        return subs;
+    }, [topLevelDeptId, allChildDepartments, user]);
 
     // Derived filterDepartmentId
     useEffect(() => {

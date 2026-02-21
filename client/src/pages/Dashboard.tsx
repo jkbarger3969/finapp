@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from "urql";
 import {
@@ -94,9 +94,9 @@ export default function Dashboard() {
     });
 
     // Build department tree with budget and spending data from server-side aggregation
-    const { topLevelDepts, totalBudget, totalSpent, topLevelDepartments, subDepartments } = (() => {
+    const { topLevelDepts, topLevelDepartments, subDepartments } = (() => {
         if (!data?.departmentBudgetSummaries) {
-            return { topLevelDepts: [], totalBudget: 0, totalSpent: 0, topLevelDepartments: [], subDepartments: [] };
+            return { topLevelDepts: [], topLevelDepartments: [], subDepartments: [] };
         }
 
         const deptMap = new Map<string, DeptNode>();
@@ -170,29 +170,15 @@ export default function Dashboard() {
 
         const filteredDepts = accessibleRootDepts.map(filterAccessibleChildren);
 
-        const calcTotals = (nodes: DeptNode[]): { budget: number; spent: number } => {
-            return nodes.reduce((acc, node) => {
-                const childTotals = calcTotals(node.children);
-                return {
-                    budget: acc.budget + node.budget + childTotals.budget,
-                    spent: acc.spent + node.spent + childTotals.spent,
-                };
-            }, { budget: 0, spent: 0 });
-        };
-
-        const totals = calcTotals(filteredDepts);
-
         // Build top level and sub department lists for selector
         const topLevelDepartmentsList = filteredDepts.map(d => ({ id: d.id, name: d.name }));
         const selectedTopDept = filteredDepts.find(d => d.id === topLevelDeptId);
-        const subDepartmentsList = selectedTopDept?.children.map(c => ({ id: c.id, name: c.name })) || [];
+        const subDeptsList = selectedTopDept?.children.map(c => ({ id: c.id, name: c.name })) || [];
 
         return {
             topLevelDepts: filteredDepts,
-            totalBudget: totals.budget,
-            totalSpent: totals.spent,
             topLevelDepartments: topLevelDepartmentsList,
-            subDepartments: subDepartmentsList,
+            subDepartments: subDeptsList,
         };
     })();
 
@@ -363,7 +349,28 @@ export default function Dashboard() {
 
     const displayedDepts = getDisplayedDepts();
 
-    // Keyboard shortcuts
+    // Calculate totals based on displayed departments only (not double-counting)
+    const { displayedTotalBudget, displayedTotalSpent } = useMemo(() => {
+        // Only sum the direct budgets of displayed departments
+        // For a single subdepartment, show only that subdepartment's budget
+        // For a top-level department, show only that department's direct budget (not children summed)
+        let budget = 0;
+        let spent = 0;
+        
+        displayedDepts.forEach(dept => {
+            budget += dept.budget;
+            spent += dept.spent;
+            // Also include children's budgets/spent for the displayed totals
+            dept.children.forEach(child => {
+                budget += child.budget;
+                spent += child.spent;
+            });
+        });
+        
+        return { displayedTotalBudget: budget, displayedTotalSpent: spent };
+    }, [displayedDepts]);
+
+    const totalRemaining = displayedTotalBudget - displayedTotalSpent;
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -383,34 +390,11 @@ export default function Dashboard() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    const totalRemaining = totalBudget - totalSpent;
-
     return (
         <Box>
             <PageHeader
                 title="Dashboard"
                 subtitle="Overview of your financial activity"
-                actions={
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button
-                            variant="contained"
-                            onClick={() => setEntryDialogOpen(true)}
-                            sx={{ textTransform: 'none' }}
-                        >
-                            + New Entry
-                        </Button>
-                        {(user as any)?.canInviteUsers && (
-                            <Button
-                                variant="outlined"
-                                color="secondary"
-                                onClick={() => setInviteDialogOpen(true)}
-                                sx={{ textTransform: 'none' }}
-                            >
-                                + Invite User
-                            </Button>
-                        )}
-                    </Box>
-                }
             />
 
             {/* Department Selector */}
@@ -492,7 +476,7 @@ export default function Dashboard() {
                             <Paper sx={{ p: 3, borderLeft: '4px solid #00E5FF', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                 <Typography variant="caption" color="text.secondary">Total Budget</Typography>
                                 <Typography variant="h4" fontWeight={800}>
-                                    {formatCurrency(totalBudget)}
+                                    {formatCurrency(displayedTotalBudget)}
                                 </Typography>
                             </Paper>
                         </Grid>
@@ -500,10 +484,10 @@ export default function Dashboard() {
                             <Paper sx={{ p: 3, borderLeft: '4px solid #FF6B6B', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                 <Typography variant="caption" color="text.secondary">Spent</Typography>
                                 <Typography variant="h4" fontWeight={800} color="error.main">
-                                    {formatCurrency(totalSpent)}
+                                    {formatCurrency(displayedTotalSpent)}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                    {totalBudget > 0 ? `${((totalSpent / totalBudget) * 100).toFixed(1)}% of budget` : '0%'}
+                                    {displayedTotalBudget > 0 ? `${((displayedTotalSpent / displayedTotalBudget) * 100).toFixed(1)}% of budget` : '0%'}
                                 </Typography>
                             </Paper>
                         </Grid>
@@ -514,7 +498,7 @@ export default function Dashboard() {
                                     {formatCurrency(totalRemaining)}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                    {totalBudget > 0 ? `${((totalRemaining / totalBudget) * 100).toFixed(1)}% of budget` : '0%'}
+                                    {displayedTotalBudget > 0 ? `${((totalRemaining / displayedTotalBudget) * 100).toFixed(1)}% of budget` : '0%'}
                                 </Typography>
                             </Paper>
                         </Grid>

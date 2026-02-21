@@ -15,6 +15,7 @@ import {
 import { alpha } from "@mui/material/styles";
 import {
     Add as AddIcon,
+    PersonAdd as PersonAddIcon,
     LightMode as LightModeIcon,
     DarkMode as DarkModeIcon,
     Dashboard as DashboardIcon,
@@ -30,6 +31,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useLayout } from "../../context/LayoutContext";
 import { useThemeMode } from "../../context/ThemeModeContext";
+import InviteUserDialog from "../InviteUserDialog";
 
 export default function TopNav() {
     const theme = useTheme();
@@ -39,6 +41,7 @@ export default function TopNav() {
     const { openEntryDialog } = useLayout();
     const { mode, toggleTheme } = useThemeMode();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const userMenuOpen = Boolean(anchorEl);
 
     const handleUserMenuClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -151,6 +154,22 @@ export default function TopNav() {
                     New Entry
                 </Button>
 
+                {(user as any)?.canInviteUsers && (
+                    <Button
+                        variant="outlined"
+                        startIcon={<PersonAddIcon />}
+                        onClick={() => setInviteDialogOpen(true)}
+                        sx={{
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            px: 2
+                        }}
+                    >
+                        Invite User
+                    </Button>
+                )}
+
                 <Divider orientation="vertical" flexItem sx={{ my: 'auto', height: 24 }} />
 
                 <IconButton onClick={toggleTheme} size="small" sx={{ color: 'text.secondary' }}>
@@ -214,6 +233,14 @@ export default function TopNav() {
                     Sign Out
                 </MenuItem>
             </Menu>
+
+            {(user as any)?.canInviteUsers && (
+                <InviteUserDialog
+                    open={inviteDialogOpen}
+                    onClose={() => setInviteDialogOpen(false)}
+                    onSuccess={() => setInviteDialogOpen(false)}
+                />
+            )}
         </Box>
     );
 }
