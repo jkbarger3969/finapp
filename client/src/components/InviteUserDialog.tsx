@@ -99,11 +99,33 @@ export default function InviteUserDialog({ open, onClose, onSuccess }: InviteUse
         return allDepartments.filter(d => accessibleIds.has(d.id));
     }, [allDepartments, userDeptIds]);
 
-    // Group departments for display
-    const topLevelDepts = useMemo(() => 
-        accessibleDepartments.filter(d => d.parent?.__typename === 'Business' || !d.parent),
-        [accessibleDepartments]
-    );
+    // Group departments for display - show accessible top-level depts OR subdepts user has direct access to
+    const topLevelDepts = useMemo(() => {
+        // Get departments that are either:
+        // 1. Top-level (parent is Business) AND accessible
+        // 2. Subdepartments that user has DIRECT access to (not inherited from parent)
+        const result: Department[] = [];
+        const directAccessIds = new Set(userDeptIds);
+        
+        accessibleDepartments.forEach(d => {
+            const isTopLevel = d.parent?.__typename === 'Business' || !d.parent;
+            const hasDirectAccess = directAccessIds.has(d.id);
+            
+            if (isTopLevel) {
+                // Always show top-level departments user has access to
+                result.push(d);
+            } else if (hasDirectAccess) {
+                // Show subdepartments user has direct access to (not through parent)
+                // Check if parent is NOT in user's direct access - if so, show as "top level" in the list
+                const parentInAccess = d.parent?.__typename === 'Department' && directAccessIds.has(d.parent.id);
+                if (!parentInAccess) {
+                    result.push(d);
+                }
+            }
+        });
+        
+        return result;
+    }, [accessibleDepartments, userDeptIds]);
     
     const getSubdepartments = (parentId: string) => 
         accessibleDepartments.filter(d => d.parent?.__typename === 'Department' && d.parent.id === parentId);
