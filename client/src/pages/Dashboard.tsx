@@ -390,6 +390,27 @@ export default function Dashboard() {
             <PageHeader
                 title="Dashboard"
                 subtitle="Overview of your financial activity"
+                actions={
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Button
+                            variant="contained"
+                            onClick={() => setEntryDialogOpen(true)}
+                            sx={{ textTransform: 'none' }}
+                        >
+                            + New Entry
+                        </Button>
+                        {(user as any)?.canInviteUsers && (
+                            <Button
+                                variant="outlined"
+                                color="secondary"
+                                onClick={() => setInviteDialogOpen(true)}
+                                sx={{ textTransform: 'none' }}
+                            >
+                                + Invite User
+                            </Button>
+                        )}
+                    </Box>
+                }
             />
 
             {/* Department Selector */}
@@ -464,62 +485,8 @@ export default function Dashboard() {
             </Paper>
 
             <Grid container spacing={3}>
-                {/* Quick Action Card */}
-                <Grid size={{ xs: 12, md: (user as any)?.canInviteUsers ? 2 : 4 }}>
-                    <Paper sx={{
-                        p: 3,
-                        height: '100%',
-                        bgcolor: 'primary.main',
-                        color: 'white',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        transition: 'transform 0.2s',
-                        '&:hover': { transform: 'scale(1.02)' }
-                    }}
-                        onClick={() => setEntryDialogOpen(true)}
-                    >
-                        <Typography variant="h6" fontWeight="bold">Quick Action</Typography>
-                        <Typography variant="body2" sx={{ opacity: 0.8, mb: 2 }}>Add a new expense or income</Typography>
-                        <Box sx={{ bgcolor: 'white', color: 'primary.main', py: 1, px: 3, borderRadius: 8, fontWeight: 'bold' }}>
-                            + New Entry
-                        </Box>
-                    </Paper>
-                </Grid>
-
-                {/* Invite User Card - Only visible to users with canInviteUsers permission */}
-                {(user as any)?.canInviteUsers && (
-                    <Grid size={{ xs: 12, md: 2 }}>
-                        <Paper sx={{
-                            p: 3,
-                            height: '100%',
-                            bgcolor: 'secondary.main',
-                            color: 'white',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            textAlign: 'center',
-                            cursor: 'pointer',
-                            transition: 'transform 0.2s',
-                            '&:hover': { transform: 'scale(1.02)' }
-                        }}
-                            onClick={() => setInviteDialogOpen(true)}
-                        >
-                            <Typography variant="h6" fontWeight="bold">Invite</Typography>
-                            <Typography variant="body2" sx={{ opacity: 0.8, mb: 2 }}>Add user to your departments</Typography>
-                            <Box sx={{ bgcolor: 'white', color: 'secondary.main', py: 1, px: 3, borderRadius: 8, fontWeight: 'bold' }}>
-                                + Invite User
-                            </Box>
-                        </Paper>
-                    </Grid>
-                )}
-
                 {/* Key Metrics */}
-                <Grid size={{ xs: 12, md: 8 }}>
+                <Grid size={12}>
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, sm: 4 }}>
                             <Paper sx={{ p: 3, borderLeft: '4px solid #00E5FF', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
