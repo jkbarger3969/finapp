@@ -119,6 +119,43 @@ async function fixOrphanedCategories() {
       }
     }
     
+    // Step 4b: Create additional known missing categories (not in journalEntryCategories)
+    console.log('\n--- Creating additional known missing categories ---');
+    const additionalCategories = [
+      { _id: '6182ee104c38cd32c32fbdae', name: 'Pasture Maintenance', type: 'Debit', accountNumber: '81645' },
+      { _id: '633dadd40f6cb31f691a3d72', name: 'Global Courses', type: 'Debit', accountNumber: '71620' },
+      { _id: '64f1127557fb09d3c5047267', name: 'Kids Clubs', type: 'Debit', accountNumber: '81545' },
+      { _id: '64f1127557fb09d3c504726b', name: 'Building Maint/Repair', type: 'Debit', accountNumber: '75350' },
+      { _id: '64f1128857fb09d3c5047283', name: 'Roping Series Expense', type: 'Debit', accountNumber: '81620' },
+      { _id: '64f1127557fb09d3c5047269', name: 'Grounds Maint/Repair', type: 'Debit', accountNumber: '75340' },
+      { _id: '64f1128857fb09d3c5047285', name: 'Animal Sales', type: 'Credit', accountNumber: '45030' },
+      { _id: '67ae3f788e0dbcebd48abf0f', name: 'HPYF Team Roping Expense', type: 'Debit', accountNumber: '81621' },
+      { _id: '67c0e082330427b2bda7d92a', name: 'Meat Purchases', type: 'Debit', accountNumber: '81605' }
+    ];
+
+    for (const cat of additionalCategories) {
+      const doc = {
+        _id: new ObjectId(cat._id),
+        name: cat.name,
+        displayName: `${cat.accountNumber} ${cat.name}`,
+        accountNumber: cat.accountNumber,
+        type: cat.type,
+        hidden: false,
+        sortOrder: parseInt(cat.accountNumber) || 99999
+      };
+
+      try {
+        await db.collection('categories').insertOne(doc);
+        console.log(`  Created: ${doc.displayName} (${doc.type})`);
+      } catch (err) {
+        if (err.code === 11000) {
+          console.log(`  Already exists: ${doc.displayName}`);
+        } else {
+          console.log(`  Error: ${err.message}`);
+        }
+      }
+    }
+
     // Step 5: Update entries with mapped categories
     console.log('\n--- Updating entries with mapped categories ---');
     let updatedCount = 0;
