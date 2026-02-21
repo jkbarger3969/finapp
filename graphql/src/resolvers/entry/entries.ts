@@ -1290,26 +1290,20 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
     pipeline.push({
       $match: await whereEntries(where, accountingDb.db),
     });
-    // Note: entriesSummary ignores filterRefunds for simplicity and alignment with request (Total Transactions/Balance of main list)
-    // If we need to account for refunds, we would need to replicate the complex facet logic from 'entries' resolver.
-    // However, usually balance is sum of entries. Refunds are contained WITHIN entries or are separate?
-    // In this app, refunds are sub-documents of entries.
-    // The "Balance" usually implies the sum of the entries' totals.
-    // Refund logic determines if we are looking at *just* refunds.
-    // If 'Show Transactions with Refunds' (showMatchingOnly) is off, we show entries.
-    // If it's on, we show entries with refunds.
-    // The prompt says "Total Transactions and Balance should reflect the total numbers and amount for the Dept and Subdepartment selected and not based on pagination."
-    // It implies adhering to the current filters.
-    // But 'entries' query logic for refunds is complex.
-    // For now, I will stick to summing the Entry totals.
-    // If the user wants net balance (Entry - Refunds), that's harder.
-    // Client-side code was: `row.total`.
-    // Client-side `rows` contained *Refunds* as separate rows when expanded or matching.
-    // Standard view: just entries.
-    // So summing Entry totals is correct for standard view.
-    // If 'where' filters by attributes, it filters entries.
   }
 
+  // Lookup category to determine Credit vs Debit for proper balance calculation
+  pipeline.push({
+    $lookup: {
+      from: "categories",
+      localField: "category.0.value",
+      foreignField: "_id",
+      as: "categoryDoc"
+    }
+  });
+
+  // Calculate balance as: Credit entries (positive) - Debit entries (negative)
+  // This matches the Reports page calculation: Income - Expenses
   pipeline.push({
     $group: {
       _id: null,
@@ -1318,18 +1312,19 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
         $sum: {
           $let: {
             vars: {
-              t: { $arrayElemAt: ["$total.value", 0] }
+              t: { $arrayElemAt: ["$total.value", 0] },
+              catType: { $toUpper: { $arrayElemAt: ["$categoryDoc.type", 0] } }
             },
             in: {
-              $multiply: [
+              $cond: [
+                { $or: [{ $eq: ["$$t.d", 0] }, { $eq: ["$$t.d", null] }] },
+                0,
                 {
-                  $cond: [
-                    { $eq: ["$$t.d", 0] },
-                    0,
-                    { $divide: ["$$t.n", "$$t.d"] }
+                  $multiply: [
+                    { $abs: { $multiply: [{ $divide: ["$$t.n", "$$t.d"] }, "$$t.s"] } },
+                    { $cond: [{ $eq: ["$$catType", "CREDIT"] }, 1, -1] }  // Credit positive, Debit negative
                   ]
-                },
-                "$$t.s"
+                }
               ]
             }
           }
