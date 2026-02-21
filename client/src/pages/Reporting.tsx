@@ -587,117 +587,122 @@ export default function Reporting() {
 
                         <Divider />
 
-                        {/* Row 2: Advanced Filters */}
-                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
+                        {/* Row 2: Advanced Filters - matching Transactions page layout */}
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                            {/* Dept */}
+                            <TextField
+                                select
+                                label="Dept"
+                                size="small"
+                                value={topLevelDeptId}
+                                onChange={(e) => {
+                                    setTopLevelDeptId(e.target.value);
+                                    setSubDeptId('');
+                                }}
+                                sx={{ width: 120 }}
+                            >
+                                <MenuItem value="">All</MenuItem>
+                                {topLevelDepartments.map((dept: any) => (
+                                    <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
+                                ))}
+                            </TextField>
+
+                            {subDepartments.length > 0 && (
                                 <TextField
                                     select
-                                    label="Type"
+                                    label="Sub Dept"
                                     size="small"
-                                    value={entryType}
-                                    onChange={(e) => {
-                                        const newType = e.target.value;
-                                        setEntryType(newType);
-                                        if (selectedCategory && newType !== 'ALL' && selectedCategory.type !== newType) {
-                                            setSelectedCategory(null);
-                                        }
-                                    }}
-                                    sx={{ width: 100 }}
-                                >
-                                    <MenuItem value="ALL">All</MenuItem>
-                                    <MenuItem value="DEBIT">Expense</MenuItem>
-                                    <MenuItem value="CREDIT">Income</MenuItem>
-                                </TextField>
-
-                                <TextField
-                                    select
-                                    label="Status"
-                                    size="small"
-                                    value={reconcileFilter}
-                                    onChange={(e) => setReconcileFilter(e.target.value)}
-                                    sx={{ width: 130 }}
-                                >
-                                    <MenuItem value="ALL">All</MenuItem>
-                                    <MenuItem value="RECONCILED">Reconciled</MenuItem>
-                                    <MenuItem value="UNRECONCILED">Unreconciled</MenuItem>
-                                </TextField>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', gap: 1, flexGrow: 1, minWidth: 300 }}>
-                                <Box sx={{ flex: 1, minWidth: 150 }}>
-                                    <CategoryAutocomplete
-                                        categories={categoryOptions.filter((cat: any) => {
-                                            if (entryType === 'ALL') return true;
-                                            if (entryType === 'CREDIT') return cat.type === 'CREDIT';
-                                            if (entryType === 'DEBIT') return cat.type === 'DEBIT';
-                                            return true;
-                                        })}
-                                        value={selectedCategory?.id || ''}
-                                        onChange={(categoryId) => {
-                                            const cat = categories.find((c: any) => c.id === categoryId);
-                                            setSelectedCategory(cat || null);
-                                        }}
-                                    />
-                                </Box>
-                                <Box sx={{ flex: 1, minWidth: 150 }}>
-                                    <PersonAutocomplete
-                                        people={personOptions}
-                                        value={selectedPerson?.id || ''}
-                                        onChange={(personId) => {
-                                            const person = people.find((p: any) => p.id === personId);
-                                            setSelectedPerson(person || null);
-                                            if (person) setSelectedBusiness(null);
-                                        }}
-                                        label="Person"
-                                    />
-                                </Box>
-                                <Box sx={{ flex: 1, minWidth: 150 }}>
-                                    <BusinessAutocomplete
-                                        businesses={businessOptions}
-                                        value={selectedBusiness?.id || ''}
-                                        onChange={(businessId) => {
-                                            const biz = businesses.find((b: any) => b.id === businessId);
-                                            setSelectedBusiness(biz || null);
-                                            if (biz) setSelectedPerson(null);
-                                        }}
-                                        label="Business"
-                                    />
-                                </Box>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                                <TextField
-                                    select
-                                    label="Dept"
-                                    size="small"
-                                    value={topLevelDeptId}
-                                    onChange={(e) => {
-                                        setTopLevelDeptId(e.target.value);
-                                        setSubDeptId('');
-                                    }}
+                                    value={subDeptId}
+                                    onChange={(e) => setSubDeptId(e.target.value)}
                                     sx={{ width: 120 }}
                                 >
                                     <MenuItem value="">All</MenuItem>
-                                    {topLevelDepartments.map((dept: any) => (
+                                    {subDepartments.map((dept: any) => (
                                         <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
                                     ))}
                                 </TextField>
+                            )}
 
-                                {subDepartments.length > 0 && (
-                                    <TextField
-                                        select
-                                        label="Sub Dept"
-                                        size="small"
-                                        value={subDeptId}
-                                        onChange={(e) => setSubDeptId(e.target.value)}
-                                        sx={{ width: 120 }}
-                                    >
-                                        <MenuItem value="">All</MenuItem>
-                                        {subDepartments.map((dept: any) => (
-                                            <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
-                                        ))}
-                                    </TextField>
-                                )}
+                            {/* Type */}
+                            <TextField
+                                select
+                                label="Type"
+                                size="small"
+                                value={entryType}
+                                onChange={(e) => {
+                                    const newType = e.target.value;
+                                    setEntryType(newType);
+                                    if (selectedCategory && newType !== 'ALL' && selectedCategory.type !== newType) {
+                                        setSelectedCategory(null);
+                                    }
+                                }}
+                                sx={{ width: 120 }}
+                            >
+                                <MenuItem value="ALL">All</MenuItem>
+                                <MenuItem value="DEBIT">Expense</MenuItem>
+                                <MenuItem value="CREDIT">Income</MenuItem>
+                            </TextField>
+
+                            {/* Status */}
+                            <TextField
+                                select
+                                label="Status"
+                                size="small"
+                                value={reconcileFilter}
+                                onChange={(e) => setReconcileFilter(e.target.value)}
+                                sx={{ width: 120 }}
+                            >
+                                <MenuItem value="ALL">All</MenuItem>
+                                <MenuItem value="RECONCILED">Reconciled</MenuItem>
+                                <MenuItem value="UNRECONCILED">Unreconciled</MenuItem>
+                            </TextField>
+
+                            {/* Category */}
+                            <Box sx={{ width: 250 }}>
+                                <CategoryAutocomplete
+                                    categories={categoryOptions.filter((cat: any) => {
+                                        if (entryType === 'ALL') return true;
+                                        if (entryType === 'CREDIT') return cat.type === 'CREDIT';
+                                        if (entryType === 'DEBIT') return cat.type === 'DEBIT';
+                                        return true;
+                                    })}
+                                    value={selectedCategory?.id || ''}
+                                    onChange={(categoryId) => {
+                                        const cat = categories.find((c: any) => c.id === categoryId);
+                                        setSelectedCategory(cat || null);
+                                    }}
+                                    size="small"
+                                />
+                            </Box>
+
+                            {/* Person */}
+                            <Box sx={{ width: 250 }}>
+                                <PersonAutocomplete
+                                    people={personOptions}
+                                    value={selectedPerson?.id || ''}
+                                    onChange={(personId) => {
+                                        const person = people.find((p: any) => p.id === personId);
+                                        setSelectedPerson(person || null);
+                                        if (person) setSelectedBusiness(null);
+                                    }}
+                                    label="Person"
+                                    size="small"
+                                />
+                            </Box>
+
+                            {/* Business */}
+                            <Box sx={{ width: 250 }}>
+                                <BusinessAutocomplete
+                                    businesses={businessOptions}
+                                    value={selectedBusiness?.id || ''}
+                                    onChange={(businessId) => {
+                                        const biz = businesses.find((b: any) => b.id === businessId);
+                                        setSelectedBusiness(biz || null);
+                                        if (biz) setSelectedPerson(null);
+                                    }}
+                                    label="Business"
+                                    size="small"
+                                />
                             </Box>
 
                             {(startDate || endDate || entryType !== 'ALL' || selectedPerson || selectedBusiness || selectedCategory || filterDepartmentId) && (
