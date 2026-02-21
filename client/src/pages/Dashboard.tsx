@@ -505,6 +505,7 @@ export default function Dashboard() {
     }, [userAccessInfo, topLevelDepts]);
 
     // Calculate totals based on displayed departments - use OWN budget values only (not children summed)
+    // IMPORTANT: Exclude budgets from parents where user only has subdept access
     const { displayedTotalBudget, displayedTotalSpent } = useMemo(() => {
         let budget = 0;
         let spent = 0;
@@ -517,9 +518,21 @@ export default function Dashboard() {
             });
         } else {
             // Sum up displayed departments' OWN budgets (not children)
+            // BUT exclude departments where user only has subdept access
             displayedDepts.forEach(dept => {
-                budget += dept.budget;
-                spent += dept.spent;
+                // Skip this department's budget if user only has subdept access (not top-level access)
+                if (userAccessInfo.parentIdsWithSubdeptAccess.has(dept.id)) {
+                    // Instead, add the accessible subdepartments' budgets
+                    dept.children.forEach(child => {
+                        if (userAccessInfo.subdeptIds.includes(child.id)) {
+                            budget += child.budget;
+                            spent += child.spent;
+                        }
+                    });
+                } else {
+                    budget += dept.budget;
+                    spent += dept.spent;
+                }
             });
         }
         
