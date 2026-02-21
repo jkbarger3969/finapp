@@ -349,22 +349,17 @@ export default function Dashboard() {
 
     const displayedDepts = getDisplayedDepts();
 
-    // Calculate totals based on displayed departments only (not double-counting)
+    // Calculate totals based on displayed departments using the same recursive logic as cards
     const { displayedTotalBudget, displayedTotalSpent } = useMemo(() => {
-        // Only sum the direct budgets of displayed departments
-        // For a single subdepartment, show only that subdepartment's budget
-        // For a top-level department, show only that department's direct budget (not children summed)
+        // Use calcSubtotals to get the total for each displayed department (includes all descendants)
+        // Sum up all displayed departments' subtotals
         let budget = 0;
         let spent = 0;
         
         displayedDepts.forEach(dept => {
-            budget += dept.budget;
-            spent += dept.spent;
-            // Also include children's budgets/spent for the displayed totals
-            dept.children.forEach(child => {
-                budget += child.budget;
-                spent += child.spent;
-            });
+            const subtotals = calcSubtotals(dept);
+            budget += subtotals.budget;
+            spent += subtotals.spent;
         });
         
         return { displayedTotalBudget: budget, displayedTotalSpent: spent };
