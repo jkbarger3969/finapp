@@ -342,6 +342,12 @@ export default function Reporting() {
         const filterDept = filterDepartmentId || contextDeptId;
         if (filterDept) {
             baseWhere.department = { id: { lte: filterDept } };
+        } else if (user?.role !== 'SUPER_ADMIN' && departments.length > 0) {
+            // For non-admins with no specific department selected, restrict to accessible departments
+            const accessibleDeptIds = departments.map((d: any) => d.id);
+            if (accessibleDeptIds.length > 0) {
+                baseWhere.department = { id: { in: accessibleDeptIds } };
+            }
         }
 
         if (fiscalYearId && !startDate && !endDate) baseWhere.fiscalYear = { id: { eq: fiscalYearId } };
@@ -376,7 +382,7 @@ export default function Reporting() {
         }
 
         return baseWhere;
-    }, [fiscalYearId, startDate, endDate, entryType, selectedPerson, selectedBusiness, selectedCategory, filterDepartmentId, reconcileFilter]);
+    }, [fiscalYearId, startDate, endDate, entryType, selectedPerson, selectedBusiness, selectedCategory, filterDepartmentId, reconcileFilter, user, departments, contextDeptId]);
 
     const [result] = useQuery({
         query: GET_REPORT_DATA,

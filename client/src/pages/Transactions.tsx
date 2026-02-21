@@ -442,6 +442,7 @@ export default function Transactions() {
     // Use Custom Hook for data fetching
     const { entries, totalCount, summary, fetching, error, refresh } = useTransactions({
         departmentId: filterDepartmentId || contextDeptId,
+        accessibleDepartmentIds: user?.role !== 'SUPER_ADMIN' ? departments.map((d: any) => d.id) : [],
         fiscalYearId,
         reconcileFilter,
         startDate,

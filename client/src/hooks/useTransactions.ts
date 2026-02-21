@@ -85,6 +85,7 @@ const GET_ENTRIES_BY_DEPARTMENT = `
 
 interface UseTransactionsProps {
   departmentId?: string | null;
+  accessibleDepartmentIds?: string[];
   fiscalYearId?: string | null;
   reconcileFilter?: string;
   startDate?: Date | null;
@@ -101,6 +102,7 @@ interface UseTransactionsProps {
 
 export function useTransactions({
   departmentId,
+  accessibleDepartmentIds = [],
   fiscalYearId,
   reconcileFilter = 'ALL',
   startDate,
@@ -118,6 +120,7 @@ export function useTransactions({
   // Debounce filter changes to reduce API calls
   const [debouncedFilters, setDebouncedFilters] = useState({
     departmentId,
+    accessibleDepartmentIds,
     fiscalYearId,
     reconcileFilter,
     startDate: startDate?.toISOString(),
@@ -143,6 +146,7 @@ export function useTransactions({
     debounceRef.current = setTimeout(() => {
       setDebouncedFilters({
         departmentId,
+        accessibleDepartmentIds,
         fiscalYearId,
         reconcileFilter,
         startDate: startDate?.toISOString(),
@@ -162,7 +166,7 @@ export function useTransactions({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [departmentId, fiscalYearId, reconcileFilter, startDate, endDate, entryType, categoryId, personId, businessId, paymentMethodType, searchTerm, hasRefunds]);
+  }, [departmentId, accessibleDepartmentIds, fiscalYearId, reconcileFilter, startDate, endDate, entryType, categoryId, personId, businessId, paymentMethodType, searchTerm, hasRefunds]);
 
   // Build GraphQL where clause from debounced filters
   const where = useMemo(() => {
@@ -172,6 +176,9 @@ export function useTransactions({
 
     if (debouncedFilters.departmentId) {
       baseWhere.department = { id: { lte: debouncedFilters.departmentId } };
+    } else if (debouncedFilters.accessibleDepartmentIds && debouncedFilters.accessibleDepartmentIds.length > 0) {
+      // For non-admins with no specific department selected, restrict to accessible departments
+      baseWhere.department = { id: { in: debouncedFilters.accessibleDepartmentIds } };
     }
 
     if (debouncedFilters.fiscalYearId && !debouncedFilters.startDate && !debouncedFilters.endDate) {
