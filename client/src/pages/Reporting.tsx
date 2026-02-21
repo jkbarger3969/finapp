@@ -190,12 +190,35 @@ export default function Reporting() {
     }, [businessesRaw]);
 
     // Filter departments based on access (using proper departmentId from permissions)
+    // Include parent departments for navigation if user has subdepartment access
     const departments = useMemo(() => {
         let depts = departmentsRaw;
         if (user?.role !== 'SUPER_ADMIN') {
             const userDeptIds = (user as any)?.departments?.map((d: any) => d.departmentId) || [];
             if (userDeptIds.length > 0) {
-                depts = departmentsRaw.filter((d: any) => userDeptIds.includes(d.id));
+                // First pass: find all departments user has direct or inherited access to
+                const accessibleDeptIds = new Set<string>();
+                
+                departmentsRaw.forEach((d: any) => {
+                    // Direct access
+                    if (userDeptIds.includes(d.id)) {
+                        accessibleDeptIds.add(d.id);
+                    }
+                    // Inherited access (subdepartments of accessible parent)
+                    if (d.parent?.__typename === 'Department' && userDeptIds.includes(d.parent.id)) {
+                        accessibleDeptIds.add(d.id);
+                    }
+                });
+                
+                // Second pass: include parent departments for navigation if user has any subdepartment access
+                departmentsRaw.forEach((d: any) => {
+                    if (accessibleDeptIds.has(d.id) && d.parent?.__typename === 'Department') {
+                        // Include the parent for navigation purposes
+                        accessibleDeptIds.add(d.parent.id);
+                    }
+                });
+                
+                depts = departmentsRaw.filter((d: any) => accessibleDeptIds.has(d.id));
             }
         }
         return depts;

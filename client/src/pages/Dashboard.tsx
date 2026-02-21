@@ -28,6 +28,7 @@ import { formatCurrency } from "../utils/currency";
 import PageHeader from "../components/PageHeader";
 import EntryFormDialog from "../components/EntryFormDialog";
 import SearchDialog from "../components/SearchDialog";
+import InviteUserDialog from "../components/InviteUserDialog";
 import { DashboardSkeleton } from "../components/common/DashboardSkeleton";
 
 const GET_BUDGET_DATA = `
@@ -65,6 +66,7 @@ export default function Dashboard() {
     const [subDeptId, setSubDeptId] = useState('');
     const [searchDialogOpen, setSearchDialogOpen] = useState(false);
     const [entryDialogOpen, setEntryDialogOpen] = useState(false);
+    const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
 
     const [result] = useQuery({
@@ -463,7 +465,7 @@ export default function Dashboard() {
 
             <Grid container spacing={3}>
                 {/* Quick Action Card */}
-                <Grid size={{ xs: 12, md: 4 }}>
+                <Grid size={{ xs: 12, md: (user as any)?.canInviteUsers ? 2 : 4 }}>
                     <Paper sx={{
                         p: 3,
                         height: '100%',
@@ -487,6 +489,34 @@ export default function Dashboard() {
                         </Box>
                     </Paper>
                 </Grid>
+
+                {/* Invite User Card - Only visible to users with canInviteUsers permission */}
+                {(user as any)?.canInviteUsers && (
+                    <Grid size={{ xs: 12, md: 2 }}>
+                        <Paper sx={{
+                            p: 3,
+                            height: '100%',
+                            bgcolor: 'secondary.main',
+                            color: 'white',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s',
+                            '&:hover': { transform: 'scale(1.02)' }
+                        }}
+                            onClick={() => setInviteDialogOpen(true)}
+                        >
+                            <Typography variant="h6" fontWeight="bold">Invite</Typography>
+                            <Typography variant="body2" sx={{ opacity: 0.8, mb: 2 }}>Add user to your departments</Typography>
+                            <Box sx={{ bgcolor: 'white', color: 'secondary.main', py: 1, px: 3, borderRadius: 8, fontWeight: 'bold' }}>
+                                + Invite User
+                            </Box>
+                        </Paper>
+                    </Grid>
+                )}
 
                 {/* Key Metrics */}
                 <Grid size={{ xs: 12, md: 8 }}>
@@ -564,6 +594,14 @@ export default function Dashboard() {
                 open={searchDialogOpen}
                 onClose={() => setSearchDialogOpen(false)}
             />
+
+            {(user as any)?.canInviteUsers && (
+                <InviteUserDialog
+                    open={inviteDialogOpen}
+                    onClose={() => setInviteDialogOpen(false)}
+                    onSuccess={() => setInviteDialogOpen(false)}
+                />
+            )}
         </Box>
     );
 }
