@@ -117,6 +117,30 @@ export const departmentBudgetSummaries = async (
     return 1 + getLevel(parentDept);
   };
 
+  // Build parent-child relationships
+  const childrenByParent = new Map<string, string[]>();
+  departments.forEach((dept: any) => {
+    if (dept.parent?.type === "Department" && dept.parent?.id) {
+      const parentId = dept.parent.id.toString();
+      const existing = childrenByParent.get(parentId) || [];
+      existing.push(dept._id.toString());
+      childrenByParent.set(parentId, existing);
+    }
+  });
+
+  // Calculate total spent including all descendants
+  const calcTotalSpent = (deptId: string, visited = new Set<string>()): number => {
+    if (visited.has(deptId)) return 0; // Prevent infinite loops
+    visited.add(deptId);
+    
+    let total = spendingByDept.get(deptId) || 0;
+    const children = childrenByParent.get(deptId) || [];
+    for (const childId of children) {
+      total += calcTotalSpent(childId, visited);
+    }
+    return total;
+  };
+
   // Build the result
   const results: DepartmentBudgetSummary[] = departments.map((dept: any) => {
     const deptId = dept._id.toString();
@@ -128,7 +152,7 @@ export const departmentBudgetSummaries = async (
       id: deptId,
       name: dept.name,
       budget: budgetByDept.get(deptId) || 0,
-      spent: spendingByDept.get(deptId) || 0,
+      spent: calcTotalSpent(deptId), // Include all descendants' spending
       level: getLevel(dept),
       parentId
     };

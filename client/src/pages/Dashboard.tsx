@@ -219,41 +219,49 @@ export default function Dashboard() {
     // Determine if user has subdepartment-only access under a SINGLE parent
     const userAccessInfo = useMemo(() => {
         if (isSuperAdmin) {
-            return { hasSubdeptOnlyAccess: false, singleParentId: null, subdeptIds: [] as string[] };
+            return { hasSubdeptOnlyAccess: false, singleParentId: null, subdeptIds: [] as string[], parentIdsWithSubdeptAccess: new Set<string>() };
         }
         
         // Find which departments user has DIRECT access to (from their permissions)
         const directAccessIds = new Set(userDepartments);
         if (directAccessIds.size === 0) {
-            return { hasSubdeptOnlyAccess: false, singleParentId: null, subdeptIds: [] as string[] };
+            return { hasSubdeptOnlyAccess: false, singleParentId: null, subdeptIds: [] as string[], parentIdsWithSubdeptAccess: new Set<string>() };
         }
         
         // Check if user has direct access to any top-level departments
-        const hasTopLevelAccess = topLevelDepts.some(d => directAccessIds.has(d.id));
-        
-        if (hasTopLevelAccess) {
-            return { hasSubdeptOnlyAccess: false, singleParentId: null, subdeptIds: [] as string[] };
-        }
+        const topLevelAccessIds = new Set<string>();
+        topLevelDepts.forEach(d => {
+            if (directAccessIds.has(d.id)) {
+                topLevelAccessIds.add(d.id);
+            }
+        });
         
         // User only has subdepartment access - find which subdepts and their parents
-        const subdeptsWithAccess: { id: string; parentId: string | null }[] = [];
+        const subdeptsWithAccess: { id: string; parentId: string }[] = [];
+        const parentIdsWithSubdeptAccess = new Set<string>();
         
         topLevelDepts.forEach(topDept => {
             topDept.children.forEach(child => {
                 if (directAccessIds.has(child.id)) {
                     subdeptsWithAccess.push({ id: child.id, parentId: topDept.id });
+                    // Only mark as subdept-access parent if user does NOT have direct top-level access
+                    if (!topLevelAccessIds.has(topDept.id)) {
+                        parentIdsWithSubdeptAccess.add(topDept.id);
+                    }
                 }
             });
         });
         
-        // Check if all subdepts belong to the same parent
-        const parentIds = new Set(subdeptsWithAccess.map(s => s.parentId));
-        const singleParent = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
+        // Check if all subdepts belong to the same parent AND user doesn't have top-level access
+        const uniqueParentIds = new Set(subdeptsWithAccess.map(s => s.parentId));
+        const hasOnlySubdeptAccess = subdeptsWithAccess.length > 0 && topLevelAccessIds.size === 0;
+        const singleParent = hasOnlySubdeptAccess && uniqueParentIds.size === 1 ? Array.from(uniqueParentIds)[0] : null;
         
         return {
-            hasSubdeptOnlyAccess: subdeptsWithAccess.length > 0 && !hasTopLevelAccess,
+            hasSubdeptOnlyAccess: hasOnlySubdeptAccess,
             singleParentId: singleParent,
             subdeptIds: subdeptsWithAccess.map(s => s.id),
+            parentIdsWithSubdeptAccess, // Parents where user has subdept access but not top-level access
         };
     }, [isSuperAdmin, userDepartments, topLevelDepts]);
 
@@ -333,6 +341,8 @@ export default function Dashboard() {
     const renderDeptCard = (dept: DeptNode) => {
         const hasChildren = dept.children.length > 0;
         const isExpanded = expandedDepts.has(dept.id);
+        // Check if user only has subdept access (not top-level access) to this department
+        const hasOnlySubdeptAccess = userAccessInfo.parentIdsWithSubdeptAccess.has(dept.id);
         // Show department's own budget, NOT summed with children
         const ownValues = getDeptOwnValues(dept);
         const percentUsed = ownValues.budget > 0 ? (ownValues.spent / ownValues.budget) * 100 : 0;
@@ -344,7 +354,7 @@ export default function Dashboard() {
                     sx={{
                         p: 2,
                         borderTop: 4,
-                        borderColor: percentUsed > 100 ? 'error.main' : percentUsed > 80 ? 'warning.main' : 'success.main',
+                        borderColor: hasOnlySubdeptAccess ? 'grey.400' : (percentUsed > 100 ? 'error.main' : percentUsed > 80 ? 'warning.main' : 'success.main'),
                         display: 'flex',
                         flexDirection: 'column',
                     }}
@@ -353,48 +363,62 @@ export default function Dashboard() {
                         <Typography variant="h6" fontWeight="bold" noWrap title={dept.name} sx={{ maxWidth: '70%' }}>
                             {dept.name}
                         </Typography>
-                        <Chip
-                            label={`${Math.round(percentUsed)}%`}
-                            size="small"
-                            color={percentUsed > 100 ? 'error' : percentUsed > 80 ? 'warning' : 'success'}
-                        />
+                        {!hasOnlySubdeptAccess && (
+                            <Chip
+                                label={`${Math.round(percentUsed)}%`}
+                                size="small"
+                                color={percentUsed > 100 ? 'error' : percentUsed > 80 ? 'warning' : 'success'}
+                            />
+                        )}
                     </Box>
 
-                    <LinearProgress
-                        variant="determinate"
-                        value={Math.min(percentUsed, 100)}
-                        color={percentUsed > 100 ? 'error' : percentUsed > 80 ? 'warning' : 'success'}
-                        sx={{ height: 6, borderRadius: 3, mb: 2 }}
-                    />
+                    {/* Hide budget details if user only has subdept access */}
+                    {!hasOnlySubdeptAccess && (
+                        <>
+                            <LinearProgress
+                                variant="determinate"
+                                value={Math.min(percentUsed, 100)}
+                                color={percentUsed > 100 ? 'error' : percentUsed > 80 ? 'warning' : 'success'}
+                                sx={{ height: 6, borderRadius: 3, mb: 2 }}
+                            />
 
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
-                        <Box>
-                            <Typography variant="caption" color="text.secondary">Budget</Typography>
-                            <Typography variant="subtitle1" fontWeight="medium">{formatCurrency(ownValues.budget)}</Typography>
-                        </Box>
-                        <Box sx={{ textAlign: 'right' }}>
-                            <Typography variant="caption" color="text.secondary">Spent</Typography>
-                            <Typography variant="subtitle1" color="error.main">{formatCurrency(ownValues.spent)}</Typography>
-                        </Box>
-                    </Box>
+                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Budget</Typography>
+                                    <Typography variant="subtitle1" fontWeight="medium">{formatCurrency(ownValues.budget)}</Typography>
+                                </Box>
+                                <Box sx={{ textAlign: 'right' }}>
+                                    <Typography variant="caption" color="text.secondary">Spent</Typography>
+                                    <Typography variant="subtitle1" color="error.main">{formatCurrency(ownValues.spent)}</Typography>
+                                </Box>
+                            </Box>
 
-                    <Box sx={{ mt: 'auto', pt: 1, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="caption" color="text.secondary">Remaining</Typography>
-                        <Typography variant="body1" fontWeight="bold" color={remaining < 0 ? 'error.main' : 'success.main'}>
-                            {formatCurrency(remaining)}
+                            <Box sx={{ mt: 'auto', pt: 1, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="caption" color="text.secondary">Remaining</Typography>
+                                <Typography variant="body1" fontWeight="bold" color={remaining < 0 ? 'error.main' : 'success.main'}>
+                                    {formatCurrency(remaining)}
+                                </Typography>
+                            </Box>
+
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<ReceiptLongIcon />}
+                                onClick={() => navigateToTransactions(dept.id)}
+                                sx={{ mt: 2 }}
+                                fullWidth
+                            >
+                                View Transactions
+                            </Button>
+                        </>
+                    )}
+
+                    {/* For subdept-only access, show a message */}
+                    {hasOnlySubdeptAccess && (
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            You have access to subdepartments below
                         </Typography>
-                    </Box>
-
-                    <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<ReceiptLongIcon />}
-                        onClick={() => navigateToTransactions(dept.id)}
-                        sx={{ mt: 2 }}
-                        fullWidth
-                    >
-                        View Transactions
-                    </Button>
+                    )}
 
                     {hasChildren && (
                         <Box sx={{ mt: 2 }}>
