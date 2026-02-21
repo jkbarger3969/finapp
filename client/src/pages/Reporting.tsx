@@ -411,7 +411,8 @@ export default function Reporting() {
 
         filteredEntries.forEach((entry: any) => {
             const amount = Math.abs(parseRational(entry.total));
-            const isCredit = entry.category?.type === 'CREDIT';
+            const catType = entry.category?.type?.toUpperCase();
+            const isCredit = catType === 'CREDIT';
             const catName = entry.category?.name || 'Uncategorized';
             const monthKey = format(parseISO(entry.date), 'MMM yyyy');
 
@@ -697,8 +698,8 @@ export default function Reporting() {
                                 <CategoryAutocomplete
                                     categories={categoryOptions.filter((cat: any) => {
                                         if (entryType === 'ALL') return true;
-                                        if (entryType === 'CREDIT') return cat.type === 'CREDIT';
-                                        if (entryType === 'DEBIT') return cat.type === 'DEBIT';
+                                        if (entryType === 'CREDIT') return cat.type?.toUpperCase() === 'CREDIT';
+                                        if (entryType === 'DEBIT') return cat.type?.toUpperCase() === 'DEBIT';
                                         return true;
                                     })}
                                     value={selectedCategory?.id || ''}
@@ -860,7 +861,7 @@ export default function Reporting() {
                                                             <td style={{ padding: 8 }}>{format(parseISO(entry.date), 'MMM dd, yyyy')}</td>
                                                             <td style={{ padding: 8 }}>{entry.description}</td>
                                                             <td style={{ padding: 8 }}>{entry.category?.name}</td>
-                                                            <td style={{ padding: 8, textAlign: 'right', color: entry.category?.type === 'CREDIT' ? 'green' : 'red', fontWeight: 'bold' }}>
+                                                            <td style={{ padding: 8, textAlign: 'right', color: entry.category?.type?.toUpperCase() === 'CREDIT' ? 'green' : 'red', fontWeight: 'bold' }}>
                                                                 {currencyFormatter.format(Math.abs(parseRational(entry.total)))}
                                                             </td>
                                                         </tr>

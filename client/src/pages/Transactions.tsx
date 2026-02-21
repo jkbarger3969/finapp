@@ -686,7 +686,7 @@ export default function Transactions() {
                 <Chip
                     label={params.value?.name || "Uncategorized"}
                     size="small"
-                    color={params.value?.type === "CREDIT" ? "success" : "error"}
+                    color={params.value?.type?.toUpperCase() === "CREDIT" ? "success" : "error"}
                     variant="outlined"
                 />
             ),
@@ -720,7 +720,7 @@ export default function Transactions() {
             valueGetter: (value: any) => parseRational(value),
             renderCell: (params: any) => {
                 const amount = params.value as number;
-                const isCredit = params.row.category?.type === "CREDIT";
+                const isCredit = params.row.category?.type?.toUpperCase() === "CREDIT";
                 return (
                     <Typography
                         fontWeight="bold"
@@ -1188,8 +1188,8 @@ export default function Transactions() {
                                 <CategoryAutocomplete
                                     categories={categoryOptions.filter((cat: any) => {
                                         if (entryType === 'ALL') return true;
-                                        if (entryType === 'CREDIT') return cat.type === 'CREDIT';
-                                        if (entryType === 'DEBIT') return cat.type === 'DEBIT';
+                                        if (entryType === 'CREDIT') return cat.type?.toUpperCase() === 'CREDIT';
+                                        if (entryType === 'DEBIT') return cat.type?.toUpperCase() === 'DEBIT';
                                         return true;
                                     })}
                                     value={selectedCategory?.id || ''}

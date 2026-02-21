@@ -185,7 +185,7 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
                             <List sx={{ p: 0, maxHeight: 400, overflow: 'auto' }}>
                                 {searchResults.map((entry: any, index: number) => {
                                     const amount = Math.abs(parseRational(entry.total));
-                                    const isCredit = entry.category?.type === 'CREDIT';
+                                    const isCredit = entry.category?.type?.toUpperCase() === 'CREDIT';
                                     const isSelected = index === selectedIndex;
 
                                     return (

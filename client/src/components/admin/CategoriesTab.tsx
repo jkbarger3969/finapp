@@ -143,8 +143,8 @@ export const CategoriesTab = () => {
             cat.accountNumber?.includes(searchTerm)
         );
 
-        const income = filteredCategories.filter(c => c.type === 'CREDIT');
-        const expense = filteredCategories.filter(c => c.type === 'DEBIT');
+        const income = filteredCategories.filter(c => c.type?.toUpperCase() === 'CREDIT');
+        const expense = filteredCategories.filter(c => c.type?.toUpperCase() === 'DEBIT');
 
         const groupCategories = (cats: Category[]): GroupedCategories => {
             const grouped: GroupedCategories = {};
