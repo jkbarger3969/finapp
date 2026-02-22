@@ -1079,6 +1079,27 @@ export default function UsersTab() {
             >
                 <DialogTitle>Manage Department Access - {permissionUser?.name}</DialogTitle>
                 <DialogContent>
+                    <Box sx={{ mb: 3 }}>
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={permissionUser?.canInviteUsers || false}
+                                    onChange={async (e) => {
+                                        if (!permissionUser) return;
+                                        const result = await updateUser({
+                                            id: permissionUser.id,
+                                            input: { canInviteUsers: e.target.checked }
+                                        });
+                                        if (!result.error) {
+                                            refetchUsers();
+                                        }
+                                    }}
+                                />
+                            }
+                            label="Allow this user to invite others (limited to their departments)"
+                        />
+                    </Box>
+
                     <Typography variant="subtitle2" sx={{ mb: 2 }}>
                         Current Permissions
                     </Typography>
