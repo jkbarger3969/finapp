@@ -428,21 +428,21 @@ export default function AuditLogTab() {
                                 <TableRow>
                                     <TableCell colSpan={6} sx={{ py: 0, borderBottom: expandedRows.has(entry.id) ? undefined : 'none' }}>
                                         <Collapse in={expandedRows.has(entry.id)} timeout="auto" unmountOnExit>
-                                            <Box sx={{ py: 2, px: 4, bgcolor: 'grey.50' }}>
-                                                <Typography variant="subtitle2" gutterBottom>Details</Typography>
+                                            <Box sx={{ py: 2, px: 4, bgcolor: 'action.hover' }}>
+                                                <Typography variant="subtitle2" gutterBottom color="primary">Details</Typography>
                                                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
                                                     <Box>
                                                         <Typography variant="caption" color="text.secondary">User Email</Typography>
-                                                        <Typography variant="body2">{entry.user?.email || 'Unknown'}</Typography>
+                                                        <Typography variant="body2" color="text.primary">{entry.user?.email || 'Unknown'}</Typography>
                                                     </Box>
                                                     <Box>
                                                         <Typography variant="caption" color="text.secondary">Browser</Typography>
-                                                        <Typography variant="body2">{getBrowserFromUserAgent(entry.userAgent)}</Typography>
+                                                        <Typography variant="body2" color="text.primary">{getBrowserFromUserAgent(entry.userAgent)}</Typography>
                                                     </Box>
                                                     {entry.resourceId && (
                                                         <Box>
                                                             <Typography variant="caption" color="text.secondary">Resource ID</Typography>
-                                                            <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                                                            <Typography variant="body2" color="text.primary" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
                                                                 {entry.resourceId}
                                                             </Typography>
                                                         </Box>
@@ -456,12 +456,13 @@ export default function AuditLogTab() {
                                                             sx={{
                                                                 mt: 0.5,
                                                                 p: 1,
-                                                                bgcolor: 'grey.100',
+                                                                bgcolor: 'background.paper',
                                                                 fontFamily: 'monospace',
                                                                 fontSize: '0.75rem',
                                                                 whiteSpace: 'pre-wrap',
                                                                 maxHeight: 200,
                                                                 overflow: 'auto',
+                                                                color: 'text.primary',
                                                             }}
                                                         >
                                                             {formatDetails(entry.details)}
