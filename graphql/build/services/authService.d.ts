@@ -67,6 +67,7 @@ export declare class AuthService {
     getUserPermissions(userId: ObjectId): Promise<UserPermission[]>;
     grantPermission(userId: ObjectId, departmentId: ObjectId, accessLevel: "VIEW" | "EDIT", grantedBy: ObjectId): Promise<UserPermission>;
     revokePermission(userId: ObjectId, departmentId: ObjectId, revokedBy: ObjectId): Promise<boolean>;
+    clearAuditLog(clearedBy: ObjectId): Promise<number>;
     getAccessibleDepartmentIds(userId: ObjectId): Promise<ObjectId[]>;
     getSubdepartmentIds(parentDeptId: ObjectId): Promise<ObjectId[]>;
     canAccessDepartment(userId: ObjectId, departmentId: ObjectId, requiredLevel?: "VIEW" | "EDIT"): Promise<boolean>;

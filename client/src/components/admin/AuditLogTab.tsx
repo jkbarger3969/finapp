@@ -22,14 +22,20 @@ import {
     Alert,
     Button,
     Tooltip,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogContentText,
+    DialogActions,
 } from '@mui/material';
 import {
     ExpandMore as ExpandMoreIcon,
     ExpandLess as ExpandLessIcon,
     Refresh as RefreshIcon,
     Download as DownloadIcon,
+    DeleteForever as DeleteForeverIcon,
 } from '@mui/icons-material';
-import { useQuery } from 'urql';
+import { useQuery, useMutation } from 'urql';
 
 const GET_AUDIT_LOG = `
     query GetAuditLog($where: AuditLogWhere, $limit: Int, $offset: Int) {
@@ -58,6 +64,12 @@ const GET_USERS_FOR_FILTER = `
             name
             email
         }
+    }
+`;
+
+const CLEAR_AUDIT_LOG = `
+    mutation ClearAuditLog {
+        clearAuditLog
     }
 `;
 
@@ -149,6 +161,7 @@ export default function AuditLogTab() {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(25);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
     const [actionFilter, setActionFilter] = useState<string>('');
     const [userFilter, setUserFilter] = useState<string>('');
@@ -186,6 +199,7 @@ export default function AuditLogTab() {
     });
 
     const [usersResult] = useQuery({ query: GET_USERS_FOR_FILTER });
+    const [, clearAuditLog] = useMutation(CLEAR_AUDIT_LOG);
 
     const { data, fetching, error } = result;
     const auditLog: AuditLogEntry[] = data?.auditLog || [];
@@ -237,6 +251,16 @@ export default function AuditLogTab() {
         setDateTo('');
         setPage(0);
         setQueryKey(k => k + 1);
+    };
+
+    const handleClearAuditLog = async () => {
+        const result = await clearAuditLog({});
+        if (result.error) {
+            console.error('Failed to clear audit log:', result.error);
+        } else {
+            setDeleteDialogOpen(false);
+            setQueryKey(k => k + 1);
+        }
     };
 
     const exportToCsv = () => {
@@ -345,6 +369,18 @@ export default function AuditLogTab() {
                         <span>
                             <IconButton onClick={exportToCsv} disabled={auditLog.length === 0}>
                                 <DownloadIcon />
+                            </IconButton>
+                        </span>
+                    </Tooltip>
+
+                    <Tooltip title="Delete All Logs">
+                        <span>
+                            <IconButton 
+                                onClick={() => setDeleteDialogOpen(true)} 
+                                disabled={auditLog.length === 0}
+                                color="error"
+                            >
+                                <DeleteForeverIcon />
                             </IconButton>
                         </span>
                     </Tooltip>
@@ -484,6 +520,25 @@ export default function AuditLogTab() {
                     labelDisplayedRows={({ from, to }) => `${from}-${to}`}
                 />
             </TableContainer>
+
+            <Dialog
+                open={deleteDialogOpen}
+                onClose={() => setDeleteDialogOpen(false)}
+            >
+                <DialogTitle>Delete All Audit Logs?</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        This will permanently delete all {data?.auditLogCount || 0} audit log entries. 
+                        This action cannot be undone.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleClearAuditLog} color="error" variant="contained">
+                        Delete All
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

@@ -2,7 +2,7 @@ import { BusinessDbRecord, DepartmentDbRecord } from "../../dataSources/accounti
 import { DepartmentResolvers, DepartmentAncestorResolvers } from "../../graphTypes";
 export declare const DepartmentAncestor: DepartmentAncestorResolvers<{
     dataSources: import("../../types").DataSources;
-} & import("../../types").ContextBase, BusinessDbRecord | DepartmentDbRecord>;
+} & import("../../types").ContextBase, DepartmentDbRecord | BusinessDbRecord>;
 export declare const Department: DepartmentResolvers<{
     dataSources: import("../../types").DataSources;
 } & import("../../types").ContextBase, DepartmentDbRecord>;

@@ -145,4 +145,5 @@ extend type Mutation {
   deleteUser(id: ID!): Boolean!
   grantPermission(input: GrantPermissionInput!): UserPermission!
   revokePermission(input: RevokePermissionInput!): Boolean!
+  clearAuditLog: Int!
 }

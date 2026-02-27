@@ -246,6 +246,20 @@ export const authResolvers = {
         new ObjectId(currentUser._id)
       );
     },
+
+    clearAuditLog: async (
+      _parent: unknown,
+      _args: unknown,
+      context: Context<unknown>
+    ): Promise<number> => {
+      const currentUser = await requireAuth(context);
+
+      if (currentUser.role !== "SUPER_ADMIN") {
+        throw new Error("Unauthorized: Only super admins can clear audit log");
+      }
+
+      return context.authService!.clearAuditLog(new ObjectId(currentUser._id));
+    },
   },
 
   AuthUser: {

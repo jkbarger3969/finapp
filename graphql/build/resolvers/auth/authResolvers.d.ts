@@ -63,6 +63,7 @@ export declare const authResolvers: {
                 departmentId: string;
             };
         }, context: Context<unknown>) => Promise<boolean>;
+        clearAuditLog: (_parent: unknown, _args: unknown, context: Context<unknown>) => Promise<number>;
     };
     AuthUser: {
         id: (parent: AuthUser) => string;

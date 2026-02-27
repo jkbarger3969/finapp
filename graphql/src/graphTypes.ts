@@ -712,6 +712,7 @@ export type Mutation = {
   addNewEntryRefund: AddNewEntryRefundPayload;
   addNewPerson: AddNewPersonPayload;
   archiveFiscalYear: ArchiveFiscalYearPayload;
+  clearAuditLog: Scalars['Int']['output'];
   createAccountCard: AccountCard;
   createFiscalYear: CreateFiscalYearPayload;
   deleteAccountCard: Scalars['Boolean']['output'];
@@ -2371,6 +2372,7 @@ export type MutationResolvers<ContextType = Context, ParentType = ResolversParen
   addNewEntryRefund?: Resolver<ResolversTypes['AddNewEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationAddNewEntryRefundArgs, 'input'>>;
   addNewPerson?: Resolver<ResolversTypes['AddNewPersonPayload'], ParentType, ContextType, RequireFields<MutationAddNewPersonArgs, 'input'>>;
   archiveFiscalYear?: Resolver<ResolversTypes['ArchiveFiscalYearPayload'], ParentType, ContextType, RequireFields<MutationArchiveFiscalYearArgs, 'id'>>;
+  clearAuditLog?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   createAccountCard?: Resolver<ResolversTypes['AccountCard'], ParentType, ContextType, RequireFields<MutationCreateAccountCardArgs, 'input'>>;
   createFiscalYear?: Resolver<ResolversTypes['CreateFiscalYearPayload'], ParentType, ContextType, RequireFields<MutationCreateFiscalYearArgs, 'input'>>;
   deleteAccountCard?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAccountCardArgs, 'id'>>;

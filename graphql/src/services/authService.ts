@@ -499,6 +499,23 @@ export class AuthService {
     return true;
   }
 
+  async clearAuditLog(clearedBy: ObjectId): Promise<number> {
+    const count = await this.db.collection("auditLog").countDocuments();
+    
+    await this.db.collection("auditLog").deleteMany({});
+
+    await this.logAudit({
+      userId: clearedBy,
+      action: "AUDIT_LOG_CLEAR",
+      resourceType: "AuditLog",
+      resourceId: null,
+      details: { entriesDeleted: count },
+      timestamp: new Date(),
+    });
+
+    return count;
+  }
+
   async getAccessibleDepartmentIds(userId: ObjectId): Promise<ObjectId[]> {
     const user = await this.getUserById(userId);
     if (!user) return [];
