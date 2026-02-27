@@ -1557,10 +1557,15 @@ export const entriesChartData: QueryResolvers["entriesChartData"] = async (
   const monthlyPipeline = [
     ...basePipeline,
     {
+      $addFields: {
+        dateValue: { $arrayElemAt: ["$date.value", 0] }
+      }
+    },
+    {
       $group: {
         _id: {
-          year: { $year: "$date.0.value" },
-          month: { $month: "$date.0.value" }
+          year: { $year: "$dateValue" },
+          month: { $month: "$dateValue" }
         },
         income: {
           $sum: {
