@@ -36,6 +36,15 @@ import { useMutation, useQuery } from 'urql';
 import CategoryAutocomplete from './CategoryAutocomplete';
 import PersonAutocomplete from './PersonAutocomplete';
 import BusinessAutocomplete from './BusinessAutocomplete';
+import { useAuth } from '../context/AuthContext';
+
+const EXCLUDED_DEPARTMENT_IDS = [
+    '5dc36bbbc7167f67e39cd69c',
+    '5dc36bbbc7167f67e39cd6ad',
+    '5dc36bbbc7167f67e39cd6aa',
+    '5dc36bbbc7167f67e39cd697',
+    '5dc36bbbc7167f67e39cd69d',
+];
 
 const GET_FORM_DATA = `
   query GetFormData {
@@ -149,6 +158,7 @@ function formatCurrency(amount: number): string {
 
 export default function EntryFormDialog({ open, onClose, onSuccess, initialEntryType, initialSelectedEntry }: EntryFormDialogProps) {
     const { isOnline } = useOnlineStatus();
+    const { isSuperAdmin, getAccessibleDepartmentIds } = useAuth();
     const [entryType, setEntryType] = useState<'transaction' | 'refund'>(initialEntryType || 'transaction');
     const [searchTerm, setSearchTerm] = useState('');
     const [searchAmount, setSearchAmount] = useState('');
@@ -244,6 +254,24 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
 
     const { data, fetching } = result;
     const searchedEntries = searchResult.data?.entries || [];
+
+    const filteredDepartments = useMemo(() => {
+        const allDepts = data?.departments || [];
+        const accessibleIds = getAccessibleDepartmentIds();
+        return allDepts
+            .filter((dept: any) => {
+                if (EXCLUDED_DEPARTMENT_IDS.includes(dept.id)) return false;
+                if (isSuperAdmin) return true;
+                return accessibleIds.includes(dept.id);
+            })
+            .sort((a: any, b: any) => a.name.localeCompare(b.name));
+    }, [data?.departments, isSuperAdmin, getAccessibleDepartmentIds]);
+
+    useEffect(() => {
+        if (open && !formData.departmentId && filteredDepartments.length > 0) {
+            setFormData(prev => ({ ...prev, departmentId: filteredDepartments[0].id }));
+        }
+    }, [open, filteredDepartments, formData.departmentId]);
 
     const personOptions = useMemo(() => {
         const seen = new Set<string>();
@@ -724,9 +752,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                         onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
                                         disabled={fetching}
                                     >
-                                        {[...(data?.departments || [])]
-                                            .sort((a: any, b: any) => a.name.localeCompare(b.name))
-                                            .map((dept: any) => (
+                                        {filteredDepartments.map((dept: any) => (
                                             <MenuItem key={dept.id} value={dept.id}>
                                                 {dept.name}
                                             </MenuItem>
