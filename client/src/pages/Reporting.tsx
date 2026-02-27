@@ -36,9 +36,19 @@ import BusinessAutocomplete from '../components/BusinessAutocomplete';
 
 const GET_REPORT_DATA = `
   query GetReportData($where: EntriesWhere!) {
+    entriesReport(where: $where) {
+      count
+      totalIncome
+      totalExpenses
+      netPosition
+    }
+  }
+`;
+
+const GET_CHART_DATA = `
+  query GetChartData($where: EntriesWhere!) {
     entries(where: $where, limit: 0) {
       id
-      description
       date
       total
       category {
@@ -46,42 +56,9 @@ const GET_REPORT_DATA = `
         name
         type
       }
-      department {
-        id
-        name
-      }
-      source {
-        __typename
-        ... on Person {
-          personName: name {
-            first
-            last
-          }
-        }
-        ... on Business {
-          businessName: name
-        }
-      }
       paymentMethod {
         __typename
-        ... on PaymentMethodCard {
-          card {
-            type
-            trailingDigits
-          }
-        }
-        ... on PaymentMethodCheck {
-          check {
-            checkNumber
-          }
-        }
       }
-    }
-    entriesReport(where: $where) {
-      count
-      totalIncome
-      totalExpenses
-      netPosition
     }
   }
 `;
@@ -397,14 +374,23 @@ export default function Reporting() {
         return baseWhere;
     }, [fiscalYearId, startDate, endDate, entryType, selectedPerson, selectedBusiness, selectedCategory, filterDepartmentId, reconcileFilter, user, departments, contextDeptId]);
 
+    // Fast query for summary totals only
     const [result] = useQuery({
         query: GET_REPORT_DATA,
         variables: { where },
         pause: !fiscalYearId,
     });
 
+    // Separate query for chart data (heavier, loads after summary)
+    const [chartResult] = useQuery({
+        query: GET_CHART_DATA,
+        variables: { where },
+        pause: !fiscalYearId,
+    });
+
     const { data, fetching, error } = result;
-    const entries = data?.entries || [];
+    const { data: chartData, fetching: chartFetching } = chartResult;
+    const entries = chartData?.entries || [];
     const serverReport = data?.entriesReport || { count: 0, totalIncome: 0, totalExpenses: 0, netPosition: 0 };
 
     // Filter entries by payment method (client-side)
@@ -817,21 +803,25 @@ export default function Reporting() {
                                 <Grid size={{ xs: 12 }}>
                                     <Paper sx={{ p: 3 }}>
                                         <Typography variant="h6" gutterBottom>Income vs Expenses (Trend)</Typography>
-                                        <Box sx={{ height: 300, mt: 2 }}>
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <AreaChart data={aggregatedData.trendChartData}>
-                                                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                                                    <XAxis dataKey="month" />
-                                                    <YAxis />
-                                                    <Tooltip
-                                                        contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', color: '#000', borderRadius: 8 }}
-                                                        formatter={(value) => currencyFormatter.format(Number(value))}
-                                                    />
-                                                    <Legend />
-                                                    <Area type="monotone" dataKey="income" name="Income" stroke="#00C853" fill="rgba(0, 200, 83, 0.2)" />
-                                                    <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#D50000" fill="rgba(213, 0, 0, 0.2)" />
-                                                </AreaChart>
-                                            </ResponsiveContainer>
+                                        <Box sx={{ height: 300, mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {chartFetching ? (
+                                                <CircularProgress />
+                                            ) : (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <AreaChart data={aggregatedData.trendChartData}>
+                                                        <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                                                        <XAxis dataKey="month" />
+                                                        <YAxis />
+                                                        <Tooltip
+                                                            contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', color: '#000', borderRadius: 8 }}
+                                                            formatter={(value) => currencyFormatter.format(Number(value))}
+                                                        />
+                                                        <Legend />
+                                                        <Area type="monotone" dataKey="income" name="Income" stroke="#00C853" fill="rgba(0, 200, 83, 0.2)" />
+                                                        <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#D50000" fill="rgba(213, 0, 0, 0.2)" />
+                                                    </AreaChart>
+                                                </ResponsiveContainer>
+                                            )}
                                         </Box>
                                     </Paper>
                                 </Grid>
@@ -840,20 +830,24 @@ export default function Reporting() {
                                 <Grid size={{ xs: 12, md: 6 }}>
                                     <Paper sx={{ p: 3 }}>
                                         <Typography variant="h6" gutterBottom>Top Spending Categories</Typography>
-                                        <Box sx={{ height: 300, mt: 2 }}>
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <BarChart data={aggregatedData.categoryChartData} layout="vertical">
-                                                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} horizontal={false} />
-                                                    <XAxis type="number" hide />
-                                                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
-                                                    <Tooltip
-                                                        cursor={{ fill: 'transparent' }}
-                                                        contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', color: '#000', borderRadius: 8 }}
-                                                        formatter={(value) => currencyFormatter.format(Number(value))}
-                                                    />
-                                                    <Bar dataKey="value" fill="#6C5DD3" radius={[0, 4, 4, 0]} barSize={20} />
-                                                </BarChart>
-                                            </ResponsiveContainer>
+                                        <Box sx={{ height: 300, mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {chartFetching ? (
+                                                <CircularProgress />
+                                            ) : (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={aggregatedData.categoryChartData} layout="vertical">
+                                                        <CartesianGrid strokeDasharray="3 3" opacity={0.1} horizontal={false} />
+                                                        <XAxis type="number" hide />
+                                                        <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
+                                                        <Tooltip
+                                                            cursor={{ fill: 'transparent' }}
+                                                            contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', color: '#000', borderRadius: 8 }}
+                                                            formatter={(value) => currencyFormatter.format(Number(value))}
+                                                        />
+                                                        <Bar dataKey="value" fill="#6C5DD3" radius={[0, 4, 4, 0]} barSize={20} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            )}
                                         </Box>
                                     </Paper>
                                 </Grid>
