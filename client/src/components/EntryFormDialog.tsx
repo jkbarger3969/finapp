@@ -270,10 +270,12 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
 
     useEffect(() => {
         if (open && filteredDepartments.length > 0) {
-            const validInitialDept = initialDepartmentId && filteredDepartments.some((d: any) => d.id === initialDepartmentId);
-            if (validInitialDept) {
+            const isInitialDeptValid = initialDepartmentId && filteredDepartments.some((d: any) => d.id === initialDepartmentId);
+            const isCurrentDeptValid = formData.departmentId && filteredDepartments.some((d: any) => d.id === formData.departmentId);
+            
+            if (isInitialDeptValid) {
                 setFormData(prev => ({ ...prev, departmentId: initialDepartmentId }));
-            } else if (!formData.departmentId) {
+            } else if (!isCurrentDeptValid) {
                 setFormData(prev => ({ ...prev, departmentId: filteredDepartments[0].id }));
             }
         }
