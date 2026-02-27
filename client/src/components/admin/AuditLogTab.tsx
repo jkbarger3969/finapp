@@ -233,6 +233,7 @@ export default function AuditLogTab() {
         setDateFrom('');
         setDateTo('');
         setPage(0);
+        setTimeout(() => reexecuteQuery({ requestPolicy: 'network-only' }), 0);
     };
 
     const exportToCsv = () => {
