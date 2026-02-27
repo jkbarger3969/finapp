@@ -155,7 +155,7 @@ export default function AuditLogTab() {
     const [resourceTypeFilter, setResourceTypeFilter] = useState<string>('');
     const [dateFrom, setDateFrom] = useState<string>('');
     const [dateTo, setDateTo] = useState<string>('');
-    const [clearTrigger, setClearTrigger] = useState(0);
+    const [shouldRefetch, setShouldRefetch] = useState(false);
 
     const where = useMemo(() => {
         const filter: Record<string, any> = {};
@@ -234,14 +234,15 @@ export default function AuditLogTab() {
         setDateFrom('');
         setDateTo('');
         setPage(0);
-        setClearTrigger(prev => prev + 1);
+        setShouldRefetch(true);
     };
 
     useEffect(() => {
-        if (clearTrigger > 0) {
+        if (shouldRefetch) {
+            setShouldRefetch(false);
             reexecuteQuery({ requestPolicy: 'network-only' });
         }
-    }, [clearTrigger]);
+    }, [where, shouldRefetch, reexecuteQuery]);
 
     const exportToCsv = () => {
         const headers = ['Timestamp', 'User', 'Action', 'Resource Type', 'Resource ID', 'IP Address', 'Browser'];
