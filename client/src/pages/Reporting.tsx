@@ -27,6 +27,7 @@ import {
 } from 'recharts';
 import { useDepartment } from '../context/DepartmentContext';
 import { useAuth } from '../context/AuthContext';
+import { useLayout } from '../context/LayoutContext';
 import '../components/reporting/PrintLayout.css';
 import PageHeader from '../components/PageHeader';
 import CategoryAutocomplete from '../components/CategoryAutocomplete';
@@ -144,6 +145,7 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 
 export default function Reporting() {
     const { departmentId: contextDeptId, fiscalYearId, fiscalYears, setFiscalYearId } = useDepartment();
+    const { setSelectedDepartmentId } = useLayout();
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [endDate, setEndDate] = useState<Date | null>(null);
     const [entryType, setEntryType] = useState<string>('ALL');
@@ -295,6 +297,11 @@ export default function Reporting() {
     useEffect(() => {
         setFilterDepartmentId(subDeptId || topLevelDeptId || null);
     }, [topLevelDeptId, subDeptId]);
+
+    // Sync selected department to LayoutContext for New Entry default
+    useEffect(() => {
+        setSelectedDepartmentId(subDeptId || topLevelDeptId || null);
+    }, [topLevelDeptId, subDeptId, setSelectedDepartmentId]);
 
     // Initialize filter from context on mount
     useEffect(() => {

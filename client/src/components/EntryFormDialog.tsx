@@ -141,6 +141,7 @@ interface EntryFormDialogProps {
     onSuccess: () => void;
     initialEntryType?: 'transaction' | 'refund';
     initialSelectedEntry?: any;
+    initialDepartmentId?: string | null;
 }
 
 function formatRational(rational: any): number {
@@ -156,7 +157,7 @@ function formatCurrency(amount: number): string {
     }).format(amount);
 }
 
-export default function EntryFormDialog({ open, onClose, onSuccess, initialEntryType, initialSelectedEntry }: EntryFormDialogProps) {
+export default function EntryFormDialog({ open, onClose, onSuccess, initialEntryType, initialSelectedEntry, initialDepartmentId }: EntryFormDialogProps) {
     const { isOnline } = useOnlineStatus();
     const { isSuperAdmin, getAccessibleDepartmentIds } = useAuth();
     const [entryType, setEntryType] = useState<'transaction' | 'refund'>(initialEntryType || 'transaction');
@@ -268,10 +269,15 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
     }, [data?.departments, isSuperAdmin, getAccessibleDepartmentIds]);
 
     useEffect(() => {
-        if (open && !formData.departmentId && filteredDepartments.length > 0) {
-            setFormData(prev => ({ ...prev, departmentId: filteredDepartments[0].id }));
+        if (open && filteredDepartments.length > 0) {
+            const validInitialDept = initialDepartmentId && filteredDepartments.some((d: any) => d.id === initialDepartmentId);
+            if (validInitialDept) {
+                setFormData(prev => ({ ...prev, departmentId: initialDepartmentId }));
+            } else if (!formData.departmentId) {
+                setFormData(prev => ({ ...prev, departmentId: filteredDepartments[0].id }));
+            }
         }
-    }, [open, filteredDepartments, formData.departmentId]);
+    }, [open, filteredDepartments, initialDepartmentId]);
 
     const personOptions = useMemo(() => {
         const seen = new Set<string>();

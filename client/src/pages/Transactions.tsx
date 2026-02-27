@@ -55,6 +55,7 @@ import PageHeader from "../components/PageHeader";
 import CategoryAutocomplete from "../components/CategoryAutocomplete";
 import PersonAutocomplete from "../components/PersonAutocomplete";
 import BusinessAutocomplete from "../components/BusinessAutocomplete";
+import { useLayout } from "../context/LayoutContext";
 
 // New Imports
 import { useSnackbar } from 'notistack';
@@ -146,6 +147,7 @@ const CustomCheckbox = (props: any) => (
 
 export default function Transactions() {
     const { departmentId: contextDeptId, fiscalYearId, fiscalYears, setFiscalYearId } = useDepartment();
+    const { setSelectedDepartmentId } = useLayout();
 
     // Filter state
     const [reconcileFilter, setReconcileFilter] = useState<string>('ALL');
@@ -379,6 +381,11 @@ export default function Transactions() {
     useEffect(() => {
         setFilterDepartmentId(subDeptId || topLevelDeptId || null);
     }, [topLevelDeptId, subDeptId]);
+
+    // Sync selected department to LayoutContext for New Entry default
+    useEffect(() => {
+        setSelectedDepartmentId(subDeptId || topLevelDeptId || null);
+    }, [topLevelDeptId, subDeptId, setSelectedDepartmentId]);
 
     // Initialize filter from context on mount
     useEffect(() => {

@@ -24,6 +24,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { useDepartment } from "../context/DepartmentContext";
 import { useAuth } from "../context/AuthContext";
+import { useLayout } from "../context/LayoutContext";
 import { formatCurrency } from "../utils/currency";
 import PageHeader from "../components/PageHeader";
 import EntryFormDialog from "../components/EntryFormDialog";
@@ -61,6 +62,7 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const { fiscalYearId, setFiscalYearId } = useDepartment();
     const { user, isSuperAdmin } = useAuth();
+    const { setSelectedDepartmentId } = useLayout();
 
     const [topLevelDeptId, setTopLevelDeptId] = useState('');
     const [subDeptId, setSubDeptId] = useState('');
@@ -68,6 +70,10 @@ export default function Dashboard() {
     const [entryDialogOpen, setEntryDialogOpen] = useState(false);
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        setSelectedDepartmentId(subDeptId || topLevelDeptId || null);
+    }, [topLevelDeptId, subDeptId, setSelectedDepartmentId]);
 
     const [result] = useQuery({
         query: GET_BUDGET_DATA,
@@ -716,6 +722,7 @@ export default function Dashboard() {
                     setEntryDialogOpen(false);
                     window.location.reload();
                 }}
+                initialDepartmentId={subDeptId || topLevelDeptId || null}
             />
 
             <SearchDialog
