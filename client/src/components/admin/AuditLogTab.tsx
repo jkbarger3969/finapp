@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment, useEffect } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import {
     Box,
     Paper,
@@ -155,7 +155,7 @@ export default function AuditLogTab() {
     const [resourceTypeFilter, setResourceTypeFilter] = useState<string>('');
     const [dateFrom, setDateFrom] = useState<string>('');
     const [dateTo, setDateTo] = useState<string>('');
-    const [shouldRefetch, setShouldRefetch] = useState(false);
+    const [queryKey, setQueryKey] = useState(0);
 
     const where = useMemo(() => {
         const filter: Record<string, any> = {};
@@ -171,7 +171,7 @@ export default function AuditLogTab() {
                 filter.timestamp.lte = endDate.toISOString();
             }
         }
-        return Object.keys(filter).length > 0 ? filter : undefined;
+        return Object.keys(filter).length > 0 ? filter : null;
     }, [actionFilter, userFilter, resourceTypeFilter, dateFrom, dateTo]);
 
     const [result, reexecuteQuery] = useQuery({
@@ -180,7 +180,9 @@ export default function AuditLogTab() {
             where,
             limit: rowsPerPage,
             offset: page * rowsPerPage,
+            _key: queryKey,
         },
+        requestPolicy: 'cache-and-network',
     });
 
     const [usersResult] = useQuery({ query: GET_USERS_FOR_FILTER });
@@ -234,15 +236,8 @@ export default function AuditLogTab() {
         setDateFrom('');
         setDateTo('');
         setPage(0);
-        setShouldRefetch(true);
+        setQueryKey(k => k + 1);
     };
-
-    useEffect(() => {
-        if (shouldRefetch) {
-            setShouldRefetch(false);
-            reexecuteQuery({ requestPolicy: 'network-only' });
-        }
-    }, [where, shouldRefetch, reexecuteQuery]);
 
     const exportToCsv = () => {
         const headers = ['Timestamp', 'User', 'Action', 'Resource Type', 'Resource ID', 'IP Address', 'Browser'];
