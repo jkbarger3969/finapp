@@ -24,6 +24,13 @@ import { verifyEmailConnection } from "./services/emailService";
 const PORT = process.env.PORT || 4000;
 const RECEIPT_STORAGE_PATH = process.env.RECEIPT_STORAGE_PATH || "/tmp/receipts";
 
+function getClientIP(ctx: any): string {
+    return ctx?.request?.headers?.['x-real-ip'] ||
+           ctx?.request?.headers?.['x-forwarded-for']?.split(',')[0]?.trim() ||
+           ctx?.request?.ip ||
+           'unknown';
+}
+
 (async () => {
   try {
     const { DB_PASS, DB_USER, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = await secrets();
@@ -111,7 +118,7 @@ const RECEIPT_STORAGE_PATH = process.env.RECEIPT_STORAGE_PATH || "/tmp/receipts"
           reqDateTime: new Date(),
           loaders: createLoaders(db),
           authService,
-          ipAddress: ctx?.request?.ip,
+          ipAddress: getClientIP(ctx),
           userAgent: ctx?.request?.headers?.["user-agent"],
         };
       },
@@ -124,6 +131,7 @@ const RECEIPT_STORAGE_PATH = process.env.RECEIPT_STORAGE_PATH || "/tmp/receipts"
     await server.start();
 
     const app = new Koa();
+    app.proxy = true;
 
     app.use(graphqlUploadKoa({ maxFileSize: 10000000, maxFiles: 10 }));
 
