@@ -358,6 +358,12 @@ export type Category = {
   type: EntryType;
 };
 
+export type CategoryChartItem = {
+  __typename?: 'CategoryChartItem';
+  name: Scalars['String']['output'];
+  value: Scalars['Float']['output'];
+};
+
 export type CreateAccountCardInput = {
   accountId: Scalars['ID']['input'];
   active?: InputMaybe<Scalars['Boolean']['input']>;
@@ -483,6 +489,12 @@ export enum EntityType {
   Department = 'DEPARTMENT',
   Person = 'PERSON'
 }
+
+export type EntriesChartData = {
+  __typename?: 'EntriesChartData';
+  categoryBreakdown: Array<CategoryChartItem>;
+  monthlyTrends: Array<MonthlyTrendItem>;
+};
 
 export type EntriesReport = {
   __typename?: 'EntriesReport';
@@ -684,6 +696,13 @@ export type InviteUserInput = {
 export type InviteUserPermissionInput = {
   accessLevel: AccessLevel;
   departmentId: Scalars['ID']['input'];
+};
+
+export type MonthlyTrendItem = {
+  __typename?: 'MonthlyTrendItem';
+  expenses: Scalars['Float']['output'];
+  income: Scalars['Float']['output'];
+  month: Scalars['String']['output'];
 };
 
 export type Mutation = {
@@ -1104,6 +1123,7 @@ export type Query = {
    * NOTE: A `EntryRefund` is a subset of an `Entry`.  Excludes `EntriesWhere.refunds` in refund matching.
    */
   entries: Array<Entry>;
+  entriesChartData: EntriesChartData;
   entriesCount: Scalars['Int']['output'];
   entriesReport: EntriesReport;
   entriesSummary: EntriesSummary;
@@ -1217,6 +1237,11 @@ export type QueryEntriesArgs = {
   filterRefunds?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   offset?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<EntriesWhere>;
+};
+
+
+export type QueryEntriesChartDataArgs = {
   where?: InputMaybe<EntriesWhere>;
 };
 
@@ -1732,6 +1757,7 @@ export type ResolversTypes = {
   BusinessesWhere: BusinessesWhere;
   CategoriesWhere: CategoriesWhere;
   Category: ResolverTypeWrapper<CategoryDbRecord>;
+  CategoryChartItem: ResolverTypeWrapper<CategoryChartItem>;
   CreateAccountCardInput: CreateAccountCardInput;
   CreateFiscalYearInput: CreateFiscalYearInput;
   CreateFiscalYearPayload: ResolverTypeWrapper<Omit<CreateFiscalYearPayload, 'fiscalYear'> & { fiscalYear: ResolversTypes['FiscalYear'] }>;
@@ -1752,6 +1778,7 @@ export type ResolversTypes = {
   Entity: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['Entity']>;
   EntityInput: EntityInput;
   EntityType: EntityType;
+  EntriesChartData: ResolverTypeWrapper<EntriesChartData>;
   EntriesReport: ResolverTypeWrapper<EntriesReport>;
   EntriesSummary: ResolverTypeWrapper<EntriesSummary>;
   EntriesWhere: EntriesWhere;
@@ -1775,6 +1802,7 @@ export type ResolversTypes = {
   InviteUserInput: InviteUserInput;
   InviteUserPermissionInput: InviteUserPermissionInput;
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
+  MonthlyTrendItem: ResolverTypeWrapper<MonthlyTrendItem>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   NewAlias: NewAlias;
   NewBusiness: NewBusiness;
@@ -1887,6 +1915,7 @@ export type ResolversParentTypes = {
   BusinessesWhere: BusinessesWhere;
   CategoriesWhere: CategoriesWhere;
   Category: CategoryDbRecord;
+  CategoryChartItem: CategoryChartItem;
   CreateAccountCardInput: CreateAccountCardInput;
   CreateFiscalYearInput: CreateFiscalYearInput;
   CreateFiscalYearPayload: Omit<CreateFiscalYearPayload, 'fiscalYear'> & { fiscalYear: ResolversParentTypes['FiscalYear'] };
@@ -1905,6 +1934,7 @@ export type ResolversParentTypes = {
   EntitiesWhere: EntitiesWhere;
   Entity: ResolversUnionTypes<ResolversParentTypes>['Entity'];
   EntityInput: EntityInput;
+  EntriesChartData: EntriesChartData;
   EntriesReport: EntriesReport;
   EntriesSummary: EntriesSummary;
   EntriesWhere: EntriesWhere;
@@ -1927,6 +1957,7 @@ export type ResolversParentTypes = {
   InviteUserInput: InviteUserInput;
   InviteUserPermissionInput: InviteUserPermissionInput;
   JSON: Scalars['JSON']['output'];
+  MonthlyTrendItem: MonthlyTrendItem;
   Mutation: Record<PropertyKey, never>;
   NewAlias: NewAlias;
   NewBusiness: NewBusiness;
@@ -2159,6 +2190,11 @@ export type CategoryResolvers<ContextType = Context, ParentType = ResolversParen
   type?: Resolver<ResolversTypes['EntryType'], ParentType, ContextType>;
 };
 
+export type CategoryChartItemResolvers<ContextType = Context, ParentType = ResolversParentTypes['CategoryChartItem']> = {
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  value?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+};
+
 export type CreateFiscalYearPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['CreateFiscalYearPayload']> = {
   fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType>;
 };
@@ -2227,6 +2263,11 @@ export type EditHistoryEntryResolvers<ContextType = Context, ParentType = Resolv
 
 export type EntityResolvers<ContextType = Context, ParentType = ResolversParentTypes['Entity']> = {
   __resolveType?: TypeResolveFn<'Business' | 'Department' | 'Person', ParentType, ContextType>;
+};
+
+export type EntriesChartDataResolvers<ContextType = Context, ParentType = ResolversParentTypes['EntriesChartData']> = {
+  categoryBreakdown?: Resolver<Array<ResolversTypes['CategoryChartItem']>, ParentType, ContextType>;
+  monthlyTrends?: Resolver<Array<ResolversTypes['MonthlyTrendItem']>, ParentType, ContextType>;
 };
 
 export type EntriesReportResolvers<ContextType = Context, ParentType = ResolversParentTypes['EntriesReport']> = {
@@ -2317,6 +2358,12 @@ export type GoogleAuthUrlResolvers<ContextType = Context, ParentType = Resolvers
 export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['JSON'], any> {
   name: 'JSON';
 }
+
+export type MonthlyTrendItemResolvers<ContextType = Context, ParentType = ResolversParentTypes['MonthlyTrendItem']> = {
+  expenses?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  income?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  month?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
 
 export type MutationResolvers<ContextType = Context, ParentType = ResolversParentTypes['Mutation']> = {
   addNewBusiness?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<MutationAddNewBusinessArgs, 'input'>>;
@@ -2440,6 +2487,7 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   departments?: Resolver<Array<ResolversTypes['Department']>, ParentType, ContextType, Partial<QueryDepartmentsArgs>>;
   entities?: Resolver<Array<ResolversTypes['Entity']>, ParentType, ContextType, RequireFields<QueryEntitiesArgs, 'where'>>;
   entries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QueryEntriesArgs, 'filterRefunds' | 'limit' | 'offset'>>;
+  entriesChartData?: Resolver<ResolversTypes['EntriesChartData'], ParentType, ContextType, Partial<QueryEntriesChartDataArgs>>;
   entriesCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType, Partial<QueryEntriesCountArgs>>;
   entriesReport?: Resolver<ResolversTypes['EntriesReport'], ParentType, ContextType, Partial<QueryEntriesReportArgs>>;
   entriesSummary?: Resolver<ResolversTypes['EntriesSummary'], ParentType, ContextType, Partial<QueryEntriesSummaryArgs>>;
@@ -2557,6 +2605,7 @@ export type Resolvers<ContextType = Context> = {
   BudgetOwner?: BudgetOwnerResolvers<ContextType>;
   Business?: BusinessResolvers<ContextType>;
   Category?: CategoryResolvers<ContextType>;
+  CategoryChartItem?: CategoryChartItemResolvers<ContextType>;
   CreateFiscalYearPayload?: CreateFiscalYearPayloadResolvers<ContextType>;
   Date?: GraphQLScalarType;
   DeleteAttachmentPayload?: DeleteAttachmentPayloadResolvers<ContextType>;
@@ -2569,6 +2618,7 @@ export type Resolvers<ContextType = Context> = {
   DepartmentBudgetSummary?: DepartmentBudgetSummaryResolvers<ContextType>;
   EditHistoryEntry?: EditHistoryEntryResolvers<ContextType>;
   Entity?: EntityResolvers<ContextType>;
+  EntriesChartData?: EntriesChartDataResolvers<ContextType>;
   EntriesReport?: EntriesReportResolvers<ContextType>;
   EntriesSummary?: EntriesSummaryResolvers<ContextType>;
   Entry?: EntryResolvers<ContextType>;
@@ -2579,6 +2629,7 @@ export type Resolvers<ContextType = Context> = {
   FiscalYearExport?: FiscalYearExportResolvers<ContextType>;
   GoogleAuthUrl?: GoogleAuthUrlResolvers<ContextType>;
   JSON?: GraphQLScalarType;
+  MonthlyTrendItem?: MonthlyTrendItemResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   PaymentCard?: PaymentCardResolvers<ContextType>;
   PaymentCardInterface?: PaymentCardInterfaceResolvers<ContextType>;

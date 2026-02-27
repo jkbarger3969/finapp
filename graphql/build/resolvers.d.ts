@@ -173,6 +173,9 @@ declare const resolvers: {
         entries?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>[], Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QueryEntriesArgs, "filterRefunds" | "limit" | "offset">>;
+        entriesChartData?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").EntriesChartData>, Record<PropertyKey, never>, {
+            dataSources: import("./types").DataSources;
+        } & import("./types").ContextBase, Partial<import("./graphTypes").QueryEntriesChartDataArgs>>;
         entriesCount?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<number>, Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, Partial<import("./graphTypes").QueryEntriesCountArgs>>;
@@ -460,6 +463,9 @@ declare const resolvers: {
     Category?: import("./graphTypes").CategoryResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").CategoryDbRecord>;
+    CategoryChartItem?: import("./graphTypes").CategoryChartItemResolvers<{
+        dataSources: import("./types").DataSources;
+    } & import("./types").ContextBase, import("./graphTypes").CategoryChartItem>;
     CreateFiscalYearPayload?: import("./graphTypes").CreateFiscalYearPayloadResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").CreateFiscalYearPayload, "fiscalYear"> & {
@@ -502,6 +508,9 @@ declare const resolvers: {
     Entity?: import("./graphTypes").EntityResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord>;
+    EntriesChartData?: import("./graphTypes").EntriesChartDataResolvers<{
+        dataSources: import("./types").DataSources;
+    } & import("./types").ContextBase, import("./graphTypes").EntriesChartData>;
     EntriesReport?: import("./graphTypes").EntriesReportResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").EntriesReport>;
@@ -531,6 +540,9 @@ declare const resolvers: {
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").GoogleAuthUrl>;
     JSON?: import("graphql").GraphQLScalarType<unknown, unknown>;
+    MonthlyTrendItem?: import("./graphTypes").MonthlyTrendItemResolvers<{
+        dataSources: import("./types").DataSources;
+    } & import("./types").ContextBase, import("./graphTypes").MonthlyTrendItem>;
     PaymentCard?: import("./graphTypes").PaymentCardResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").PaymentCard>;

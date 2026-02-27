@@ -266,6 +266,26 @@ type EntriesReport {
   netPosition: Float!
 }
 
+type CategoryChartItem {
+  name: String!
+  value: Float!
+}
+
+type MonthlyTrendItem {
+  month: String!
+  income: Float!
+  expenses: Float!
+}
+
+type EntriesChartData {
+  categoryBreakdown: [CategoryChartItem!]!
+  monthlyTrends: [MonthlyTrendItem!]!
+}
+
+extend type Query {
+  entriesChartData(where: EntriesWhere): EntriesChartData!
+}
+
 type AddNewEntryPayload {
   newEntry: Entry!
 }

@@ -10,3 +10,4 @@ export declare const searchEntries: QueryResolvers["searchEntries"];
 export declare const entriesCount: QueryResolvers["entriesCount"];
 export declare const entriesSummary: QueryResolvers["entriesSummary"];
 export declare const entriesReport: QueryResolvers["entriesReport"];
+export declare const entriesChartData: QueryResolvers["entriesChartData"];

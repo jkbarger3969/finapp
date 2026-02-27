@@ -42,13 +42,25 @@ const GET_REPORT_DATA = `
       totalExpenses
       netPosition
     }
+    entriesChartData(where: $where) {
+      categoryBreakdown {
+        name
+        value
+      }
+      monthlyTrends {
+        month
+        income
+        expenses
+      }
+    }
   }
 `;
 
-const GET_CHART_DATA = `
-  query GetChartData($where: EntriesWhere!) {
+const GET_ENTRIES_FOR_EXPORT = `
+  query GetEntriesForExport($where: EntriesWhere!) {
     entries(where: $where, limit: 0) {
       id
+      description
       date
       total
       category {
@@ -56,8 +68,35 @@ const GET_CHART_DATA = `
         name
         type
       }
+      department {
+        id
+        name
+      }
+      source {
+        __typename
+        ... on Person {
+          personName: name {
+            first
+            last
+          }
+        }
+        ... on Business {
+          businessName: name
+        }
+      }
       paymentMethod {
         __typename
+        ... on PaymentMethodCard {
+          card {
+            type
+            trailingDigits
+          }
+        }
+        ... on PaymentMethodCheck {
+          check {
+            checkNumber
+          }
+        }
       }
     }
   }
@@ -122,7 +161,7 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 
 export default function Reporting() {
     const { departmentId: contextDeptId, fiscalYearId, fiscalYears, setFiscalYearId } = useDepartment();
-    const { setSelectedDepartmentId } = useLayout();
+    const { selectedDepartmentId, setSelectedDepartmentId } = useLayout();
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [endDate, setEndDate] = useState<Date | null>(null);
     const [entryType, setEntryType] = useState<string>('ALL');
@@ -280,20 +319,33 @@ export default function Reporting() {
         setSelectedDepartmentId(subDeptId || topLevelDeptId || null);
     }, [topLevelDeptId, subDeptId, setSelectedDepartmentId]);
 
-    // Initialize filter from context on mount
+    // Initialize filter from LayoutContext selectedDepartmentId (set by Dashboard/Transactions)
     useEffect(() => {
-        if (!contextDeptId || topLevelDeptId || subDeptId) return; // Don't override if user already set something
+        if (!selectedDepartmentId || topLevelDeptId || subDeptId) return;
+        if (departments.length === 0) return;
 
-        // Find which department contextDeptId refers to
+        const dept = departments.find((d: any) => d.id === selectedDepartmentId);
+        if (!dept) return;
+
+        if (dept.parent?.__typename === 'Department') {
+            setTopLevelDeptId(dept.parent.id);
+            setSubDeptId(dept.id);
+        } else {
+            setTopLevelDeptId(dept.id);
+        }
+    }, [selectedDepartmentId, departments, topLevelDeptId, subDeptId]);
+
+    // Initialize filter from DepartmentContext on mount
+    useEffect(() => {
+        if (!contextDeptId || topLevelDeptId || subDeptId) return;
+
         const dept = departments.find((d: any) => d.id === contextDeptId);
         if (!dept) return;
 
         if (dept.parent?.__typename === 'Department') {
-            // It's a subdepartment
             setTopLevelDeptId(dept.parent.id);
             setSubDeptId(dept.id);
         } else {
-            // It's a top-level department
             setTopLevelDeptId(dept.id);
         }
     }, [contextDeptId, departments, topLevelDeptId, subDeptId]);
@@ -374,24 +426,24 @@ export default function Reporting() {
         return baseWhere;
     }, [fiscalYearId, startDate, endDate, entryType, selectedPerson, selectedBusiness, selectedCategory, filterDepartmentId, reconcileFilter, user, departments, contextDeptId]);
 
-    // Fast query for summary totals only
     const [result] = useQuery({
         query: GET_REPORT_DATA,
         variables: { where },
         pause: !fiscalYearId,
     });
 
-    // Separate query for chart data (heavier, loads after summary)
-    const [chartResult] = useQuery({
-        query: GET_CHART_DATA,
+    // Separate query for entries (for export and list view) - loads in parallel
+    const [entriesResult] = useQuery({
+        query: GET_ENTRIES_FOR_EXPORT,
         variables: { where },
         pause: !fiscalYearId,
     });
 
     const { data, fetching, error } = result;
-    const { data: chartData, fetching: chartFetching } = chartResult;
-    const entries = chartData?.entries || [];
+    const { data: entriesData } = entriesResult;
+    const entries = entriesData?.entries || [];
     const serverReport = data?.entriesReport || { count: 0, totalIncome: 0, totalExpenses: 0, netPosition: 0 };
+    const chartData = data?.entriesChartData || { categoryBreakdown: [], monthlyTrends: [] };
 
     // Filter entries by payment method (client-side)
     const filteredEntries = useMemo(() => {
@@ -408,51 +460,16 @@ export default function Reporting() {
         });
     }, [entries, paymentMethodType]);
 
-    // Aggregations for charts (client-side breakdowns only - totals come from server)
+    // Use server-side aggregated data for charts and totals
     const aggregatedData = useMemo(() => {
-        const byCategory: Record<string, number> = {};
-        const byMonth: Record<string, { income: number; expenses: number }> = {};
-
-        filteredEntries.forEach((entry: any) => {
-            const amount = Math.abs(parseRational(entry.total));
-            const catType = entry.category?.type?.toUpperCase();
-            const isCredit = catType === 'CREDIT';
-            const catName = entry.category?.name || 'Uncategorized';
-            const monthKey = format(parseISO(entry.date), 'MMM yyyy');
-
-            // Category Totals
-            byCategory[catName] = (byCategory[catName] || 0) + amount;
-
-            // Monthly Trends
-            if (!byMonth[monthKey]) byMonth[monthKey] = { income: 0, expenses: 0 };
-            if (isCredit) {
-                byMonth[monthKey].income += amount;
-            } else {
-                byMonth[monthKey].expenses += amount;
-            }
-        });
-
-        const categoryChartData = Object.entries(byCategory)
-            .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 10); // Top 10 categories
-
-        const trendChartData = Object.entries(byMonth)
-            .map(([month, values]) => ({
-                month,
-                ...values
-            }))
-            .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
-
-        // Use server-side totals for accuracy (handles all entries, not just first 50)
         return {
             totalIncome: serverReport.totalIncome,
             totalExpenses: serverReport.totalExpenses,
             net: serverReport.netPosition,
-            categoryChartData,
-            trendChartData
+            categoryChartData: chartData.categoryBreakdown,
+            trendChartData: chartData.monthlyTrends
         };
-    }, [filteredEntries, serverReport]);
+    }, [serverReport, chartData]);
 
     const handlePrint = () => {
         window.print();
@@ -804,7 +821,7 @@ export default function Reporting() {
                                     <Paper sx={{ p: 3 }}>
                                         <Typography variant="h6" gutterBottom>Income vs Expenses (Trend)</Typography>
                                         <Box sx={{ height: 300, mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            {chartFetching ? (
+                                            {fetching ? (
                                                 <CircularProgress />
                                             ) : (
                                                 <ResponsiveContainer width="100%" height="100%">
@@ -831,7 +848,7 @@ export default function Reporting() {
                                     <Paper sx={{ p: 3 }}>
                                         <Typography variant="h6" gutterBottom>Top Spending Categories</Typography>
                                         <Box sx={{ height: 300, mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            {chartFetching ? (
+                                            {fetching ? (
                                                 <CircularProgress />
                                             ) : (
                                                 <ResponsiveContainer width="100%" height="100%">

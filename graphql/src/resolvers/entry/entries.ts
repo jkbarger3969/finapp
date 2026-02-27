@@ -1463,3 +1463,182 @@ export const entriesReport: QueryResolvers["entriesReport"] = async (
   
   return { count: 0, totalIncome: 0, totalExpenses: 0, netPosition: 0 };
 };
+
+export const entriesChartData: QueryResolvers["entriesChartData"] = async (
+  _,
+  { where },
+  context
+) => {
+  const { dataSources: { accountingDb }, authService, user } = context as Context;
+
+  const basePipeline: any[] = [];
+
+  // Permission filtering for non-SuperAdmin users
+  if (authService && user?.id) {
+    const authUser = await authService.getUserById(user.id);
+
+    if (authUser && authUser.role !== "SUPER_ADMIN") {
+      const accessibleDeptIds = await authService.getAccessibleDepartmentIds(user.id);
+
+      if (accessibleDeptIds.length === 0) {
+        return { categoryBreakdown: [], monthlyTrends: [] };
+      }
+
+      const allAccessibleIds = new Set<string>();
+      for (const deptId of accessibleDeptIds) {
+        allAccessibleIds.add(deptId.toString());
+        const descendants = await getDescendantDeptIds(deptId, accountingDb.db);
+        descendants.forEach((id) => allAccessibleIds.add(id.toString()));
+      }
+
+      const permittedDeptIds = Array.from(allAccessibleIds).map((id) => new ObjectId(id));
+
+      basePipeline.push({
+        $match: {
+          "department.0.value": { $in: permittedDeptIds },
+        },
+      });
+    }
+  }
+
+  // Apply where filters
+  if (where) {
+    basePipeline.push({
+      $match: await whereEntries(where, accountingDb.db),
+    });
+  }
+
+  // Lookup category for type info
+  basePipeline.push({
+    $lookup: {
+      from: "categories",
+      localField: "category.0.value",
+      foreignField: "_id",
+      as: "categoryDoc"
+    }
+  });
+
+  // Category breakdown aggregation
+  const categoryPipeline = [
+    ...basePipeline,
+    {
+      $group: {
+        _id: { $arrayElemAt: ["$categoryDoc.name", 0] },
+        value: {
+          $sum: {
+            $abs: {
+              $let: {
+                vars: { t: { $arrayElemAt: ["$total.value", 0] } },
+                in: {
+                  $cond: [
+                    { $or: [{ $eq: ["$$t.d", 0] }, { $eq: ["$$t.d", null] }] },
+                    0,
+                    { $multiply: [{ $divide: ["$$t.n", "$$t.d"] }, "$$t.s"] }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    { $sort: { value: -1 } },
+    { $limit: 10 },
+    {
+      $project: {
+        _id: 0,
+        name: { $ifNull: ["$_id", "Uncategorized"] },
+        value: 1
+      }
+    }
+  ];
+
+  // Monthly trends aggregation
+  const monthlyPipeline = [
+    ...basePipeline,
+    {
+      $group: {
+        _id: {
+          year: { $year: "$date.0.value" },
+          month: { $month: "$date.0.value" }
+        },
+        income: {
+          $sum: {
+            $cond: [
+              { $eq: [{ $toUpper: { $arrayElemAt: ["$categoryDoc.type", 0] } }, "CREDIT"] },
+              {
+                $abs: {
+                  $let: {
+                    vars: { t: { $arrayElemAt: ["$total.value", 0] } },
+                    in: {
+                      $cond: [
+                        { $or: [{ $eq: ["$$t.d", 0] }, { $eq: ["$$t.d", null] }] },
+                        0,
+                        { $multiply: [{ $divide: ["$$t.n", "$$t.d"] }, "$$t.s"] }
+                      ]
+                    }
+                  }
+                }
+              },
+              0
+            ]
+          }
+        },
+        expenses: {
+          $sum: {
+            $cond: [
+              { $ne: [{ $toUpper: { $arrayElemAt: ["$categoryDoc.type", 0] } }, "CREDIT"] },
+              {
+                $abs: {
+                  $let: {
+                    vars: { t: { $arrayElemAt: ["$total.value", 0] } },
+                    in: {
+                      $cond: [
+                        { $or: [{ $eq: ["$$t.d", 0] }, { $eq: ["$$t.d", null] }] },
+                        0,
+                        { $multiply: [{ $divide: ["$$t.n", "$$t.d"] }, "$$t.s"] }
+                      ]
+                    }
+                  }
+                }
+              },
+              0
+            ]
+          }
+        }
+      }
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } },
+    {
+      $project: {
+        _id: 0,
+        month: {
+          $let: {
+            vars: {
+              monthNames: ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+            },
+            in: {
+              $concat: [
+                { $arrayElemAt: ["$$monthNames", "$_id.month"] },
+                " ",
+                { $toString: "$_id.year" }
+              ]
+            }
+          }
+        },
+        income: 1,
+        expenses: 1
+      }
+    }
+  ];
+
+  const [categoryBreakdown, monthlyTrends] = await Promise.all([
+    accountingDb.getCollection("entries").aggregate(categoryPipeline).toArray(),
+    accountingDb.getCollection("entries").aggregate(monthlyPipeline).toArray()
+  ]);
+
+  return {
+    categoryBreakdown: categoryBreakdown as any[],
+    monthlyTrends: monthlyTrends as any[]
+  };
+};
