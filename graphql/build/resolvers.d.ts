@@ -86,7 +86,7 @@ declare const resolvers: {
         refunds?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryRefundDbRecord>[], import("./dataSources/accountingDb/types").EntryDbRecord, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, Record<PropertyKey, never>>;
-        source?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord>, import("./dataSources/accountingDb/types").EntryDbRecord, {
+        source?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord>, import("./dataSources/accountingDb/types").EntryDbRecord, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, Record<PropertyKey, never>>;
         total?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("fraction.js").default>, import("./dataSources/accountingDb/types").EntryDbRecord, {
@@ -167,7 +167,7 @@ declare const resolvers: {
         departments?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").DepartmentDbRecord>[], Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, Partial<import("./graphTypes").QueryDepartmentsArgs>>;
-        entities?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord>[], Record<PropertyKey, never>, {
+        entities?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord>[], Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QueryEntitiesArgs, "where">>;
         entries?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>[], Record<PropertyKey, never>, {
@@ -197,7 +197,7 @@ declare const resolvers: {
         entryRefunds?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryRefundDbRecord>[], Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, Partial<import("./graphTypes").QueryEntryRefundsArgs>>;
-        exportFiscalYear?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "entries" | "fiscalYear" | "budgets"> & {
+        exportFiscalYear?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "budgets" | "entries" | "fiscalYear"> & {
             budgets: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").BudgetDbRecord>[];
             entries: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>[];
             fiscalYear: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").FiscalYearDbRecord>;
@@ -219,7 +219,7 @@ declare const resolvers: {
         searchEntries?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>[], Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QuerySearchEntriesArgs, "limit" | "query">>;
-        sources?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord>[], Record<PropertyKey, never>, {
+        sources?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord>[], Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, import("./graphTypes").RequireFields<import("./graphTypes").QuerySourcesArgs, "searchByName">>;
     };
@@ -403,9 +403,9 @@ declare const resolvers: {
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").AccountDbRecord>;
     AccountCreditCard?: import("./graphTypes").AccountCreditCardResolvers<{
         dataSources: import("./types").DataSources;
-    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").AccountCreditCard, "cards" | "owner"> & {
+    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").AccountCreditCard, "owner" | "cards"> & {
         cards: import("./dataSources/accountingDb/types").PaymentCardDbRecord[];
-        owner: import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord;
+        owner: import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord;
     }>;
     AccountInterface?: import("./graphTypes").AccountInterfaceResolvers<{
         dataSources: import("./types").DataSources;
@@ -445,13 +445,13 @@ declare const resolvers: {
     AuthPayload?: import("./graphTypes").AuthPayloadResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").AuthPayload, "user"> & {
-        user: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "invitedBy" | "departments"> & {
-            departments: (import("./graphTypes").Omit<import("./graphTypes").UserPermission, "user" | "grantedBy" | "department"> & {
+        user: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "departments" | "invitedBy"> & {
+            departments: (import("./graphTypes").Omit<import("./graphTypes").UserPermission, "department" | "user" | "grantedBy"> & {
                 department: import("./dataSources/accountingDb/types").DepartmentDbRecord;
-                grantedBy: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "invitedBy" | "departments"> & any;
-                user: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "invitedBy" | "departments"> & any;
+                grantedBy: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "departments" | "invitedBy"> & any;
+                user: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "departments" | "invitedBy"> & any;
             })[];
-            invitedBy?: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "invitedBy" | "departments"> & any;
+            invitedBy?: import("./graphTypes").Omit<import("./graphTypes").AuthUser, "departments" | "invitedBy"> & any;
         };
     }>;
     Budget?: import("./graphTypes").BudgetResolvers<{
@@ -459,7 +459,7 @@ declare const resolvers: {
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").BudgetDbRecord>;
     BudgetOwner?: import("./graphTypes").BudgetOwnerResolvers<{
         dataSources: import("./types").DataSources;
-    } & import("./types").ContextBase, import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").BusinessDbRecord>;
+    } & import("./types").ContextBase, import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord>;
     Business?: import("./graphTypes").BusinessResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").BusinessDbRecord>;
@@ -501,7 +501,7 @@ declare const resolvers: {
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").DepartmentDbRecord>;
     DepartmentAncestor?: import("./graphTypes").DepartmentAncestorResolvers<{
         dataSources: import("./types").DataSources;
-    } & import("./types").ContextBase, import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").BusinessDbRecord>;
+    } & import("./types").ContextBase, import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord>;
     DepartmentBudgetSummary?: import("./graphTypes").DepartmentBudgetSummaryResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").DepartmentBudgetSummary>;
@@ -510,7 +510,7 @@ declare const resolvers: {
     } & import("./types").ContextBase, import("./graphTypes").EditHistoryEntry>;
     Entity?: import("./graphTypes").EntityResolvers<{
         dataSources: import("./types").DataSources;
-    } & import("./types").ContextBase, import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord>;
+    } & import("./types").ContextBase, import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord>;
     EntriesChartData?: import("./graphTypes").EntriesChartDataResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, import("./graphTypes").EntriesChartData>;
@@ -534,7 +534,7 @@ declare const resolvers: {
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").FiscalYearDbRecord>;
     FiscalYearExport?: import("./graphTypes").FiscalYearExportResolvers<{
         dataSources: import("./types").DataSources;
-    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "entries" | "fiscalYear" | "budgets"> & {
+    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "budgets" | "entries" | "fiscalYear"> & {
         budgets: import("./dataSources/accountingDb/types").BudgetDbRecord[];
         entries: import("./dataSources/accountingDb/types").EntryDbRecord[];
         fiscalYear: import("./dataSources/accountingDb/types").FiscalYearDbRecord;
@@ -613,7 +613,7 @@ declare const resolvers: {
     }>;
     Source?: import("./graphTypes").SourceResolvers<{
         dataSources: import("./types").DataSources;
-    } & import("./types").ContextBase, import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord>;
+    } & import("./types").ContextBase, import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord>;
     Subscription?: import("./graphTypes").SubscriptionResolvers<{
         dataSources: import("./types").DataSources;
     } & import("./types").ContextBase, Record<PropertyKey, never>>;

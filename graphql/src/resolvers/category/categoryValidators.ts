@@ -34,19 +34,19 @@ export const validateCategory = new (class {
     category: ObjectId;
     accountingDb: AccountingDb;
   }) {
-    const { parent } = await accountingDb.findOne({
+    const children = await accountingDb.find({
       collection: "categories",
       filter: {
-        _id: category,
+        parent: category,
       },
       options: {
-        projection: { parent: true },
+        projection: { _id: true },
       },
     });
 
-    if (!parent) {
+    if (children.length > 0) {
       throw new UserInputError(
-        `Root category is not permitted. "Category" id "${category.toHexString()}" is a root category.`
+        `Group category is not permitted. "Category" id "${category.toHexString()}" has ${children.length} child categories. Please select a specific subcategory.`
       );
     }
   }
