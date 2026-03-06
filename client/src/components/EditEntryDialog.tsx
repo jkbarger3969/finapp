@@ -62,6 +62,24 @@ const UPDATE_ENTRY_MUTATION = `
   }
 `;
 
+const UPDATE_REFUND_MUTATION = `
+  mutation UpdateEntryRefund($input: UpdateEntryRefund!) {
+    updateEntryRefund(input: $input) {
+      updatedEntryRefund {
+        id
+        description
+        date
+        dateOfRecord {
+            date
+            overrideFiscalYear
+        }
+        total
+        reconciled
+      }
+    }
+  }
+`;
+
 interface EditEntryDialogProps {
     open: boolean;
     onClose: () => void;
@@ -85,8 +103,11 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
 
     const [result] = useQuery({ query: GET_FORM_DATA });
     const [, updateEntry] = useMutation(UPDATE_ENTRY_MUTATION);
+    const [, updateRefund] = useMutation(UPDATE_REFUND_MUTATION);
     const [error, setError] = useState<string | null>(null);
     const [showHistory, setShowHistory] = useState(false); // Toggle for history viewer
+
+    const isRefund = entry?.isRefund || false;
 
     const { data, fetching } = result;
 
@@ -143,23 +164,41 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
                 d: 100,
             });
 
-            const input = {
-                id: entry.id,
-                description: formData.description,
-                date: formData.date,
-                category: formData.categoryId,
-                department: formData.departmentId,
-                total: rational,
-                reconciled: formData.reconciled,
-                ...(formData.hasDifferentPostedDate && formData.postedDate && {
-                    dateOfRecord: {
-                        date: formData.postedDate,
-                        overrideFiscalYear: formData.usePostedDateForFiscalYear,
-                    },
-                }),
-            };
+            let response;
 
-            const response = await updateEntry({ input });
+            if (isRefund) {
+                const refundInput = {
+                    id: entry.id,
+                    description: formData.description,
+                    date: formData.date,
+                    total: rational,
+                    reconciled: formData.reconciled,
+                    ...(formData.hasDifferentPostedDate && formData.postedDate && {
+                        dateOfRecord: {
+                            date: formData.postedDate,
+                            overrideFiscalYear: formData.usePostedDateForFiscalYear,
+                        },
+                    }),
+                };
+                response = await updateRefund({ input: refundInput });
+            } else {
+                const input = {
+                    id: entry.id,
+                    description: formData.description,
+                    date: formData.date,
+                    category: formData.categoryId,
+                    department: formData.departmentId,
+                    total: rational,
+                    reconciled: formData.reconciled,
+                    ...(formData.hasDifferentPostedDate && formData.postedDate && {
+                        dateOfRecord: {
+                            date: formData.postedDate,
+                            overrideFiscalYear: formData.usePostedDateForFiscalYear,
+                        },
+                    }),
+                };
+                response = await updateEntry({ input });
+            }
 
             if (response.error) {
                 setError(response.error.message);
@@ -183,7 +222,7 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
         >
             <form onSubmit={handleSubmit}>
                 <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    Edit Transaction
+                    {isRefund ? 'Edit Refund' : 'Edit Transaction'}
                     <Tooltip title="View Edit History">
                         <IconButton onClick={() => setShowHistory(true)} size="small">
                             <HistoryIcon />
@@ -250,37 +289,41 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
                             </Box>
                         )}
 
-                        <FormControl fullWidth required>
-                            <InputLabel>Category</InputLabel>
-                            <Select
-                                value={formData.categoryId}
-                                label="Category"
-                                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                                disabled={fetching}
-                            >
-                                {data?.categories.map((cat: any) => (
-                                    <MenuItem key={cat.id} value={cat.id}>
-                                        {cat.name} ({cat.type})
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+                        {!isRefund && (
+                            <FormControl fullWidth required>
+                                <InputLabel>Category</InputLabel>
+                                <Select
+                                    value={formData.categoryId}
+                                    label="Category"
+                                    onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                                    disabled={fetching}
+                                >
+                                    {data?.categories.map((cat: any) => (
+                                        <MenuItem key={cat.id} value={cat.id}>
+                                            {cat.name} ({cat.type})
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        )}
 
-                        <FormControl fullWidth required>
-                            <InputLabel>Department</InputLabel>
-                            <Select
-                                value={formData.departmentId}
-                                label="Department"
-                                onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
-                                disabled={fetching}
-                            >
-                                {data?.departments.map((dept: any) => (
-                                    <MenuItem key={dept.id} value={dept.id}>
-                                        {dept.name}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+                        {!isRefund && (
+                            <FormControl fullWidth required>
+                                <InputLabel>Department</InputLabel>
+                                <Select
+                                    value={formData.departmentId}
+                                    label="Department"
+                                    onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+                                    disabled={fetching}
+                                >
+                                    {data?.departments.map((dept: any) => (
+                                        <MenuItem key={dept.id} value={dept.id}>
+                                            {dept.name}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        )}
 
                         <TextField
                             label="Amount"
