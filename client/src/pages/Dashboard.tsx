@@ -62,7 +62,7 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const { fiscalYearId, setFiscalYearId } = useDepartment();
     const { user, isSuperAdmin } = useAuth();
-    const { setSelectedDepartmentId } = useLayout();
+    const { setSelectedDepartmentId, refreshTrigger } = useLayout();
 
     const [topLevelDeptId, setTopLevelDeptId] = useState('');
     const [subDeptId, setSubDeptId] = useState('');
@@ -75,12 +75,19 @@ export default function Dashboard() {
         setSelectedDepartmentId(subDeptId || topLevelDeptId || null);
     }, [topLevelDeptId, subDeptId, setSelectedDepartmentId]);
 
-    const [result] = useQuery({
+    const [result, reexecuteQuery] = useQuery({
         query: GET_BUDGET_DATA,
         variables: { fiscalYearId },
         pause: !fiscalYearId,
         requestPolicy: 'cache-and-network'
     });
+
+    // Refresh when new entry is created (from LayoutContext)
+    useEffect(() => {
+        if (refreshTrigger > 0) {
+            reexecuteQuery({ requestPolicy: 'network-only' });
+        }
+    }, [refreshTrigger, reexecuteQuery]);
 
     const { data, fetching, error } = result;
 

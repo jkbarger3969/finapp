@@ -147,7 +147,7 @@ const CustomCheckbox = (props: any) => (
 
 export default function Transactions() {
     const { departmentId: contextDeptId, fiscalYearId, fiscalYears, setFiscalYearId } = useDepartment();
-    const { setSelectedDepartmentId } = useLayout();
+    const { setSelectedDepartmentId, refreshTrigger } = useLayout();
 
     // Filter state
     const [reconcileFilter, setReconcileFilter] = useState<string>('ALL');
@@ -463,6 +463,13 @@ export default function Transactions() {
         searchTerm,
         hasRefunds: showMatchingOnly ? true : undefined,
     });
+
+    // Refresh when new entry is created (from LayoutContext)
+    useEffect(() => {
+        if (refreshTrigger > 0) {
+            refresh();
+        }
+    }, [refreshTrigger, refresh]);
 
     // Alias refresh to handleReexecute for compatibility
     const handleReexecute = refresh;

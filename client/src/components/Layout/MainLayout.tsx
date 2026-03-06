@@ -12,7 +12,7 @@ interface MainLayoutProps {
 
 
 export default function MainLayout({ children }: MainLayoutProps) {
-    const { isEntryDialogOpen, closeEntryDialog, selectedDepartmentId } = useLayout();
+    const { isEntryDialogOpen, closeEntryDialog, selectedDepartmentId, triggerRefresh } = useLayout();
 
     return (
         <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default', flexDirection: 'column' }}>
@@ -39,7 +39,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 onClose={closeEntryDialog}
                 onSuccess={() => {
                     closeEntryDialog();
-                    window.location.reload();
+                    triggerRefresh();
                 }}
                 initialDepartmentId={selectedDepartmentId}
             />

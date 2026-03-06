@@ -150,6 +150,12 @@ function formatRational(rational: any): number {
     return (r.s * r.n) / r.d;
 }
 
+function getRationalCents(rational: any): number {
+    if (!rational) return 0;
+    const r = typeof rational === 'string' ? JSON.parse(rational) : rational;
+    return Math.round((r.s * r.n * 100) / r.d);
+}
+
 function formatCurrency(amount: number): string {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -330,11 +336,11 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
     }, [data?.categories]);
 
     const calculateRemainingRefund = (entry: any): number => {
-        const total = formatRational(entry.total);
-        const refundedAmount = entry.refunds?.reduce((sum: number, r: any) => {
-            return sum + Math.abs(formatRational(r.total));
+        const totalCents = getRationalCents(entry.total);
+        const refundedCents = entry.refunds?.reduce((sum: number, r: any) => {
+            return sum + Math.abs(getRationalCents(r.total));
         }, 0) || 0;
-        return Math.abs(total) - refundedAmount;
+        return (Math.abs(totalCents) - refundedCents) / 100;
     };
 
 
