@@ -119,6 +119,7 @@ export interface CategoryDbRecord {
   accountNumber?: string;
   groupName?: string;
   sortOrder?: number;
+  allowStandalone?: boolean;
 }
 
 export type PaymentCardTypeDbRecord = PascalCase<PaymentCardType>;

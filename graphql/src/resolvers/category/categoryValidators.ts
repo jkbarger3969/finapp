@@ -34,6 +34,20 @@ export const validateCategory = new (class {
     category: ObjectId;
     accountingDb: AccountingDb;
   }) {
+    const categoryDoc = await accountingDb.findOne({
+      collection: "categories",
+      filter: {
+        _id: category,
+      },
+      options: {
+        projection: { _id: true, allowStandalone: true },
+      },
+    });
+
+    if (categoryDoc?.allowStandalone) {
+      return;
+    }
+
     const children = await accountingDb.find({
       collection: "categories",
       filter: {

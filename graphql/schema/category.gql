@@ -12,6 +12,7 @@ type Category {
   accountNumber: String
   groupName: String
   sortOrder: Int
+  allowStandalone: Boolean
 }
 
 input CategoriesWhere {
