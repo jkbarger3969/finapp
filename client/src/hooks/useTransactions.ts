@@ -1,5 +1,5 @@
 import { useQuery } from 'urql';
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 
 const GET_ENTRIES_BY_DEPARTMENT = `
   query GetEntriesByDepartment($where: EntriesWhere!, $limit: Int, $offset: Int) {
@@ -261,9 +261,9 @@ export function useTransactions({
     requestPolicy: 'cache-and-network',
   });
 
-  const refresh = () => {
+  const refresh = useCallback(() => {
     reexecuteQuery({ requestPolicy: 'network-only' });
-  };
+  }, [reexecuteQuery]);
 
   return {
     entries: result.data?.entries || [],
