@@ -519,18 +519,16 @@ export default function Dashboard() {
 
     // For subdept-only users with single parent, use their subdept cards
     if (userAccessInfo.hasSubdeptOnlyAccess && userAccessInfo.singleParentId && !topLevelDeptId && !subDeptId) {
-        subdeptOnlyCards.forEach(dept => {
+        subdeptOnlyCards.forEach((dept) => {
             displayedTotalBudget += dept.budget;
             displayedTotalSpent += dept.spent;
         });
     } else {
         // Sum up displayed departments' OWN budgets (not children)
-        // BUT exclude departments where user only has subdept access
-        displayedDepts.forEach(dept => {
-            // Skip this department's budget if user only has subdept access (not top-level access)
+        // BUT exclude budgets from parents where user only has subdepartment access
+        displayedDepts.forEach((dept) => {
             if (userAccessInfo.parentIdsWithSubdeptAccess.has(dept.id)) {
-                // Instead, add the accessible subdepartments' budgets
-                dept.children.forEach(child => {
+                dept.children.forEach((child) => {
                     if (userAccessInfo.subdeptIds.includes(child.id)) {
                         displayedTotalBudget += child.budget;
                         displayedTotalSpent += child.spent;
