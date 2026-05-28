@@ -213,6 +213,11 @@ const safeDate = (value: string): Date => {
     return isValid(parsed) ? parsed : new Date(value);
 };
 
+const escapeCsvValue = (value: string | number): string => {
+    const normalized = String(value).replace(/[\r\n]+/g, ' ');
+    return `"${normalized.replace(/"/g, '""')}"`;
+};
+
 export default function Reporting() {
     const { departmentId: contextDeptId, fiscalYearId, fiscalYears, setFiscalYearId } = useDepartment();
     const { selectedDepartmentId, setSelectedDepartmentId } = useLayout();
@@ -618,6 +623,7 @@ export default function Reporting() {
     const handleExportCSV = () => {
         if (filteredRows.length === 0) return;
 
+        // Mirror ledger columns exactly (rows include refunds)
         const headers = [
             'Status',
             'Date',
@@ -627,27 +633,24 @@ export default function Reporting() {
             'Category',
             'Payment',
             'Amount',
-            'Type',
-            'Parent Transaction ID',
         ];
 
         const rows = filteredRows.map((row) => {
-            const escape = (str?: string | null) => `"${(str || '').replace(/"/g, '""')}"`;
             return [
-                escape(row.status),
-                escape(format(safeDate(row.date), 'yyyy-MM-dd')),
-                escape(row.description),
-                escape(row.departmentName),
-                escape(row.sourceLabel),
-                escape(row.categoryName),
-                escape(row.paymentMethodLabel),
-                row.signedAmount.toFixed(2),
-                escape(row.rowTypeLabel),
-                escape(row.parentEntryId || ''),
+                escapeCsvValue(row.status),
+                escapeCsvValue(format(safeDate(row.date), 'yyyy-MM-dd')),
+                escapeCsvValue(row.description),
+                escapeCsvValue(row.departmentName),
+                escapeCsvValue(row.sourceLabel),
+                escapeCsvValue(row.categoryName),
+                escapeCsvValue(row.paymentMethodLabel),
+                escapeCsvValue(row.signedAmount.toFixed(2)),
             ].join(',');
         });
 
-        const csvContent = [headers.join(','), ...rows].join('\r\n');
+        // Use real EOL characters to avoid "\n" literal imports in Numbers/Excel.
+        const eol = String.fromCharCode(13, 10);
+        const csvContent = [headers.map(escapeCsvValue).join(','), ...rows].join(eol);
         const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -693,7 +696,7 @@ export default function Reporting() {
             valueGetter: (value) => format(safeDate(String(value || '')), 'MMM dd, yyyy'),
         },
         { field: 'description', headerName: 'Description', flex: 1.2, minWidth: 280 },
-        { field: 'departmentName', headerName: 'Department', width: 170 },
+        { field: 'departmentName', headerName: 'Department', width: 190 },
         { field: 'sourceLabel', headerName: 'Source', width: 200 },
         {
             field: 'categoryName',
