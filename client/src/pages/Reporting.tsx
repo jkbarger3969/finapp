@@ -12,12 +12,15 @@ import {
     Alert,
     CircularProgress,
     Stack,
-    Divider
+    Divider,
+    Chip
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format, parseISO, isValid } from 'date-fns';
+import { DataGrid } from '@mui/x-data-grid';
+import type { GridColDef } from '@mui/x-data-grid';
 import PrintIcon from '@mui/icons-material/Print';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import CloseIcon from '@mui/icons-material/Close';
@@ -203,6 +206,11 @@ const getSourceLabel = (source: EntryRecord['source']): string => {
     if (source.__typename === 'Person') return `${source.personName?.first || ''} ${source.personName?.last || ''}`.trim();
     if (source.__typename === 'Business') return source.businessName || '';
     return '';
+};
+
+const safeDate = (value: string): Date => {
+    const parsed = parseISO(value);
+    return isValid(parsed) ? parsed : new Date(value);
 };
 
 export default function Reporting() {
@@ -611,38 +619,36 @@ export default function Reporting() {
         if (filteredRows.length === 0) return;
 
         const headers = [
-            'Date',
-            'Record Type',
             'Status',
+            'Date',
             'Description',
-            'Category',
-            'Category Type',
-            'Signed Amount',
-            'Absolute Amount',
-            'Payment Method',
             'Department',
             'Source',
+            'Category',
+            'Payment',
+            'Amount',
+            'Type',
+            'Parent Transaction ID',
         ];
 
         const rows = filteredRows.map((row) => {
             const escape = (str?: string | null) => `"${(str || '').replace(/"/g, '""')}"`;
             return [
-                escape(format(new Date(row.date), 'yyyy-MM-dd')),
-                escape(row.rowTypeLabel),
                 escape(row.status),
+                escape(format(safeDate(row.date), 'yyyy-MM-dd')),
                 escape(row.description),
-                escape(row.categoryName),
-                escape(row.categoryType),
-                row.signedAmount.toFixed(2),
-                row.amount.toFixed(2),
-                escape(row.paymentMethodLabel),
                 escape(row.departmentName),
                 escape(row.sourceLabel),
+                escape(row.categoryName),
+                escape(row.paymentMethodLabel),
+                row.signedAmount.toFixed(2),
+                escape(row.rowTypeLabel),
+                escape(row.parentEntryId || ''),
             ].join(',');
         });
 
-        const csvContent = [headers.join(','), ...rows].join('\\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const csvContent = [headers.join(','), ...rows].join('\r\n');
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
@@ -665,6 +671,64 @@ export default function Reporting() {
         setManualFilterDepartmentId(null);
         setReconcileFilter('ALL');
     };
+
+    const auditColumns: GridColDef<ReportAuditRow>[] = useMemo(() => ([
+        {
+            field: 'status',
+            headerName: 'Status',
+            width: 120,
+            renderCell: (params) => (
+                <Chip
+                    label={params.value as string}
+                    size="small"
+                    color={params.value === 'Reconciled' ? 'success' : 'default'}
+                    variant="outlined"
+                />
+            ),
+        },
+        {
+            field: 'date',
+            headerName: 'Date',
+            width: 130,
+            valueGetter: (value) => format(safeDate(String(value || '')), 'MMM dd, yyyy'),
+        },
+        { field: 'description', headerName: 'Description', flex: 1.2, minWidth: 280 },
+        { field: 'departmentName', headerName: 'Department', width: 170 },
+        { field: 'sourceLabel', headerName: 'Source', width: 200 },
+        {
+            field: 'categoryName',
+            headerName: 'Category',
+            width: 210,
+            renderCell: (params) => (
+                <Chip
+                    label={String(params.value || '')}
+                    size="small"
+                    color={params.row.categoryType === 'CREDIT' ? 'success' : 'error'}
+                    variant="outlined"
+                />
+            ),
+        },
+        { field: 'paymentMethodLabel', headerName: 'Payment', width: 160 },
+        {
+            field: 'signedAmount',
+            headerName: 'Amount',
+            width: 140,
+            align: 'right',
+            headerAlign: 'right',
+            renderCell: (params) => (
+                <Typography
+                    sx={{
+                        fontWeight: 700,
+                        color: Number(params.value) >= 0 ? 'success.main' : 'error.main',
+                        width: '100%',
+                        textAlign: 'right',
+                    }}
+                >
+                    {currencyFormatter.format(Number(params.value || 0))}
+                </Typography>
+            ),
+        },
+    ]), []);
 
     if (!fiscalYearId) {
         return <Alert severity="info" sx={{ mt: 2 }}>Please select a department to view reports.</Alert>;
@@ -1007,45 +1071,26 @@ export default function Reporting() {
                                     </Paper>
                                 </Grid>
 
-                                {/* Detailed audit list (matches Transactions style intent) */}
+                                {/* Detailed audit list (Transactions-style grid) */}
                                 <Grid size={{ xs: 12 }}>
-                                    <Paper sx={{ p: 3 }}>
+                                    <Paper sx={{ p: 0, overflow: 'hidden' }}>
                                         <Typography variant="h6" gutterBottom>Department Audit Details (Transactions + Refunds)</Typography>
-                                        <Box sx={{ overflowX: 'auto' }}>
-                                            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16 }}>
-                                                <thead>
-                                                    <tr style={{ borderBottom: '2px solid rgba(128,128,128,0.2)', textAlign: 'left' }}>
-                                                        <th style={{ padding: 8 }}>Date</th>
-                                                        <th style={{ padding: 8 }}>Type</th>
-                                                        <th style={{ padding: 8 }}>Status</th>
-                                                        <th style={{ padding: 8 }}>Description</th>
-                                                        <th style={{ padding: 8 }}>Category</th>
-                                                        <th style={{ padding: 8 }}>Payment</th>
-                                                        <th style={{ padding: 8, textAlign: 'right' }}>Amount</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {filteredRows.slice(0, 200).map((row) => (
-                                                        <tr key={row.id} style={{ borderBottom: '1px solid rgba(128,128,128,0.1)' }}>
-                                                            <td style={{ padding: 8 }}>{format(parseISO(row.date), 'MMM dd, yyyy')}</td>
-                                                            <td style={{ padding: 8 }}>{row.rowTypeLabel}</td>
-                                                            <td style={{ padding: 8 }}>{row.status}</td>
-                                                            <td style={{ padding: 8 }}>{row.description}</td>
-                                                            <td style={{ padding: 8 }}>{row.categoryName}</td>
-                                                            <td style={{ padding: 8 }}>{row.paymentMethodLabel}</td>
-                                                            <td style={{ padding: 8, textAlign: 'right', color: row.signedAmount >= 0 ? 'green' : 'red', fontWeight: 'bold' }}>
-                                                                {currencyFormatter.format(row.signedAmount)}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                            {filteredRows.length > 200 && (
-                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2, textAlign: 'center' }}>
-                                                    Showing first 200 rows. Export CSV for full audit dataset.
-                                                </Typography>
-                                            )}
-                                        </Box>
+                                        <DataGrid
+                                            rows={filteredRows}
+                                            columns={auditColumns}
+                                            disableRowSelectionOnClick
+                                            pageSizeOptions={[25, 50, 100]}
+                                            initialState={{ pagination: { paginationModel: { pageSize: 25, page: 0 } } }}
+                                            getRowClassName={(params) => (params.row.isRefund ? 'report-refund-row' : '')}
+                                            sx={{
+                                                border: 0,
+                                                minHeight: 520,
+                                                '& .MuiDataGrid-cell': { alignItems: 'center' },
+                                                '& .report-refund-row': {
+                                                    backgroundColor: 'rgba(0, 229, 255, 0.04)',
+                                                },
+                                            }}
+                                        />
                                     </Paper>
                                 </Grid>
                             </Grid>
