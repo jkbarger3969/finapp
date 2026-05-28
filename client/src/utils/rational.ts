@@ -22,6 +22,16 @@ export function parseRational(rational: Rational | string | null | undefined): n
     }
 }
 
+export function parseRationalCents(rational: Rational | string | null | undefined): number {
+    if (!rational) return 0;
+    try {
+        const r: Rational = typeof rational === 'string' ? JSON.parse(rational) : rational;
+        return Math.round((r.s * r.n * 100) / r.d);
+    } catch {
+        return 0;
+    }
+}
+
 export function formatCurrency(amount: number): string {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',

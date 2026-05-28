@@ -37,8 +37,27 @@ interface EditHistoryViewerProps {
     onClose: () => void;
 }
 
+interface HistoryDiff {
+    old?: unknown;
+    new?: unknown;
+}
+
+interface EditHistoryItem {
+    id: string;
+    editedAt: string;
+    editedBy: string;
+    changes: Record<string, HistoryDiff>;
+}
+
+interface EntryHistoryData {
+    entry?: {
+        id: string;
+        editHistory: EditHistoryItem[];
+    };
+}
+
 export default function EditHistoryViewer({ entryId, open, onClose }: EditHistoryViewerProps) {
-    const [result] = useQuery({
+    const [result] = useQuery<EntryHistoryData>({
         query: GET_ENTRY_HISTORY,
         variables: { id: entryId },
         pause: !open, // Only fetch when open
@@ -62,7 +81,7 @@ export default function EditHistoryViewer({ entryId, open, onClose }: EditHistor
                 )}
 
                 <List>
-                    {data?.entry?.editHistory?.map((item: any) => (
+                    {data?.entry?.editHistory?.map((item: EditHistoryItem) => (
                         <HistoryItem key={item.id} item={item} />
                     ))}
                 </List>
@@ -74,7 +93,7 @@ export default function EditHistoryViewer({ entryId, open, onClose }: EditHistor
     );
 }
 
-function HistoryItem({ item }: { item: any }) {
+function HistoryItem({ item }: { item: EditHistoryItem }) {
     const [expanded, setExpanded] = useState(false);
 
     // Changes is a JSON object: { field: { old: val, new: val } }
@@ -113,7 +132,7 @@ function HistoryItem({ item }: { item: any }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {Object.entries(changes).map(([field, diff]: [string, any]) => (
+                            {Object.entries(changes).map(([field, diff]: [string, HistoryDiff]) => (
                                 <tr key={field} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ padding: '8px', textTransform: 'capitalize' }}>{field}</td>
                                     <td style={{ padding: '8px', color: '#d32f2f', wordBreak: 'break-word' }}>

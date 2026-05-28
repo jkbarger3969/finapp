@@ -154,7 +154,7 @@ export default function TopNav() {
                     New Entry
                 </Button>
 
-                {(user as any)?.canInviteUsers && (
+                {user?.canInviteUsers && (
                     <Button
                         variant="outlined"
                         startIcon={<PersonAddIcon />}
@@ -234,7 +234,7 @@ export default function TopNav() {
                 </MenuItem>
             </Menu>
 
-            {(user as any)?.canInviteUsers && (
+            {user?.canInviteUsers && (
                 <InviteUserDialog
                     open={inviteDialogOpen}
                     onClose={() => setInviteDialogOpen(false)}

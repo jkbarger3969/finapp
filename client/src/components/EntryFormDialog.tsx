@@ -37,6 +37,8 @@ import CategoryAutocomplete from './CategoryAutocomplete';
 import PersonAutocomplete from './PersonAutocomplete';
 import BusinessAutocomplete from './BusinessAutocomplete';
 import { useAuth } from '../context/AuthContext';
+import type { Rational } from '../utils/rational';
+import type { BusinessRecord, CategoryRecord, DepartmentRecord, PersonRecord } from '../types/filterOptions';
 
 const EXCLUDED_DEPARTMENT_IDS = [
     '5dc36bbbc7167f67e39cd69c',
@@ -140,17 +142,73 @@ interface EntryFormDialogProps {
     onClose: () => void;
     onSuccess: () => void;
     initialEntryType?: 'transaction' | 'refund';
-    initialSelectedEntry?: any;
+    initialSelectedEntry?: RefundCandidateEntry | null;
     initialDepartmentId?: string | null;
 }
 
-function formatRational(rational: any): number {
+interface RefundRecord {
+    id: string;
+    total: Rational | string;
+}
+
+interface RefundCandidateEntry {
+    id: string;
+    date?: string;
+    description?: string | null;
+    total: Rational | string;
+    department?: {
+        id: string;
+        name: string;
+    } | null;
+    category?: {
+        id: string;
+        name: string;
+        type: string;
+    } | null;
+    refunds?: RefundRecord[];
+    paymentMethod?: {
+        __typename?: string;
+        check?: {
+            checkNumber?: string;
+        };
+        [key: string]: unknown;
+    } | null;
+}
+
+export type { RefundCandidateEntry };
+
+interface AccountCardRecord {
+    id: string;
+    trailingDigits: string;
+    type: string;
+    label?: string | null;
+    account?: {
+        name?: string;
+    } | null;
+}
+
+interface FormQueryData {
+    categories: CategoryRecord[];
+    departments: DepartmentRecord[];
+    accountCards: AccountCardRecord[];
+    businesses: BusinessRecord[];
+    people: PersonRecord[];
+}
+
+interface SearchEntriesData {
+    entries: RefundCandidateEntry[];
+}
+
+type SourceType = 'person' | 'business' | 'new_person' | 'new_business';
+type PaymentType = 'CASH' | 'CHECK' | 'CARD' | 'ONLINE';
+
+function formatRational(rational: Rational | string | null | undefined): number {
     if (!rational) return 0;
     const r = typeof rational === 'string' ? JSON.parse(rational) : rational;
     return (r.s * r.n) / r.d;
 }
 
-function getRationalCents(rational: any): number {
+function getRationalCents(rational: Rational | string | null | undefined): number {
     if (!rational) return 0;
     const r = typeof rational === 'string' ? JSON.parse(rational) : rational;
     return Math.round((r.s * r.n * 100) / r.d);
@@ -171,7 +229,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
     const [searchAmount, setSearchAmount] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [debouncedAmount, setDebouncedAmount] = useState('');
-    const [selectedEntry, setSelectedEntry] = useState<any>(initialSelectedEntry || null);
+    const [selectedEntry, setSelectedEntry] = useState<RefundCandidateEntry | null>(initialSelectedEntry || null);
 
     const [formData, setFormData] = useState({
         description: '',
@@ -183,10 +241,10 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
         departmentId: '',
         amount: '',
         reconciled: false,
-        paymentType: 'CASH',
+        paymentType: 'CASH' as PaymentType,
         checkNumber: '',
         selectedCardId: '',
-        sourceType: 'person' as 'person' | 'business' | 'new_person' | 'new_business',
+        sourceType: 'person' as SourceType,
         sourceId: '',
         newPersonFirst: '',
         newPersonLast: '',
@@ -217,7 +275,10 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
 
     // Build search where clause
     const buildSearchWhere = () => {
-        const conditions: any[] = [];
+        const conditions: Array<
+            { description: { pattern: string; flags: string[] } } |
+            { total: { eq: string } }
+        > = [];
 
         if (debouncedSearch.length >= 2) {
             conditions.push({
@@ -247,8 +308,8 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
     const searchWhere = buildSearchWhere();
     const shouldSearch = searchWhere !== null;
 
-    const [result] = useQuery({ query: GET_FORM_DATA });
-    const [searchResult] = useQuery({
+    const [result] = useQuery<FormQueryData>({ query: GET_FORM_DATA });
+    const [searchResult] = useQuery<SearchEntriesData>({
         query: SEARCH_ENTRIES,
         variables: { where: searchWhere || {} },
         pause: !shouldSearch,
@@ -266,18 +327,18 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
         const allDepts = data?.departments || [];
         const accessibleIds = getAccessibleDepartmentIds();
         return allDepts
-            .filter((dept: any) => {
+            .filter((dept: DepartmentRecord) => {
                 if (EXCLUDED_DEPARTMENT_IDS.includes(dept.id)) return false;
                 if (isSuperAdmin) return true;
                 return accessibleIds.includes(dept.id);
             })
-            .sort((a: any, b: any) => a.name.localeCompare(b.name));
+            .sort((a: DepartmentRecord, b: DepartmentRecord) => a.name.localeCompare(b.name));
     }, [data?.departments, isSuperAdmin, getAccessibleDepartmentIds]);
 
     useEffect(() => {
         if (open && filteredDepartments.length > 0) {
-            const isInitialDeptValid = initialDepartmentId && filteredDepartments.some((d: any) => d.id === initialDepartmentId);
-            const isCurrentDeptValid = formData.departmentId && filteredDepartments.some((d: any) => d.id === formData.departmentId);
+            const isInitialDeptValid = initialDepartmentId && filteredDepartments.some((d: DepartmentRecord) => d.id === initialDepartmentId);
+            const isCurrentDeptValid = formData.departmentId && filteredDepartments.some((d: DepartmentRecord) => d.id === formData.departmentId);
             
             if (isInitialDeptValid) {
                 setFormData(prev => ({ ...prev, departmentId: initialDepartmentId }));
@@ -285,59 +346,59 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                 setFormData(prev => ({ ...prev, departmentId: filteredDepartments[0].id }));
             }
         }
-    }, [open, filteredDepartments, initialDepartmentId]);
+    }, [open, filteredDepartments, initialDepartmentId, formData.departmentId]);
 
     const personOptions = useMemo(() => {
         const seen = new Set<string>();
         return (data?.people || [])
-            .filter((person: any) => {
+            .filter((person: PersonRecord) => {
                 if (person.hidden) return false;
                 const key = `${person.name?.first || ''} ${person.name?.last || ''}`.toLowerCase().trim();
                 if (seen.has(key) || !key) return false;
                 seen.add(key);
                 return true;
             })
-            .map((person: any) => ({
+            .map((person: PersonRecord) => ({
                 id: person.id,
                 label: `${person.name.first} ${person.name.last}`,
                 firstName: person.name.first,
                 lastName: person.name.last,
             }))
-            .sort((a: any, b: any) => a.label.localeCompare(b.label));
+            .sort((a, b) => a.label.localeCompare(b.label));
     }, [data?.people]);
 
     const businessOptions = useMemo(() => {
         const seen = new Set<string>();
         return (data?.businesses || [])
-            .filter((biz: any) => {
+            .filter((biz: BusinessRecord) => {
                 if (biz.hidden) return false;
                 const key = (biz.name || '').toLowerCase().trim();
                 if (seen.has(key) || !key) return false;
                 seen.add(key);
                 return true;
             })
-            .map((biz: any) => ({
+            .map((biz: BusinessRecord) => ({
                 id: biz.id,
                 label: biz.name,
             }))
-            .sort((a: any, b: any) => a.label.localeCompare(b.label));
+            .sort((a, b) => a.label.localeCompare(b.label));
     }, [data?.businesses]);
 
     const categoryOptions = useMemo(() => {
-        return (data?.categories || []).map((cat: any) => ({
+        return (data?.categories || []).map((cat: CategoryRecord) => ({
             id: cat.id,
             name: cat.name,
-            displayName: cat.displayName,
+            displayName: cat.displayName ?? undefined,
             type: cat.type,
-            groupName: cat.groupName,
-            sortOrder: cat.sortOrder,
+            groupName: cat.groupName ?? undefined,
+            sortOrder: cat.sortOrder ?? undefined,
             hidden: cat.hidden,
         }));
     }, [data?.categories]);
 
-    const calculateRemainingRefund = (entry: any): number => {
+    const calculateRemainingRefund = (entry: RefundCandidateEntry): number => {
         const totalCents = getRationalCents(entry.total);
-        const refundedCents = entry.refunds?.reduce((sum: number, r: any) => {
+        const refundedCents = entry.refunds?.reduce((sum: number, r: RefundRecord) => {
             return sum + Math.abs(getRationalCents(r.total));
         }, 0) || 0;
         return (Math.abs(totalCents) - refundedCents) / 100;
@@ -409,7 +470,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
             paymentType: 'CASH',
             checkNumber: '',
             selectedCardId: '',
-            sourceType: 'person',
+            sourceType: 'person' as SourceType,
             sourceId: '',
             newPersonFirst: '',
             newPersonLast: '',
@@ -533,8 +594,8 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                     }
                 }
             }
-        } catch (err: any) {
-            setError(err.message || 'Failed to create entry');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to create entry');
         } finally {
             // Reset the flag
             setKeepOpen(false);
@@ -616,7 +677,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
 
                                 {searchedEntries.length > 0 && (
                                     <Box sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                                        {searchedEntries.map((entry: any) => {
+                                        {searchedEntries.map((entry: RefundCandidateEntry) => {
                                             const total = Math.abs(formatRational(entry.total));
                                             const remaining = calculateRemainingRefund(entry);
                                             const hasPartialRefund = remaining < total;
@@ -766,7 +827,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                         onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
                                         disabled={fetching}
                                     >
-                                        {filteredDepartments.map((dept: any) => (
+                                        {filteredDepartments.map((dept: DepartmentRecord) => (
                                             <MenuItem key={dept.id} value={dept.id}>
                                                 {dept.name}
                                             </MenuItem>
@@ -783,7 +844,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                         value={formData.sourceType}
                                         onChange={(e) => setFormData({
                                             ...formData,
-                                            sourceType: e.target.value as any,
+                                            sourceType: e.target.value as SourceType,
                                             sourceId: '',
                                         })}
                                     >
@@ -972,7 +1033,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                             label="Select Card"
                                             onChange={(e) => setFormData({ ...formData, selectedCardId: e.target.value })}
                                         >
-                                            {data?.accountCards.map((card: any) => (
+                                            {data?.accountCards.map((card: AccountCardRecord) => (
                                                 <MenuItem key={card.id} value={card.id}>
                                                     {card.label ? `${card.label} - ` : ''}{card.type} ****{card.trailingDigits}
                                                 </MenuItem>

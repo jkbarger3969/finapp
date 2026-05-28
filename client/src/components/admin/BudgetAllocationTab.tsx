@@ -44,6 +44,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useDepartment } from '../../context/DepartmentContext';
 import { useOnlineStatus } from '../../context/OnlineStatusContext';
 import { useSnackbar } from 'notistack';
+import type { Rational } from '../../utils/rational';
 
 const GET_BUDGET_DATA = `
     query GetBudgetData {
@@ -118,7 +119,44 @@ const UPSERT_BUDGET = `
     }
 `;
 
-function parseRational(rational: any): number {
+interface FiscalYearRecord {
+    id: string;
+    name: string;
+    begin: string;
+    end: string;
+}
+
+interface DepartmentRecord {
+    id: string;
+    name: string;
+    parent?: {
+        __typename: 'Department' | 'Business';
+        id: string;
+        name: string;
+    };
+}
+
+interface BudgetRecord {
+    id: string;
+    amount: Rational | string;
+    owner?: {
+        __typename: 'Department';
+        id: string;
+        name: string;
+    };
+    fiscalYear?: {
+        id: string;
+        name: string;
+    };
+}
+
+interface BudgetQueryData {
+    fiscalYears: FiscalYearRecord[];
+    departments: DepartmentRecord[];
+    budgets: BudgetRecord[];
+}
+
+function parseRational(rational: Rational | string | null | undefined): number {
     if (!rational) return 0;
     try {
         const r = typeof rational === 'string' ? JSON.parse(rational) : rational;
@@ -136,6 +174,9 @@ function toRationalString(amount: number): string {
     });
 }
 
+const calcSubtotal = (dept: DepartmentNode): number =>
+    dept.budget + dept.children.reduce((sum, child) => sum + calcSubtotal(child), 0);
+
 interface DepartmentNode {
     id: string;
     name: string;
@@ -152,7 +193,7 @@ export default function BudgetAllocationTab() {
     const { fiscalYears: contextFiscalYears } = useDepartment();
     const { isOnline } = useOnlineStatus();
     const { enqueueSnackbar } = useSnackbar();
-    const [result, reexecuteQuery] = useQuery({ 
+    const [result, reexecuteQuery] = useQuery<BudgetQueryData>({
         query: GET_BUDGET_DATA,
         requestPolicy: 'cache-and-network'
     });
@@ -187,14 +228,15 @@ export default function BudgetAllocationTab() {
     const { data, fetching } = result;
 
     useEffect(() => {
-        if (data?.fiscalYears?.length > 0 && !selectedFiscalYear) {
+        const fiscalYears = data?.fiscalYears || [];
+        if (fiscalYears.length > 0 && !selectedFiscalYear) {
             const now = new Date();
-            const currentFY = data.fiscalYears.find((fy: any) => {
+            const currentFY = fiscalYears.find((fy: FiscalYearRecord) => {
                 const begin = new Date(fy.begin);
                 const end = new Date(fy.end);
                 return now >= begin && now < end;
             });
-            setSelectedFiscalYear(currentFY?.id || data.fiscalYears[0]?.id || '');
+            setSelectedFiscalYear(currentFY?.id || fiscalYears[0]?.id || '');
         }
     }, [data?.fiscalYears, selectedFiscalYear]);
 
@@ -207,11 +249,11 @@ export default function BudgetAllocationTab() {
         const rootDepts: DepartmentNode[] = [];
 
         const budgetsForFY = data.budgets.filter(
-            (b: any) => b.fiscalYear?.id === selectedFiscalYear && b.owner?.__typename === 'Department'
+            (b: BudgetRecord) => b.fiscalYear?.id === selectedFiscalYear && b.owner?.__typename === 'Department'
         );
 
         const budgetByDeptId = new Map<string, { amount: number; id: string }>();
-        budgetsForFY.forEach((b: any) => {
+        budgetsForFY.forEach((b: BudgetRecord) => {
             if (b.owner?.id) {
                 const parsedAmount = parseRational(b.amount);
                 budgetByDeptId.set(b.owner.id, {
@@ -221,7 +263,7 @@ export default function BudgetAllocationTab() {
             }
         });
 
-        data.departments.forEach((dept: any) => {
+        data.departments.forEach((dept: DepartmentRecord) => {
             const budgetData = budgetByDeptId.get(dept.id);
             map.set(dept.id, {
                 id: dept.id,
@@ -233,7 +275,7 @@ export default function BudgetAllocationTab() {
             });
         });
 
-        data.departments.forEach((dept: any) => {
+        data.departments.forEach((dept: DepartmentRecord) => {
             const node = map.get(dept.id)!;
 
             if (dept.parent?.__typename === 'Business') {
@@ -269,10 +311,6 @@ export default function BudgetAllocationTab() {
 
         return { topLevelDepts: accessibleRootDepts, deptMap: map };
     }, [data, selectedFiscalYear, isSuperAdmin, canAccessDept, user]);
-
-    const calcSubtotal = (dept: DepartmentNode): number => {
-        return dept.budget + dept.children.reduce((sum, child) => sum + calcSubtotal(child), 0);
-    };
 
     const totalBudget = useMemo(() => {
         return topLevelDepts.reduce((sum, dept) => {
@@ -376,8 +414,8 @@ export default function BudgetAllocationTab() {
 
             cancelEditing();
             reexecuteQuery({ requestPolicy: 'network-only' });
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to save budget updates');
         } finally {
             setSaving(false);
         }
@@ -557,7 +595,7 @@ export default function BudgetAllocationTab() {
                         label="Fiscal Year"
                         onChange={(e) => setSelectedFiscalYear(e.target.value)}
                     >
-                        {fiscalYears.map((fy: any) => (
+                        {fiscalYears.map((fy: FiscalYearRecord) => (
                             <MenuItem key={fy.id} value={fy.id}>
                                 {formatFiscalYearFromDates(fy.begin, fy.end, fy.name)}
                             </MenuItem>

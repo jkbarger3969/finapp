@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -84,7 +84,28 @@ interface EditEntryDialogProps {
     open: boolean;
     onClose: () => void;
     onSuccess: () => void;
-    entry: any; // TODO: Type properly
+    entry: {
+        id: string;
+        description?: string | null;
+        date?: string;
+        total?: string | { s: number; n: number; d: number };
+        category?: { id: string; name: string; type?: string } | null;
+        department?: { id: string; name: string } | null;
+        reconciled?: boolean;
+        dateOfRecord?: { date?: string; overrideFiscalYear?: boolean | null } | null;
+        isRefund?: boolean;
+    } | null;
+}
+
+type EntryValue = NonNullable<EditEntryDialogProps['entry']>;
+interface FormAmountRational {
+    n: number;
+    d: number;
+}
+
+interface FormDataQuery {
+    categories: Array<{ id: string; name: string; type: string }>;
+    departments: Array<{ id: string; name: string }>;
 }
 
 export default function EditEntryDialog({ open, onClose, onSuccess, entry }: EditEntryDialogProps) {
@@ -101,50 +122,69 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
         usePostedDateForFiscalYear: false,
     });
 
-    const [result] = useQuery({ query: GET_FORM_DATA });
+    const [result] = useQuery<FormDataQuery>({ query: GET_FORM_DATA });
     const [, updateEntry] = useMutation(UPDATE_ENTRY_MUTATION);
     const [, updateRefund] = useMutation(UPDATE_REFUND_MUTATION);
     const [error, setError] = useState<string | null>(null);
     const [showHistory, setShowHistory] = useState(false); // Toggle for history viewer
 
     const isRefund = entry?.isRefund || false;
+    const entryData = entry as EntryValue | null;
 
     const { data, fetching } = result;
 
-    useEffect(() => {
-        if (entry && open) {
-            // Parse rational amount
-            let amountStr = '';
-            if (entry.total) {
-                try {
-                    // Check if total is string or object
-                    const t = typeof entry.total === 'string' ? JSON.parse(entry.total) : entry.total;
-                    if (t && t.n !== undefined && t.d !== undefined) {
-                        const val = (t.n / t.d).toFixed(2);
-                        amountStr = val;
-                    }
-                } catch (e) {
-                    console.error("Failed to parse total", e);
-                }
-            }
-
-            setFormData({
-                description: entry.description || '',
-                date: entry.date ? entry.date.split('T')[0] : '', // Handle DateTime if needed
-                categoryId: entry.category?.id || '',
-                departmentId: entry.department?.id || '',
-                amount: amountStr,
-                reconciled: entry.reconciled || false,
-                hasDifferentPostedDate: !!entry.dateOfRecord?.date,
-                postedDate: entry.dateOfRecord?.date ? entry.dateOfRecord.date.split('T')[0] : '',
-                usePostedDateForFiscalYear: entry.dateOfRecord?.overrideFiscalYear || false,
-            });
+    const getInitialFormData = useCallback((): typeof formData => {
+        if (!entry || !open) {
+            return {
+                description: '',
+                date: '',
+                categoryId: '',
+                departmentId: '',
+                amount: '',
+                reconciled: false,
+                hasDifferentPostedDate: false,
+                postedDate: '',
+                usePostedDateForFiscalYear: false,
+            };
         }
+
+        let amountStr = '';
+        if (entry.total) {
+            try {
+                const t: FormAmountRational = typeof entry.total === 'string' ? JSON.parse(entry.total) : entry.total;
+                if (t && t.n !== undefined && t.d !== undefined) {
+                    amountStr = (t.n / t.d).toFixed(2);
+                }
+            } catch {
+                amountStr = '';
+            }
+        }
+
+        return {
+            description: entry.description || '',
+            date: entry.date ? entry.date.split('T')[0] : '',
+            categoryId: entry.category?.id || '',
+            departmentId: entry.department?.id || '',
+            amount: amountStr,
+            reconciled: entry.reconciled || false,
+            hasDifferentPostedDate: !!entry.dateOfRecord?.date,
+            postedDate: entry.dateOfRecord?.date ? entry.dateOfRecord.date.split('T')[0] : '',
+            usePostedDateForFiscalYear: entry.dateOfRecord?.overrideFiscalYear || false,
+        };
     }, [entry, open]);
+
+    useEffect(() => {
+        if (!open) return;
+        const timer = setTimeout(() => {
+            setFormData(getInitialFormData());
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [entry, open, getInitialFormData]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        if (!entry) return;
 
         if (!isOnline) {
             setError('Cannot save while offline. Please reconnect and try again.');
@@ -166,9 +206,9 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
 
             let response;
 
-            if (isRefund) {
+            if (isRefund && entryData) {
                 const refundInput = {
-                    id: entry.id,
+                    id: entryData.id,
                     description: formData.description,
                     date: formData.date,
                     total: rational,
@@ -181,9 +221,9 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
                     }),
                 };
                 response = await updateRefund({ input: refundInput });
-            } else {
+            } else if (entryData) {
                 const input = {
-                    id: entry.id,
+                    id: entryData.id,
                     description: formData.description,
                     date: formData.date,
                     category: formData.categoryId,
@@ -200,14 +240,19 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
                 response = await updateEntry({ input });
             }
 
+            if (!response) {
+                setError('Unable to build update request');
+                return;
+            }
+
             if (response.error) {
                 setError(response.error.message);
             } else {
                 onSuccess();
                 onClose();
             }
-        } catch (err: any) {
-            setError(err.message || 'Failed to update entry');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to update entry');
         }
     };
 
@@ -298,7 +343,7 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
                                     onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
                                     disabled={fetching}
                                 >
-                                    {data?.categories.map((cat: any) => (
+                                    {data?.categories.map((cat: { id: string; name: string; type: string }) => (
                                         <MenuItem key={cat.id} value={cat.id}>
                                             {cat.name} ({cat.type})
                                         </MenuItem>
@@ -316,7 +361,7 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
                                     onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
                                     disabled={fetching}
                                 >
-                                    {data?.departments.map((dept: any) => (
+                                    {data?.departments.map((dept: { id: string; name: string }) => (
                                         <MenuItem key={dept.id} value={dept.id}>
                                             {dept.name}
                                         </MenuItem>
@@ -355,7 +400,7 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
             </form>
 
             <EditHistoryViewer
-                entryId={entry?.id}
+                entryId={entryData?.id || ''}
                 open={showHistory}
                 onClose={() => setShowHistory(false)}
             />

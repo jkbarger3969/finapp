@@ -58,6 +58,25 @@ interface DeptNode {
     level: number;
 }
 
+interface DepartmentBudgetSummary {
+    id: string;
+    name: string;
+    budget: number;
+    spent: number;
+    level: number;
+    parentId?: string | null;
+}
+
+interface FiscalYearOption {
+    id: string;
+    name: string;
+}
+
+interface BudgetDataResponse {
+    departmentBudgetSummaries: DepartmentBudgetSummary[];
+    fiscalYears: FiscalYearOption[];
+}
+
 export default function Dashboard() {
     const navigate = useNavigate();
     const { fiscalYearId, setFiscalYearId } = useDepartment();
@@ -75,7 +94,7 @@ export default function Dashboard() {
         setSelectedDepartmentId(subDeptId || topLevelDeptId || null);
     }, [topLevelDeptId, subDeptId, setSelectedDepartmentId]);
 
-    const [result, reexecuteQuery] = useQuery({
+    const [result, reexecuteQuery] = useQuery<BudgetDataResponse>({
         query: GET_BUDGET_DATA,
         variables: { fiscalYearId },
         pause: !fiscalYearId,
@@ -93,18 +112,10 @@ export default function Dashboard() {
 
     const fiscalYears = data?.fiscalYears || [];
 
-    const userDepartments = (user as any)?.departments
-        ?.map((p: any) => p.departmentId)
-        .filter(Boolean) || [];
-
-    // Debug: log user access info
-    console.log('[Dashboard] User access:', { 
-        isSuperAdmin, 
-        userDepartments, 
-        userRole: (user as any)?.role,
-        departmentCount: userDepartments.length,
-        rawDepartments: (user as any)?.departments
-    });
+    const userDepartments = useMemo(
+        () => (user?.departments?.map((p) => p.departmentId).filter(Boolean) || []),
+        [user]
+    );
 
     // Build department tree with budget and spending data from server-side aggregation
     const { topLevelDepts, topLevelDepartments, subDepartments } = (() => {
@@ -116,7 +127,7 @@ export default function Dashboard() {
         const rootDepts: DeptNode[] = [];
 
         // First pass: create all nodes
-        data.departmentBudgetSummaries.forEach((dept: any) => {
+        data.departmentBudgetSummaries.forEach((dept: DepartmentBudgetSummary) => {
             deptMap.set(dept.id, {
                 id: dept.id,
                 name: dept.name,
@@ -128,7 +139,7 @@ export default function Dashboard() {
         });
 
         // Second pass: build tree structure
-        data.departmentBudgetSummaries.forEach((dept: any) => {
+        data.departmentBudgetSummaries.forEach((dept: DepartmentBudgetSummary) => {
             const node = deptMap.get(dept.id)!;
             if (!dept.parentId) {
                 rootDepts.push(node);
@@ -150,14 +161,14 @@ export default function Dashboard() {
             if (userDepartments.includes(deptId)) return true;
 
             // Check if any ancestor is accessible
-            const dept = data.departmentBudgetSummaries.find((d: any) => d.id === deptId);
+            const dept = data.departmentBudgetSummaries.find((d: DepartmentBudgetSummary) => d.id === deptId);
             if (dept?.parentId && userDepartments.includes(dept.parentId)) return true;
             
             // Recursively check parent chain
             let currentParentId = dept?.parentId;
             while (currentParentId) {
                 if (userDepartments.includes(currentParentId)) return true;
-                const parentDept = data.departmentBudgetSummaries.find((d: any) => d.id === currentParentId);
+                const parentDept = data.departmentBudgetSummaries.find((d: DepartmentBudgetSummary) => d.id === currentParentId);
                 currentParentId = parentDept?.parentId;
             }
             return false;
@@ -213,24 +224,8 @@ export default function Dashboard() {
         };
     };
 
-    // Get total including children (for display when needed)
-    const calcSubtotals = (dept: DeptNode): { budget: number; spent: number } => {
-        const childTotals = dept.children.reduce((acc, child) => {
-            const childSubtotals = calcSubtotals(child);
-            return {
-                budget: acc.budget + childSubtotals.budget,
-                spent: acc.spent + childSubtotals.spent,
-            };
-        }, { budget: 0, spent: 0 });
-
-        return {
-            budget: dept.budget + childTotals.budget,
-            spent: dept.spent + childTotals.spent,
-        };
-    };
-
     // Determine if user has subdepartment-only access under a SINGLE parent
-    const userAccessInfo = useMemo(() => {
+    const userAccessInfo = (() => {
         if (isSuperAdmin) {
             return { hasSubdeptOnlyAccess: false, singleParentId: null, subdeptIds: [] as string[], parentIdsWithSubdeptAccess: new Set<string>() };
         }
@@ -276,7 +271,7 @@ export default function Dashboard() {
             subdeptIds: subdeptsWithAccess.map(s => s.id),
             parentIdsWithSubdeptAccess, // Parents where user has subdept access but not top-level access
         };
-    }, [isSuperAdmin, userDepartments, topLevelDepts]);
+    })();
 
     const navigateToTransactions = (departmentId: string) => {
         navigate('/transactions', { state: { departmentId } });
@@ -507,7 +502,7 @@ export default function Dashboard() {
     const displayedDepts = getDisplayedDepts();
 
     // For subdept-only users with single parent: get the subdepartments directly
-    const subdeptOnlyCards = useMemo(() => {
+    const subdeptOnlyCards = (() => {
         if (!userAccessInfo.hasSubdeptOnlyAccess || !userAccessInfo.singleParentId) {
             return [];
         }
@@ -515,42 +510,38 @@ export default function Dashboard() {
         const parentDept = topLevelDepts.find(d => d.id === userAccessInfo.singleParentId);
         if (!parentDept) return [];
         return parentDept.children.filter(child => userAccessInfo.subdeptIds.includes(child.id));
-    }, [userAccessInfo, topLevelDepts]);
+    })();
 
     // Calculate totals based on displayed departments - use OWN budget values only (not children summed)
     // IMPORTANT: Exclude budgets from parents where user only has subdept access
-    const { displayedTotalBudget, displayedTotalSpent } = useMemo(() => {
-        let budget = 0;
-        let spent = 0;
-        
-        // For subdept-only users with single parent, use their subdept cards
-        if (userAccessInfo.hasSubdeptOnlyAccess && userAccessInfo.singleParentId && !topLevelDeptId && !subDeptId) {
-            subdeptOnlyCards.forEach(dept => {
-                budget += dept.budget;
-                spent += dept.spent;
-            });
-        } else {
-            // Sum up displayed departments' OWN budgets (not children)
-            // BUT exclude departments where user only has subdept access
-            displayedDepts.forEach(dept => {
-                // Skip this department's budget if user only has subdept access (not top-level access)
-                if (userAccessInfo.parentIdsWithSubdeptAccess.has(dept.id)) {
-                    // Instead, add the accessible subdepartments' budgets
-                    dept.children.forEach(child => {
-                        if (userAccessInfo.subdeptIds.includes(child.id)) {
-                            budget += child.budget;
-                            spent += child.spent;
-                        }
-                    });
-                } else {
-                    budget += dept.budget;
-                    spent += dept.spent;
-                }
-            });
-        }
-        
-        return { displayedTotalBudget: budget, displayedTotalSpent: spent };
-    }, [displayedDepts, subdeptOnlyCards, userAccessInfo, topLevelDeptId, subDeptId]);
+    let displayedTotalBudget = 0;
+    let displayedTotalSpent = 0;
+
+    // For subdept-only users with single parent, use their subdept cards
+    if (userAccessInfo.hasSubdeptOnlyAccess && userAccessInfo.singleParentId && !topLevelDeptId && !subDeptId) {
+        subdeptOnlyCards.forEach(dept => {
+            displayedTotalBudget += dept.budget;
+            displayedTotalSpent += dept.spent;
+        });
+    } else {
+        // Sum up displayed departments' OWN budgets (not children)
+        // BUT exclude departments where user only has subdept access
+        displayedDepts.forEach(dept => {
+            // Skip this department's budget if user only has subdept access (not top-level access)
+            if (userAccessInfo.parentIdsWithSubdeptAccess.has(dept.id)) {
+                // Instead, add the accessible subdepartments' budgets
+                dept.children.forEach(child => {
+                    if (userAccessInfo.subdeptIds.includes(child.id)) {
+                        displayedTotalBudget += child.budget;
+                        displayedTotalSpent += child.spent;
+                    }
+                });
+            } else {
+                displayedTotalBudget += dept.budget;
+                displayedTotalSpent += dept.spent;
+            }
+        });
+    }
 
     const totalRemaining = displayedTotalBudget - displayedTotalSpent;
     useEffect(() => {
@@ -590,7 +581,7 @@ export default function Dashboard() {
                         onChange={(e: SelectChangeEvent) => setFiscalYearId(e.target.value)}
                         label="Fiscal Year"
                     >
-                        {fiscalYears.map((fy: any) => (
+                        {fiscalYears.map((fy) => (
                             <MenuItem key={fy.id} value={fy.id}>{fy.name}</MenuItem>
                         ))}
                     </Select>
@@ -607,7 +598,7 @@ export default function Dashboard() {
                         label="Top Dept"
                     >
                         <MenuItem value="">All</MenuItem>
-                        {topLevelDepartments.map((dept: any) => (
+                        {topLevelDepartments.map((dept) => (
                             <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
                         ))}
                     </Select>
@@ -622,7 +613,7 @@ export default function Dashboard() {
                             label="Sub Dept"
                         >
                             <MenuItem value="">All</MenuItem>
-                            {subDepartments.map((dept: any) => (
+                            {subDepartments.map((dept) => (
                                 <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
                             ))}
                         </Select>
@@ -737,7 +728,7 @@ export default function Dashboard() {
                 onClose={() => setSearchDialogOpen(false)}
             />
 
-            {(user as any)?.canInviteUsers && (
+            {user?.canInviteUsers && (
                 <InviteUserDialog
                     open={inviteDialogOpen}
                     onClose={() => setInviteDialogOpen(false)}

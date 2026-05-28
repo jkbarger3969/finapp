@@ -1,6 +1,7 @@
 /**
  * Currency formatting utilities
  */
+import type { Rational } from './rational';
 
 /**
  * Format a number as USD currency with cents
@@ -34,17 +35,17 @@ export function formatCurrencyWhole(amount: number): string {
  * Parse a Rational amount from GraphQL
  * Rational is { s: sign, n: numerator, d: denominator }
  */
-export function parseRational(total: any): number {
+export function parseRational(total: Rational | string | null | undefined): number {
     if (!total) return 0;
     
     try {
-        const t = typeof total === 'string' ? JSON.parse(total) : total;
+        const t: Rational = typeof total === 'string' ? JSON.parse(total) : total;
         if (t && t.n !== undefined && t.d !== undefined) {
             const sign = t.s ?? 1;
             return (sign * t.n) / t.d;
         }
-    } catch (e) {
-        console.error('Failed to parse rational:', e);
+    } catch {
+        return 0;
     }
     
     return 0;

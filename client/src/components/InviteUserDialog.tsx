@@ -73,11 +73,14 @@ export default function InviteUserDialog({ open, onClose, onSuccess }: InviteUse
     const [{ data: departmentsData }] = useQuery({ query: DEPARTMENTS_QUERY });
     const [, inviteUser] = useMutation(INVITE_USER_MUTATION);
 
-    const allDepartments: Department[] = departmentsData?.departments || [];
+    const allDepartments: Department[] = useMemo(
+        () => departmentsData?.departments || [],
+        [departmentsData?.departments]
+    );
 
     // Get user's accessible department IDs
     const userDeptIds = useMemo(() => {
-        return (user as any)?.departments?.map((d: any) => d.departmentId) || [];
+        return user?.departments?.map((d) => d.departmentId) || [];
     }, [user]);
 
     // Filter departments to only those the user has access to (and their subdepartments)
@@ -192,8 +195,8 @@ export default function InviteUserDialog({ open, onClose, onSuccess }: InviteUse
             setSelectedDepartments([]);
             onSuccess?.();
             onClose();
-        } catch (err: any) {
-            setError(err.message || 'Failed to invite user');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to invite user');
         } finally {
             setLoading(false);
         }

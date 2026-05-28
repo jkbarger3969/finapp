@@ -84,8 +84,31 @@ const DELETE_CARD = `
   }
 `;
 
+interface CardAccount {
+    id: string;
+    name: string;
+}
+
+interface AccountCardRecord {
+    id: string;
+    trailingDigits: string;
+    type: string;
+    label?: string | null;
+    active: boolean;
+    account?: CardAccount | null;
+}
+
+interface CardsQueryData {
+    accountCards: AccountCardRecord[];
+    allAccounts: CardAccount[];
+}
+
+interface CardMutationResult {
+    error?: { message?: string };
+}
+
 export default function PaymentCardsTab() {
-    const [result, reexecuteQuery] = useQuery({ query: GET_CARDS });
+    const [result, reexecuteQuery] = useQuery<CardsQueryData>({ query: GET_CARDS });
     const { data, fetching, error } = result;
 
     const [createResult, createCard] = useMutation(CREATE_CARD);
@@ -93,7 +116,7 @@ export default function PaymentCardsTab() {
     const [deleteResult, deleteCard] = useMutation(DELETE_CARD);
 
     // Error handling wrapper
-    const handleMutationError = (res: any) => {
+    const handleMutationError = (res: CardMutationResult) => {
         if (res.error) console.error(res.error);
     };
     handleMutationError(createResult);
@@ -103,7 +126,7 @@ export default function PaymentCardsTab() {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [cardToDelete, setCardToDelete] = useState<string | null>(null);
-    const [editingCard, setEditingCard] = useState<any>(null);
+    const [editingCard, setEditingCard] = useState<AccountCardRecord | null>(null);
     const [formData, setFormData] = useState({
         accountId: '',
         type: 'VISA',
@@ -112,11 +135,11 @@ export default function PaymentCardsTab() {
         active: true
     });
 
-    const handleOpen = (card?: any) => {
+    const handleOpen = (card?: AccountCardRecord) => {
         if (card) {
             setEditingCard(card);
             setFormData({
-                accountId: card.account.id,
+                accountId: card.account?.id || '',
                 type: card.type,
                 trailingDigits: card.trailingDigits,
                 label: card.label || '',
@@ -210,7 +233,7 @@ export default function PaymentCardsTab() {
                     </TableHead>
                     <TableBody>
                         {[...(data?.accountCards || [])]
-                            .sort((a: any, b: any) => {
+                            .sort((a: AccountCardRecord, b: AccountCardRecord) => {
                                 // Active cards first, then by label
                                 if (a.active !== b.active) return a.active ? -1 : 1;
                                 // Then by label (cards with labels first)
@@ -221,7 +244,7 @@ export default function PaymentCardsTab() {
                                 // Finally by trailing digits
                                 return a.trailingDigits.localeCompare(b.trailingDigits);
                             })
-                            .map((card: any) => (
+                            .map((card: AccountCardRecord) => (
                             <TableRow key={card.id}>
                                 <TableCell>
                                     <Typography fontWeight={card.label ? 600 : 400} color={card.label ? 'text.primary' : 'text.secondary'}>
@@ -263,7 +286,7 @@ export default function PaymentCardsTab() {
                                 label="Bank Account"
                                 onChange={(e) => setFormData({ ...formData, accountId: e.target.value })}
                             >
-                                {data?.allAccounts.map((acc: any) => (
+                                {data?.allAccounts.map((acc: CardAccount) => (
                                     <MenuItem key={acc.id} value={acc.id}>{acc.name}</MenuItem>
                                 ))}
                             </Select>

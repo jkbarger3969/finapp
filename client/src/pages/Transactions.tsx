@@ -28,7 +28,7 @@ import {
     DialogActions,
 } from "@mui/material";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
-import type { GridColDef, GridRowSelectionModel, GridRowId } from "@mui/x-data-grid";
+import type { GridColDef, GridRowSelectionModel, GridRowId, GridSortModel } from "@mui/x-data-grid";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -62,6 +62,15 @@ import { useSnackbar } from 'notistack';
 import { TableSkeleton } from '../components/common/TableSkeleton';
 import { EmptyState } from '../components/common/EmptyState';
 import { useTransactions } from '../hooks/useTransactions';
+import type { RefundCandidateEntry } from '../components/EntryFormDialog';
+import type {
+    BusinessRecord,
+    CategoryRecord,
+    DepartmentRecord,
+    GetFilterOptionsData,
+    PersonRecord,
+} from '../types/filterOptions';
+import type { EntryRecord, PaymentMethod } from '../types/transactions';
 
 const RECONCILE_ENTRIES_MUTATION = `
 mutation ReconcileEntries($input: ReconcileEntries!) {
@@ -131,7 +140,7 @@ const parseRational = (rationalStr: string) => {
     try {
         const { s, n, d } = JSON.parse(rationalStr);
         return (n / d) * s;
-    } catch (e) {
+    } catch {
         return 0;
     }
 };
@@ -141,7 +150,58 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
     currency: "USD",
 });
 
-const CustomCheckbox = (props: any) => (
+interface TransactionRow extends EntryRecord {
+    id: string;
+    refundId?: string;
+    isRefund?: boolean;
+    isRefundForEntry?: boolean;
+    isOriginalForRefund?: boolean;
+    isSpacerRow?: boolean;
+    hasRefunds?: boolean;
+    rowType?: 'CREDIT' | 'DEBIT';
+    originalEntry?: EntryRecord;
+    parentEntryId?: string;
+    isLastDataRow?: boolean;
+    formattedTotal?: string;
+}
+
+const toRefundCandidate = (row: TransactionRow | null): RefundCandidateEntry | null => {
+    if (!row) return null;
+    return {
+        id: row.id,
+        date: row.date,
+        description: row.description,
+        total: row.total,
+        department: row.department ?? null,
+        category: row.category ?? null,
+        refunds: (row.refunds || []).map((r) => ({ id: r.id, total: r.total })),
+        paymentMethod: row.paymentMethod ? { ...(row.paymentMethod as object) } : null,
+    };
+};
+
+interface CellParams {
+    row: TransactionRow;
+    value?: unknown;
+}
+
+type ActiveFilterType =
+    | 'startDate'
+    | 'endDate'
+    | 'entryType'
+    | 'category'
+    | 'department'
+    | 'person'
+    | 'business'
+    | 'paymentMethod'
+    | 'matching'
+    | 'reconciled';
+
+interface ActiveFilter {
+    type: ActiveFilterType;
+    label: string;
+}
+
+const CustomCheckbox = (props: object) => (
     <Checkbox {...props} icon={<RadioButtonUncheckedIcon />} checkedIcon={<CheckCircleIcon />} />
 );
 
@@ -156,11 +216,11 @@ export default function Transactions() {
 
     // Advanced Filters (matching Reporting)
     const [entryType, setEntryType] = useState<string>('ALL');
-    const [selectedCategory, setSelectedCategory] = useState<any | null>(null);
-    const [filterDepartmentId, setFilterDepartmentId] = useState<string | null>(null);
-    const [selectedPerson, setSelectedPerson] = useState<any | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<CategoryRecord | null>(null);
+    const [manualFilterDepartmentId, setManualFilterDepartmentId] = useState<string | null>(null);
+    const [selectedPerson, setSelectedPerson] = useState<PersonRecord | null>(null);
 
-    const [selectedBusiness, setSelectedBusiness] = useState<any | null>(null);
+    const [selectedBusiness, setSelectedBusiness] = useState<BusinessRecord | null>(null);
     const [paymentMethodType, setPaymentMethodType] = useState<string>('ALL');
 
     const [showMatchingOnly, setShowMatchingOnly] = useState(false);
@@ -174,8 +234,12 @@ export default function Transactions() {
 
     // Handle navigation from Dashboard or SearchDialog
     useEffect(() => {
+        let timer: ReturnType<typeof setTimeout> | null = null;
+
         if (location.state?.searchQuery) {
-            setSearchTerm(location.state.searchQuery);
+            timer = setTimeout(() => {
+                setSearchTerm(location.state.searchQuery);
+            }, 0);
 
             // If coming from SearchDialog with clearFilters, temporarily clear fiscal year
             // so we can see ALL matching transactions across all periods
@@ -191,51 +255,58 @@ export default function Transactions() {
 
         // Handle navigation from Dashboard budget cards
         if (location.state?.departmentId) {
-            setPendingDepartmentId(location.state.departmentId);
+            const pendingId = location.state.departmentId as string;
+            timer = setTimeout(() => {
+                setPendingDepartmentId(pendingId);
+            }, 0);
             // Clear navigation state so refresh doesn't re-trigger
             window.history.replaceState({}, document.title);
         }
+
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
     }, [location.state]);
 
     // Expandable refunds state
     const [expandedRefunds, setExpandedRefunds] = useState<Set<string>>(new Set());
-    const [sortModel, setSortModel] = useState<any>([{ field: "date", sort: "desc" }]);
+    const [sortModel, setSortModel] = useState<GridSortModel>([{ field: "date", sort: "desc" }]);
 
     // Action menu state
     const [actionMenuAnchor, setActionMenuAnchor] = useState<null | HTMLElement>(null);
-    const [actionMenuEntry, setActionMenuEntry] = useState<any>(null);
+    const [actionMenuEntry, setActionMenuEntry] = useState<TransactionRow | null>(null);
 
     // Edit dialog state
     const [editDialogOpen, setEditDialogOpen] = useState(false);
-    const [editEntry, setEditEntry] = useState<any>(null);
+    const [editEntry, setEditEntry] = useState<TransactionRow | null>(null);
 
     // Refund dialog state
     const [refundDialogOpen, setRefundDialogOpen] = useState(false);
-    const [refundEntry, setRefundEntry] = useState<any>(null);
+    const [refundEntry, setRefundEntry] = useState<TransactionRow | null>(null);
 
     // Delete confirmation dialog state
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [entryToDelete, setEntryToDelete] = useState<any>(null);
+    const [entryToDelete, setEntryToDelete] = useState<TransactionRow | null>(null);
 
     // Fetch filter options
-    const [optionsResult] = useQuery({ query: GET_FILTER_OPTIONS });
-    const peopleRaw = optionsResult.data?.people || [];
-    const businessesRaw = optionsResult.data?.businesses || [];
-    const categories = optionsResult.data?.categories || [];
-    const departmentsRaw = optionsResult.data?.departments || [];
+    const [optionsResult] = useQuery<GetFilterOptionsData>({ query: GET_FILTER_OPTIONS });
+    const peopleRaw = useMemo(() => optionsResult.data?.people || [], [optionsResult.data?.people]);
+    const businessesRaw = useMemo(() => optionsResult.data?.businesses || [], [optionsResult.data?.businesses]);
+    const categories = useMemo(() => optionsResult.data?.categories || [], [optionsResult.data?.categories]);
+    const departmentsRaw = useMemo(() => optionsResult.data?.departments || [], [optionsResult.data?.departments]);
     const { user, canEditTransaction, canDeleteTransaction, canIssueRefund } = useAuth();
 
     // Sort and dedupe people (by full name, alphabetically)
     const people = useMemo(() => {
         const seen = new Set<string>();
         return peopleRaw
-            .filter((p: any) => {
+            .filter((p: PersonRecord) => {
                 const key = `${p.name?.first || ''} ${p.name?.last || ''}`.toLowerCase().trim();
                 if (seen.has(key) || !key) return false;
                 seen.add(key);
                 return true;
             })
-            .sort((a: any, b: any) => {
+            .sort((a: PersonRecord, b: PersonRecord) => {
                 const nameA = `${a.name?.first || ''} ${a.name?.last || ''}`.toLowerCase();
                 const nameB = `${b.name?.first || ''} ${b.name?.last || ''}`.toLowerCase();
                 return nameA.localeCompare(nameB);
@@ -246,17 +317,17 @@ export default function Transactions() {
     const businesses = useMemo(() => {
         const seen = new Set<string>();
         return businessesRaw
-            .filter((b: any) => {
+            .filter((b: BusinessRecord) => {
                 const key = (b.name || '').toLowerCase().trim();
                 if (seen.has(key) || !key) return false;
                 seen.add(key);
                 return true;
             })
-            .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+            .sort((a: BusinessRecord, b: BusinessRecord) => (a.name || '').localeCompare(b.name || ''));
     }, [businessesRaw]);
 
     const categoryOptions = useMemo(() => {
-        return categories.map((cat: any) => ({
+        return categories.map((cat: CategoryRecord) => ({
             id: cat.id,
             name: cat.name,
             displayName: cat.displayName,
@@ -268,7 +339,7 @@ export default function Transactions() {
     }, [categories]);
 
     const personOptions = useMemo(() => {
-        return people.map((p: any) => ({
+        return people.map((p: PersonRecord) => ({
             id: p.id,
             label: `${p.name?.first || ''} ${p.name?.last || ''}`.trim(),
             firstName: p.name?.first || '',
@@ -277,7 +348,7 @@ export default function Transactions() {
     }, [people]);
 
     const businessOptions = useMemo(() => {
-        return businesses.map((b: any) => ({
+        return businesses.map((b: BusinessRecord) => ({
             id: b.id,
             label: b.name || '',
         }));
@@ -289,12 +360,12 @@ export default function Transactions() {
     const departments = useMemo(() => {
         let depts = departmentsRaw;
         if (user?.role !== 'SUPER_ADMIN') {
-            const userDeptIds = (user as any)?.departments?.map((d: any) => d.departmentId) || [];
+            const userDeptIds = user?.departments?.map((d) => d.departmentId) || [];
             if (userDeptIds.length > 0) {
                 // First pass: find all departments user has direct or inherited access to
                 const accessibleDeptIds = new Set<string>();
                 
-                departmentsRaw.forEach((d: any) => {
+                departmentsRaw.forEach((d: DepartmentRecord) => {
                     // Direct access
                     if (userDeptIds.includes(d.id)) {
                         accessibleDeptIds.add(d.id);
@@ -306,33 +377,33 @@ export default function Transactions() {
                 });
                 
                 // Second pass: include parent departments for navigation if user has any subdepartment access
-                departmentsRaw.forEach((d: any) => {
+                departmentsRaw.forEach((d: DepartmentRecord) => {
                     if (accessibleDeptIds.has(d.id) && d.parent?.__typename === 'Department') {
                         // Include the parent for navigation purposes
                         accessibleDeptIds.add(d.parent.id);
                     }
                 });
                 
-                depts = departmentsRaw.filter((d: any) => accessibleDeptIds.has(d.id));
+                depts = departmentsRaw.filter((d: DepartmentRecord) => accessibleDeptIds.has(d.id));
             }
         }
         return depts;
     }, [departmentsRaw, user]);
 
     // Split into Top/Sub
-    const topLevelDepartments = useMemo(() => departments.filter((d: any) => d.parent?.__typename === 'Business' || !d.parent), [departments]);
-    const allChildDepartments = useMemo(() => departments.filter((d: any) => d.parent?.__typename === 'Department'), [departments]);
+    const topLevelDepartments = useMemo(() => departments.filter((d: DepartmentRecord) => d.parent?.__typename === 'Business' || !d.parent), [departments]);
+    const allChildDepartments = useMemo(() => departments.filter((d: DepartmentRecord) => d.parent?.__typename === 'Department'), [departments]);
 
     const [topLevelDeptId, setTopLevelDeptId] = useState<string>('');
     const [subDeptId, setSubDeptId] = useState<string>('');
 
     const subDepartments = useMemo(() => {
         // Get subdepartments based on selected top-level or all accessible subdepts
-        let subs: any[] = [];
+        let subs: DepartmentRecord[] = [];
         
         if (topLevelDeptId) {
             // Filter to children of selected top-level
-            subs = allChildDepartments.filter((d: any) => d.parent?.id === topLevelDeptId);
+            subs = allChildDepartments.filter((d: DepartmentRecord) => d.parent?.id === topLevelDeptId);
         } else {
             // No top-level selected - show ALL accessible subdepartments
             subs = allChildDepartments;
@@ -340,12 +411,12 @@ export default function Transactions() {
         
         // For non-admins, further filter to only show subdepartments they have access to
         if (user?.role !== 'SUPER_ADMIN') {
-            const userDeptIds = (user as any)?.departments?.map((d: any) => d.departmentId) || [];
+            const userDeptIds = user?.departments?.map((d) => d.departmentId) || [];
             if (userDeptIds.length > 0) {
-                subs = subs.filter((d: any) => 
+                subs = subs.filter((d: DepartmentRecord) =>
                     userDeptIds.includes(d.id) || 
                     (topLevelDeptId && userDeptIds.includes(topLevelDeptId)) ||
-                    userDeptIds.includes(d.parent?.id)
+                    (d.parent?.id ? userDeptIds.includes(d.parent.id) : false)
                 );
             }
         }
@@ -356,7 +427,7 @@ export default function Transactions() {
     useEffect(() => {
         if (!pendingDepartmentId || !departmentsRaw || departmentsRaw.length === 0) return;
 
-        const dept = departmentsRaw.find((d: any) => d.id === pendingDepartmentId);
+        const dept = departmentsRaw.find((d: DepartmentRecord) => d.id === pendingDepartmentId);
         if (!dept) {
             console.log('[Transactions] Department not found:', pendingDepartmentId);
             return;
@@ -366,21 +437,25 @@ export default function Transactions() {
 
         if (dept.parent?.__typename === 'Department') {
             // It's a subdepartment
-            setTopLevelDeptId(dept.parent.id);
-            setSubDeptId(dept.id);
+            const parentId = dept.parent.id;
+            const timer = setTimeout(() => {
+                setTopLevelDeptId(parentId);
+                setSubDeptId(dept.id);
+                setPendingDepartmentId(null);
+            }, 0);
+            return () => clearTimeout(timer);
         } else {
             // It's a top-level department
-            setTopLevelDeptId(dept.id);
-            setSubDeptId('');
+            const timer = setTimeout(() => {
+                setTopLevelDeptId(dept.id);
+                setSubDeptId('');
+                setPendingDepartmentId(null);
+            }, 0);
+            return () => clearTimeout(timer);
         }
-
-        setPendingDepartmentId(null);
     }, [pendingDepartmentId, departmentsRaw]);
 
-    // Derived filterDepartmentId
-    useEffect(() => {
-        setFilterDepartmentId(subDeptId || topLevelDeptId || null);
-    }, [topLevelDeptId, subDeptId]);
+    const filterDepartmentId = subDeptId || topLevelDeptId || manualFilterDepartmentId || null;
 
     // Sync selected department to LayoutContext for New Entry default
     useEffect(() => {
@@ -392,16 +467,23 @@ export default function Transactions() {
         if (!contextDeptId || topLevelDeptId || subDeptId) return; // Don't override if user already set something
 
         // Find which department contextDeptId refers to
-        const dept = departments.find((d: any) => d.id === contextDeptId);
+        const dept = departments.find((d: DepartmentRecord) => d.id === contextDeptId);
         if (!dept) return;
 
         if (dept.parent?.__typename === 'Department') {
             // It's a subdepartment
-            setTopLevelDeptId(dept.parent.id);
-            setSubDeptId(dept.id);
+            const parentId = dept.parent.id;
+            const timer = setTimeout(() => {
+                setTopLevelDeptId(parentId);
+                setSubDeptId(dept.id);
+            }, 0);
+            return () => clearTimeout(timer);
         } else {
             // It's a top-level department
-            setTopLevelDeptId(dept.id);
+            const timer = setTimeout(() => {
+                setTopLevelDeptId(dept.id);
+            }, 0);
+            return () => clearTimeout(timer);
         }
     }, [contextDeptId, departments, topLevelDeptId, subDeptId]);
 
@@ -414,7 +496,10 @@ export default function Transactions() {
 
         // If user only has access to ONE top-level department, auto-select it
         if (topLevelDepartments.length === 1) {
-            setTopLevelDeptId(topLevelDepartments[0].id);
+            const timer = setTimeout(() => {
+                setTopLevelDeptId(topLevelDepartments[0].id);
+            }, 0);
+            return () => clearTimeout(timer);
         }
     }, [topLevelDepartments, user, topLevelDeptId, subDeptId, contextDeptId, pendingDepartmentId]);
 
@@ -449,7 +534,7 @@ export default function Transactions() {
     // Use Custom Hook for data fetching
     const { entries, totalCount, summary, fetching, error, refresh } = useTransactions({
         departmentId: filterDepartmentId || contextDeptId,
-        accessibleDepartmentIds: user?.role !== 'SUPER_ADMIN' ? departments.map((d: any) => d.id) : [],
+        accessibleDepartmentIds: user?.role !== 'SUPER_ADMIN' ? departments.map((d: DepartmentRecord) => d.id) : [],
         fiscalYearId,
         reconcileFilter,
         startDate,
@@ -474,15 +559,12 @@ export default function Transactions() {
     // Alias refresh to handleReexecute for compatibility
     const handleReexecute = refresh;
 
-    // Adapt for DataGrid usage
-    const data = { entries };
-
     const handleClearAllFilters = () => {
         setStartDate(null);
         setEndDate(null);
         setEntryType('ALL');
         setSelectedCategory(null);
-        setFilterDepartmentId(null);
+        setManualFilterDepartmentId(null);
         setSelectedPerson(null);
         setSelectedBusiness(null);
         setPaymentMethodType('ALL');
@@ -502,8 +584,8 @@ export default function Transactions() {
             disableColumnMenu: true,
             align: 'center',
             headerAlign: 'center',
-            renderCell: (params: any) => {
-                if (params.row.isRefund) return null;
+            renderCell: (params: CellParams) => {
+                if (params.row.isRefund || params.row.isRefundForEntry || params.row.isOriginalForRefund || params.row.isSpacerRow) return null;
                 return (
                     <IconButton
                         size="small"
@@ -526,7 +608,7 @@ export default function Transactions() {
             width: 100,
             align: 'left',
             headerAlign: 'center',
-            renderCell: (params: any) => (
+            renderCell: (params: CellParams) => (
                 <Chip
                     label={params.value ? "Reconciled" : "Pending"}
                     size="small"
@@ -541,8 +623,8 @@ export default function Transactions() {
             width: 120,
             align: 'left',
             headerAlign: 'center',
-            renderCell: (params: any) => {
-                const txDate = format(new Date(params.value), "MMM dd, yyyy");
+            renderCell: (params: CellParams) => {
+                const txDate = format(new Date(String(params.value ?? "")), "MMM dd, yyyy");
                 const postedDate = params.row.dateOfRecord?.date;
 
                 if (postedDate && postedDate !== params.value) {
@@ -566,7 +648,7 @@ export default function Transactions() {
             minWidth: 150,
             align: 'left',
             headerAlign: 'center',
-            renderCell: (params: any) => {
+            renderCell: (params: CellParams) => {
                 if (params.row.isRefund) {
                     const isExpanded = expandedRefunds.has(params.row.id);
                     return (
@@ -590,7 +672,7 @@ export default function Transactions() {
                             </IconButton>
                             <Box>
                                 <Typography variant="body2" fontWeight="bold">
-                                    {params.value}
+                                    {String(params.value ?? '')}
                                 </Typography>
                                 <Typography variant="caption" color="primary.main">
                                     ↳ Refund Item (Click arrow to show matching entry)
@@ -603,7 +685,7 @@ export default function Transactions() {
                     return (
                         <Box sx={{ pl: 6, borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
                             <Typography variant="body2" color="text.secondary">
-                                Original: {params.value}
+                                Original: {String(params.value ?? '')}
                             </Typography>
                         </Box>
                     );
@@ -612,7 +694,7 @@ export default function Transactions() {
                     return (
                         <Box sx={{ pl: 6, borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
                             <Typography variant="body2" color="text.secondary">
-                                Refund: {params.value}
+                                Refund: {String(params.value ?? '')}
                             </Typography>
                         </Box>
                     );
@@ -639,7 +721,7 @@ export default function Transactions() {
                                 {isExpanded ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
                             </IconButton>
                             <Box>
-                                <Typography variant="body2">{params.value}</Typography>
+                                <Typography variant="body2">{String(params.value ?? '')}</Typography>
                                 <Typography variant="caption" color="primary.main">
                                     Has {params.row.refunds?.length || 0} refund(s) (Click arrow to show)
                                 </Typography>
@@ -647,7 +729,7 @@ export default function Transactions() {
                         </Box>
                     );
                 }
-                return params.value;
+                return String(params.value ?? '');
             },
         },
         {
@@ -656,7 +738,7 @@ export default function Transactions() {
             width: 140,
             align: 'left',
             headerAlign: 'center',
-            valueGetter: (_value: any, row: any) => row?.department?.name || "",
+            valueGetter: (_value: unknown, row: TransactionRow) => row?.department?.name || "",
         },
         {
             field: "source",
@@ -664,7 +746,7 @@ export default function Transactions() {
             width: 160,
             align: 'left',
             headerAlign: 'center',
-            renderCell: (params: any) => {
+            renderCell: (params: CellParams) => {
                 const source = params.row.source;
                 if (!source) return <Typography variant="body2" color="text.secondary">-</Typography>;
 
@@ -697,11 +779,11 @@ export default function Transactions() {
             width: 180,
             align: 'left',
             headerAlign: 'center',
-            renderCell: (params: any) => (
+            renderCell: (params: CellParams) => (
                 <Chip
-                    label={params.value?.name || "Uncategorized"}
+                    label={(params.value as { name?: string } | undefined)?.name || "Uncategorized"}
                     size="small"
-                    color={params.value?.type?.toUpperCase() === "CREDIT" ? "success" : "error"}
+                    color={(params.value as { type?: string } | undefined)?.type?.toUpperCase() === "CREDIT" ? "success" : "error"}
                     variant="outlined"
                 />
             ),
@@ -712,8 +794,8 @@ export default function Transactions() {
             width: 130,
             align: 'left',
             headerAlign: 'center',
-            valueGetter: (val: any) => {
-                const value = val as any;
+            valueGetter: (val: unknown) => {
+                const value = val as PaymentMethod;
                 if (!value) return "Unknown";
                 if (value.__typename === "PaymentMethodCard") {
                     return `${value.card?.type} *${value.card?.trailingDigits}`;
@@ -732,8 +814,8 @@ export default function Transactions() {
             width: 130,
             align: "left",
             headerAlign: "center",
-            valueGetter: (value: any) => parseRational(value),
-            renderCell: (params: any) => {
+            valueGetter: (value: string) => parseRational(value),
+            renderCell: (params: CellParams) => {
                 const amount = params.value as number;
                 const isCredit = params.row.category?.type?.toUpperCase() === "CREDIT";
                 return (
@@ -752,7 +834,7 @@ export default function Transactions() {
             headerName: "Receipts",
             width: 90,
             sortable: false,
-            renderCell: (params: any) => {
+            renderCell: (params: CellParams) => {
                 const count = params.row.attachments?.length || 0;
                 return (
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
@@ -780,20 +862,22 @@ export default function Transactions() {
         },
 
 
-    ].map(c => ({ ...c, sortable: !showMatchingOnly }));
+    ] as GridColDef<TransactionRow>[];
+
+    const mappedColumns: GridColDef<TransactionRow>[] = columns.map((c) => ({ ...c, sortable: !showMatchingOnly }));
 
     // Process rows and apply client-side filters
-    const rows = useMemo(() => {
-        if (!data?.entries) return [];
+    const rows = useMemo<TransactionRow[]>(() => {
+        if (!entries?.length) return [];
 
         if (showMatchingOnly) {
             // Show entries with refunds AND their refunds as separate rows
-            const matchingRows: any[] = [];
+            const matchingRows: TransactionRow[] = [];
 
-            data.entries.forEach((entry: any) => {
+            entries.forEach((entry: EntryRecord) => {
                 if (entry.refunds && entry.refunds.length > 0) {
                     // 1. Add each refund as a primary row
-                    entry.refunds.forEach((refund: any) => {
+                    entry.refunds.forEach((refund) => {
                         matchingRows.push({
                             id: `refund-${refund.id}`,
                             refundId: refund.id,
@@ -801,10 +885,11 @@ export default function Transactions() {
                             date: refund.date,
                             reconciled: refund.reconciled,
                             total: refund.total,
-                            category: { name: 'Refund', type: 'CREDIT' },
+                            category: { id: 'refund-category', name: 'Refund', type: 'CREDIT' },
                             department: entry.department,
                             paymentMethod: refund.paymentMethod,
                             attachments: [],
+                            refunds: [],
                             isRefund: true,
                             parentEntryId: entry.id,
                             rowType: 'CREDIT',
@@ -864,6 +949,7 @@ export default function Transactions() {
                     department: null,
                     paymentMethod: null,
                     attachments: [],
+                    refunds: [],
                 });
             }
 
@@ -872,8 +958,8 @@ export default function Transactions() {
 
         // Normal mode
         // Server-side filtered already
-        const normalRows: any[] = [];
-        data.entries.forEach((entry: any) => {
+        const normalRows: TransactionRow[] = [];
+        entries.forEach((entry: EntryRecord) => {
             // If entry has refunds, show with expand capability
             if (entry.refunds?.length > 0) {
                 // Show the parent entry with indicator
@@ -886,7 +972,7 @@ export default function Transactions() {
 
                 // If expanded, show refund rows below (reverse of filter view)
                 if (expandedRefunds.has(entry.id)) {
-                    entry.refunds.forEach((refund: any) => {
+                    entry.refunds.forEach((refund) => {
                         // The refund row - shown indented below parent (like "Original:" in filter view)
                         normalRows.push({
                             id: `refund-for-${refund.id}`,
@@ -895,10 +981,11 @@ export default function Transactions() {
                             date: refund.date,
                             reconciled: refund.reconciled,
                             total: refund.total,
-                            category: { name: 'Refund', type: 'CREDIT' },
+                            category: { id: 'refund-category', name: 'Refund', type: 'CREDIT' },
                             department: entry.department,
                             paymentMethod: refund.paymentMethod,
                             attachments: [],
+                            refunds: [],
                             isRefundForEntry: true,
                             parentEntryId: entry.id,
                             rowType: 'CREDIT',
@@ -932,24 +1019,78 @@ export default function Transactions() {
                 department: null,
                 paymentMethod: null,
                 attachments: [],
+                refunds: [],
             });
         }
         
         return normalRows;
-    }, [data, showMatchingOnly, expandedRefunds]);
+    }, [entries, showMatchingOnly, expandedRefunds]);
+
+    const rowsById = useMemo(() => {
+        const map = new Map<string, TransactionRow>();
+        rows.forEach((row) => map.set(String(row.id), row));
+        return map;
+    }, [rows]);
+
+    const buildReconcileInputFromSelection = (selectedIds: string[]) => {
+        const entryIds = new Set<string>();
+        const refundIds = new Set<string>();
+
+        selectedIds.forEach((id) => {
+            const row = rowsById.get(id);
+            if (row?.isSpacerRow) return;
+
+            if (row?.isRefund || row?.isRefundForEntry) {
+                if (row.refundId) refundIds.add(row.refundId);
+                return;
+            }
+
+            if (row?.isOriginalForRefund) {
+                if (row.originalEntry?.id) {
+                    entryIds.add(row.originalEntry.id);
+                    return;
+                }
+                if (row.parentEntryId) {
+                    entryIds.add(row.parentEntryId);
+                    return;
+                }
+            }
+
+            if (id.startsWith('refund-for-')) {
+                refundIds.add(id.replace('refund-for-', ''));
+                return;
+            }
+
+            if (id.startsWith('refund-')) {
+                refundIds.add(id.replace('refund-', ''));
+                return;
+            }
+
+            if (id.startsWith('original-for-')) {
+                return;
+            }
+
+            entryIds.add(id);
+        });
+
+        return {
+            entries: Array.from(entryIds),
+            refunds: Array.from(refundIds),
+        };
+    };
 
 
 
     // Count active filters
     const activeFilters = useMemo(() => {
-        const filters = [];
+        const filters: ActiveFilter[] = [];
         if (startDate) filters.push({ type: 'startDate', label: `From: ${format(startDate, 'MMM dd, yyyy')}` });
         if (endDate) filters.push({ type: 'endDate', label: `To: ${format(endDate, 'MMM dd, yyyy')}` });
 
         if (entryType !== 'ALL') filters.push({ type: 'entryType', label: entryType === 'CREDIT' ? 'Income' : 'Expense' });
         if (selectedCategory) filters.push({ type: 'category', label: selectedCategory.name });
         if (filterDepartmentId) {
-            const d = departments.find((dept: any) => dept.id === filterDepartmentId);
+            const d = departments.find((dept: DepartmentRecord) => dept.id === filterDepartmentId);
             if (d) filters.push({ type: 'department', label: d.name });
         }
         if (selectedPerson) filters.push({ type: 'person', label: `Person: ${selectedPerson.name.first}` });
@@ -961,14 +1102,14 @@ export default function Transactions() {
         if (showMatchingOnly) filters.push({ type: 'matching', label: 'Matching Transactions Only' });
         if (reconcileFilter !== 'ALL') filters.push({ type: 'reconciled', label: reconcileFilter === 'RECONCILED' ? 'Reconciled Only' : 'Unreconciled Only' });
         return filters;
-    }, [startDate, endDate, entryType, selectedCategory, filterDepartmentId, selectedPerson, selectedBusiness, showMatchingOnly, reconcileFilter, departments]);
+    }, [startDate, endDate, entryType, selectedCategory, filterDepartmentId, selectedPerson, selectedBusiness, paymentMethodType, showMatchingOnly, reconcileFilter, departments]);
 
-    const handleClearFilter = (filter: any) => {
+    const handleClearFilter = (filter: ActiveFilter) => {
         if (filter.type === 'startDate') setStartDate(null);
         if (filter.type === 'endDate') setEndDate(null);
         if (filter.type === 'entryType') setEntryType('ALL');
         if (filter.type === 'category') setSelectedCategory(null);
-        if (filter.type === 'department') setFilterDepartmentId(null);
+        if (filter.type === 'department') setManualFilterDepartmentId(null);
         if (filter.type === 'person') setSelectedPerson(null);
         if (filter.type === 'person') setSelectedPerson(null);
         if (filter.type === 'business') setSelectedBusiness(null);
@@ -992,37 +1133,22 @@ export default function Transactions() {
         // $input has `entries` and `refunds`.
         // I need to parse the selected IDs.
 
-        const rawIds = Array.from(rowSelectionModel.ids) as string[];
-        const entryIds: string[] = [];
-        const refundIds: string[] = [];
+        const rawIds = Array.from(rowSelectionModel.ids).map((id) => String(id));
+        const input = buildReconcileInputFromSelection(rawIds);
 
-        rawIds.forEach(id => {
-            if (id.startsWith('refund-')) {
-                refundIds.push(id.replace('refund-', ''));
-            } else if (id.startsWith('original-for-')) {
-                // Ignore? Or reconcile original?
-                // `original-for-refund-ID` -> implies we selected the visualized original row.
-                // But ID comes from `id: original-for...`.
-                // Usage: entry.id.
-                // I need to find the entry ID.
-                // Actually I shouldn't let them select the "visual" copy maybe?
-                // Or I map it back.
-                // But wait, `originalEntry` is available in `rows`.
-                // I'll skip handling complex logic for now and just handle standard IDs.
-                // Standard entries have normal IDs.
-            } else {
-                entryIds.push(id);
-            }
-        });
+        if (!input.entries.length && !input.refunds.length) {
+            enqueueSnackbar('No valid transactions or refunds selected.', { variant: 'warning' });
+            return;
+        }
 
-        await reconcileEntries({
-            input: {
-                entries: entryIds,
-                refunds: refundIds
-            }
-        });
+        const { error } = await reconcileEntries({ input });
+        if (error) {
+            enqueueSnackbar(`Error reconciling selection: ${error.message}`, { variant: 'error' });
+            return;
+        }
 
         setRowSelectionModel({ type: 'include', ids: new Set() });
+        enqueueSnackbar(`Reconciled ${input.entries.length + input.refunds.length} item(s) successfully`, { variant: 'success' });
         handleReexecute();
     };
 
@@ -1051,7 +1177,7 @@ export default function Transactions() {
                                     data-tooltip="Select fiscal year"
                                     data-tooltip-pos="top"
                                 >
-                                    {fiscalYears.map((fy: any) => (
+                                    {fiscalYears.map((fy) => (
                                         <MenuItem key={fy.id} value={fy.id}>{fy.name}</MenuItem>
                                     ))}
                                 </TextField>
@@ -1127,7 +1253,7 @@ export default function Transactions() {
                                 sx={{ width: 120 }}
                             >
                                 <MenuItem value="">All</MenuItem>
-                                {topLevelDepartments.map((dept: any) => (
+                                {topLevelDepartments.map((dept) => (
                                     <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
                                 ))}
                             </TextField>
@@ -1142,7 +1268,7 @@ export default function Transactions() {
                                     sx={{ width: 120 }}
                                 >
                                     <MenuItem value="">All</MenuItem>
-                                    {subDepartments.map((dept: any) => (
+                                    {subDepartments.map((dept) => (
                                         <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
                                     ))}
                                 </TextField>
@@ -1201,15 +1327,20 @@ export default function Transactions() {
                             {/* Category */}
                             <Box sx={{ width: 250 }}>
                                 <CategoryAutocomplete
-                                    categories={categoryOptions.filter((cat: any) => {
+                                    categories={categoryOptions.filter((cat) => {
                                         if (entryType === 'ALL') return true;
                                         if (entryType === 'CREDIT') return cat.type?.toUpperCase() === 'CREDIT';
                                         if (entryType === 'DEBIT') return cat.type?.toUpperCase() === 'DEBIT';
                                         return true;
-                                    })}
+                                    }).map((cat) => ({
+                                        ...cat,
+                                        displayName: cat.displayName ?? undefined,
+                                        groupName: cat.groupName ?? undefined,
+                                        sortOrder: cat.sortOrder ?? undefined,
+                                    }))}
                                     value={selectedCategory?.id || ''}
                                     onChange={(categoryId) => {
-                                        const cat = categories.find((c: any) => c.id === categoryId);
+                                        const cat = categories.find((c) => c.id === categoryId);
                                         setSelectedCategory(cat || null);
                                     }}
                                     size="small"
@@ -1222,7 +1353,7 @@ export default function Transactions() {
                                     people={personOptions}
                                     value={selectedPerson?.id || ''}
                                     onChange={(personId) => {
-                                        const person = people.find((p: any) => p.id === personId);
+                                        const person = people.find((p) => p.id === personId);
                                         setSelectedPerson(person || null);
                                         if (person) setSelectedBusiness(null);
                                     }}
@@ -1237,7 +1368,7 @@ export default function Transactions() {
                                     businesses={businessOptions}
                                     value={selectedBusiness?.id || ''}
                                     onChange={(businessId) => {
-                                        const biz = businesses.find((b: any) => b.id === businessId);
+                                        const biz = businesses.find((b) => b.id === businessId);
                                         setSelectedBusiness(biz || null);
                                         if (biz) setSelectedPerson(null);
                                     }}
@@ -1351,7 +1482,7 @@ export default function Transactions() {
                                 ) : (
                                     <DataGrid
                                         rows={rows}
-                                        columns={columns as GridColDef[]}
+                                        columns={mappedColumns as GridColDef[]}
                                         loading={fetching}
                                         pageSizeOptions={[25, 50, 100]}
                                         rowCount={totalCount}
@@ -1360,7 +1491,7 @@ export default function Transactions() {
                                         onPaginationModelChange={setPaginationModel}
                                         sortingMode="server" // Ensure server-side sorting for row order stability
                                         sortModel={showMatchingOnly ? [] : sortModel}
-                                        onSortModelChange={(model) => !showMatchingOnly && setSortModel(model)}
+                                        onSortModelChange={(model) => !showMatchingOnly && setSortModel([...model])}
                                         disableColumnSorting={showMatchingOnly}
                                         checkboxSelection
                                         isRowSelectable={(params) => !params.row.reconciled && !params.row.isSpacerRow}
@@ -1517,15 +1648,22 @@ export default function Transactions() {
                 <MenuItem
                     onClick={async () => {
                         if (actionMenuEntry) {
+                            const input = buildReconcileInputFromSelection([String(actionMenuEntry.id)]);
+                            if (!input.entries.length && !input.refunds.length) {
+                                enqueueSnackbar('No valid transaction selected to reconcile.', { variant: 'warning' });
+                                setActionMenuAnchor(null);
+                                setActionMenuEntry(null);
+                                return;
+                            }
+
                             const { error } = await reconcileEntries({
-                                input: { entries: [actionMenuEntry.id] }
+                                input
                             });
 
                             if (error) {
                                 enqueueSnackbar(`Error: ${error.message}`, { variant: 'error' });
                             } else {
-                                const action = actionMenuEntry.reconciled ? 'unreconciled' : 'reconciled';
-                                enqueueSnackbar(`Transaction ${action} successfully`, { variant: 'success' });
+                                enqueueSnackbar('Reconciled successfully', { variant: 'success' });
                                 handleReexecute();
                             }
                         }
@@ -1604,7 +1742,7 @@ export default function Transactions() {
                     handleReexecute();
                 }}
                 initialEntryType="refund"
-                initialSelectedEntry={refundEntry}
+                initialSelectedEntry={toRefundCandidate(refundEntry)}
             />
 
             <SearchDialog

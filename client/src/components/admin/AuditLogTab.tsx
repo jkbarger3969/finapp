@@ -151,10 +151,35 @@ interface AuditLogEntry {
     action: AuditAction;
     resourceType?: string;
     resourceId?: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
     ipAddress?: string;
     userAgent?: string;
     timestamp: string;
+}
+
+interface UserFilter {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+}
+
+interface AuditLogData {
+    auditLog: AuditLogEntry[];
+    auditLogCount?: number;
+}
+
+interface UsersForFilterData {
+    users: UserFilter[];
+}
+
+interface AuditLogWhere {
+    action?: string;
+    userId?: { eq: string };
+    resourceType?: string;
+    timestamp?: {
+        gte?: string;
+        lte?: string;
+    };
 }
 
 export default function AuditLogTab() {
@@ -171,7 +196,7 @@ export default function AuditLogTab() {
     const [queryKey, setQueryKey] = useState(0);
 
     const where = useMemo(() => {
-        const filter: Record<string, any> = {};
+        const filter: AuditLogWhere = {};
         if (actionFilter) filter.action = actionFilter;
         if (userFilter) filter.userId = { eq: userFilter };
         if (resourceTypeFilter) filter.resourceType = resourceTypeFilter;
@@ -187,7 +212,7 @@ export default function AuditLogTab() {
         return Object.keys(filter).length > 0 ? filter : null;
     }, [actionFilter, userFilter, resourceTypeFilter, dateFrom, dateTo]);
 
-    const [result, reexecuteQuery] = useQuery({
+    const [result, reexecuteQuery] = useQuery<AuditLogData>({
         query: GET_AUDIT_LOG,
         variables: {
             where,
@@ -198,7 +223,7 @@ export default function AuditLogTab() {
         requestPolicy: 'cache-and-network',
     });
 
-    const [usersResult] = useQuery({ query: GET_USERS_FOR_FILTER });
+    const [usersResult] = useQuery<UsersForFilterData>({ query: GET_USERS_FOR_FILTER });
     const [, clearAuditLog] = useMutation(CLEAR_AUDIT_LOG);
 
     const { data, fetching, error } = result;
@@ -229,7 +254,7 @@ export default function AuditLogTab() {
         return date.toLocaleString();
     };
 
-    const formatDetails = (details: Record<string, any> | undefined) => {
+    const formatDetails = (details: Record<string, unknown> | undefined) => {
         if (!details) return null;
         return JSON.stringify(details, null, 2);
     };
@@ -313,7 +338,7 @@ export default function AuditLogTab() {
                             label="User"
                         >
                             <MenuItem value="">All Users</MenuItem>
-                            {users.map((user: any) => (
+                            {users.map((user: UserFilter) => (
                                 <MenuItem key={user.id} value={user.id}>{user.name || user.email}</MenuItem>
                             ))}
                         </Select>

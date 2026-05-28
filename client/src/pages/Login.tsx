@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import { useAuth } from '../context/AuthContext';
+import type { Theme } from '@mui/material/styles';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -19,6 +20,14 @@ export default function Login() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [googleAuthUrl, setGoogleAuthUrl] = useState<string | null>(null);
+
+    interface GoogleAuthUrlResponse {
+        data?: {
+            googleAuthUrl?: {
+                url?: string;
+            };
+        };
+    }
 
     useEffect(() => {
         if (isAuthenticated && !authLoading) {
@@ -36,7 +45,7 @@ export default function Login() {
                         query: `query { googleAuthUrl { url } }`,
                     }),
                 });
-                const result = await response.json();
+                const result: GoogleAuthUrlResponse = await response.json();
                 if (result.data?.googleAuthUrl?.url) {
                     setGoogleAuthUrl(result.data.googleAuthUrl.url);
                 }
@@ -50,26 +59,44 @@ export default function Login() {
     useEffect(() => {
         const code = searchParams.get('code');
         const errorParam = searchParams.get('error');
+        let cancelled = false;
 
         if (errorParam) {
-            setError('Google sign-in was cancelled or failed. Please try again.');
+            const timer = setTimeout(() => {
+                if (!cancelled) {
+                    setError('Google sign-in was cancelled or failed. Please try again.');
+                }
+            }, 0);
+            return () => {
+                cancelled = true;
+                clearTimeout(timer);
+            };
+        }
+
+        if (!code) {
             return;
         }
 
-        if (code) {
+        const timer = setTimeout(() => {
+            if (cancelled) return;
             setIsLoading(true);
             setError(null);
             login(code)
                 .then(() => {
                     navigate('/');
                 })
-                .catch((err) => {
-                    setError(err.message || 'Authentication failed. Please try again.');
+                .catch((err: unknown) => {
+                    setError(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
                 })
                 .finally(() => {
                     setIsLoading(false);
                 });
-        }
+        }, 0);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
     }, [searchParams, login, navigate]);
 
     const handleGoogleLogin = () => {
@@ -137,7 +164,7 @@ export default function Login() {
                         component="h1"
                         gutterBottom
                         sx={{
-                            background: (theme: any) => theme.device?.linearGradient || 'linear-gradient(135deg, #6C5DD3 0%, #00E5FF 100%)',
+                            background: (theme: Theme) => (theme as Theme & { device?: { linearGradient?: string } }).device?.linearGradient || 'linear-gradient(135deg, #6C5DD3 0%, #00E5FF 100%)',
                             backgroundClip: 'text',
                             textFillColor: 'transparent',
                             WebkitBackgroundClip: 'text',

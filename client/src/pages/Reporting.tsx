@@ -33,6 +33,15 @@ import PageHeader from '../components/PageHeader';
 import CategoryAutocomplete from '../components/CategoryAutocomplete';
 import PersonAutocomplete from '../components/PersonAutocomplete';
 import BusinessAutocomplete from '../components/BusinessAutocomplete';
+import { parseRational } from '../utils/rational';
+import type {
+    BusinessRecord,
+    CategoryRecord,
+    DepartmentRecord,
+    GetFilterOptionsData,
+    PersonRecord,
+} from '../types/filterOptions';
+import type { EntryRecord, EntriesWhereInput, GetEntriesByDepartmentData } from '../types/transactions';
 
 const GET_REPORT_DATA = `
   query GetReportData($where: EntriesWhere!) {
@@ -144,15 +153,18 @@ const GET_FILTER_OPTIONS = `
   }
 `;
 
-// Helper to parse Rational JSON
-const parseRational = (rationalStr: any) => {
-    try {
-        const r = typeof rationalStr === 'string' ? JSON.parse(rationalStr) : rationalStr;
-        return (r.n / r.d) * r.s;
-    } catch {
-        return 0;
-    }
-};
+interface ReportData {
+    entriesReport: {
+        count: number;
+        totalIncome: number;
+        totalExpenses: number;
+        netPosition: number;
+    };
+    entriesChartData: {
+        categoryBreakdown: Array<{ name: string; value: number }>;
+        monthlyTrends: Array<{ month: string; income: number; expenses: number }>;
+    };
+}
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -165,10 +177,10 @@ export default function Reporting() {
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [endDate, setEndDate] = useState<Date | null>(null);
     const [entryType, setEntryType] = useState<string>('ALL');
-    const [selectedPerson, setSelectedPerson] = useState<any | null>(null);
-    const [selectedBusiness, setSelectedBusiness] = useState<any | null>(null);
-    const [selectedCategory, setSelectedCategory] = useState<any | null>(null);
-    const [filterDepartmentId, setFilterDepartmentId] = useState<string | null>(null);
+    const [selectedPerson, setSelectedPerson] = useState<PersonRecord | null>(null);
+    const [selectedBusiness, setSelectedBusiness] = useState<BusinessRecord | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<CategoryRecord | null>(null);
+    const [manualFilterDepartmentId, setManualFilterDepartmentId] = useState<string | null>(null);
     const [paymentMethodType] = useState<string>('ALL');
     const [reconcileFilter, setReconcileFilter] = useState<string>('ALL');
     const [searchDialogOpen, setSearchDialogOpen] = useState(false);
@@ -176,24 +188,24 @@ export default function Reporting() {
     const printRef = useRef<HTMLDivElement>(null);
 
     // Fetch filter options
-    const [optionsResult] = useQuery({ query: GET_FILTER_OPTIONS });
-    const peopleRaw = optionsResult.data?.people || [];
-    const businessesRaw = optionsResult.data?.businesses || [];
-    const categories = optionsResult.data?.categories || [];
-    const departmentsRaw = optionsResult.data?.departments || [];
+    const [optionsResult] = useQuery<GetFilterOptionsData>({ query: GET_FILTER_OPTIONS });
+    const peopleRaw = useMemo(() => optionsResult.data?.people || [], [optionsResult.data?.people]);
+    const businessesRaw = useMemo(() => optionsResult.data?.businesses || [], [optionsResult.data?.businesses]);
+    const categories = useMemo(() => optionsResult.data?.categories || [], [optionsResult.data?.categories]);
+    const departmentsRaw = useMemo(() => optionsResult.data?.departments || [], [optionsResult.data?.departments]);
     const { user } = useAuth();
 
     // Sort and dedupe people (by full name, alphabetically)
     const people = useMemo(() => {
         const seen = new Set<string>();
         return peopleRaw
-            .filter((p: any) => {
+            .filter((p: PersonRecord) => {
                 const key = `${p.name?.first || ''} ${p.name?.last || ''}`.toLowerCase().trim();
                 if (seen.has(key) || !key) return false;
                 seen.add(key);
                 return true;
             })
-            .sort((a: any, b: any) => {
+            .sort((a: PersonRecord, b: PersonRecord) => {
                 const nameA = `${a.name?.first || ''} ${a.name?.last || ''}`.toLowerCase();
                 const nameB = `${b.name?.first || ''} ${b.name?.last || ''}`.toLowerCase();
                 return nameA.localeCompare(nameB);
@@ -204,13 +216,13 @@ export default function Reporting() {
     const businesses = useMemo(() => {
         const seen = new Set<string>();
         return businessesRaw
-            .filter((b: any) => {
+            .filter((b: BusinessRecord) => {
                 const key = (b.name || '').toLowerCase().trim();
                 if (seen.has(key) || !key) return false;
                 seen.add(key);
                 return true;
             })
-            .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+            .sort((a: BusinessRecord, b: BusinessRecord) => (a.name || '').localeCompare(b.name || ''));
     }, [businessesRaw]);
 
     // Filter departments based on access (using proper departmentId from permissions)
@@ -218,12 +230,12 @@ export default function Reporting() {
     const departments = useMemo(() => {
         let depts = departmentsRaw;
         if (user?.role !== 'SUPER_ADMIN') {
-            const userDeptIds = (user as any)?.departments?.map((d: any) => d.departmentId) || [];
+            const userDeptIds = user?.departments?.map((d) => d.departmentId) || [];
             if (userDeptIds.length > 0) {
                 // First pass: find all departments user has direct or inherited access to
                 const accessibleDeptIds = new Set<string>();
                 
-                departmentsRaw.forEach((d: any) => {
+                departmentsRaw.forEach((d: DepartmentRecord) => {
                     // Direct access
                     if (userDeptIds.includes(d.id)) {
                         accessibleDeptIds.add(d.id);
@@ -235,21 +247,21 @@ export default function Reporting() {
                 });
                 
                 // Second pass: include parent departments for navigation if user has any subdepartment access
-                departmentsRaw.forEach((d: any) => {
+                departmentsRaw.forEach((d: DepartmentRecord) => {
                     if (accessibleDeptIds.has(d.id) && d.parent?.__typename === 'Department') {
                         // Include the parent for navigation purposes
                         accessibleDeptIds.add(d.parent.id);
                     }
                 });
                 
-                depts = departmentsRaw.filter((d: any) => accessibleDeptIds.has(d.id));
+                depts = departmentsRaw.filter((d: DepartmentRecord) => accessibleDeptIds.has(d.id));
             }
         }
         return depts;
     }, [departmentsRaw, user]);
 
     const categoryOptions = useMemo(() => {
-        return categories.map((cat: any) => ({
+        return categories.map((cat: CategoryRecord) => ({
             id: cat.id,
             name: cat.name,
             displayName: cat.displayName,
@@ -261,7 +273,7 @@ export default function Reporting() {
     }, [categories]);
 
     const personOptions = useMemo(() => {
-        return people.map((p: any) => ({
+        return people.map((p: PersonRecord) => ({
             id: p.id,
             label: `${p.name?.first || ''} ${p.name?.last || ''}`.trim(),
             firstName: p.name?.first || '',
@@ -270,26 +282,26 @@ export default function Reporting() {
     }, [people]);
 
     const businessOptions = useMemo(() => {
-        return businesses.map((b: any) => ({
+        return businesses.map((b: BusinessRecord) => ({
             id: b.id,
             label: b.name || '',
         }));
     }, [businesses]);
 
     // Split into Top/Sub
-    const topLevelDepartments = useMemo(() => departments.filter((d: any) => d.parent?.__typename === 'Business' || !d.parent), [departments]);
-    const allChildDepartments = useMemo(() => departments.filter((d: any) => d.parent?.__typename === 'Department'), [departments]);
+    const topLevelDepartments = useMemo(() => departments.filter((d: DepartmentRecord) => d.parent?.__typename === 'Business' || !d.parent), [departments]);
+    const allChildDepartments = useMemo(() => departments.filter((d: DepartmentRecord) => d.parent?.__typename === 'Department'), [departments]);
 
     const [topLevelDeptId, setTopLevelDeptId] = useState<string>('');
     const [subDeptId, setSubDeptId] = useState<string>('');
 
     const subDepartments = useMemo(() => {
         // Get subdepartments based on selected top-level or all accessible subdepts
-        let subs: any[] = [];
+        let subs: DepartmentRecord[] = [];
         
         if (topLevelDeptId) {
             // Filter to children of selected top-level
-            subs = allChildDepartments.filter((d: any) => d.parent?.id === topLevelDeptId);
+            subs = allChildDepartments.filter((d: DepartmentRecord) => d.parent?.id === topLevelDeptId);
         } else {
             // No top-level selected - show ALL accessible subdepartments
             subs = allChildDepartments;
@@ -297,26 +309,26 @@ export default function Reporting() {
         
         // For non-admins, further filter to only show subdepartments they have access to
         if (user?.role !== 'SUPER_ADMIN') {
-            const userDeptIds = (user as any)?.departments?.map((d: any) => d.departmentId) || [];
+            const userDeptIds = user?.departments?.map((d) => d.departmentId) || [];
             if (userDeptIds.length > 0) {
-                subs = subs.filter((d: any) => 
+                subs = subs.filter((d: DepartmentRecord) =>
                     userDeptIds.includes(d.id) || 
                     (topLevelDeptId && userDeptIds.includes(topLevelDeptId)) ||
-                    userDeptIds.includes(d.parent?.id)
+                    (d.parent?.id ? userDeptIds.includes(d.parent.id) : false)
                 );
             }
         }
         return subs;
     }, [topLevelDeptId, allChildDepartments, user]);
 
-    // Derived filterDepartmentId
-    useEffect(() => {
-        setFilterDepartmentId(subDeptId || topLevelDeptId || null);
-    }, [topLevelDeptId, subDeptId]);
+    const filterDepartmentId = subDeptId || topLevelDeptId || manualFilterDepartmentId || null;
 
     // Sync selected department to LayoutContext for New Entry default
     useEffect(() => {
-        setSelectedDepartmentId(subDeptId || topLevelDeptId || null);
+        const timer = setTimeout(() => {
+            setSelectedDepartmentId(subDeptId || topLevelDeptId || null);
+        }, 0);
+        return () => clearTimeout(timer);
     }, [topLevelDeptId, subDeptId, setSelectedDepartmentId]);
 
     // Initialize filter from LayoutContext selectedDepartmentId (set by Dashboard/Transactions)
@@ -324,14 +336,21 @@ export default function Reporting() {
         if (!selectedDepartmentId || topLevelDeptId || subDeptId) return;
         if (departments.length === 0) return;
 
-        const dept = departments.find((d: any) => d.id === selectedDepartmentId);
+        const dept = departments.find((d: DepartmentRecord) => d.id === selectedDepartmentId);
         if (!dept) return;
 
         if (dept.parent?.__typename === 'Department') {
-            setTopLevelDeptId(dept.parent.id);
-            setSubDeptId(dept.id);
+            const parentId = dept.parent.id;
+            const timer = setTimeout(() => {
+                setTopLevelDeptId(parentId);
+                setSubDeptId(dept.id);
+            }, 0);
+            return () => clearTimeout(timer);
         } else {
-            setTopLevelDeptId(dept.id);
+            const timer = setTimeout(() => {
+                setTopLevelDeptId(dept.id);
+            }, 0);
+            return () => clearTimeout(timer);
         }
     }, [selectedDepartmentId, departments, topLevelDeptId, subDeptId]);
 
@@ -339,14 +358,21 @@ export default function Reporting() {
     useEffect(() => {
         if (!contextDeptId || topLevelDeptId || subDeptId) return;
 
-        const dept = departments.find((d: any) => d.id === contextDeptId);
+        const dept = departments.find((d: DepartmentRecord) => d.id === contextDeptId);
         if (!dept) return;
 
         if (dept.parent?.__typename === 'Department') {
-            setTopLevelDeptId(dept.parent.id);
-            setSubDeptId(dept.id);
+            const parentId = dept.parent.id;
+            const timer = setTimeout(() => {
+                setTopLevelDeptId(parentId);
+                setSubDeptId(dept.id);
+            }, 0);
+            return () => clearTimeout(timer);
         } else {
-            setTopLevelDeptId(dept.id);
+            const timer = setTimeout(() => {
+                setTopLevelDeptId(dept.id);
+            }, 0);
+            return () => clearTimeout(timer);
         }
     }, [contextDeptId, departments, topLevelDeptId, subDeptId]);
 
@@ -359,7 +385,10 @@ export default function Reporting() {
 
         // If user only has access to ONE top-level department, auto-select it
         if (topLevelDepartments.length === 1) {
-            setTopLevelDeptId(topLevelDepartments[0].id);
+            const timer = setTimeout(() => {
+                setTopLevelDeptId(topLevelDepartments[0].id);
+            }, 0);
+            return () => clearTimeout(timer);
         }
     }, [topLevelDepartments, user, topLevelDeptId, subDeptId, contextDeptId]);
 
@@ -378,7 +407,7 @@ export default function Reporting() {
 
     // Build query filters
     const where = useMemo(() => {
-        const baseWhere: any = { deleted: false };
+        const baseWhere: EntriesWhereInput = { deleted: false };
 
         // Department filtering (from page filter dropdown, defaults to context)
         const filterDept = filterDepartmentId || contextDeptId;
@@ -386,7 +415,7 @@ export default function Reporting() {
             baseWhere.department = { id: { lte: filterDept } };
         } else if (user?.role !== 'SUPER_ADMIN' && departments.length > 0) {
             // For non-admins with no specific department selected, restrict to accessible departments
-            const accessibleDeptIds = departments.map((d: any) => d.id);
+            const accessibleDeptIds = departments.map((d: DepartmentRecord) => d.id);
             if (accessibleDeptIds.length > 0) {
                 baseWhere.department = { id: { in: accessibleDeptIds } };
             }
@@ -426,14 +455,14 @@ export default function Reporting() {
         return baseWhere;
     }, [fiscalYearId, startDate, endDate, entryType, selectedPerson, selectedBusiness, selectedCategory, filterDepartmentId, reconcileFilter, user, departments, contextDeptId]);
 
-    const [result] = useQuery({
+    const [result] = useQuery<ReportData>({
         query: GET_REPORT_DATA,
         variables: { where },
         pause: !fiscalYearId,
     });
 
     // Separate query for entries (for export and list view) - loads in parallel
-    const [entriesResult] = useQuery({
+    const [entriesResult] = useQuery<GetEntriesByDepartmentData>({
         query: GET_ENTRIES_FOR_EXPORT,
         variables: { where },
         pause: !fiscalYearId,
@@ -441,16 +470,22 @@ export default function Reporting() {
 
     const { data, fetching, error } = result;
     const { data: entriesData } = entriesResult;
-    const entries = entriesData?.entries || [];
-    const serverReport = data?.entriesReport || { count: 0, totalIncome: 0, totalExpenses: 0, netPosition: 0 };
-    const chartData = data?.entriesChartData || { categoryBreakdown: [], monthlyTrends: [] };
+    const entries = useMemo(() => entriesData?.entries || [], [entriesData?.entries]);
+    const serverReport = useMemo(
+        () => data?.entriesReport || { count: 0, totalIncome: 0, totalExpenses: 0, netPosition: 0 },
+        [data?.entriesReport]
+    );
+    const chartData = useMemo(
+        () => data?.entriesChartData || { categoryBreakdown: [], monthlyTrends: [] },
+        [data?.entriesChartData]
+    );
 
     // Filter entries by payment method (client-side)
     const filteredEntries = useMemo(() => {
         if (!entries) return [];
         if (paymentMethodType === 'ALL') return entries;
 
-        return entries.filter((entry: any) => {
+        return entries.filter((entry: EntryRecord) => {
             const type = entry.paymentMethod?.__typename;
             if (paymentMethodType === 'check') return type === 'PaymentMethodCheck';
             if (paymentMethodType === 'card') return type === 'PaymentMethodCard';
@@ -479,7 +514,7 @@ export default function Reporting() {
         if (filteredEntries.length === 0) return;
 
         const headers = ['Date', 'Description', 'Category', 'Amount', 'Type', 'Payment Method', 'Department', 'Source'];
-        const rows = filteredEntries.map((entry: any) => {
+        const rows = filteredEntries.map((entry: EntryRecord) => {
             const date = new Date(entry.date).toISOString().split('T')[0];
             const amount = parseRational(entry.total);
             const type = entry.category?.type || '';
@@ -502,7 +537,7 @@ export default function Reporting() {
             }
 
             // CSV Escape
-            const escape = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
+            const escape = (str?: string | null) => `"${(str || '').replace(/"/g, '""')}"`;
 
             return [
                 escape(date),
@@ -537,7 +572,7 @@ export default function Reporting() {
         setSelectedCategory(null);
         setTopLevelDeptId('');
         setSubDeptId('');
-        setFilterDepartmentId(null);
+        setManualFilterDepartmentId(null);
         setReconcileFilter('ALL');
     };
 
@@ -595,7 +630,7 @@ export default function Reporting() {
                                     data-tooltip="Select fiscal year for report"
                                     data-tooltip-pos="top"
                                 >
-                                    {fiscalYears.map((fy: any) => (
+                                    {fiscalYears.map((fy) => (
                                         <MenuItem key={fy.id} value={fy.id}>{fy.name}</MenuItem>
                                     ))}
                                 </TextField>
@@ -658,7 +693,7 @@ export default function Reporting() {
                                 sx={{ width: 120 }}
                             >
                                 <MenuItem value="">All</MenuItem>
-                                {topLevelDepartments.map((dept: any) => (
+                                {topLevelDepartments.map((dept) => (
                                     <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
                                 ))}
                             </TextField>
@@ -673,7 +708,7 @@ export default function Reporting() {
                                     sx={{ width: 120 }}
                                 >
                                     <MenuItem value="">All</MenuItem>
-                                    {subDepartments.map((dept: any) => (
+                                    {subDepartments.map((dept) => (
                                         <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
                                     ))}
                                 </TextField>
@@ -716,15 +751,20 @@ export default function Reporting() {
                             {/* Category */}
                             <Box sx={{ width: 250 }}>
                                 <CategoryAutocomplete
-                                    categories={categoryOptions.filter((cat: any) => {
+                                    categories={categoryOptions.filter((cat) => {
                                         if (entryType === 'ALL') return true;
                                         if (entryType === 'CREDIT') return cat.type?.toUpperCase() === 'CREDIT';
                                         if (entryType === 'DEBIT') return cat.type?.toUpperCase() === 'DEBIT';
                                         return true;
-                                    })}
+                                    }).map((cat) => ({
+                                        ...cat,
+                                        displayName: cat.displayName ?? undefined,
+                                        groupName: cat.groupName ?? undefined,
+                                        sortOrder: cat.sortOrder ?? undefined,
+                                    }))}
                                     value={selectedCategory?.id || ''}
                                     onChange={(categoryId) => {
-                                        const cat = categories.find((c: any) => c.id === categoryId);
+                                        const cat = categories.find((c) => c.id === categoryId);
                                         setSelectedCategory(cat || null);
                                     }}
                                     size="small"
@@ -737,7 +777,7 @@ export default function Reporting() {
                                     people={personOptions}
                                     value={selectedPerson?.id || ''}
                                     onChange={(personId) => {
-                                        const person = people.find((p: any) => p.id === personId);
+                                        const person = people.find((p) => p.id === personId);
                                         setSelectedPerson(person || null);
                                         if (person) setSelectedBusiness(null);
                                     }}
@@ -752,7 +792,7 @@ export default function Reporting() {
                                     businesses={businessOptions}
                                     value={selectedBusiness?.id || ''}
                                     onChange={(businessId) => {
-                                        const biz = businesses.find((b: any) => b.id === businessId);
+                                        const biz = businesses.find((b) => b.id === businessId);
                                         setSelectedBusiness(biz || null);
                                         if (biz) setSelectedPerson(null);
                                     }}
@@ -831,7 +871,7 @@ export default function Reporting() {
                                                         <YAxis />
                                                         <Tooltip
                                                             contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', color: '#000', borderRadius: 8 }}
-                                                            formatter={(value) => currencyFormatter.format(Number(value))}
+                                                            formatter={(value: number | string | undefined) => currencyFormatter.format(Number(value ?? 0))}
                                                         />
                                                         <Legend />
                                                         <Area type="monotone" dataKey="income" name="Income" stroke="#00C853" fill="rgba(0, 200, 83, 0.2)" />
@@ -859,7 +899,7 @@ export default function Reporting() {
                                                         <Tooltip
                                                             cursor={{ fill: 'transparent' }}
                                                             contentStyle={{ backgroundColor: 'rgba(255,255,255,0.9)', color: '#000', borderRadius: 8 }}
-                                                            formatter={(value) => currencyFormatter.format(Number(value))}
+                                                            formatter={(value: number | string | undefined) => currencyFormatter.format(Number(value ?? 0))}
                                                         />
                                                         <Bar dataKey="value" fill="#6C5DD3" radius={[0, 4, 4, 0]} barSize={20} />
                                                     </BarChart>
@@ -884,7 +924,7 @@ export default function Reporting() {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {filteredEntries.slice(0, 50).map((entry: any) => (
+                                                    {filteredEntries.slice(0, 50).map((entry: EntryRecord) => (
                                                         <tr key={entry.id} style={{ borderBottom: '1px solid rgba(128,128,128,0.1)' }}>
                                                             <td style={{ padding: 8 }}>{format(parseISO(entry.date), 'MMM dd, yyyy')}</td>
                                                             <td style={{ padding: 8 }}>{entry.description}</td>

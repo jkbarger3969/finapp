@@ -18,6 +18,26 @@ interface User {
     departments: DepartmentPermission[];
 }
 
+interface GraphQlDepartmentPermission {
+    id: string;
+    department: {
+        id: string;
+        name: string;
+    };
+    accessLevel: 'VIEW' | 'EDIT';
+}
+
+interface GraphQlUser {
+    id: string;
+    email: string;
+    name: string;
+    picture?: string;
+    role: 'SUPER_ADMIN' | 'USER';
+    status: 'INVITED' | 'ACTIVE' | 'DISABLED';
+    canInviteUsers?: boolean;
+    departments?: GraphQlDepartmentPermission[];
+}
+
 interface AuthContextType {
     user: User | null;
     token: string | null;
@@ -69,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const parseUserFromResponse = (userData: any): User => {
+    const parseUserFromResponse = (userData: GraphQlUser): User => {
         return {
             id: userData.id,
             email: userData.email,
@@ -78,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: userData.role,
             status: userData.status,
             canInviteUsers: userData.canInviteUsers ?? false,
-            departments: (userData.departments || []).map((d: any) => ({
+            departments: (userData.departments || []).map((d) => ({
                 id: d.id,
                 departmentId: d.department.id,
                 departmentName: d.department.name,
@@ -96,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const parsedUser = JSON.parse(storedUser);
                 setToken(storedToken);
                 setUser(parsedUser);
-            } catch (e) {
+            } catch {
                 localStorage.removeItem(TOKEN_KEY);
                 localStorage.removeItem(USER_KEY);
             }
@@ -187,6 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     }),
                 });
             } catch (e) {
+                console.warn('Logout request failed', e);
             }
         }
 
@@ -280,6 +301,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
     const context = useContext(AuthContext);
     if (!context) {
@@ -288,6 +310,7 @@ export function useAuth() {
     return context;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getAuthToken(): string | null {
     return localStorage.getItem(TOKEN_KEY);
 }

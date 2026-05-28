@@ -43,7 +43,7 @@ const parseRational = (rationalStr: string) => {
     try {
         const { s, n, d } = JSON.parse(rationalStr);
         return (n / d) * s;
-    } catch (e) {
+    } catch {
         return 0;
     }
 };
@@ -51,6 +51,25 @@ const parseRational = (rationalStr: string) => {
 interface SearchDialogProps {
     open: boolean;
     onClose: () => void;
+}
+
+interface SearchEntry {
+    id: string;
+    description?: string | null;
+    date: string;
+    total: string;
+    category?: {
+        name?: string;
+        type?: string;
+    } | null;
+    department?: {
+        id: string;
+        name: string;
+    } | null;
+}
+
+interface SearchData {
+    searchEntries: SearchEntry[];
 }
 
 export default function SearchDialog({ open, onClose }: SearchDialogProps) {
@@ -68,7 +87,7 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const [result] = useQuery({
+    const [result] = useQuery<SearchData>({
         query: SEARCH_DATA_QUERY,
         variables: { query: debouncedQuery, limit: 10 },
         pause: !open || !debouncedQuery.trim(),
@@ -92,18 +111,13 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
         return data?.searchEntries || [];
     }, [data]);
 
-    // Reset selected index when results change
-    useEffect(() => {
-        setSelectedIndex(0);
-    }, [searchResults]);
+    const boundedSelectedIndex = Math.min(selectedIndex, Math.max(searchResults.length - 1, 0));
 
-    // Reset search when dialog closes
-    useEffect(() => {
-        if (!open) {
-            setSearchQuery('');
-            setSelectedIndex(0);
-        }
-    }, [open]);
+    const handleDialogClose = () => {
+        setSearchQuery('');
+        setSelectedIndex(0);
+        onClose();
+    };
 
     // Handle keyboard navigation
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -115,21 +129,21 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
             setSelectedIndex((prev) => Math.max(prev - 1, 0));
         } else if (e.key === 'Enter' && searchResults.length > 0) {
             e.preventDefault();
-            handleSelectResult(searchResults[selectedIndex]);
+            handleSelectResult();
         }
     };
 
-    const handleSelectResult = (_entry: any) => {
+    const handleSelectResult = () => {
         // Pass the search query so Transactions page can filter all matching results
         // Also signal to clear restrictive filters like fiscal year
         navigate('/transactions', { state: { searchQuery: searchQuery, clearFilters: true } });
-        onClose();
+        handleDialogClose();
     };
 
     return (
         <Dialog
             open={open}
-            onClose={onClose}
+            onClose={handleDialogClose}
             maxWidth="sm"
             fullWidth
             TransitionComponent={Fade}
@@ -183,16 +197,16 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
                             </Box>
                         ) : (
                             <List sx={{ p: 0, maxHeight: 400, overflow: 'auto' }}>
-                                {searchResults.map((entry: any, index: number) => {
+                                {searchResults.map((entry: SearchEntry, index: number) => {
                                     const amount = Math.abs(parseRational(entry.total));
                                     const isCredit = entry.category?.type?.toUpperCase() === 'CREDIT';
-                                    const isSelected = index === selectedIndex;
+                                    const isSelected = index === boundedSelectedIndex;
 
                                     return (
                                         <ListItemButton
                                             key={entry.id}
                                             selected={isSelected}
-                                            onClick={() => handleSelectResult(entry)}
+                                            onClick={handleSelectResult}
                                             sx={{
                                                 py: 2,
                                                 px: 3,

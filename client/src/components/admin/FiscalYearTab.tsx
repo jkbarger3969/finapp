@@ -260,8 +260,8 @@ export default function FiscalYearTab() {
                     refetchFiscalYears();
                 }
             }
-        } catch (err: any) {
-            setResultMessage({ type: 'error', message: err.message });
+        } catch (err: unknown) {
+            setResultMessage({ type: 'error', message: err instanceof Error ? err.message : 'Operation failed' });
         }
 
         setTimeout(() => setResultMessage(null), 5000);
@@ -319,8 +319,8 @@ export default function FiscalYearTab() {
                 reexecuteQuery({ requestPolicy: 'network-only' });
                 refetchFiscalYears();
             }
-        } catch (err: any) {
-            setResultMessage({ type: 'error', message: err.message });
+        } catch (err: unknown) {
+            setResultMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to create fiscal year' });
         } finally {
             setSaving(false);
         }

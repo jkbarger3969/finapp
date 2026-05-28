@@ -1,5 +1,11 @@
 import { useQuery } from 'urql';
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import type {
+  EntriesSummary,
+  EntriesWhereInput,
+  GetEntriesByDepartmentData,
+  SearchOrCondition,
+} from '../types/transactions';
 
 const GET_ENTRIES_BY_DEPARTMENT = `
   query GetEntriesByDepartment($where: EntriesWhere!, $limit: Int, $offset: Int) {
@@ -100,6 +106,22 @@ interface UseTransactionsProps {
   hasRefunds?: boolean;
 }
 
+interface DebouncedFilters {
+  departmentId?: string | null;
+  accessibleDepartmentIds: string[];
+  fiscalYearId?: string | null;
+  reconcileFilter: string;
+  startDate?: string;
+  endDate?: string;
+  entryType: string;
+  categoryId?: string;
+  personId?: string;
+  businessId?: string;
+  paymentMethodType: string;
+  searchTerm: string;
+  hasRefunds?: boolean;
+}
+
 export function useTransactions({
   departmentId,
   accessibleDepartmentIds = [],
@@ -118,7 +140,7 @@ export function useTransactions({
 }: UseTransactionsProps) {
 
   // Debounce filter changes to reduce API calls
-  const [debouncedFilters, setDebouncedFilters] = useState({
+  const [debouncedFilters, setDebouncedFilters] = useState<DebouncedFilters>({
     departmentId,
     accessibleDepartmentIds,
     fiscalYearId,
@@ -170,7 +192,7 @@ export function useTransactions({
 
   // Build GraphQL where clause from debounced filters
   const where = useMemo(() => {
-    const baseWhere: any = {
+    const baseWhere: EntriesWhereInput = {
       deleted: false,
     };
 
@@ -229,7 +251,7 @@ export function useTransactions({
       // Using regex for case-insensitive partial match
       const regex = { pattern: term, flags: ["I"] };
 
-      const searchFilter = {
+      const searchFilter: { or: SearchOrCondition[] } = {
         or: [
           { description: regex },
           { category: { name: regex } },
@@ -250,7 +272,7 @@ export function useTransactions({
     return baseWhere;
   }, [debouncedFilters]);
 
-  const [result, reexecuteQuery] = useQuery({
+  const [result, reexecuteQuery] = useQuery<GetEntriesByDepartmentData>({
     query: GET_ENTRIES_BY_DEPARTMENT,
     variables: {
       where,
@@ -268,7 +290,7 @@ export function useTransactions({
   return {
     entries: result.data?.entries || [],
     totalCount: result.data?.entriesCount || 0,
-    summary: result.data?.entriesSummary || { count: 0, balance: 0 },
+    summary: (result.data?.entriesSummary || { count: 0, balance: 0 }) as EntriesSummary,
     fetching: result.fetching,
     error: result.error,
     refresh,

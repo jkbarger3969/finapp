@@ -29,4 +29,5 @@ export function OnlineStatusProvider({ children }: { children: ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useOnlineStatus = () => useContext(OnlineStatusContext);

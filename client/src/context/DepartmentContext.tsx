@@ -1,10 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useQuery } from 'urql';
+import type { FiscalYear } from '../utils/fiscalYear';
 
 interface DepartmentContextType {
     departmentId: string | null;
     fiscalYearId: string;
-    fiscalYears: any[];
+    fiscalYears: FiscalYearRecord[];
     setSelectedDepartment: (deptId: string | null) => void;
     setFiscalYearId: (fyId: string) => void;
     refetchFiscalYears: () => void;
@@ -25,11 +26,22 @@ const GET_FISCAL_YEARS = `
   }
 `;
 
+interface FiscalYearRecord {
+    id: string;
+    name: string;
+    begin: string;
+    end: string;
+}
+
+interface GetFiscalYearsData {
+    fiscalYears: FiscalYearRecord[];
+}
+
 export function DepartmentProvider({ children }: { children: ReactNode }) {
     const [departmentId, setDepartmentId] = useState<string | null>(null);
     const [fiscalYearId, setFiscalYearId] = useState<string>('');
 
-    const [{ data }, reexecuteQuery] = useQuery({
+    const [{ data }, reexecuteQuery] = useQuery<GetFiscalYearsData>({
         query: GET_FISCAL_YEARS,
     });
 
@@ -43,9 +55,11 @@ export function DepartmentProvider({ children }: { children: ReactNode }) {
 
         // Default to current fiscal year based on today's date
         const today = new Date();
-        const currentFY = data.fiscalYears.find((fy: any) => {
-            const fyObj = {
-                ...fy,
+        const currentFY = data.fiscalYears.find((fy) => {
+            const fyObj: FiscalYear = {
+                id: fy.id,
+                name: fy.name,
+                displayName: fy.name,
                 startDate: new Date(fy.begin),
                 endDate: new Date(fy.end)
             };
@@ -53,13 +67,15 @@ export function DepartmentProvider({ children }: { children: ReactNode }) {
         });
 
         if (currentFY) {
-            setFiscalYearId(currentFY.id);
+            const timer = setTimeout(() => setFiscalYearId(currentFY.id), 0);
+            return () => clearTimeout(timer);
         } else {
             // Fallback to the most recent fiscal year
-            const sorted = [...data.fiscalYears].sort((a: any, b: any) =>
+            const sorted = [...data.fiscalYears].sort((a, b) =>
                 new Date(b.end).getTime() - new Date(a.end).getTime()
             );
-            setFiscalYearId(sorted[0].id);
+            const timer = setTimeout(() => setFiscalYearId(sorted[0].id), 0);
+            return () => clearTimeout(timer);
         }
     }, [data, fiscalYearId]);
 
@@ -67,10 +83,11 @@ export function DepartmentProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (!fiscalYearId || !data?.fiscalYears?.length) return;
         
-        const stillExists = data.fiscalYears.some((fy: any) => fy.id === fiscalYearId);
+        const stillExists = data.fiscalYears.some((fy) => fy.id === fiscalYearId);
         if (!stillExists) {
             // Current fiscal year was deleted, reset to find a new one
-            setFiscalYearId('');
+            const timer = setTimeout(() => setFiscalYearId(''), 0);
+            return () => clearTimeout(timer);
         }
     }, [data?.fiscalYears, fiscalYearId]);
 
@@ -92,6 +109,7 @@ export function DepartmentProvider({ children }: { children: ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useDepartment() {
     const context = useContext(DepartmentContext);
     if (!context) {

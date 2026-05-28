@@ -62,8 +62,8 @@ export const ReceiptUpload = ({ entryId, onUploadComplete }: ReceiptUploadProps)
                         setUploadSuccess(false);
                     }, 500);
                 }
-            } catch (err: any) {
-                setError(err.message || "Upload failed");
+            } catch (err: unknown) {
+                setError(err instanceof Error ? err.message : "Upload failed");
             } finally {
                 setUploading(false);
             }
