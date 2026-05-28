@@ -43,28 +43,6 @@ import type {
 } from '../types/filterOptions';
 import type { EntryRecord, EntriesWhereInput, GetEntriesByDepartmentData } from '../types/transactions';
 
-const GET_REPORT_DATA = `
-  query GetReportData($where: EntriesWhere!) {
-    entriesReport(where: $where) {
-      count
-      totalIncome
-      totalExpenses
-      netPosition
-    }
-    entriesChartData(where: $where) {
-      categoryBreakdown {
-        name
-        value
-      }
-      monthlyTrends {
-        month
-        income
-        expenses
-      }
-    }
-  }
-`;
-
 const GET_ENTRIES_FOR_EXPORT = `
   query GetEntriesForExport($where: EntriesWhere!) {
     entries(where: $where, limit: 0) {
@@ -104,6 +82,28 @@ const GET_ENTRIES_FOR_EXPORT = `
         ... on PaymentMethodCheck {
           check {
             checkNumber
+          }
+        }
+      }
+      reconciled
+      refunds {
+        id
+        date
+        description
+        total
+        reconciled
+        paymentMethod {
+          __typename
+          ... on PaymentMethodCard {
+            card {
+              type
+              trailingDigits
+            }
+          }
+          ... on PaymentMethodCheck {
+            check {
+              checkNumber
+            }
           }
         }
       }
@@ -153,23 +153,57 @@ const GET_FILTER_OPTIONS = `
   }
 `;
 
-interface ReportData {
-    entriesReport: {
-        count: number;
-        totalIncome: number;
-        totalExpenses: number;
-        netPosition: number;
-    };
-    entriesChartData: {
-        categoryBreakdown: Array<{ name: string; value: number }>;
-        monthlyTrends: Array<{ month: string; income: number; expenses: number }>;
-    };
+interface ReportAuditRow {
+    id: string;
+    parentEntryId?: string;
+    isRefund: boolean;
+    date: string;
+    description: string;
+    categoryName: string;
+    categoryType: 'CREDIT' | 'DEBIT' | 'UNKNOWN';
+    status: 'Reconciled' | 'Pending';
+    paymentMethodLabel: string;
+    paymentMethodType: 'card' | 'check' | 'cash' | 'online' | 'other';
+    departmentName: string;
+    sourceLabel: string;
+    amount: number;
+    signedAmount: number;
+    rowTypeLabel: 'Transaction' | 'Refund';
 }
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
 });
+
+const getPaymentMethodLabel = (paymentMethod: EntryRecord['paymentMethod'] | null | undefined): string => {
+    if (!paymentMethod) return 'Unknown';
+    if (paymentMethod.__typename === 'PaymentMethodCard') {
+        return `Card ${paymentMethod.card?.type || ''} *${paymentMethod.card?.trailingDigits || ''}`.trim();
+    }
+    if (paymentMethod.__typename === 'PaymentMethodCheck') {
+        return `Check #${paymentMethod.check?.checkNumber || ''}`.trim();
+    }
+    if (paymentMethod.__typename === 'PaymentMethodCash') return 'Cash';
+    if (paymentMethod.__typename === 'PaymentMethodOnline') return 'Online';
+    return 'Calculated/Other';
+};
+
+const getPaymentMethodType = (paymentMethod: EntryRecord['paymentMethod'] | null | undefined): ReportAuditRow['paymentMethodType'] => {
+    if (!paymentMethod) return 'other';
+    if (paymentMethod.__typename === 'PaymentMethodCard') return 'card';
+    if (paymentMethod.__typename === 'PaymentMethodCheck') return 'check';
+    if (paymentMethod.__typename === 'PaymentMethodCash') return 'cash';
+    if (paymentMethod.__typename === 'PaymentMethodOnline') return 'online';
+    return 'other';
+};
+
+const getSourceLabel = (source: EntryRecord['source']): string => {
+    if (!source) return '';
+    if (source.__typename === 'Person') return `${source.personName?.first || ''} ${source.personName?.last || ''}`.trim();
+    if (source.__typename === 'Business') return source.businessName || '';
+    return '';
+};
 
 export default function Reporting() {
     const { departmentId: contextDeptId, fiscalYearId, fiscalYears, setFiscalYearId } = useDepartment();
@@ -455,99 +489,155 @@ export default function Reporting() {
         return baseWhere;
     }, [fiscalYearId, startDate, endDate, entryType, selectedPerson, selectedBusiness, selectedCategory, filterDepartmentId, reconcileFilter, user, departments, contextDeptId]);
 
-    const [result] = useQuery<ReportData>({
-        query: GET_REPORT_DATA,
-        variables: { where },
-        pause: !fiscalYearId,
-    });
-
-    // Separate query for entries (for export and list view) - loads in parallel
+    // Load full entries for report view + export + print
     const [entriesResult] = useQuery<GetEntriesByDepartmentData>({
         query: GET_ENTRIES_FOR_EXPORT,
         variables: { where },
         pause: !fiscalYearId,
     });
 
-    const { data, fetching, error } = result;
-    const { data: entriesData } = entriesResult;
+    const { data: entriesData, fetching, error } = entriesResult;
     const entries = useMemo(() => entriesData?.entries || [], [entriesData?.entries]);
-    const serverReport = useMemo(
-        () => data?.entriesReport || { count: 0, totalIncome: 0, totalExpenses: 0, netPosition: 0 },
-        [data?.entriesReport]
-    );
-    const chartData = useMemo(
-        () => data?.entriesChartData || { categoryBreakdown: [], monthlyTrends: [] },
-        [data?.entriesChartData]
-    );
+    const auditRows = useMemo<ReportAuditRow[]>(() => {
+        const rows: ReportAuditRow[] = [];
 
-    // Filter entries by payment method (client-side)
-    const filteredEntries = useMemo(() => {
-        if (!entries) return [];
-        if (paymentMethodType === 'ALL') return entries;
+        entries.forEach((entry: EntryRecord) => {
+            const amount = Math.abs(parseRational(entry.total));
+            const categoryType = ((entry.category?.type || 'UNKNOWN').toUpperCase() as ReportAuditRow['categoryType']);
+            const signedAmount = categoryType === 'CREDIT' ? amount : -amount;
+            const sourceLabel = getSourceLabel(entry.source);
 
-        return entries.filter((entry: EntryRecord) => {
-            const type = entry.paymentMethod?.__typename;
-            if (paymentMethodType === 'check') return type === 'PaymentMethodCheck';
-            if (paymentMethodType === 'card') return type === 'PaymentMethodCard';
-            if (paymentMethodType === 'cash') return type === 'PaymentMethodCash';
-            if (paymentMethodType === 'online') return type === 'PaymentMethodOnline';
-            return true;
+            rows.push({
+                id: entry.id,
+                isRefund: false,
+                date: entry.date,
+                description: entry.description || '',
+                categoryName: entry.category?.name || 'Uncategorized',
+                categoryType,
+                status: entry.reconciled ? 'Reconciled' : 'Pending',
+                paymentMethodLabel: getPaymentMethodLabel(entry.paymentMethod),
+                paymentMethodType: getPaymentMethodType(entry.paymentMethod),
+                departmentName: entry.department?.name || '',
+                sourceLabel,
+                amount,
+                signedAmount,
+                rowTypeLabel: 'Transaction',
+            });
+
+            (entry.refunds || []).forEach((refund) => {
+                const refundAmount = Math.abs(parseRational(refund.total));
+                const refundSignedAmount = categoryType === 'CREDIT' ? -refundAmount : refundAmount;
+                rows.push({
+                    id: `refund-${refund.id}`,
+                    parentEntryId: entry.id,
+                    isRefund: true,
+                    date: refund.date,
+                    description: refund.description || `Refund for: ${entry.description || 'Transaction'}`,
+                    categoryName: `${entry.category?.name || 'Uncategorized'} (Refund)`,
+                    categoryType,
+                    status: refund.reconciled ? 'Reconciled' : 'Pending',
+                    paymentMethodLabel: getPaymentMethodLabel(refund.paymentMethod as EntryRecord['paymentMethod']),
+                    paymentMethodType: getPaymentMethodType(refund.paymentMethod as EntryRecord['paymentMethod']),
+                    departmentName: entry.department?.name || '',
+                    sourceLabel,
+                    amount: refundAmount,
+                    signedAmount: refundSignedAmount,
+                    rowTypeLabel: 'Refund',
+                });
+            });
         });
-    }, [entries, paymentMethodType]);
 
-    // Use server-side aggregated data for charts and totals
+        rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return rows;
+    }, [entries]);
+
+    const filteredRows = useMemo(() => {
+        if (paymentMethodType === 'ALL') return auditRows;
+        return auditRows.filter((row) => row.paymentMethodType === paymentMethodType);
+    }, [auditRows, paymentMethodType]);
+
     const aggregatedData = useMemo(() => {
+        const totalIncome = filteredRows
+            .filter((r) => r.signedAmount > 0)
+            .reduce((sum, r) => sum + r.signedAmount, 0);
+        const totalExpenses = Math.abs(
+            filteredRows
+                .filter((r) => r.signedAmount < 0)
+                .reduce((sum, r) => sum + r.signedAmount, 0)
+        );
+        const net = totalIncome - totalExpenses;
+        const totalRefunds = filteredRows.filter((r) => r.isRefund).length;
+        const reconciledRows = filteredRows.filter((r) => r.status === 'Reconciled').length;
+        const unreconciledRows = filteredRows.length - reconciledRows;
+
+        const categoryMap = new Map<string, number>();
+        filteredRows.forEach((r) => {
+            if (r.signedAmount >= 0) return;
+            categoryMap.set(r.categoryName, (categoryMap.get(r.categoryName) || 0) + Math.abs(r.signedAmount));
+        });
+        const categoryChartData = Array.from(categoryMap.entries())
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 10);
+
+        const trendMap = new Map<string, { income: number; expenses: number }>();
+        filteredRows.forEach((r) => {
+            const key = format(new Date(r.date), 'MMM yyyy');
+            if (!trendMap.has(key)) trendMap.set(key, { income: 0, expenses: 0 });
+            const v = trendMap.get(key)!;
+            if (r.signedAmount >= 0) v.income += r.signedAmount;
+            else v.expenses += Math.abs(r.signedAmount);
+        });
+        const trendChartData = Array.from(trendMap.entries()).map(([month, v]) => ({ month, income: v.income, expenses: v.expenses }));
+
         return {
-            totalIncome: serverReport.totalIncome,
-            totalExpenses: serverReport.totalExpenses,
-            net: serverReport.netPosition,
-            categoryChartData: chartData.categoryBreakdown,
-            trendChartData: chartData.monthlyTrends
+            totalIncome,
+            totalExpenses,
+            net,
+            totalRefunds,
+            reconciledRows,
+            unreconciledRows,
+            totalRows: filteredRows.length,
+            categoryChartData,
+            trendChartData,
         };
-    }, [serverReport, chartData]);
+    }, [filteredRows]);
 
     const handlePrint = () => {
         window.print();
     };
 
     const handleExportCSV = () => {
-        if (filteredEntries.length === 0) return;
+        if (filteredRows.length === 0) return;
 
-        const headers = ['Date', 'Description', 'Category', 'Amount', 'Type', 'Payment Method', 'Department', 'Source'];
-        const rows = filteredEntries.map((entry: EntryRecord) => {
-            const date = new Date(entry.date).toISOString().split('T')[0];
-            const amount = parseRational(entry.total);
-            const type = entry.category?.type || '';
-            const category = entry.category?.name || '';
-            const dept = entry.department?.name || '';
+        const headers = [
+            'Date',
+            'Record Type',
+            'Status',
+            'Description',
+            'Category',
+            'Category Type',
+            'Signed Amount',
+            'Absolute Amount',
+            'Payment Method',
+            'Department',
+            'Source',
+        ];
 
-            let payment = 'Unknown';
-            if (entry.paymentMethod) {
-                if (entry.paymentMethod.__typename === 'PaymentMethodCard') payment = `Card ${entry.paymentMethod.card?.type} *${entry.paymentMethod.card?.trailingDigits}`;
-                else if (entry.paymentMethod.__typename === 'PaymentMethodCheck') payment = `Check #${entry.paymentMethod.check?.checkNumber}`;
-                else if (entry.paymentMethod.__typename === 'PaymentMethodCash') payment = 'Cash';
-                else if (entry.paymentMethod.__typename === 'PaymentMethodOnline') payment = 'Online';
-                else payment = 'Calculated/Other';
-            }
-
-            let source = '';
-            if (entry.source) {
-                if (entry.source.__typename === 'Person') source = `${entry.source.personName?.first} ${entry.source.personName?.last}`;
-                else if (entry.source.__typename === 'Business') source = entry.source.businessName;
-            }
-
-            // CSV Escape
+        const rows = filteredRows.map((row) => {
             const escape = (str?: string | null) => `"${(str || '').replace(/"/g, '""')}"`;
-
             return [
-                escape(date),
-                escape(entry.description),
-                escape(category),
-                amount.toFixed(2),
-                type,
-                escape(payment),
-                escape(dept),
-                escape(source)
+                escape(format(new Date(row.date), 'yyyy-MM-dd')),
+                escape(row.rowTypeLabel),
+                escape(row.status),
+                escape(row.description),
+                escape(row.categoryName),
+                escape(row.categoryType),
+                row.signedAmount.toFixed(2),
+                row.amount.toFixed(2),
+                escape(row.paymentMethodLabel),
+                escape(row.departmentName),
+                escape(row.sourceLabel),
             ].join(',');
         });
 
@@ -556,7 +646,7 @@ export default function Reporting() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `report_export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+        link.setAttribute('download', `department_audit_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -593,8 +683,8 @@ export default function Reporting() {
                                 variant="outlined"
                                 startIcon={<FileDownloadIcon />}
                                 onClick={handleExportCSV}
-                                disabled={fetching || filteredEntries.length === 0}
-                                data-tooltip="Download report as CSV file"
+                                disabled={fetching || filteredRows.length === 0}
+                                    data-tooltip="Download department audit CSV (transactions + refunds)"
                                 data-tooltip-pos="bottom"
                             >
                                 Export CSV
@@ -603,8 +693,8 @@ export default function Reporting() {
                                 variant="contained"
                                 startIcon={<PrintIcon />}
                                 onClick={handlePrint}
-                                disabled={fetching || filteredEntries.length === 0}
-                                data-tooltip="Print this report"
+                                disabled={fetching || filteredRows.length === 0}
+                                    data-tooltip="Print department audit report (transactions + refunds)"
                                 data-tooltip-pos="bottom"
                             >
                                 Print Report
@@ -822,18 +912,18 @@ export default function Reporting() {
                     {error && <Alert severity="error">Error loading report data: {error.message}</Alert>}
 
                     {
-                        !fetching && !error && filteredEntries.length === 0 && (
+                        !fetching && !error && filteredRows.length === 0 && (
                             <Alert severity="info">No transactions found for the selected criteria.</Alert>
                         )
                     }
 
                     {
-                        !fetching && !error && filteredEntries.length > 0 && (
+                        !fetching && !error && filteredRows.length > 0 && (
                             <Grid container spacing={3}>
                                 {/* Summary Cards */}
                                 <Grid size={{ xs: 12, md: 4 }}>
                                     <Paper sx={{ p: 3, textAlign: 'center', height: '100%', borderTop: '4px solid #00E5FF' }}>
-                                        <Typography color="text.secondary" gutterBottom>Total Income</Typography>
+                                        <Typography color="text.secondary" gutterBottom>Total Inflow (Income + Reconciled Refunds)</Typography>
                                         <Typography variant="h4" color="success.main" fontWeight="bold">
                                             {currencyFormatter.format(aggregatedData.totalIncome)}
                                         </Typography>
@@ -841,7 +931,7 @@ export default function Reporting() {
                                 </Grid>
                                 <Grid size={{ xs: 12, md: 4 }}>
                                     <Paper sx={{ p: 3, textAlign: 'center', height: '100%', borderTop: '4px solid #F65161' }}>
-                                        <Typography color="text.secondary" gutterBottom>Total Expenses</Typography>
+                                        <Typography color="text.secondary" gutterBottom>Total Outflow (Expenses net of Reconciled Refunds)</Typography>
                                         <Typography variant="h4" color="error.main" fontWeight="bold">
                                             {currencyFormatter.format(aggregatedData.totalExpenses)}
                                         </Typography>
@@ -849,9 +939,17 @@ export default function Reporting() {
                                 </Grid>
                                 <Grid size={{ xs: 12, md: 4 }}>
                                     <Paper sx={{ p: 3, textAlign: 'center', height: '100%', borderTop: `4px solid ${aggregatedData.net >= 0 ? '#00E5FF' : '#F65161'}` }}>
-                                        <Typography color="text.secondary" gutterBottom>Net Position</Typography>
+                                        <Typography color="text.secondary" gutterBottom>Department Net Change (Inflow - Outflow)</Typography>
                                         <Typography variant="h4" color={aggregatedData.net >= 0 ? 'success.main' : 'error.main'} fontWeight="bold">
                                             {currencyFormatter.format(aggregatedData.net)}
+                                        </Typography>
+                                    </Paper>
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <Paper sx={{ p: 2 }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                            This audit includes transactions and refunds. Reconciled refunds are applied back to department balances.
+                                            Rows: {aggregatedData.totalRows} | Refund rows: {aggregatedData.totalRefunds} | Reconciled: {aggregatedData.reconciledRows} | Pending: {aggregatedData.unreconciledRows}
                                         </Typography>
                                     </Paper>
                                 </Grid>
@@ -909,36 +1007,42 @@ export default function Reporting() {
                                     </Paper>
                                 </Grid>
 
-                                {/* Detailed Transaction List (Print Only or Table) */}
+                                {/* Detailed audit list (matches Transactions style intent) */}
                                 <Grid size={{ xs: 12 }}>
                                     <Paper sx={{ p: 3 }}>
-                                        <Typography variant="h6" gutterBottom>Transaction Details</Typography>
+                                        <Typography variant="h6" gutterBottom>Department Audit Details (Transactions + Refunds)</Typography>
                                         <Box sx={{ overflowX: 'auto' }}>
                                             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16 }}>
                                                 <thead>
                                                     <tr style={{ borderBottom: '2px solid rgba(128,128,128,0.2)', textAlign: 'left' }}>
                                                         <th style={{ padding: 8 }}>Date</th>
+                                                        <th style={{ padding: 8 }}>Type</th>
+                                                        <th style={{ padding: 8 }}>Status</th>
                                                         <th style={{ padding: 8 }}>Description</th>
                                                         <th style={{ padding: 8 }}>Category</th>
+                                                        <th style={{ padding: 8 }}>Payment</th>
                                                         <th style={{ padding: 8, textAlign: 'right' }}>Amount</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {filteredEntries.slice(0, 50).map((entry: EntryRecord) => (
-                                                        <tr key={entry.id} style={{ borderBottom: '1px solid rgba(128,128,128,0.1)' }}>
-                                                            <td style={{ padding: 8 }}>{format(parseISO(entry.date), 'MMM dd, yyyy')}</td>
-                                                            <td style={{ padding: 8 }}>{entry.description}</td>
-                                                            <td style={{ padding: 8 }}>{entry.category?.name}</td>
-                                                            <td style={{ padding: 8, textAlign: 'right', color: entry.category?.type?.toUpperCase() === 'CREDIT' ? 'green' : 'red', fontWeight: 'bold' }}>
-                                                                {currencyFormatter.format(Math.abs(parseRational(entry.total)))}
+                                                    {filteredRows.slice(0, 200).map((row) => (
+                                                        <tr key={row.id} style={{ borderBottom: '1px solid rgba(128,128,128,0.1)' }}>
+                                                            <td style={{ padding: 8 }}>{format(parseISO(row.date), 'MMM dd, yyyy')}</td>
+                                                            <td style={{ padding: 8 }}>{row.rowTypeLabel}</td>
+                                                            <td style={{ padding: 8 }}>{row.status}</td>
+                                                            <td style={{ padding: 8 }}>{row.description}</td>
+                                                            <td style={{ padding: 8 }}>{row.categoryName}</td>
+                                                            <td style={{ padding: 8 }}>{row.paymentMethodLabel}</td>
+                                                            <td style={{ padding: 8, textAlign: 'right', color: row.signedAmount >= 0 ? 'green' : 'red', fontWeight: 'bold' }}>
+                                                                {currencyFormatter.format(row.signedAmount)}
                                                             </td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
                                             </table>
-                                            {filteredEntries.length > 50 && (
+                                            {filteredRows.length > 200 && (
                                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2, textAlign: 'center' }}>
-                                                    Showing first 50 transactions. Download full export for more.
+                                                    Showing first 200 rows. Export CSV for full audit dataset.
                                                 </Typography>
                                             )}
                                         </Box>

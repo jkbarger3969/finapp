@@ -1333,11 +1333,103 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
     }
   });
 
+  // Reconciled refunds contribute to the same filtered balance scope.
+  // Refund impact uses reverse sign of parent entry category:
+  // - Debit refund => + ; Credit refund => -
+  const whereFilter = where ? await whereEntries(where, accountingDb.db) : {};
+  const refundMatch: FilterQuery<any> = {
+    ...whereFilter,
+    "refunds.deleted.0.value": { $ne: true },
+    "refunds.reconciled.0.value": true,
+  };
+
+  const refundAdjustmentPipeline: any[] = [];
+  if (authService && user?.id) {
+    const authUser = await authService.getUserById(user.id);
+    if (authUser && authUser.role !== "SUPER_ADMIN") {
+      const accessibleDeptIds = await authService.getAccessibleDepartmentIds(user.id);
+      if (accessibleDeptIds.length === 0) {
+        // no-op; adjustment will remain zero
+      } else {
+        const allAccessibleIds = new Set<string>();
+        for (const deptId of accessibleDeptIds) {
+          allAccessibleIds.add(deptId.toString());
+          const descendants = await getDescendantDeptIds(deptId, accountingDb.db);
+          descendants.forEach((id) => allAccessibleIds.add(id.toString()));
+        }
+        const permittedDeptIds = Array.from(allAccessibleIds).map((id) => new ObjectId(id));
+        refundAdjustmentPipeline.push({
+          $match: {
+            "department.0.value": { $in: permittedDeptIds },
+          },
+        });
+      }
+    }
+  }
+
+  refundAdjustmentPipeline.push(
+    { $unwind: "$refunds" },
+    {
+      $lookup: {
+        from: "categories",
+        localField: "category.0.value",
+        foreignField: "_id",
+        as: "categoryDoc",
+      },
+    },
+    { $match: refundMatch },
+    {
+      $project: {
+        categoryType: { $toUpper: { $arrayElemAt: ["$categoryDoc.type", 0] } },
+        refundTotal: { $arrayElemAt: ["$refunds.total.value", 0] },
+      },
+    },
+    {
+      $project: {
+        adjustment: {
+          $cond: [
+            {
+              $or: [
+                { $eq: ["$refundTotal.d", 0] },
+                { $eq: ["$refundTotal.d", null] },
+              ],
+            },
+            0,
+            {
+              $multiply: [
+                {
+                  $abs: {
+                    $multiply: [
+                      { $divide: ["$refundTotal.n", "$refundTotal.d"] },
+                      "$refundTotal.s",
+                    ],
+                  },
+                },
+                { $cond: [{ $eq: ["$categoryType", "CREDIT"] }, -1, 1] },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalAdjustment: { $sum: "$adjustment" },
+      },
+    }
+  );
+
+  const refundAdjustment = await accountingDb
+    .getCollection("entries")
+    .aggregate(refundAdjustmentPipeline)
+    .toArray();
+
   const result = await accountingDb.getCollection("entries").aggregate(pipeline).toArray();
   if (result.length > 0) {
     return {
       count: result[0].count,
-      balance: result[0].balance
+      balance: result[0].balance + (refundAdjustment[0]?.totalAdjustment || 0),
     };
   }
   return { count: 0, balance: 0 };

@@ -93,12 +93,90 @@ export const departmentBudgetSummaries = async (
     }
   ]).toArray();
 
+  // Aggregate reconciled refunds by department for this fiscal year (DEBIT entries only)
+  // Refunds reduce departmental spending once reconciled.
+  const refundsAgg = await db.collection("entries").aggregate([
+    {
+      $match: {
+        "deleted.0.value": { $ne: true },
+        "category.0.value": { $in: debitCategoryIds },
+        "refunds.0": { $exists: true }
+      }
+    },
+    { $unwind: "$refunds" },
+    {
+      $addFields: {
+        refundEffectiveDate: {
+          $cond: [
+            {
+              $eq: [
+                { $arrayElemAt: ["$refunds.dateOfRecord.overrideFiscalYear.value", 0] },
+                true
+              ]
+            },
+            { $arrayElemAt: ["$refunds.dateOfRecord.date.value", 0] },
+            { $arrayElemAt: ["$refunds.date.value", 0] }
+          ]
+        }
+      }
+    },
+    {
+      $match: {
+        "refunds.deleted.0.value": { $ne: true },
+        "refunds.reconciled.0.value": true,
+        refundEffectiveDate: { $gte: begin, $lt: end }
+      }
+    },
+    {
+      $group: {
+        _id: { $arrayElemAt: ["$department.value", 0] },
+        totalRefunded: {
+          $sum: {
+            $let: {
+              vars: {
+                t: { $arrayElemAt: ["$refunds.total.value", 0] }
+              },
+              in: {
+                $cond: [
+                  { $eq: ["$$t", null] },
+                  0,
+                  {
+                    $abs: {
+                      $multiply: [
+                        {
+                          $cond: [
+                            { $or: [{ $eq: ["$$t.d", 0] }, { $eq: ["$$t.d", null] }] },
+                            0,
+                            { $divide: [{ $ifNull: ["$$t.n", 0] }, "$$t.d"] }
+                          ]
+                        },
+                        { $ifNull: ["$$t.s", 1] }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]).toArray();
+
   // Create spending map by department ID
   const spendingByDept = new Map<string, number>();
   spendingAgg.forEach((agg: any) => {
     if (agg._id) {
       spendingByDept.set(agg._id.toString(), agg.totalSpent || 0);
     }
+  });
+
+  // Subtract reconciled refunds from departmental spending
+  refundsAgg.forEach((agg: any) => {
+    if (!agg._id) return;
+    const deptId = agg._id.toString();
+    const currentSpent = spendingByDept.get(deptId) || 0;
+    spendingByDept.set(deptId, currentSpent - (agg.totalRefunded || 0));
   });
 
   // Build department hierarchy info
