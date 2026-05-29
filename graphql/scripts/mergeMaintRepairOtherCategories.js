@@ -10,7 +10,7 @@ const DB_PORT = process.env.DB_PORT || "27017";
 const DB_USER = process.env.DB_USER || "";
 const DB_PASS = process.env.DB_PASS || "";
 const DB_NAME = process.env.DB_NAME || "accounting";
-const SCRIPT_VERSION = "2026-05-29-r4";
+const SCRIPT_VERSION = "2026-05-29-r6";
 
 const APPLY = process.argv.includes("--apply");
 const ARCHIVE_ONLY = process.argv.includes("--archive-only");
@@ -32,6 +32,8 @@ const TARGETS = [
     type: "Debit",
   },
 ];
+
+const SPLIT_REPAIR_AND_MAINT = process.argv.includes("--split-repair-and-maint");
 
 function buildMongoUri() {
   if (DB_USER && DB_PASS) {
@@ -263,6 +265,60 @@ async function ensureCanonicalNotOther(entriesCol, categoriesCol, target) {
   }
 }
 
+async function splitRepairAndMaintBetweenBuildingAndGrounds(entriesCol, categoriesCol) {
+  const repairMaint = await categoriesCol.findOne({ type: "Debit", name: "Repair & Maint" });
+  if (!repairMaint) return { movedToBuilding: 0, movedToGrounds: 0 };
+
+  const building = await categoriesCol.findOne({ type: "Debit", name: "Building Maint/Repair" });
+  const grounds = await categoriesCol.findOne({
+    type: "Debit",
+    name: { $in: ["Grounds Maint/Repair", "Ground Maint/Repair"] },
+  });
+  if (!building || !grounds) return { movedToBuilding: 0, movedToGrounds: 0 };
+
+  const toGroundRegex = /(ground|lawn|landscap|yard|pasture|field|mow|tree|brush|weed|fence|ditch|irrigat|sprinkler)/i;
+  const toBuildingRegex = /(build|hvac|roof|plumb|electri|door|window|wall|floor|paint|facility|structure)/i;
+
+  const cursor = entriesCol.find({
+    "category.0.value": repairMaint._id,
+    "deleted.0.value": { $ne: true },
+  }, { projection: { _id: 1, description: 1, department: 1 } });
+
+  let movedToBuilding = 0;
+  let movedToGrounds = 0;
+
+  // eslint-disable-next-line no-restricted-syntax
+  for await (const e of cursor) {
+    const description = String(e.description || "");
+    const departmentName = String(
+      e?.department?.[0]?.value?.name ||
+      e?.department?.[0]?.displayName ||
+      e?.department?.[0]?.name ||
+      ""
+    );
+    const text = `${description} ${departmentName}`;
+
+    let targetId = building._id;
+    if (toGroundRegex.test(text) && !toBuildingRegex.test(text)) {
+      targetId = grounds._id;
+    } else if (toBuildingRegex.test(text) && !toGroundRegex.test(text)) {
+      targetId = building._id;
+    } else if (toGroundRegex.test(text) && toBuildingRegex.test(text)) {
+      // tie-breaker: prefer grounds only when ground signals dominate by count
+      const groundHits = (text.match(new RegExp(toGroundRegex.source, "gi")) || []).length;
+      const buildHits = (text.match(new RegExp(toBuildingRegex.source, "gi")) || []).length;
+      targetId = groundHits > buildHits ? grounds._id : building._id;
+    }
+
+    // eslint-disable-next-line no-await-in-loop
+    await entriesCol.updateOne({ _id: e._id }, { $set: { "category.0.value": targetId } });
+    if (String(targetId) === String(grounds._id)) movedToGrounds += 1;
+    else movedToBuilding += 1;
+  }
+
+  return { movedToBuilding, movedToGrounds };
+}
+
 async function archiveCategory(categoriesCol, categoryId, note) {
   return categoriesCol.updateOne(
     { _id: categoryId },
@@ -279,6 +335,46 @@ async function archiveCategory(categoriesCol, categoryId, note) {
       },
     }
   );
+}
+
+async function ensureCanonicalGroup(categoriesCol, canonical, canonicalName, applyMode) {
+  const desiredGroup = stripOtherMarkers(canonicalName) || canonicalName;
+  const currentGroup = stripOtherMarkers(canonical.groupName || "");
+  const needsGroupFix =
+    !currentGroup ||
+    isOtherLike(currentGroup) ||
+    currentGroup !== stripOtherMarkers(desiredGroup);
+
+  if (!needsGroupFix) return canonical;
+
+  if (!applyMode) {
+    console.log(
+      `  DRY-RUN: would set canonical groupName '${desiredGroup}' on ${canonical._id} (${canonical.name})`
+    );
+    return canonical;
+  }
+
+  await categoriesCol.updateOne(
+    { _id: canonical._id },
+    {
+      $set: {
+        groupName: desiredGroup,
+        hidden: false,
+        active: true,
+      },
+    }
+  );
+
+  console.log(
+    `  normalized canonical grouping: ${canonical._id} (${canonical.name}) -> groupName='${desiredGroup}'`
+  );
+
+  return {
+    ...canonical,
+    groupName: desiredGroup,
+    hidden: false,
+    active: true,
+  };
 }
 
 async function run() {
@@ -305,6 +401,9 @@ async function run() {
 
     console.log(`Loaded ${allCategories.length} categories`);
     console.log(APPLY ? "MODE: APPLY" : "MODE: DRY-RUN");
+    if (SPLIT_REPAIR_AND_MAINT) {
+      console.log("Split mode enabled for legacy 'Repair & Maint' category");
+    }
     if (APPLY) {
       console.log(ARCHIVE_ONLY ? "Source categories will be archived (hidden)" : "Source categories will be deleted after migration");
     }
@@ -328,6 +427,47 @@ async function run() {
         console.log(
           "WARNING: no sources discovered but legacy wrapped fields detected; run dry-run output review before apply."
         );
+      }
+    }
+
+    if (SPLIT_REPAIR_AND_MAINT) {
+      if (!APPLY) {
+        console.log("");
+        console.log("DRY-RUN: split mode is active; run with --apply to redistribute 'Repair & Maint' refs between Building and Grounds canonical categories.");
+      } else {
+        const split = await splitRepairAndMaintBetweenBuildingAndGrounds(
+          entriesCol,
+          categoriesCol
+        );
+        console.log("");
+        console.log("=== SPLIT REPAIR & MAINT ===");
+        console.log(`moved to Building Maint/Repair: ${split.movedToBuilding}`);
+        console.log(`moved to Grounds Maint/Repair: ${split.movedToGrounds}`);
+
+        const repairMaint = await categoriesCol.findOne({
+          type: "Debit",
+          name: "Repair & Maint",
+        });
+        if (repairMaint) {
+          const remaining = await countEntryRefs(entriesCol, repairMaint._id);
+          if (remaining === 0) {
+            if (ARCHIVE_ONLY) {
+              await archiveCategory(
+                categoriesCol,
+                repairMaint._id,
+                "Split into Building/Grounds Maint/Repair"
+              );
+              console.log("archived legacy 'Repair & Maint' category");
+            } else {
+              await categoriesCol.deleteOne({ _id: repairMaint._id });
+              console.log("deleted legacy 'Repair & Maint' category");
+            }
+          } else {
+            console.log(
+              `WARNING: legacy 'Repair & Maint' still has ${remaining} refs after split`
+            );
+          }
+        }
       }
     }
 
@@ -479,6 +619,13 @@ async function run() {
         }
       }
 
+      canonical = await ensureCanonicalGroup(
+        categoriesCol,
+        canonical,
+        target.canonicalName,
+        APPLY
+      );
+
       // Source set:
       // 1) explicit "- Other" names
       // 2) duplicate canonical categories (same name/type but different _id)
@@ -493,6 +640,26 @@ async function run() {
       [...explicitSources, ...duplicateCanonicalSources].forEach((c) => {
         if (!c._id.equals(canonical._id)) sourcesById.set(String(c._id), c);
       });
+      // Legacy alias often used under Expense Other; merge it into
+      // Building canonical to eliminate duplicate selector entry.
+      if (isBuildingCanonicalVariant(target.canonicalName)) {
+        sameType
+          .filter(
+            (c) =>
+              normName(c.name) === "repair & maint" &&
+              !c._id.equals(canonical._id)
+          )
+          .forEach((c) => sourcesById.set(String(c._id), c));
+      }
+      if (isGroundCanonicalVariant(target.canonicalName)) {
+        sameType
+          .filter(
+            (c) =>
+              normName(c.name) === "repair & maint" &&
+              !c._id.equals(canonical._id)
+          )
+          .forEach((c) => sourcesById.set(String(c._id), c));
+      }
       if (forcedSourceFromCanonical && !forcedSourceFromCanonical._id.equals(canonical._id)) {
         sourcesById.set(String(forcedSourceFromCanonical._id), forcedSourceFromCanonical);
       }
