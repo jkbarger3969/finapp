@@ -62,6 +62,14 @@ function chooseCanonical(candidates) {
   return sorted[0];
 }
 
+function isMaintRepairOtherName(name) {
+  const n = normName(name);
+  return (
+    n.includes("maint/repair") &&
+    (n.includes("other") || n.includes("expense other"))
+  );
+}
+
 async function countEntryRefs(entriesCol, categoryId) {
   return entriesCol.countDocuments({
     "category.0.value": categoryId,
@@ -120,9 +128,37 @@ async function run() {
     if (APPLY) {
       console.log(ARCHIVE_ONLY ? "Source categories will be archived (hidden)" : "Source categories will be deleted after migration");
     }
+    console.log("Auto-discovery enabled for *Maint/Repair*Other* category variants");
     console.log("");
 
-    for (const target of TARGETS) {
+    // Auto-discover additional "*Maint/Repair*Other*" variants so migration
+    // runs across full dataset, not only exact hardcoded names.
+    const discoveredSources = allCategories.filter((c) =>
+      String(c.type || "").toLowerCase() === "debit" &&
+      isMaintRepairOtherName(c.name)
+    );
+
+    const dynamicTargets = [...TARGETS];
+    if (discoveredSources.length) {
+      // Heuristic mapping by name prefix
+      const buildingNames = discoveredSources
+        .filter((c) => normName(c.name).includes("building"))
+        .map((c) => c.name);
+      const groundsNames = discoveredSources
+        .filter((c) => normName(c.name).includes("ground"))
+        .map((c) => c.name);
+
+      if (buildingNames.length) {
+        const t = dynamicTargets.find((x) => x.canonicalName === "Building Maint/Repair");
+        if (t) t.sourceNames = Array.from(new Set([...t.sourceNames, ...buildingNames]));
+      }
+      if (groundsNames.length) {
+        const t = dynamicTargets.find((x) => x.canonicalName === "Grounds Maint/Repair");
+        if (t) t.sourceNames = Array.from(new Set([...t.sourceNames, ...groundsNames]));
+      }
+    }
+
+    for (const target of dynamicTargets) {
       const canonicalNorm = normName(target.canonicalName);
       const sourceNorms = target.sourceNames.map(normName);
 
