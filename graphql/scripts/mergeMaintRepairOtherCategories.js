@@ -107,6 +107,16 @@ function isBuildingCanonicalVariant(name) {
   );
 }
 
+function stripOtherMarkers(value) {
+  if (!value) return value;
+  return String(value)
+    .replace(/\bexpense\s+other\b/gi, "")
+    .replace(/\s*-\s*other\b/gi, "")
+    .replace(/\bother\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 async function countEntryRefs(entriesCol, categoryId) {
   return entriesCol.countDocuments({
     "category.0.value": categoryId,
@@ -311,11 +321,62 @@ async function run() {
         }
         return cNorm === canonicalNorm;
       });
-      const canonical = chooseCanonical(canonicalCandidates);
+      let canonical = chooseCanonical(canonicalCandidates);
 
       if (!canonical) {
-        console.log(`- ${target.canonicalName}: canonical category not found, skipping`);
-        continue;
+        const sourceCandidates = sameType.filter((c) => {
+          const cNorm = normName(c.name);
+          if (sourceNorms.includes(cNorm)) return true;
+          if (isBuildingCanonicalVariant(target.canonicalName)) {
+            return cNorm.includes("building") && isMaintRepairOtherName(cNorm);
+          }
+          if (isGroundCanonicalVariant(target.canonicalName)) {
+            return (cNorm.includes("ground") || cNorm.includes("grounds")) && isMaintRepairOtherName(cNorm);
+          }
+          return isMaintRepairOtherName(cNorm);
+        });
+
+        if (!sourceCandidates.length) {
+          console.log(`- ${target.canonicalName}: canonical category not found, skipping`);
+          continue;
+        }
+
+        const template = chooseCanonical(sourceCandidates);
+        const inferredGroup =
+          stripOtherMarkers(template?.groupName) ||
+          stripOtherMarkers(template?.name) ||
+          stripOtherMarkers(target.canonicalName);
+
+        if (!APPLY) {
+          console.log(`- ${target.canonicalName}: canonical missing`);
+          console.log(
+            `  DRY-RUN: would create canonical category '${target.canonicalName}' using template ${template._id} (${template.name})`
+          );
+          continue;
+        }
+
+        const insertRes = await categoriesCol.insertOne({
+          name: target.canonicalName,
+          type: target.type,
+          hidden: false,
+          active: true,
+          groupName: inferredGroup || null,
+          sortOrder: template?.sortOrder ?? null,
+        });
+        canonical = {
+          _id: insertRes.insertedId,
+          name: target.canonicalName,
+          type: target.type,
+          hidden: false,
+          active: true,
+          groupName: inferredGroup || null,
+          sortOrder: template?.sortOrder ?? null,
+        };
+        allCategories.push(canonical);
+        sameType.push(canonical);
+        console.log(
+          `- ${target.canonicalName}: created canonical ${canonical._id} (${canonical.name})`
+        );
       }
 
       // Source set:
