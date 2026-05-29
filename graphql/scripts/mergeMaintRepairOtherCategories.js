@@ -22,7 +22,12 @@ const TARGETS = [
   },
   {
     canonicalName: "Grounds Maint/Repair",
-    sourceNames: ["Grounds Maint/Repair - Other"],
+    sourceNames: ["Grounds Maint/Repair - Other", "Ground Maint/Repair - Other"],
+    type: "Debit",
+  },
+  {
+    canonicalName: "Ground Maint/Repair",
+    sourceNames: ["Ground Maint/Repair - Other", "Grounds Maint/Repair - Other"],
     type: "Debit",
   },
 ];
@@ -68,6 +73,11 @@ function isMaintRepairOtherName(name) {
     n.includes("maint/repair") &&
     (n.includes("other") || n.includes("expense other"))
   );
+}
+
+function isGroundCanonicalVariant(name) {
+  const n = normName(name);
+  return n === "grounds maint/repair" || n === "ground maint/repair";
 }
 
 async function countEntryRefs(entriesCol, categoryId) {
@@ -153,8 +163,11 @@ async function run() {
         if (t) t.sourceNames = Array.from(new Set([...t.sourceNames, ...buildingNames]));
       }
       if (groundsNames.length) {
-        const t = dynamicTargets.find((x) => x.canonicalName === "Grounds Maint/Repair");
-        if (t) t.sourceNames = Array.from(new Set([...t.sourceNames, ...groundsNames]));
+        dynamicTargets
+          .filter((x) => isGroundCanonicalVariant(x.canonicalName))
+          .forEach((t) => {
+            t.sourceNames = Array.from(new Set([...t.sourceNames, ...groundsNames]));
+          });
       }
     }
 
@@ -166,9 +179,13 @@ async function run() {
         (c) => String(c.type || "").toLowerCase() === String(target.type || "").toLowerCase()
       );
 
-      const canonicalCandidates = sameType.filter(
-        (c) => normName(c.name) === canonicalNorm
-      );
+      const canonicalCandidates = sameType.filter((c) => {
+        const cNorm = normName(c.name);
+        if (isGroundCanonicalVariant(target.canonicalName)) {
+          return isGroundCanonicalVariant(cNorm);
+        }
+        return cNorm === canonicalNorm;
+      });
       const canonical = chooseCanonical(canonicalCandidates);
 
       if (!canonical) {
