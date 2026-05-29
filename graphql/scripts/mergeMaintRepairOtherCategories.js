@@ -87,6 +87,68 @@ async function countEntryRefs(entriesCol, categoryId) {
   });
 }
 
+async function getCategoryUsageStats(entriesCol, categoryId) {
+  const rows = await entriesCol
+    .aggregate([
+      {
+        $match: {
+          "category.0.value": categoryId,
+          "deleted.0.value": { $ne: true },
+        },
+      },
+      {
+        $project: {
+          refundRows: {
+            $size: {
+              $filter: {
+                input: { $ifNull: ["$refunds", []] },
+                as: "refund",
+                cond: {
+                  $ne: [{ $arrayElemAt: ["$$refund.deleted.value", 0] }, true],
+                },
+              },
+            },
+          },
+          reconciledRefundRows: {
+            $size: {
+              $filter: {
+                input: { $ifNull: ["$refunds", []] },
+                as: "refund",
+                cond: {
+                  $and: [
+                    { $ne: [{ $arrayElemAt: ["$$refund.deleted.value", 0] }, true] },
+                    { $eq: [{ $arrayElemAt: ["$$refund.reconciled.value", 0] }, true] },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          entries: { $sum: 1 },
+          entriesWithRefunds: {
+            $sum: { $cond: [{ $gt: ["$refundRows", 0] }, 1, 0] },
+          },
+          refundRows: { $sum: "$refundRows" },
+          reconciledRefundRows: { $sum: "$reconciledRefundRows" },
+        },
+      },
+    ])
+    .toArray();
+
+  return (
+    rows[0] || {
+      entries: 0,
+      entriesWithRefunds: 0,
+      refundRows: 0,
+      reconciledRefundRows: 0,
+    }
+  );
+}
+
 async function moveCategoryRefs(entriesCol, fromId, toId) {
   // Category shape is historical array-based audit field.
   return entriesCol.updateMany(
@@ -219,9 +281,15 @@ async function run() {
 
       for (const source of sources) {
         const beforeCount = await countEntryRefs(entriesCol, source._id);
+        const sourceStatsBefore = await getCategoryUsageStats(entriesCol, source._id);
+        const canonicalStatsBefore = await getCategoryUsageStats(entriesCol, canonical._id);
         totalSourcesProcessed += 1;
 
         console.log(`  source: ${source._id} (${source.name}) -> refs: ${beforeCount}`);
+        console.log(
+          `    refunds on source entries: ${sourceStatsBefore.refundRows} ` +
+            `(reconciled: ${sourceStatsBefore.reconciledRefundRows}, entries with refunds: ${sourceStatsBefore.entriesWithRefunds})`
+        );
 
         if (!APPLY) continue;
 
@@ -232,6 +300,29 @@ async function run() {
         }
 
         const afterCount = await countEntryRefs(entriesCol, source._id);
+        const sourceStatsAfter = await getCategoryUsageStats(entriesCol, source._id);
+        const canonicalStatsAfter = await getCategoryUsageStats(entriesCol, canonical._id);
+
+        const carriedRefundRowsDelta =
+          canonicalStatsAfter.refundRows - canonicalStatsBefore.refundRows;
+        const carriedReconciledRefundRowsDelta =
+          canonicalStatsAfter.reconciledRefundRows -
+          canonicalStatsBefore.reconciledRefundRows;
+
+        console.log(
+          `    refund carry-over delta on canonical: +${carriedRefundRowsDelta} ` +
+            `(reconciled: +${carriedReconciledRefundRowsDelta})`
+        );
+
+        if (
+          sourceStatsBefore.refundRows > 0 &&
+          sourceStatsAfter.refundRows !== 0
+        ) {
+          console.log(
+            `    WARNING: source category still has ${sourceStatsAfter.refundRows} refund rows after move`
+          );
+        }
+
         if (afterCount > 0) {
           console.log(`    WARNING: ${afterCount} refs remain; not removing source category`);
           continue;
