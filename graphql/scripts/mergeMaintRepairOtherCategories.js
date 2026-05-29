@@ -10,7 +10,7 @@ const DB_PORT = process.env.DB_PORT || "27017";
 const DB_USER = process.env.DB_USER || "";
 const DB_PASS = process.env.DB_PASS || "";
 const DB_NAME = process.env.DB_NAME || "accounting";
-const SCRIPT_VERSION = "2026-05-29-r3";
+const SCRIPT_VERSION = "2026-05-29-r4";
 
 const APPLY = process.argv.includes("--apply");
 const ARCHIVE_ONLY = process.argv.includes("--archive-only");
@@ -49,6 +49,28 @@ function normName(name) {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+function unwrapValue(value) {
+  if (Array.isArray(value)) {
+    const first = value[0];
+    if (first && typeof first === "object" && "value" in first) return first.value;
+    return first;
+  }
+  if (value && typeof value === "object" && "value" in value) return value.value;
+  return value;
+}
+
+function normalizeCategory(raw) {
+  return {
+    ...raw,
+    name: unwrapValue(raw.name),
+    type: unwrapValue(raw.type),
+    groupName: unwrapValue(raw.groupName),
+    hidden: unwrapValue(raw.hidden),
+    active: unwrapValue(raw.active),
+    sortOrder: unwrapValue(raw.sortOrder),
+  };
 }
 
 function hasMaintRepairTokens(name) {
@@ -276,9 +298,10 @@ async function run() {
   let totalArchived = 0;
 
   try {
-    const allCategories = await categoriesCol
+    const allCategoriesRaw = await categoriesCol
       .find({}, { projection: { _id: 1, name: 1, type: 1, hidden: 1, active: 1, groupName: 1 } })
       .toArray();
+    const allCategories = allCategoriesRaw.map(normalizeCategory);
 
     console.log(`Loaded ${allCategories.length} categories`);
     console.log(APPLY ? "MODE: APPLY" : "MODE: DRY-RUN");
@@ -296,6 +319,17 @@ async function run() {
         isMaintRepairOtherCategory(c)
     );
     console.log(`Discovered source candidates: ${discoveredSources.length}`);
+
+    if (APPLY && discoveredSources.length === 0) {
+      const legacyWrapped = allCategoriesRaw.some(
+        (c) => Array.isArray(c.name) || Array.isArray(c.groupName) || Array.isArray(c.type)
+      );
+      if (legacyWrapped) {
+        console.log(
+          "WARNING: no sources discovered but legacy wrapped fields detected; run dry-run output review before apply."
+        );
+      }
+    }
 
     const dynamicTargets = [...TARGETS];
     if (discoveredSources.length) {
