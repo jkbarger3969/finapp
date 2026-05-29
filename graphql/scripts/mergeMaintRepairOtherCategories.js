@@ -50,17 +50,31 @@ function normName(name) {
     .toLowerCase();
 }
 
+function hasMaintRepairTokens(name) {
+  const n = normName(name);
+  return n.includes("maint") && n.includes("repair");
+}
+
+function isOtherLike(name) {
+  const n = normName(name);
+  return n.includes("other");
+}
+
 function chooseCanonical(candidates) {
   if (!candidates.length) return null;
   const sorted = [...candidates].sort((a, b) => {
     const aScore =
       (a.hidden === false ? 2 : 0) +
       (a.active === true ? 2 : 0) +
-      (a.groupName ? 1 : 0);
+      (a.groupName ? 1 : 0) +
+      (isOtherLike(a.name) ? -8 : 0) +
+      (isOtherLike(a.groupName) ? -12 : 0);
     const bScore =
       (b.hidden === false ? 2 : 0) +
       (b.active === true ? 2 : 0) +
-      (b.groupName ? 1 : 0);
+      (b.groupName ? 1 : 0) +
+      (isOtherLike(b.name) ? -8 : 0) +
+      (isOtherLike(b.groupName) ? -12 : 0);
     if (aScore !== bScore) return bScore - aScore;
     return String(a._id).localeCompare(String(b._id));
   });
@@ -70,14 +84,27 @@ function chooseCanonical(candidates) {
 function isMaintRepairOtherName(name) {
   const n = normName(name);
   return (
-    n.includes("maint/repair") &&
+    hasMaintRepairTokens(n) &&
     (n.includes("other") || n.includes("expense other"))
   );
 }
 
 function isGroundCanonicalVariant(name) {
   const n = normName(name);
-  return n === "grounds maint/repair" || n === "ground maint/repair";
+  return (
+    (n.includes("ground") || n.includes("grounds")) &&
+    hasMaintRepairTokens(n) &&
+    !isMaintRepairOtherName(n)
+  );
+}
+
+function isBuildingCanonicalVariant(name) {
+  const n = normName(name);
+  return (
+    n.includes("building") &&
+    hasMaintRepairTokens(n) &&
+    !isMaintRepairOtherName(n)
+  );
 }
 
 async function countEntryRefs(entriesCol, categoryId) {
@@ -155,6 +182,39 @@ async function moveCategoryRefs(entriesCol, fromId, toId) {
     { "category.0.value": fromId },
     { $set: { "category.0.value": toId } }
   );
+}
+
+async function ensureCanonicalNotOther(entriesCol, categoriesCol, target) {
+  const debitCategories = await categoriesCol
+    .find(
+      { type: target.type },
+      { projection: { _id: 1, name: 1, type: 1, hidden: 1, active: 1, groupName: 1 } }
+    )
+    .toArray();
+
+  const candidateSet = debitCategories.filter((c) => {
+    if (isBuildingCanonicalVariant(target.canonicalName)) {
+      return isBuildingCanonicalVariant(c.name) || isMaintRepairOtherName(c.name);
+    }
+    if (isGroundCanonicalVariant(target.canonicalName)) {
+      return isGroundCanonicalVariant(c.name) || isMaintRepairOtherName(c.name);
+    }
+    return normName(c.name) === normName(target.canonicalName) || isMaintRepairOtherName(c.name);
+  });
+
+  if (!candidateSet.length) return;
+
+  const canonical = chooseCanonical(candidateSet);
+  const losers = candidateSet.filter((c) => !c._id.equals(canonical._id));
+  for (const loser of losers) {
+    const refs = await countEntryRefs(entriesCol, loser._id);
+    if (refs > 0) {
+      const res = await moveCategoryRefs(entriesCol, loser._id, canonical._id);
+      console.log(
+        `  correction: moved ${res.modifiedCount || 0} refs from ${loser.name} (${loser._id}) -> ${canonical.name} (${canonical._id})`
+      );
+    }
+  }
 }
 
 async function archiveCategory(categoriesCol, categoryId, note) {
@@ -243,6 +303,9 @@ async function run() {
 
       const canonicalCandidates = sameType.filter((c) => {
         const cNorm = normName(c.name);
+        if (isBuildingCanonicalVariant(target.canonicalName)) {
+          return isBuildingCanonicalVariant(cNorm);
+        }
         if (isGroundCanonicalVariant(target.canonicalName)) {
           return isGroundCanonicalVariant(cNorm);
         }
@@ -272,7 +335,10 @@ async function run() {
       const sources = Array.from(sourcesById.values());
 
       console.log(`- ${target.canonicalName}`);
-      console.log(`  canonical: ${canonical._id} (${canonical.name})`);
+      console.log(
+        `  canonical: ${canonical._id} (${canonical.name})` +
+          (canonical.groupName ? ` [group: ${canonical.groupName}]` : "")
+      );
 
       if (!sources.length) {
         console.log("  no source categories found for merge");
@@ -341,6 +407,12 @@ async function run() {
           totalDeleted += 1;
           console.log("    deleted source category");
         }
+      }
+
+      if (APPLY) {
+        // Safety correction: if earlier runs ever chose an \"Other\" canonical,
+        // force all maint/repair refs back to best non-Other canonical.
+        await ensureCanonicalNotOther(entriesCol, categoriesCol, target);
       }
     }
 
