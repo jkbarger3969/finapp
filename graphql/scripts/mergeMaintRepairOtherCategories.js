@@ -10,6 +10,7 @@ const DB_PORT = process.env.DB_PORT || "27017";
 const DB_USER = process.env.DB_USER || "";
 const DB_PASS = process.env.DB_PASS || "";
 const DB_NAME = process.env.DB_NAME || "accounting";
+const SCRIPT_VERSION = "2026-05-29-r3";
 
 const APPLY = process.argv.includes("--apply");
 const ARCHIVE_ONLY = process.argv.includes("--archive-only");
@@ -52,7 +53,11 @@ function normName(name) {
 
 function hasMaintRepairTokens(name) {
   const n = normName(name);
-  return n.includes("maint") && n.includes("repair");
+  return (
+    (n.includes("maint") && n.includes("repair")) ||
+    n.includes("m/r") ||
+    n.includes("m&r")
+  );
 }
 
 function isOtherLike(name) {
@@ -93,7 +98,7 @@ function isMaintRepairOtherCategory(category) {
   const nameNorm = normName(category?.name || "");
   const groupNorm = normName(category?.groupName || "");
   return (
-    hasMaintRepairTokens(nameNorm) &&
+    (hasMaintRepairTokens(nameNorm) || hasMaintRepairTokens(groupNorm)) &&
     (isOtherLike(nameNorm) || isOtherLike(groupNorm))
   );
 }
@@ -259,6 +264,7 @@ async function run() {
   const client = new MongoClient(uri);
 
   console.log(`Connecting to ${DB_HOST}:${DB_PORT}/${DB_NAME} ...`);
+  console.log(`mergeMaintRepairOtherCategories.js v${SCRIPT_VERSION}`);
   await client.connect();
   const db = client.db(DB_NAME);
   const categoriesCol = db.collection("categories");
@@ -289,6 +295,7 @@ async function run() {
         String(c.type || "").toLowerCase() === "debit" &&
         isMaintRepairOtherCategory(c)
     );
+    console.log(`Discovered source candidates: ${discoveredSources.length}`);
 
     const dynamicTargets = [...TARGETS];
     if (discoveredSources.length) {
@@ -465,6 +472,21 @@ async function run() {
 
       if (!sources.length) {
         console.log("  no source categories found for merge");
+        const maintRepairInType = sameType.filter(
+          (c) =>
+            hasMaintRepairTokens(c.name || "") ||
+            hasMaintRepairTokens(c.groupName || "")
+        );
+        if (maintRepairInType.length) {
+          console.log("  debug maint/repair candidates in this type:");
+          maintRepairInType.forEach((c) => {
+            console.log(
+              `    - ${c._id} | name='${c.name}' | group='${c.groupName || ""}' | hidden=${String(
+                c.hidden
+              )} | active=${String(c.active)}`
+            );
+          });
+        }
         continue;
       }
 
