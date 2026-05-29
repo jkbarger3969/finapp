@@ -89,6 +89,15 @@ function isMaintRepairOtherName(name) {
   );
 }
 
+function isMaintRepairOtherCategory(category) {
+  const nameNorm = normName(category?.name || "");
+  const groupNorm = normName(category?.groupName || "");
+  return (
+    hasMaintRepairTokens(nameNorm) &&
+    (isOtherLike(nameNorm) || isOtherLike(groupNorm))
+  );
+}
+
 function isGroundCanonicalVariant(name) {
   const n = normName(name);
   return (
@@ -275,9 +284,10 @@ async function run() {
 
     // Auto-discover additional "*Maint/Repair*Other*" variants so migration
     // runs across full dataset, not only exact hardcoded names.
-    const discoveredSources = allCategories.filter((c) =>
-      String(c.type || "").toLowerCase() === "debit" &&
-      isMaintRepairOtherName(c.name)
+    const discoveredSources = allCategories.filter(
+      (c) =>
+        String(c.type || "").toLowerCase() === "debit" &&
+        isMaintRepairOtherCategory(c)
     );
 
     const dynamicTargets = [...TARGETS];
@@ -328,12 +338,15 @@ async function run() {
           const cNorm = normName(c.name);
           if (sourceNorms.includes(cNorm)) return true;
           if (isBuildingCanonicalVariant(target.canonicalName)) {
-            return cNorm.includes("building") && isMaintRepairOtherName(cNorm);
+            return cNorm.includes("building") && isMaintRepairOtherCategory(c);
           }
           if (isGroundCanonicalVariant(target.canonicalName)) {
-            return (cNorm.includes("ground") || cNorm.includes("grounds")) && isMaintRepairOtherName(cNorm);
+            return (
+              (cNorm.includes("ground") || cNorm.includes("grounds")) &&
+              isMaintRepairOtherCategory(c)
+            );
           }
-          return isMaintRepairOtherName(cNorm);
+          return isMaintRepairOtherCategory(c);
         });
 
         if (!sourceCandidates.length) {
@@ -379,6 +392,52 @@ async function run() {
         );
       }
 
+      let forcedSourceFromCanonical = null;
+      if (canonical && isMaintRepairOtherCategory(canonical)) {
+        const nonOtherCandidates = canonicalCandidates.filter(
+          (c) => !isMaintRepairOtherCategory(c)
+        );
+        if (!nonOtherCandidates.length) {
+          const inferredGroup =
+            stripOtherMarkers(canonical.groupName) ||
+            stripOtherMarkers(canonical.name) ||
+            stripOtherMarkers(target.canonicalName);
+
+          if (!APPLY) {
+            console.log(`- ${target.canonicalName}: canonical currently points to Other group`);
+            console.log(
+              `  DRY-RUN: would create canonical '${target.canonicalName}' and move refs from ${canonical._id} (${canonical.name})`
+            );
+            continue;
+          }
+
+          const previousCanonical = canonical;
+          const insertRes = await categoriesCol.insertOne({
+            name: target.canonicalName,
+            type: target.type,
+            hidden: false,
+            active: true,
+            groupName: inferredGroup || null,
+            sortOrder: previousCanonical?.sortOrder ?? null,
+          });
+          canonical = {
+            _id: insertRes.insertedId,
+            name: target.canonicalName,
+            type: target.type,
+            hidden: false,
+            active: true,
+            groupName: inferredGroup || null,
+            sortOrder: previousCanonical?.sortOrder ?? null,
+          };
+          allCategories.push(canonical);
+          sameType.push(canonical);
+          forcedSourceFromCanonical = previousCanonical;
+          console.log(
+            `- ${target.canonicalName}: created non-Other canonical ${canonical._id} (${canonical.name})`
+          );
+        }
+      }
+
       // Source set:
       // 1) explicit "- Other" names
       // 2) duplicate canonical categories (same name/type but different _id)
@@ -393,6 +452,9 @@ async function run() {
       [...explicitSources, ...duplicateCanonicalSources].forEach((c) => {
         if (!c._id.equals(canonical._id)) sourcesById.set(String(c._id), c);
       });
+      if (forcedSourceFromCanonical && !forcedSourceFromCanonical._id.equals(canonical._id)) {
+        sourcesById.set(String(forcedSourceFromCanonical._id), forcedSourceFromCanonical);
+      }
       const sources = Array.from(sourcesById.values());
 
       console.log(`- ${target.canonicalName}`);
