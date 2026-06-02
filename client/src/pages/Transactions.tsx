@@ -587,18 +587,18 @@ export default function Transactions() {
             renderCell: (params: CellParams) => {
                 if (params.row.isOriginalForRefund || params.row.isSpacerRow) return null;
                 return (
-                    <IconButton
-                        size="small"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setActionMenuAnchor(e.currentTarget);
-                            setActionMenuEntry(params.row);
-                        }}
-                        data-tooltip="Actions"
-                        data-tooltip-pos="left"
-                    >
-                        <MoreVertIcon fontSize="small" />
-                    </IconButton>
+                    <Tooltip title="Actions">
+                        <IconButton
+                            size="small"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setActionMenuAnchor(e.currentTarget);
+                                setActionMenuEntry(params.row);
+                            }}
+                        >
+                            <MoreVertIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
                 );
             },
         },
