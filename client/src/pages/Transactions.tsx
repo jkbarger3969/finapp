@@ -1633,6 +1633,21 @@ export default function Transactions() {
                     setActionMenuEntry(null);
                 }}
             >
+                {(actionMenuEntry?.isRefund || actionMenuEntry?.isRefundForEntry) && (
+                    <MenuItem
+                        onClick={() => {
+                            setEditEntry(actionMenuEntry);
+                            setEditDialogOpen(true);
+                            setActionMenuAnchor(null);
+                            setActionMenuEntry(null);
+                        }}
+                        disabled={!canEditTransaction() || !actionMenuEntry}
+                    >
+                        <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+                        <ListItemText>Edit Refund</ListItemText>
+                    </MenuItem>
+                )}
+                {(actionMenuEntry?.isRefund || actionMenuEntry?.isRefundForEntry) && <Divider />}
                 <MenuItem
                     onClick={() => {
                         setEditEntry(actionMenuEntry);
@@ -1640,7 +1655,7 @@ export default function Transactions() {
                         setActionMenuAnchor(null);
                         setActionMenuEntry(null);
                     }}
-                    disabled={!canEditTransaction()}
+                    disabled={!canEditTransaction() || !actionMenuEntry}
                 >
                     <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
                     <ListItemText>
@@ -1672,7 +1687,7 @@ export default function Transactions() {
                         setActionMenuAnchor(null);
                         setActionMenuEntry(null);
                     }}
-                    disabled={!canEditTransaction()}
+                    disabled={!canEditTransaction() || !actionMenuEntry}
                 >
                     <ListItemIcon>
                         <CheckCircleIcon fontSize="small" color={actionMenuEntry?.reconciled ? "disabled" : "success"} />
@@ -1688,7 +1703,7 @@ export default function Transactions() {
                         setActionMenuAnchor(null);
                         setActionMenuEntry(null);
                     }}
-                    disabled={!canIssueRefund() || !!actionMenuEntry?.isRefund || !!actionMenuEntry?.isRefundForEntry}
+                    disabled={!canIssueRefund() || !actionMenuEntry || !!actionMenuEntry?.isRefund || !!actionMenuEntry?.isRefundForEntry}
                 >
                     <ListItemIcon><ReplayIcon fontSize="small" color="info" /></ListItemIcon>
                     <ListItemText>Issue Refund</ListItemText>
@@ -1708,10 +1723,10 @@ export default function Transactions() {
                         setActionMenuEntry(null);
                     }}
                     sx={{ color: 'error.main' }}
-                    disabled={!isOnline || !canDeleteTransaction()}
+                    disabled={!isOnline || !canDeleteTransaction() || !actionMenuEntry || !!actionMenuEntry?.isRefund || !!actionMenuEntry?.isRefundForEntry}
                 >
                     <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
-                    <ListItemText>Delete Transaction</ListItemText>
+                    <ListItemText>{actionMenuEntry?.isRefund || actionMenuEntry?.isRefundForEntry ? 'Delete Refund' : 'Delete Transaction'}</ListItemText>
                 </MenuItem>
             </Menu>
 
