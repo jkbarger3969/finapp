@@ -1688,7 +1688,7 @@ export default function Transactions() {
                         setActionMenuAnchor(null);
                         setActionMenuEntry(null);
                     }}
-                    disabled={!canIssueRefund()}
+                    disabled={!canIssueRefund() || !!actionMenuEntry?.isRefund || !!actionMenuEntry?.isRefundForEntry}
                 >
                     <ListItemIcon><ReplayIcon fontSize="small" color="info" /></ListItemIcon>
                     <ListItemText>Issue Refund</ListItemText>
