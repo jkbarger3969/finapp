@@ -1643,20 +1643,33 @@ export default function Transactions() {
                     setActionMenuEntry(null);
                 }}
             >
-                <MenuItem
-                    onClick={() => {
-                        setEditEntry(toEditDialogEntry(actionMenuEntry));
-                        setEditDialogOpen(true);
-                        setActionMenuAnchor(null);
-                        setActionMenuEntry(null);
-                    }}
-                    disabled={!canEditTransaction() || !actionMenuEntry}
-                >
-                    <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
-                    <ListItemText>
-                        {actionMenuEntry?.isRefund || actionMenuEntry?.isRefundForEntry ? 'Edit Refund' : 'Edit Transaction'}
-                    </ListItemText>
-                </MenuItem>
+                {(actionMenuEntry?.isRefund || actionMenuEntry?.isRefundForEntry) ? (
+                    <MenuItem
+                        onClick={() => {
+                            setEditEntry(toEditDialogEntry(actionMenuEntry));
+                            setEditDialogOpen(true);
+                            setActionMenuAnchor(null);
+                            setActionMenuEntry(null);
+                        }}
+                        disabled={!canEditTransaction() || !actionMenuEntry}
+                    >
+                        <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+                        <ListItemText>Edit Refund</ListItemText>
+                    </MenuItem>
+                ) : (
+                    <MenuItem
+                        onClick={() => {
+                            setEditEntry(toEditDialogEntry(actionMenuEntry));
+                            setEditDialogOpen(true);
+                            setActionMenuAnchor(null);
+                            setActionMenuEntry(null);
+                        }}
+                        disabled={!canEditTransaction() || !actionMenuEntry}
+                    >
+                        <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+                        <ListItemText>Edit Transaction</ListItemText>
+                    </MenuItem>
+                )}
                 <MenuItem
                     onClick={async () => {
                         if (actionMenuEntry) {

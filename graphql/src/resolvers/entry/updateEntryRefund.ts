@@ -39,7 +39,15 @@ export const updateEntryRefund: MutationResolvers["updateEntryRefund"] = (
 
     const description = descriptionInput?.trim();
 
-    const refundId = new ObjectId(id);
+    const normalizedRefundId = id
+      .replace(/^refund-for-/, "")
+      .replace(/^refund-/, "");
+
+    if (!ObjectId.isValid(normalizedRefundId)) {
+      throw new Error("Invalid refund id");
+    }
+
+    const refundId = new ObjectId(normalizedRefundId);
 
     const docHistory = new DocHistory({ by: user.id, date: reqDateTime });
 

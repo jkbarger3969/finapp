@@ -612,7 +612,15 @@ export const validateEntry = new (class {
       throw new UserInputError("Nothing to update.");
     }
 
-    const refundId = new ObjectId(updateEntryRefund.id);
+    const normalizedRefundId = updateEntryRefund.id
+      .replace(/^refund-for-/, "")
+      .replace(/^refund-/, "");
+
+    if (!ObjectId.isValid(normalizedRefundId)) {
+      throw new UserInputError("Invalid refund id");
+    }
+
+    const refundId = new ObjectId(normalizedRefundId);
 
     await this.refundExists({
       refund: refundId,
