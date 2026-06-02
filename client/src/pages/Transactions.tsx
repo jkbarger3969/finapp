@@ -179,6 +179,18 @@ const toRefundCandidate = (row: TransactionRow | null): RefundCandidateEntry | n
     };
 };
 
+const toEditDialogEntry = (row: TransactionRow | null): TransactionRow | null => {
+    if (!row) return null;
+    if (row.isRefund || row.isRefundForEntry) {
+        return {
+            ...row,
+            id: row.refundId || row.id,
+            isRefund: true,
+        };
+    }
+    return row;
+};
+
 interface CellParams {
     row: TransactionRow;
     value?: unknown;
@@ -1631,24 +1643,9 @@ export default function Transactions() {
                     setActionMenuEntry(null);
                 }}
             >
-                {(actionMenuEntry?.isRefund || actionMenuEntry?.isRefundForEntry) && (
-                    <MenuItem
-                        onClick={() => {
-                            setEditEntry(actionMenuEntry);
-                            setEditDialogOpen(true);
-                            setActionMenuAnchor(null);
-                            setActionMenuEntry(null);
-                        }}
-                        disabled={!canEditTransaction() || !actionMenuEntry}
-                    >
-                        <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
-                        <ListItemText>Edit Refund</ListItemText>
-                    </MenuItem>
-                )}
-                {(actionMenuEntry?.isRefund || actionMenuEntry?.isRefundForEntry) && <Divider />}
                 <MenuItem
                     onClick={() => {
-                        setEditEntry(actionMenuEntry);
+                        setEditEntry(toEditDialogEntry(actionMenuEntry));
                         setEditDialogOpen(true);
                         setActionMenuAnchor(null);
                         setActionMenuEntry(null);
