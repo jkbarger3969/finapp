@@ -716,11 +716,9 @@ export const validateEntry = new (class {
             },
           });
 
-          if (value) {
-            throw new UserInputError(
-              `Entry id "${entry}" is already reconciled.`
-            );
-          }
+          // Allow idempotent reconcile on already-reconciled entries.
+          // This supports admin/user correction workflows where values
+          // may be edited post-reconciliation.
         })()
       ),
       ...(reconcileEntries.refunds || []).map((refund) =>
@@ -743,14 +741,8 @@ export const validateEntry = new (class {
             },
           });
 
-          if (
-            refunds.find(({ id: refundId }) => refundId.equals(id))
-              .reconciled[0].value
-          ) {
-            throw new UserInputError(
-              `Refund id "${refund}" is already reconciled.`
-            );
-          }
+          // Allow idempotent reconcile on already-reconciled refunds.
+          // This supports correction workflows after reconciliation.
         })()
       ),
     ]);

@@ -585,7 +585,7 @@ export default function Transactions() {
             align: 'center',
             headerAlign: 'center',
             renderCell: (params: CellParams) => {
-                if (params.row.isRefund || params.row.isRefundForEntry || params.row.isOriginalForRefund || params.row.isSpacerRow) return null;
+                if (params.row.isOriginalForRefund || params.row.isSpacerRow) return null;
                 return (
                     <IconButton
                         size="small"
@@ -1643,7 +1643,9 @@ export default function Transactions() {
                     disabled={!canEditTransaction()}
                 >
                     <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
-                    <ListItemText>Edit Transaction</ListItemText>
+                    <ListItemText>
+                        {actionMenuEntry?.isRefund || actionMenuEntry?.isRefundForEntry ? 'Edit Refund' : 'Edit Transaction'}
+                    </ListItemText>
                 </MenuItem>
                 <MenuItem
                     onClick={async () => {
