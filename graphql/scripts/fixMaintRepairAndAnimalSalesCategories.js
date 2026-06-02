@@ -12,6 +12,7 @@ const DB_PASS = process.env.DB_PASS || "";
 const DB_NAME = process.env.DB_NAME || "accounting";
 const APPLY = process.argv.includes("--apply");
 const ARCHIVE_ONLY = process.argv.includes("--archive-only");
+const SCRIPT_VERSION = "2026-06-02-r2";
 
 function uri() {
   if (DB_USER && DB_PASS) {
@@ -68,6 +69,18 @@ async function ensureCategory(categories, desired) {
   const same = all.filter((c) => norm(c.name) === norm(desired.name));
   const keep = chooseBest(same);
   if (keep) return { keep, created: false };
+  if (!APPLY) {
+    return {
+      keep: {
+        _id: "(dry-run:would-create)",
+        name: desired.name,
+        type: desired.type,
+        groupName: desired.groupName || desired.name,
+      },
+      created: false,
+      wouldCreate: true,
+    };
+  }
   const ins = await categories.insertOne({
     name: desired.name,
     type: desired.type,
@@ -98,9 +111,10 @@ async function archiveOrDelete(categories, category, note) {
 }
 
 async function mergeDuplicates(categories, entries, name, type) {
-  const list = await categories
-    .find({ type, name }, { projection: { _id: 1, name: 1, type: 1, groupName: 1, hidden: 1, active: 1 } })
+  const allType = await categories
+    .find({ type }, { projection: { _id: 1, name: 1, type: 1, groupName: 1, hidden: 1, active: 1 } })
     .toArray();
+  const list = allType.filter((c) => norm(c.name) === norm(name));
   if (list.length <= 1) {
     return { kept: list[0] || null, moved: 0, touched: 0, actioned: 0 };
   }
@@ -142,6 +156,7 @@ async function run() {
   const entries = db.collection("entries");
 
   console.log(`Connected ${DB_HOST}:${DB_PORT}/${DB_NAME}`);
+  console.log(`fixMaintRepairAndAnimalSalesCategories.js v${SCRIPT_VERSION}`);
   console.log(APPLY ? "MODE: APPLY" : "MODE: DRY-RUN");
 
   try {
@@ -151,7 +166,9 @@ async function run() {
       type: "Debit",
       groupName: "Maint/Repair",
     });
-    if (maint.created) {
+    if (maint.wouldCreate) {
+      console.log(`- DRY-RUN: would create Debit category 'Maint/Repair'`);
+    } else if (maint.created) {
       console.log(`- created Debit category 'Maint/Repair' -> ${maint.keep._id}`);
     } else {
       console.log(`- found Debit category 'Maint/Repair' -> ${maint.keep._id}`);
