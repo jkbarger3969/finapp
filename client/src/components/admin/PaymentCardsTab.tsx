@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation } from 'urql';
 import {
     Box,
@@ -22,7 +22,8 @@ import {
     FormControl,
     InputLabel,
     Chip,
-    Alert
+    Alert,
+    Checkbox
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -41,15 +42,9 @@ const GET_CARDS = `
         name
       }
     }
-    accounts(where: { accountType: CREDIT_CARD }) {
+    creditCardAccounts: accounts(where: { accountType: CREDIT_CARD, active: true }) {
        id
        name
-       # accountType
-    }
-    # Also fetch all accounts for the dropdown
-    allAccounts: accounts {
-        id
-        name
     }
   }
 `;
@@ -100,7 +95,7 @@ interface AccountCardRecord {
 
 interface CardsQueryData {
     accountCards: AccountCardRecord[];
-    allAccounts: CardAccount[];
+    creditCardAccounts: CardAccount[];
 }
 
 interface CardMutationResult {
@@ -127,6 +122,9 @@ export default function PaymentCardsTab() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [cardToDelete, setCardToDelete] = useState<string | null>(null);
     const [editingCard, setEditingCard] = useState<AccountCardRecord | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
+    const defaultAccountId = data?.creditCardAccounts?.[0]?.id || '';
     const [formData, setFormData] = useState({
         accountId: '',
         type: 'VISA',
@@ -148,44 +146,65 @@ export default function PaymentCardsTab() {
         } else {
             setEditingCard(null);
             setFormData({
-                accountId: '', // Needs to be selected
+                accountId: defaultAccountId,
                 type: 'VISA',
                 trailingDigits: '',
                 label: '',
                 active: true
             });
         }
+        setFormError(null);
         setDialogOpen(true);
     };
 
     const handleClose = () => {
         setDialogOpen(false);
         setEditingCard(null);
+        setFormError(null);
     };
 
     const handleSubmit = async () => {
+        const trailingDigits = formData.trailingDigits.trim();
+        if (!/^\d{4}$/.test(trailingDigits)) {
+            setFormError('Last 4 Digits must be exactly 4 numbers.');
+            return;
+        }
+
         if (editingCard) {
-            await updateCard({
+            const res = await updateCard({
                 id: editingCard.id,
                 input: {
                     type: formData.type,
-                    trailingDigits: formData.trailingDigits,
+                    trailingDigits,
                     label: formData.label || null,
                     active: formData.active
                 }
             });
+            if (res.error) {
+                setFormError(res.error.message || 'Unable to update card.');
+                return;
+            }
         } else {
-            await createCard({
+            if (!defaultAccountId) {
+                setFormError('No active credit card account is available. Please create/activate one first.');
+                return;
+            }
+            const res = await createCard({
                 input: {
-                    accountId: formData.accountId,
+                    accountId: defaultAccountId,
                     type: formData.type,
-                    trailingDigits: formData.trailingDigits,
+                    trailingDigits,
                     label: formData.label || null,
                     active: formData.active
                 }
             });
+            if (res.error) {
+                setFormError(res.error.message || 'Unable to create card.');
+                return;
+            }
         }
-        reexecuteQuery({ requestPolicy: 'network-only' });
+        await reexecuteQuery({ requestPolicy: 'network-only' });
+        setSelectedCardIds([]);
         handleClose();
     };
 
@@ -197,10 +216,64 @@ export default function PaymentCardsTab() {
     const confirmDelete = async () => {
         if (cardToDelete) {
             await deleteCard({ id: cardToDelete });
-            reexecuteQuery({ requestPolicy: 'network-only' });
+            await reexecuteQuery({ requestPolicy: 'network-only' });
+            setSelectedCardIds((prev) => prev.filter((id) => id !== cardToDelete));
         }
         setDeleteDialogOpen(false);
         setCardToDelete(null);
+    };
+
+    const sortedCards = useMemo(
+        () =>
+            [...(data?.accountCards || [])].sort((a: AccountCardRecord, b: AccountCardRecord) => {
+                if (a.active !== b.active) return a.active ? -1 : 1;
+                if (a.label && !b.label) return -1;
+                if (!a.label && b.label) return 1;
+                if (a.label && b.label) return a.label.localeCompare(b.label);
+                return a.trailingDigits.localeCompare(b.trailingDigits);
+            }),
+        [data?.accountCards]
+    );
+
+    const allSelected = sortedCards.length > 0 && sortedCards.every((card) => selectedCardIds.includes(card.id));
+    const someSelected = selectedCardIds.length > 0 && !allSelected;
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedCardIds(sortedCards.map((card) => card.id));
+            return;
+        }
+        setSelectedCardIds([]);
+    };
+
+    const handleSelectCard = (id: string, checked: boolean) => {
+        if (checked) {
+            setSelectedCardIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+            return;
+        }
+        setSelectedCardIds((prev) => prev.filter((cardId) => cardId !== id));
+    };
+
+    const handleDeactivateSelected = async () => {
+        if (!selectedCardIds.length) return;
+        setFormError(null);
+        const results = await Promise.all(
+            selectedCardIds.map((id) =>
+                updateCard({
+                    id,
+                    input: {
+                        active: false,
+                    },
+                })
+            )
+        );
+        const firstError = results.find((res) => res.error)?.error;
+        if (firstError) {
+            setFormError(firstError.message || 'Unable to deactivate selected cards.');
+            return;
+        }
+        await reexecuteQuery({ requestPolicy: 'network-only' });
+        setSelectedCardIds([]);
     };
 
     if (fetching) return <Typography>Loading...</Typography>;
@@ -210,19 +283,37 @@ export default function PaymentCardsTab() {
         <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                 <Typography variant="h6">Payment Cards</Typography>
-                <Button
-                    startIcon={<AddIcon />}
-                    variant="contained"
-                    onClick={() => handleOpen()}
-                >
-                    Add Card
-                </Button>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                        variant="outlined"
+                        disabled={!selectedCardIds.length}
+                        onClick={handleDeactivateSelected}
+                    >
+                        Set Selected Inactive
+                    </Button>
+                    <Button
+                        startIcon={<AddIcon />}
+                        variant="contained"
+                        onClick={() => handleOpen()}
+                    >
+                        Add Card
+                    </Button>
+                </Box>
             </Box>
+
+            {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
 
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
                         <TableRow>
+                            <TableCell padding="checkbox">
+                                <Checkbox
+                                    checked={allSelected}
+                                    indeterminate={someSelected}
+                                    onChange={(e) => handleSelectAll(e.target.checked)}
+                                />
+                            </TableCell>
                             <TableCell>Label</TableCell>
                             <TableCell>Last 4 Digits</TableCell>
                             <TableCell>Card Type</TableCell>
@@ -232,20 +323,14 @@ export default function PaymentCardsTab() {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {[...(data?.accountCards || [])]
-                            .sort((a: AccountCardRecord, b: AccountCardRecord) => {
-                                // Active cards first, then by label
-                                if (a.active !== b.active) return a.active ? -1 : 1;
-                                // Then by label (cards with labels first)
-                                if (a.label && !b.label) return -1;
-                                if (!a.label && b.label) return 1;
-                                // Then alphabetically by label
-                                if (a.label && b.label) return a.label.localeCompare(b.label);
-                                // Finally by trailing digits
-                                return a.trailingDigits.localeCompare(b.trailingDigits);
-                            })
-                            .map((card: AccountCardRecord) => (
+                        {sortedCards.map((card: AccountCardRecord) => (
                             <TableRow key={card.id}>
+                                <TableCell padding="checkbox">
+                                    <Checkbox
+                                        checked={selectedCardIds.includes(card.id)}
+                                        onChange={(e) => handleSelectCard(card.id, e.target.checked)}
+                                    />
+                                </TableCell>
                                 <TableCell>
                                     <Typography fontWeight={card.label ? 600 : 400} color={card.label ? 'text.primary' : 'text.secondary'}>
                                         {card.label || '—'}
@@ -278,21 +363,6 @@ export default function PaymentCardsTab() {
             <Dialog open={dialogOpen} onClose={handleClose}>
                 <DialogTitle>{editingCard ? 'Edit Card' : 'Add New Card'}</DialogTitle>
                 <DialogContent sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 400 }}>
-                    {!editingCard && (
-                        <FormControl fullWidth>
-                            <InputLabel>Bank Account</InputLabel>
-                            <Select
-                                value={formData.accountId}
-                                label="Bank Account"
-                                onChange={(e) => setFormData({ ...formData, accountId: e.target.value })}
-                            >
-                                {data?.allAccounts.map((acc: CardAccount) => (
-                                    <MenuItem key={acc.id} value={acc.id}>{acc.name}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    )}
-
                     <FormControl fullWidth>
                         <InputLabel>Card Type</InputLabel>
                         <Select
