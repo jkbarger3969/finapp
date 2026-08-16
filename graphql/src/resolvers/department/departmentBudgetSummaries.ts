@@ -58,8 +58,31 @@ export const departmentBudgetSummaries = async (
     {
       $match: {
         "deleted.0.value": { $ne: true },
-        "date.0.value": { $gte: begin, $lt: end },
         "category.0.value": { $in: debitCategoryIds }
+      }
+    },
+    {
+      // Respect dateOfRecord/overrideFiscalYear the same way refund effective dates do below,
+      // so an entry posted near a fiscal-year boundary with an overridden record date lands
+      // in the correct year here too.
+      $addFields: {
+        entryEffectiveDate: {
+          $cond: [
+            {
+              $eq: [
+                { $arrayElemAt: ["$dateOfRecord.overrideFiscalYear.value", 0] },
+                true
+              ]
+            },
+            { $arrayElemAt: ["$dateOfRecord.date.value", 0] },
+            { $arrayElemAt: ["$date.value", 0] }
+          ]
+        }
+      }
+    },
+    {
+      $match: {
+        entryEffectiveDate: { $gte: begin, $lt: end }
       }
     },
     {
@@ -93,8 +116,9 @@ export const departmentBudgetSummaries = async (
     }
   ]).toArray();
 
-  // Aggregate reconciled refunds by department for this fiscal year (DEBIT entries only)
-  // Refunds reduce departmental spending once reconciled.
+  // Aggregate refunds by department for this fiscal year (DEBIT entries only)
+  // Refunds reduce departmental spending as soon as they're recorded, matching how
+  // the originating entries count immediately regardless of reconciled status.
   const refundsAgg = await db.collection("entries").aggregate([
     {
       $match: {
@@ -123,7 +147,6 @@ export const departmentBudgetSummaries = async (
     {
       $match: {
         "refunds.deleted.0.value": { $ne: true },
-        "refunds.reconciled.0.value": true,
         refundEffectiveDate: { $gte: begin, $lt: end }
       }
     },

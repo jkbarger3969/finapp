@@ -1333,14 +1333,14 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
     }
   });
 
-  // Reconciled refunds contribute to the same filtered balance scope.
+  // Refunds contribute to the same filtered balance scope as soon as they're recorded,
+  // matching how parent entries already count immediately regardless of reconciled status.
   // Refund impact uses reverse sign of parent entry category:
   // - Debit refund => + ; Credit refund => -
   const whereFilter = where ? await whereEntries(where, accountingDb.db) : {};
   const refundMatch: FilterQuery<any> = {
     ...whereFilter,
     "refunds.deleted.0.value": { $ne: true },
-    "refunds.reconciled.0.value": true,
   };
 
   const refundAdjustmentPipeline: any[] = [];
