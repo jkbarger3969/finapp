@@ -50,7 +50,7 @@ export declare const AccountCreditCard: AccountCreditCardResolvers<{
     dataSources: import("../../types").DataSources;
 } & import("../../types").ContextBase, import("../../graphTypes").Omit<import("../../graphTypes").AccountCreditCard, "cards" | "owner"> & {
     cards: import("../../dataSources/accountingDb/types").PaymentCardDbRecord[];
-    owner: import("../../dataSources/accountingDb/types").DepartmentDbRecord | import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").PersonDbRecord;
+    owner: import("../../dataSources/accountingDb/types").BusinessDbRecord | import("../../dataSources/accountingDb/types").DepartmentDbRecord | import("../../dataSources/accountingDb/types").PersonDbRecord;
 }>;
 export declare const AccountChecking: AccountCheckingResolvers<{
     dataSources: import("../../types").DataSources;

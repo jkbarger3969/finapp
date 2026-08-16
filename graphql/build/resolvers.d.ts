@@ -197,7 +197,7 @@ declare const resolvers: {
         entryRefunds?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryRefundDbRecord>[], Record<PropertyKey, never>, {
             dataSources: import("./types").DataSources;
         } & import("./types").ContextBase, Partial<import("./graphTypes").QueryEntryRefundsArgs>>;
-        exportFiscalYear?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "budgets" | "entries" | "fiscalYear"> & {
+        exportFiscalYear?: import("./graphTypes").Resolver<import("./graphTypes").ResolverTypeWrapper<import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "budgets" | "fiscalYear" | "entries"> & {
             budgets: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").BudgetDbRecord>[];
             entries: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").EntryDbRecord>[];
             fiscalYear: import("./graphTypes").ResolverTypeWrapper<import("./dataSources/accountingDb/types").FiscalYearDbRecord>;
@@ -403,7 +403,7 @@ declare const resolvers: {
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").AccountDbRecord>;
     AccountCreditCard?: import("./graphTypes").AccountCreditCardResolvers<{
         dataSources: import("./types").DataSources;
-    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").AccountCreditCard, "owner" | "cards"> & {
+    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").AccountCreditCard, "cards" | "owner"> & {
         cards: import("./dataSources/accountingDb/types").PaymentCardDbRecord[];
         owner: import("./dataSources/accountingDb/types").BusinessDbRecord | import("./dataSources/accountingDb/types").DepartmentDbRecord | import("./dataSources/accountingDb/types").PersonDbRecord;
     }>;
@@ -534,7 +534,7 @@ declare const resolvers: {
     } & import("./types").ContextBase, import("./dataSources/accountingDb/types").FiscalYearDbRecord>;
     FiscalYearExport?: import("./graphTypes").FiscalYearExportResolvers<{
         dataSources: import("./types").DataSources;
-    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "budgets" | "entries" | "fiscalYear"> & {
+    } & import("./types").ContextBase, import("./graphTypes").Omit<import("./graphTypes").FiscalYearExport, "budgets" | "fiscalYear" | "entries"> & {
         budgets: import("./dataSources/accountingDb/types").BudgetDbRecord[];
         entries: import("./dataSources/accountingDb/types").EntryDbRecord[];
         fiscalYear: import("./dataSources/accountingDb/types").FiscalYearDbRecord;

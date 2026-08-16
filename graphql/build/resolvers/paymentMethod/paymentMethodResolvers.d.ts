@@ -31,7 +31,7 @@ export declare const PaymentCheckInterface: PaymentCheckInterfaceResolvers<{
 export declare const PaymentMethodInterface: PaymentMethodInterfaceResolvers<{
     dataSources: import("../../types").DataSources;
 } & import("../../types").ContextBase, import("../../graphTypes").PaymentMethodCash | import("../../graphTypes").PaymentMethodCombination | import("../../graphTypes").PaymentMethodOnline | import("../../graphTypes").PaymentMethodUnknown | (import("../../graphTypes").Omit<import("../../graphTypes").PaymentMethodCard, "card"> & {
-    card: import("../../dataSources/accountingDb/types").PaymentCardDbRecord | import("../../graphTypes").PaymentCard;
+    card: import("../../graphTypes").PaymentCard | import("../../dataSources/accountingDb/types").PaymentCardDbRecord;
 }) | (import("../../graphTypes").Omit<import("../../graphTypes").PaymentMethodCheck, "check"> & {
     check: import("../../graphTypes").PaymentCheck | (import("../../graphTypes").Omit<import("../../graphTypes").AccountCheck, "account"> & {
         account: import("../../dataSources/accountingDb/types").AccountDbRecord;
@@ -40,5 +40,5 @@ export declare const PaymentMethodInterface: PaymentMethodInterfaceResolvers<{
 export declare const PaymentMethodCard: PaymentMethodCardResolvers<{
     dataSources: import("../../types").DataSources;
 } & import("../../types").ContextBase, import("../../graphTypes").Omit<import("../../graphTypes").PaymentMethodCard, "card"> & {
-    card: import("../../dataSources/accountingDb/types").PaymentCardDbRecord | import("../../graphTypes").PaymentCard;
+    card: import("../../graphTypes").PaymentCard | import("../../dataSources/accountingDb/types").PaymentCardDbRecord;
 }>;

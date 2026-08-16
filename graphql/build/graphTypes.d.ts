@@ -351,6 +351,7 @@ export declare type Category = {
     accountNumber?: Maybe<Scalars['String']['output']>;
     active: Scalars['Boolean']['output'];
     aliases: Array<Alias>;
+    allowStandalone?: Maybe<Scalars['Boolean']['output']>;
     ancestors: Array<Category>;
     children: Array<Category>;
     displayName: Scalars['String']['output'];
@@ -1972,6 +1973,7 @@ export declare type CategoryResolvers<ContextType = Context, ParentType = Resolv
     accountNumber?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
     active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
     aliases?: Resolver<Array<ResolversTypes['Alias']>, ParentType, ContextType>;
+    allowStandalone?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
     ancestors?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
     children?: Resolver<Array<ResolversTypes['Category']>, ParentType, ContextType>;
     displayName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
