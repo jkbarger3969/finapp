@@ -31,3 +31,8 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Local tooling / scratch state
+.local
+.verdent
+.qodo
