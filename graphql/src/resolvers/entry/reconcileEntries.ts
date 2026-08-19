@@ -1,12 +1,105 @@
 import { ObjectId } from "mongodb";
 import { validateEntry } from ".";
-import { UpdateOne } from "../../dataSources/accountingDb/accountingDb";
+import { AccountingDb, UpdateOne } from "../../dataSources/accountingDb/accountingDb";
 import {
   EntryDbRecord,
   EntryRefundDbRecord,
 } from "../../dataSources/accountingDb/types";
-import { MutationResolvers } from "../../graphTypes";
+import { MutationResolvers, ReconcileEntries } from "../../graphTypes";
+import { AuthService } from "../../services/authService";
 import { DocHistory, UpdateHistoricalDoc } from "../utils/DocHistory";
+import { getAccessibleDeptIdsWithDescendants } from "../utils/departmentAccess";
+
+/**
+ * Rejects a reconcile request that targets any entry or refund outside the
+ * caller's accessible departments (including descendants). Refunds are
+ * checked against their *parent* entry's department, since refunds don't
+ * carry their own department.
+ */
+async function assertReconcileAccess({
+  input,
+  authService,
+  userId,
+  accountingDb,
+}: {
+  input: ReconcileEntries;
+  authService: AuthService | undefined;
+  userId: ObjectId;
+  accountingDb: AccountingDb;
+}): Promise<void> {
+  const permittedDeptIds = await getAccessibleDeptIdsWithDescendants({
+    authService,
+    userId,
+    db: accountingDb.db,
+  });
+
+  // null => unrestricted (SUPER_ADMIN or no authService wired up)
+  if (!permittedDeptIds) {
+    return;
+  }
+
+  const entryIds = (input.entries || []).filter(
+    (id): id is string => id != null
+  );
+  const refundIds = (input.refunds || []).filter(
+    (id): id is string => id != null
+  );
+
+  if (entryIds.length === 0 && refundIds.length === 0) {
+    return;
+  }
+
+  const permittedDeptIdStrings = new Set(
+    permittedDeptIds.map((id) => id.toString())
+  );
+
+  const entryObjectIds = entryIds.map((id) => new ObjectId(id));
+  const refundObjectIds = refundIds.map((id) => new ObjectId(id));
+
+  const referencedEntries = await accountingDb.db
+    .collection<EntryDbRecord>("entries")
+    .find(
+      {
+        $or: [
+          ...(entryObjectIds.length ? [{ _id: { $in: entryObjectIds } }] : []),
+          ...(refundObjectIds.length
+            ? [{ "refunds.id": { $in: refundObjectIds } }]
+            : []),
+        ],
+      },
+      {
+        projection: { _id: 1, department: 1, "refunds.id": 1 },
+      }
+    )
+    .toArray();
+
+  const entryById = new Map(
+    referencedEntries.map((entry) => [entry._id.toString(), entry])
+  );
+
+  for (const id of entryIds) {
+    const entry = entryById.get(id);
+    const deptId = entry?.department?.[0]?.value?.toString();
+    if (!entry || !deptId || !permittedDeptIdStrings.has(deptId)) {
+      throw new Error(`Unauthorized: cannot reconcile entry "${id}"`);
+    }
+  }
+
+  const parentEntryByRefundId = new Map<string, EntryDbRecord>();
+  for (const entry of referencedEntries) {
+    for (const refund of entry.refunds || []) {
+      parentEntryByRefundId.set(refund.id.toString(), entry);
+    }
+  }
+
+  for (const id of refundIds) {
+    const parentEntry = parentEntryByRefundId.get(id);
+    const deptId = parentEntry?.department?.[0]?.value?.toString();
+    if (!parentEntry || !deptId || !permittedDeptIdStrings.has(deptId)) {
+      throw new Error(`Unauthorized: cannot reconcile refund "${id}"`);
+    }
+  }
+}
 
 export const reconcileEntries: MutationResolvers["reconcileEntries"] = async (
   _,
@@ -21,6 +114,13 @@ export const reconcileEntries: MutationResolvers["reconcileEntries"] = async (
 
   await validateEntry.reconcileEntries({
     reconcileEntries: input,
+    accountingDb,
+  });
+
+  await assertReconcileAccess({
+    input,
+    authService,
+    userId: user.id,
     accountingDb,
   });
 

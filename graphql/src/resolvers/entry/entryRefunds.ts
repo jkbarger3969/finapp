@@ -2,16 +2,38 @@ import { ObjectId } from "mongodb";
 import { EntryRefundDbRecord } from "../../dataSources/accountingDb/types";
 
 import { QueryResolvers } from "../../graphTypes";
+import { Context } from "../../types";
+import { getAccessibleDeptIdsWithDescendants } from "../utils/departmentAccess";
 import { whereEntryRefunds, whereEntries } from "./entries";
 
 export const entryRefunds: QueryResolvers["entryRefunds"] = async (
   _,
   { where, entriesWhere },
-  { dataSources: { accountingDb } }
+  context
 ) => {
+  const { dataSources: { accountingDb }, authService, user } = context as Context;
+
   const pipeline: object[] = [];
 
   const entriesCollect = accountingDb.getCollection("entries");
+
+  const permittedDeptIds = await getAccessibleDeptIdsWithDescendants({
+    authService,
+    userId: user?.id,
+    db: accountingDb.db,
+  });
+
+  if (permittedDeptIds) {
+    if (permittedDeptIds.length === 0) {
+      return [];
+    }
+
+    pipeline.push({
+      $match: {
+        "department.0.value": { $in: permittedDeptIds },
+      },
+    });
+  }
 
   if (entriesWhere) {
     const entryIds = (

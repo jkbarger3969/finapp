@@ -4,6 +4,7 @@ import { OnlineStatusProvider } from "./context/OnlineStatusContext";
 import MainLayout from "./components/Layout/MainLayout";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
+import Unreconciled from "./pages/Unreconciled";
 import Budget from "./pages/Budget";
 import Reporting from "./pages/Reporting";
 import Admin from "./pages/Admin";
@@ -38,6 +39,7 @@ function App() {
                               <Route path="/" element={<PageTransition><Dashboard /></PageTransition>} />
                               <Route path="/transactions" element={<PageTransition><Transactions /></PageTransition>} />
                               <Route path="/transactions/:departmentId/:fiscalYear" element={<PageTransition><Transactions /></PageTransition>} />
+                              <Route path="/unreconciled" element={<PageTransition><Unreconciled /></PageTransition>} />
                               <Route path="/budget" element={<PageTransition><Budget /></PageTransition>} />
                               <Route path="/reporting" element={<PageTransition><Reporting /></PageTransition>} />
                               <Route path="/admin" element={<PageTransition><Admin /></PageTransition>} />

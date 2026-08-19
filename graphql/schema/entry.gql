@@ -252,6 +252,11 @@ type Query {
   entriesCount(where: EntriesWhere, filterRefunds: Boolean): Int!
   entriesSummary(where: EntriesWhere): EntriesSummary!
   entriesReport(where: EntriesWhere): EntriesReport!
+  """
+  Count of unreconciled entries plus unreconciled refunds (including refunds
+  on an already-reconciled entry) across the caller's accessible departments.
+  """
+  unreconciledCount: Int!
 }
 
 type EntriesSummary {

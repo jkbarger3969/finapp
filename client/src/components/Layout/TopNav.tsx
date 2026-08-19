@@ -4,6 +4,7 @@ import {
     IconButton,
     Button,
     Avatar,
+    Badge,
     Tooltip,
     useTheme,
     Menu,
@@ -20,29 +21,52 @@ import {
     DarkMode as DarkModeIcon,
     Dashboard as DashboardIcon,
     Receipt as ReceiptIcon,
+    PendingActions as PendingActionsIcon,
     PieChart as PieChartIcon,
     Assessment as AssessmentIcon,
     AdminPanelSettings as AdminPanelSettingsIcon,
     Logout as LogoutIcon,
     Person as PersonIcon,
 } from "@mui/icons-material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery } from "urql";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useLayout } from "../../context/LayoutContext";
 import { useThemeMode } from "../../context/ThemeModeContext";
 import InviteUserDialog from "../InviteUserDialog";
 
+const GET_UNRECONCILED_COUNT = `
+  query GetUnreconciledCount {
+    unreconciledCount
+  }
+`;
+
+interface UnreconciledCountData {
+    unreconciledCount: number;
+}
+
 export default function TopNav() {
     const theme = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
     const { user, logout, isSuperAdmin } = useAuth();
-    const { openEntryDialog } = useLayout();
+    const { openEntryDialog, refreshTrigger } = useLayout();
     const { mode, toggleTheme } = useThemeMode();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const userMenuOpen = Boolean(anchorEl);
+
+    const [{ data: unreconciledData }, reexecuteUnreconciledCount] = useQuery<UnreconciledCountData>({
+        query: GET_UNRECONCILED_COUNT,
+    });
+    const unreconciledCount = unreconciledData?.unreconciledCount || 0;
+
+    useEffect(() => {
+        if (refreshTrigger > 0) {
+            reexecuteUnreconciledCount({ requestPolicy: 'network-only' });
+        }
+    }, [refreshTrigger, reexecuteUnreconciledCount]);
 
     const handleUserMenuClick = (event: React.MouseEvent<HTMLElement>) => {
         setAnchorEl(event.currentTarget);
@@ -61,6 +85,15 @@ export default function TopNav() {
     const menuItems = [
         { text: "Dashboard", path: "/", icon: <DashboardIcon sx={{ fontSize: 20 }} /> },
         { text: "Transactions", path: "/transactions", icon: <ReceiptIcon sx={{ fontSize: 20 }} /> },
+        {
+            text: "Unreconciled",
+            path: "/unreconciled",
+            icon: (
+                <Badge badgeContent={unreconciledCount} color="warning" max={99}>
+                    <PendingActionsIcon sx={{ fontSize: 20 }} />
+                </Badge>
+            ),
+        },
         { text: "Budget", path: "/budget", icon: <PieChartIcon sx={{ fontSize: 20 }} /> },
         { text: "Reports", path: "/reporting", icon: <AssessmentIcon sx={{ fontSize: 20 }} /> },
         ...(isSuperAdmin ? [{ text: "Admin", path: "/admin", icon: <AdminPanelSettingsIcon sx={{ fontSize: 20 }} /> }] : []),

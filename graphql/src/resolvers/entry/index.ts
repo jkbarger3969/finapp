@@ -2,6 +2,7 @@ export { entry } from "./entry";
 export { entryRefunds } from "./entryRefunds";
 export { entryRefund } from "./entryRefund";
 export { entries, whereEntries, searchEntries, entriesCount, entriesSummary, entriesReport, entriesChartData } from "./entries";
+export { unreconciledCount } from "./unreconciledCount";
 export { Entry, EntryItem, EntryRefund } from "./entryResolvers";
 export { addNewEntry } from "./addNewEntry";
 export { addNewEntryRefund } from "./addNewEntryRefund";

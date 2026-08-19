@@ -1143,6 +1143,11 @@ export type Query = {
   /** Search entries by description, category, department, or amount. */
   searchEntries: Array<Entry>;
   sources: Array<Source>;
+  /**
+   * Count of unreconciled entries plus unreconciled refunds (including refunds
+   * on an already-reconciled entry) across the caller's accessible departments.
+   */
+  unreconciledCount: Scalars['Int']['output'];
   user?: Maybe<AuthUser>;
   users: Array<AuthUser>;
 };
@@ -2508,6 +2513,7 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   person?: Resolver<ResolversTypes['Person'], ParentType, ContextType, RequireFields<QueryPersonArgs, 'id'>>;
   searchEntries?: Resolver<Array<ResolversTypes['Entry']>, ParentType, ContextType, RequireFields<QuerySearchEntriesArgs, 'limit' | 'query'>>;
   sources?: Resolver<Array<ResolversTypes['Source']>, ParentType, ContextType, RequireFields<QuerySourcesArgs, 'searchByName'>>;
+  unreconciledCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   user?: Resolver<Maybe<ResolversTypes['AuthUser']>, ParentType, ContextType, RequireFields<QueryUserArgs, 'id'>>;
   users?: Resolver<Array<ResolversTypes['AuthUser']>, ParentType, ContextType, Partial<QueryUsersArgs>>;
 };
