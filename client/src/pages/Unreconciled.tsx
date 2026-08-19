@@ -4,8 +4,10 @@ import {
     Box,
     Chip,
     Divider,
+    MenuItem,
     Paper,
     Stack,
+    TextField,
     Typography,
     Button,
 } from '@mui/material';
@@ -15,15 +17,18 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useSnackbar } from 'notistack';
 
 import PageHeader from '../components/PageHeader';
+import CategoryAutocomplete from '../components/CategoryAutocomplete';
 import { EmptyState } from '../components/common/EmptyState';
 import { TableSkeleton } from '../components/common/TableSkeleton';
+import { useAuth } from '../context/AuthContext';
 import { useLayout } from '../context/LayoutContext';
 import { parseRational } from '../utils/rational';
 import type { DepartmentRef, CategoryRef, PaymentMethod } from '../types/transactions';
+import type { CategoryRecord, DepartmentRecord } from '../types/filterOptions';
 
 const GET_UNRECONCILED = `
-  query GetUnreconciled {
-    entries(where: { reconciled: false, deleted: false }, limit: 0) {
+  query GetUnreconciled($where: EntriesWhere!, $refundEntriesWhere: EntriesWhere!) {
+    entries(where: $where, limit: 0) {
       id
       description
       date
@@ -38,7 +43,7 @@ const GET_UNRECONCILED = `
     }
     entryRefunds(
       where: { reconciled: false, deleted: false }
-      entriesWhere: { deleted: false }
+      entriesWhere: $refundEntriesWhere
     ) {
       id
       description
@@ -55,6 +60,24 @@ const GET_UNRECONCILED = `
         department { id name }
         category { id name type }
       }
+    }
+    departments {
+      id
+      name
+      parent {
+        __typename
+        ... on Department { id name }
+        ... on Business { id name }
+      }
+    }
+    categories {
+      id
+      name
+      displayName
+      type
+      hidden
+      groupName
+      sortOrder
     }
   }
 `;
@@ -95,6 +118,8 @@ interface UnreconciledRefund {
 interface GetUnreconciledData {
     entries: UnreconciledEntry[];
     entryRefunds: UnreconciledRefund[];
+    departments: DepartmentRecord[];
+    categories: CategoryRecord[];
 }
 
 interface UnreconciledRow {
@@ -116,16 +141,118 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
 });
 
 export default function Unreconciled() {
+    const { user } = useAuth();
     const { triggerRefresh } = useLayout();
     const { enqueueSnackbar } = useSnackbar();
     const [rowSelectionModel, setRowSelectionModel] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set() });
 
+    const [topLevelDeptId, setTopLevelDeptId] = useState('');
+    const [subDeptId, setSubDeptId] = useState('');
+    const [categoryId, setCategoryId] = useState('');
+
+    // entries/entryRefunds are already scoped server-side to the caller's
+    // accessible departments; department/category here only narrow further.
+    const where = useMemo(() => {
+        const w: Record<string, unknown> = { reconciled: false, deleted: false };
+        if (subDeptId) {
+            w.department = { id: { eq: subDeptId } };
+        } else if (topLevelDeptId) {
+            w.department = { id: { lte: topLevelDeptId } };
+        }
+        if (categoryId) {
+            w.category = { id: { eq: categoryId } };
+        }
+        return w;
+    }, [topLevelDeptId, subDeptId, categoryId]);
+
+    // Refunds don't carry their own department/category - filter by the
+    // parent entry instead, same fields, via entriesWhere.
+    const refundEntriesWhere = useMemo(() => {
+        const w: Record<string, unknown> = { deleted: false };
+        if (subDeptId) {
+            w.department = { id: { eq: subDeptId } };
+        } else if (topLevelDeptId) {
+            w.department = { id: { lte: topLevelDeptId } };
+        }
+        if (categoryId) {
+            w.category = { id: { eq: categoryId } };
+        }
+        return w;
+    }, [topLevelDeptId, subDeptId, categoryId]);
+
     const [{ data, fetching, error }, reexecuteQuery] = useQuery<GetUnreconciledData>({
         query: GET_UNRECONCILED,
+        variables: { where, refundEntriesWhere },
         requestPolicy: 'cache-and-network',
     });
 
     const [, reconcile] = useMutation(RECONCILE_MUTATION);
+
+    const departmentsRaw = data?.departments || [];
+    const categories = data?.categories || [];
+
+    // departments is already server-scoped to what the caller can access;
+    // this mirrors Transactions.tsx's client-side pass to also surface
+    // parent departments for navigation when the user only has subdept access.
+    const departments = useMemo(() => {
+        let depts = departmentsRaw;
+        if (user?.role !== 'SUPER_ADMIN') {
+            const userDeptIds = user?.departments?.map((d) => d.departmentId) || [];
+            if (userDeptIds.length > 0) {
+                const accessibleDeptIds = new Set<string>();
+                departmentsRaw.forEach((d) => {
+                    if (userDeptIds.includes(d.id)) accessibleDeptIds.add(d.id);
+                    if (d.parent?.__typename === 'Department' && userDeptIds.includes(d.parent.id)) {
+                        accessibleDeptIds.add(d.id);
+                    }
+                });
+                departmentsRaw.forEach((d) => {
+                    if (accessibleDeptIds.has(d.id) && d.parent?.__typename === 'Department') {
+                        accessibleDeptIds.add(d.parent.id);
+                    }
+                });
+                depts = departmentsRaw.filter((d) => accessibleDeptIds.has(d.id));
+            }
+        }
+        return depts;
+    }, [departmentsRaw, user]);
+
+    const topLevelDepartments = useMemo(
+        () => departments.filter((d) => d.parent?.__typename === 'Business' || !d.parent),
+        [departments]
+    );
+    const allChildDepartments = useMemo(
+        () => departments.filter((d) => d.parent?.__typename === 'Department'),
+        [departments]
+    );
+
+    const subDepartments = useMemo(() => {
+        let subs: DepartmentRecord[] = topLevelDeptId
+            ? allChildDepartments.filter((d) => d.parent?.id === topLevelDeptId)
+            : allChildDepartments;
+
+        if (user?.role !== 'SUPER_ADMIN') {
+            const userDeptIds = user?.departments?.map((d) => d.departmentId) || [];
+            if (userDeptIds.length > 0) {
+                subs = subs.filter((d) =>
+                    userDeptIds.includes(d.id) ||
+                    (topLevelDeptId && userDeptIds.includes(topLevelDeptId)) ||
+                    (d.parent?.id ? userDeptIds.includes(d.parent.id) : false)
+                );
+            }
+        }
+        return subs;
+    }, [topLevelDeptId, allChildDepartments, user]);
+
+    const categoryOptions = useMemo(
+        () => categories.map((c) => ({
+            ...c,
+            displayName: c.displayName ?? undefined,
+            groupName: c.groupName ?? undefined,
+            sortOrder: c.sortOrder ?? undefined,
+        })),
+        [categories]
+    );
 
     const rows = useMemo<UnreconciledRow[]>(() => {
         const transactionRows: UnreconciledRow[] = (data?.entries || []).map((entry) => ({
@@ -282,11 +409,57 @@ export default function Unreconciled() {
             />
 
             <Paper sx={{ p: 2, mb: 2 }}>
-                <Stack direction="row" spacing={3} alignItems="center">
+                <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <TextField
+                        select
+                        label="Dept"
+                        size="small"
+                        value={topLevelDeptId}
+                        onChange={(e) => {
+                            setTopLevelDeptId(e.target.value);
+                            setSubDeptId('');
+                        }}
+                        sx={{ width: 140 }}
+                    >
+                        <MenuItem value="">All</MenuItem>
+                        {topLevelDepartments.map((dept) => (
+                            <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
+                        ))}
+                    </TextField>
+
+                    {subDepartments.length > 0 && (
+                        <TextField
+                            select
+                            label="Sub Dept"
+                            size="small"
+                            value={subDeptId}
+                            onChange={(e) => setSubDeptId(e.target.value)}
+                            sx={{ width: 140 }}
+                        >
+                            <MenuItem value="">All</MenuItem>
+                            {subDepartments.map((dept) => (
+                                <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
+                            ))}
+                        </TextField>
+                    )}
+
+                    <Box sx={{ width: 220 }}>
+                        <CategoryAutocomplete
+                            categories={categoryOptions}
+                            value={categoryId}
+                            onChange={setCategoryId}
+                            size="small"
+                        />
+                    </Box>
+
+                    <Divider orientation="vertical" flexItem sx={{ height: 24, my: 'auto' }} />
+
                     <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
                         Total Unreconciled: <Box component="span" sx={{ color: 'text.primary' }}>{rows.length}</Box>
                     </Typography>
-                    <Divider orientation="vertical" flexItem sx={{ height: 24, my: 'auto' }} />
+
+                    <Box sx={{ flexGrow: 1 }} />
+
                     <Button
                         variant="contained"
                         color="success"

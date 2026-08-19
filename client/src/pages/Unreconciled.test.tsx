@@ -1,12 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useQueryMock = vi.fn();
 const useMutationMock = vi.fn();
 const reconcileMock = vi.fn();
 const triggerRefreshMock = vi.fn();
 const enqueueSnackbarMock = vi.fn();
+const useAuthMock = vi.fn();
 
 vi.mock('urql', () => ({
     useQuery: (...args: unknown[]) => useQueryMock(...args),
@@ -16,6 +17,12 @@ vi.mock('urql', () => ({
 vi.mock('../context/LayoutContext', () => ({
     useLayout: () => ({ triggerRefresh: triggerRefreshMock }),
 }));
+
+vi.mock('../context/AuthContext', () => ({
+    useAuth: () => useAuthMock(),
+}));
+
+const superAdminUser = { id: 'user-1', role: 'SUPER_ADMIN', departments: [] };
 
 vi.mock('notistack', () => ({
     useSnackbar: () => ({ enqueueSnackbar: enqueueSnackbarMock }),
@@ -47,11 +54,20 @@ const unreconciledRefund = {
     },
 };
 
+const maintenanceDept = { id: 'dept-1', name: 'Maintenance', parent: { __typename: 'Business', id: 'biz-1', name: 'Church' } };
+const officeDept = { id: 'dept-2', name: 'Office', parent: { __typename: 'Business', id: 'biz-1', name: 'Church' } };
+const maintenanceSubDept = { id: 'dept-1a', name: 'HVAC', parent: { __typename: 'Department', id: 'dept-1', name: 'Maintenance' } };
+const suppliesCategory = { id: 'cat-1', name: 'Supplies', displayName: null, type: 'DEBIT', hidden: false, groupName: null, sortOrder: 0 };
+
 describe('Unreconciled page', () => {
+    beforeEach(() => {
+        useAuthMock.mockReturnValue({ user: superAdminUser });
+    });
+
     it('renders unreconciled entries and refunds flattened, not collapsed', () => {
         useQueryMock.mockReturnValue([
             {
-                data: { entries: [reconciledEntry], entryRefunds: [unreconciledRefund] },
+                data: { entries: [reconciledEntry], entryRefunds: [unreconciledRefund], departments: [], categories: [] },
                 fetching: false,
                 error: undefined,
             },
@@ -71,7 +87,7 @@ describe('Unreconciled page', () => {
 
     it('shows an empty state when there is nothing unreconciled', () => {
         useQueryMock.mockReturnValue([
-            { data: { entries: [], entryRefunds: [] }, fetching: false, error: undefined },
+            { data: { entries: [], entryRefunds: [], departments: [], categories: [] }, fetching: false, error: undefined },
             vi.fn(),
         ]);
         useMutationMock.mockReturnValue([{}, reconcileMock]);
@@ -85,7 +101,7 @@ describe('Unreconciled page', () => {
         const user = userEvent.setup();
         useQueryMock.mockReturnValue([
             {
-                data: { entries: [], entryRefunds: [unreconciledRefund] },
+                data: { entries: [], entryRefunds: [unreconciledRefund], departments: [], categories: [] },
                 fetching: false,
                 error: undefined,
             },
@@ -102,5 +118,60 @@ describe('Unreconciled page', () => {
         expect(reconcileMock).toHaveBeenCalledWith({
             input: { entries: [], refunds: ['refund-1'] },
         });
+    });
+
+    it('only lists departments the caller has access to in the Dept filter', async () => {
+        const user = userEvent.setup();
+        useAuthMock.mockReturnValue({
+            user: { id: 'user-2', role: 'USER', departments: [{ departmentId: 'dept-1' }] },
+        });
+        useQueryMock.mockReturnValue([
+            {
+                data: {
+                    entries: [],
+                    entryRefunds: [],
+                    departments: [maintenanceDept, officeDept, maintenanceSubDept],
+                    categories: [],
+                },
+                fetching: false,
+                error: undefined,
+            },
+            vi.fn(),
+        ]);
+        useMutationMock.mockReturnValue([{}, reconcileMock]);
+
+        render(<Unreconciled />);
+
+        await user.click(screen.getByRole('combobox', { name: 'Dept' }));
+        expect(await screen.findByRole('option', { name: 'Maintenance' })).toBeInTheDocument();
+        expect(screen.queryByRole('option', { name: 'Office' })).not.toBeInTheDocument();
+    });
+
+    it('selecting a department re-queries with a department filter scoped to that department and its subdepartments', async () => {
+        const user = userEvent.setup();
+        useAuthMock.mockReturnValue({ user: superAdminUser });
+        useQueryMock.mockReturnValue([
+            {
+                data: {
+                    entries: [],
+                    entryRefunds: [],
+                    departments: [maintenanceDept, officeDept, maintenanceSubDept],
+                    categories: [suppliesCategory],
+                },
+                fetching: false,
+                error: undefined,
+            },
+            vi.fn(),
+        ]);
+        useMutationMock.mockReturnValue([{}, reconcileMock]);
+
+        render(<Unreconciled />);
+
+        await user.click(screen.getByRole('combobox', { name: 'Dept' }));
+        await user.click(await screen.findByRole('option', { name: 'Maintenance' }));
+
+        const lastCall = useQueryMock.mock.calls[useQueryMock.mock.calls.length - 1][0];
+        expect(lastCall.variables.where.department).toEqual({ id: { lte: 'dept-1' } });
+        expect(lastCall.variables.refundEntriesWhere.department).toEqual({ id: { lte: 'dept-1' } });
     });
 });
