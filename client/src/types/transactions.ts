@@ -110,7 +110,8 @@ export interface RegexFilter {
 export type SearchOrCondition =
   | { description: RegexFilter }
   | { category: { name: RegexFilter } }
-  | { department: { name: RegexFilter } };
+  | { department: { name: RegexFilter } }
+  | { total: { eq: string } };
 
 export interface EntriesWhereInput {
   [key: string]: unknown;
@@ -125,7 +126,6 @@ export interface EntriesWhereInput {
     businesses?: { id: { eq: string } };
   };
   paymentMethodType?: string;
-  total?: { eq?: string; gte?: string; lte?: string };
   and?: Array<{ or: SearchOrCondition[] }>;
   hasRefunds?: boolean;
 }

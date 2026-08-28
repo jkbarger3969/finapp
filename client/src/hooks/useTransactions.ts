@@ -105,8 +105,6 @@ interface UseTransactionsProps {
   paymentMethodType?: string;
   searchTerm?: string;
   hasRefunds?: boolean;
-  minAmount?: number | null;
-  maxAmount?: number | null;
 }
 
 interface DebouncedFilters {
@@ -123,8 +121,6 @@ interface DebouncedFilters {
   paymentMethodType: string;
   searchTerm: string;
   hasRefunds?: boolean;
-  minAmount?: number | null;
-  maxAmount?: number | null;
 }
 
 export function useTransactions({
@@ -142,8 +138,6 @@ export function useTransactions({
   paymentMethodType = 'ALL',
   searchTerm = '',
   hasRefunds,
-  minAmount,
-  maxAmount,
 }: UseTransactionsProps) {
 
   // Debounce filter changes to reduce API calls
@@ -161,8 +155,6 @@ export function useTransactions({
     paymentMethodType,
     searchTerm,
     hasRefunds,
-    minAmount,
-    maxAmount,
   });
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -189,8 +181,6 @@ export function useTransactions({
         paymentMethodType,
         searchTerm,
         hasRefunds,
-        minAmount,
-        maxAmount,
       });
     }, 150);
 
@@ -199,7 +189,7 @@ export function useTransactions({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [departmentId, accessibleDepartmentIds, fiscalYearId, reconcileFilter, startDate, endDate, entryType, categoryId, personId, businessId, paymentMethodType, searchTerm, hasRefunds, minAmount, maxAmount]);
+  }, [departmentId, accessibleDepartmentIds, fiscalYearId, reconcileFilter, startDate, endDate, entryType, categoryId, personId, businessId, paymentMethodType, searchTerm, hasRefunds]);
 
   // Build GraphQL where clause from debounced filters
   const where = useMemo(() => {
@@ -262,13 +252,20 @@ export function useTransactions({
       // Using regex for case-insensitive partial match
       const regex = { pattern: term, flags: ["I"] };
 
-      const searchFilter: { or: SearchOrCondition[] } = {
-        or: [
-          { description: regex },
-          { category: { name: regex } },
-          { department: { name: regex } }
-        ]
-      };
+      const searchOrConditions: SearchOrCondition[] = [
+        { description: regex },
+        { category: { name: regex } },
+        { department: { name: regex } },
+      ];
+
+      // If the search term looks like a dollar amount (e.g. "45.99", "$1,200"),
+      // also match transactions with that exact total.
+      const numericTerm = term.trim().replace(/[$,]/g, '');
+      if (/^\d+(\.\d{1,2})?$/.test(numericTerm)) {
+        searchOrConditions.push({ total: { eq: toRationalString(Number(numericTerm)) } });
+      }
+
+      const searchFilter: { or: SearchOrCondition[] } = { or: searchOrConditions };
 
       if (!baseWhere.and) {
         baseWhere.and = [];
@@ -278,16 +275,6 @@ export function useTransactions({
 
     if (debouncedFilters.hasRefunds !== undefined) {
       baseWhere.hasRefunds = debouncedFilters.hasRefunds;
-    }
-
-    if (debouncedFilters.minAmount != null || debouncedFilters.maxAmount != null) {
-      baseWhere.total = {};
-      if (debouncedFilters.minAmount != null) {
-        baseWhere.total.gte = toRationalString(debouncedFilters.minAmount);
-      }
-      if (debouncedFilters.maxAmount != null) {
-        baseWhere.total.lte = toRationalString(debouncedFilters.maxAmount);
-      }
     }
 
     return baseWhere;

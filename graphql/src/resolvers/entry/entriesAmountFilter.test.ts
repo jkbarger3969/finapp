@@ -144,4 +144,32 @@ describe("entries - amount range filter", () => {
 
     expect(result).toHaveLength(0);
   });
+
+  it("matches by exact amount when combined with text search via 'or' (Transactions search bar)", async () => {
+    const adminContext = buildContext(env, adminId);
+
+    // Mirrors the shape client/src/hooks/useTransactions.ts builds when the
+    // search bar's term looks like a dollar amount: description/category/
+    // department regex OR'd with an exact total match.
+    const result = await entries(
+      {},
+      {
+        where: {
+          department: { id: { eq: dept.toHexString() } },
+          and: [
+            {
+              or: [
+                { description: { pattern: "no-such-description", flags: ["I"] } },
+                { total: { eq: new Fraction(50) } },
+              ],
+            } as any,
+          ],
+        } as any,
+      },
+      adminContext
+    );
+
+    expect(result).toHaveLength(1);
+    expect(amountOf(result[0])).toBe(50);
+  });
 });
