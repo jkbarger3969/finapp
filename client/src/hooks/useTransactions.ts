@@ -6,6 +6,7 @@ import type {
   GetEntriesByDepartmentData,
   SearchOrCondition,
 } from '../types/transactions';
+import { toRationalString } from '../utils/rational';
 
 const GET_ENTRIES_BY_DEPARTMENT = `
   query GetEntriesByDepartment($where: EntriesWhere!, $limit: Int, $offset: Int) {
@@ -104,6 +105,8 @@ interface UseTransactionsProps {
   paymentMethodType?: string;
   searchTerm?: string;
   hasRefunds?: boolean;
+  minAmount?: number | null;
+  maxAmount?: number | null;
 }
 
 interface DebouncedFilters {
@@ -120,6 +123,8 @@ interface DebouncedFilters {
   paymentMethodType: string;
   searchTerm: string;
   hasRefunds?: boolean;
+  minAmount?: number | null;
+  maxAmount?: number | null;
 }
 
 export function useTransactions({
@@ -137,6 +142,8 @@ export function useTransactions({
   paymentMethodType = 'ALL',
   searchTerm = '',
   hasRefunds,
+  minAmount,
+  maxAmount,
 }: UseTransactionsProps) {
 
   // Debounce filter changes to reduce API calls
@@ -154,6 +161,8 @@ export function useTransactions({
     paymentMethodType,
     searchTerm,
     hasRefunds,
+    minAmount,
+    maxAmount,
   });
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -180,6 +189,8 @@ export function useTransactions({
         paymentMethodType,
         searchTerm,
         hasRefunds,
+        minAmount,
+        maxAmount,
       });
     }, 150);
 
@@ -188,7 +199,7 @@ export function useTransactions({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [departmentId, accessibleDepartmentIds, fiscalYearId, reconcileFilter, startDate, endDate, entryType, categoryId, personId, businessId, paymentMethodType, searchTerm, hasRefunds]);
+  }, [departmentId, accessibleDepartmentIds, fiscalYearId, reconcileFilter, startDate, endDate, entryType, categoryId, personId, businessId, paymentMethodType, searchTerm, hasRefunds, minAmount, maxAmount]);
 
   // Build GraphQL where clause from debounced filters
   const where = useMemo(() => {
@@ -267,6 +278,16 @@ export function useTransactions({
 
     if (debouncedFilters.hasRefunds !== undefined) {
       baseWhere.hasRefunds = debouncedFilters.hasRefunds;
+    }
+
+    if (debouncedFilters.minAmount != null || debouncedFilters.maxAmount != null) {
+      baseWhere.total = {};
+      if (debouncedFilters.minAmount != null) {
+        baseWhere.total.gte = toRationalString(debouncedFilters.minAmount);
+      }
+      if (debouncedFilters.maxAmount != null) {
+        baseWhere.total.lte = toRationalString(debouncedFilters.maxAmount);
+      }
     }
 
     return baseWhere;

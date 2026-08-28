@@ -206,7 +206,8 @@ type ActiveFilterType =
     | 'business'
     | 'paymentMethod'
     | 'matching'
-    | 'reconciled';
+    | 'reconciled'
+    | 'amount';
 
 interface ActiveFilter {
     type: ActiveFilterType;
@@ -236,6 +237,8 @@ export default function Transactions() {
     const [paymentMethodType, setPaymentMethodType] = useState<string>('ALL');
 
     const [showMatchingOnly, setShowMatchingOnly] = useState(false);
+    const [minAmount, setMinAmount] = useState<string>('');
+    const [maxAmount, setMaxAmount] = useState<string>('');
     const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
     const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
     const [rowSelectionModel, setRowSelectionModel] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set<GridRowId>() });
@@ -543,6 +546,9 @@ export default function Transactions() {
     // Use Custom Hook for data fetching
     const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 25 });
 
+    const parsedMinAmount = minAmount.trim() === '' ? null : Number(minAmount);
+    const parsedMaxAmount = maxAmount.trim() === '' ? null : Number(maxAmount);
+
     // Use Custom Hook for data fetching
     const { entries, totalCount, summary, fetching, error, refresh } = useTransactions({
         departmentId: filterDepartmentId || contextDeptId,
@@ -559,6 +565,8 @@ export default function Transactions() {
         paymentMethodType,
         searchTerm,
         hasRefunds: showMatchingOnly ? true : undefined,
+        minAmount: Number.isFinite(parsedMinAmount) ? parsedMinAmount : null,
+        maxAmount: Number.isFinite(parsedMaxAmount) ? parsedMaxAmount : null,
     });
 
     // Refresh when new entry is created (from LayoutContext)
@@ -583,6 +591,8 @@ export default function Transactions() {
         setShowMatchingOnly(false);
         setReconcileFilter('ALL');
         setSearchTerm('');
+        setMinAmount('');
+        setMaxAmount('');
     };
 
     // Column Definitions
@@ -1111,8 +1121,14 @@ export default function Transactions() {
 
         if (showMatchingOnly) filters.push({ type: 'matching', label: 'Matching Transactions Only' });
         if (reconcileFilter !== 'ALL') filters.push({ type: 'reconciled', label: reconcileFilter === 'RECONCILED' ? 'Reconciled Only' : 'Unreconciled Only' });
+        if (minAmount.trim() !== '' || maxAmount.trim() !== '') {
+            const min = minAmount.trim() !== '' ? currencyFormatter.format(Number(minAmount)) : null;
+            const max = maxAmount.trim() !== '' ? currencyFormatter.format(Number(maxAmount)) : null;
+            const label = min && max ? `Amount: ${min} - ${max}` : min ? `Amount: ≥ ${min}` : `Amount: ≤ ${max}`;
+            filters.push({ type: 'amount', label });
+        }
         return filters;
-    }, [startDate, endDate, entryType, selectedCategory, filterDepartmentId, selectedPerson, selectedBusiness, paymentMethodType, showMatchingOnly, reconcileFilter, departments]);
+    }, [startDate, endDate, entryType, selectedCategory, filterDepartmentId, selectedPerson, selectedBusiness, paymentMethodType, showMatchingOnly, reconcileFilter, departments, minAmount, maxAmount]);
 
     const handleClearFilter = (filter: ActiveFilter) => {
         if (filter.type === 'startDate') setStartDate(null);
@@ -1126,6 +1142,10 @@ export default function Transactions() {
         if (filter.type === 'paymentMethod') setPaymentMethodType('ALL');
         if (filter.type === 'matching') setShowMatchingOnly(false);
         if (filter.type === 'reconciled') setReconcileFilter('ALL');
+        if (filter.type === 'amount') {
+            setMinAmount('');
+            setMaxAmount('');
+        }
     };
 
     const handleReconcileSelected = async () => {
@@ -1333,6 +1353,33 @@ export default function Transactions() {
                                 <MenuItem value="cash">Cash</MenuItem>
                                 <MenuItem value="online">Online</MenuItem>
                             </TextField>
+
+                            {/* Amount Range */}
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                <TextField
+                                    label="Min $"
+                                    type="number"
+                                    size="small"
+                                    value={minAmount}
+                                    onChange={(e) => setMinAmount(e.target.value)}
+                                    inputProps={{ min: 0, step: '0.01' }}
+                                    sx={{ width: 100 }}
+                                    data-tooltip="Minimum transaction amount"
+                                    data-tooltip-pos="top"
+                                />
+                                <Typography variant="body2" color="text.secondary">-</Typography>
+                                <TextField
+                                    label="Max $"
+                                    type="number"
+                                    size="small"
+                                    value={maxAmount}
+                                    onChange={(e) => setMaxAmount(e.target.value)}
+                                    inputProps={{ min: 0, step: '0.01' }}
+                                    sx={{ width: 100 }}
+                                    data-tooltip="Maximum transaction amount"
+                                    data-tooltip-pos="top"
+                                />
+                            </Box>
 
                             {/* Category */}
                             <Box sx={{ width: 250 }}>

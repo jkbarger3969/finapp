@@ -125,6 +125,7 @@ export interface EntriesWhereInput {
     businesses?: { id: { eq: string } };
   };
   paymentMethodType?: string;
+  total?: { eq?: string; gte?: string; lte?: string };
   and?: Array<{ or: SearchOrCondition[] }>;
   hasRefunds?: boolean;
 }
