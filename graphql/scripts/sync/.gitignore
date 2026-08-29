@@ -1,0 +1,6 @@
+# Local operational state - never shared/committed. See README.md.
+.sync-state.json
+idMap.generated.json
+idMapOverrides.json
+backups/
+*.log
