@@ -8,6 +8,7 @@ import DepartmentBudgetsTab from '../components/admin/DepartmentBudgetsTab';
 import { CategoriesTab } from '../components/admin/CategoriesTab';
 import { PeopleTab } from '../components/admin/PeopleTab';
 import { BusinessesTab } from '../components/admin/BusinessesTab';
+import BackupRestoreTab from '../components/admin/BackupRestoreTab';
 import { useAuth } from '../context/AuthContext';
 
 interface TabPanelProps {
@@ -69,6 +70,7 @@ export default function Admin() {
                         <Tab label="Fiscal Years" disabled={!isSuperAdmin} />
                         <Tab label="Department Budgets" disabled={!isSuperAdmin} />
                         <Tab label="Audit Log" disabled={!isSuperAdmin} />
+                        <Tab label="Backup & Restore" disabled={!isSuperAdmin} />
                     </Tabs>
                 </Box>
             </Paper>
@@ -96,6 +98,9 @@ export default function Admin() {
             </CustomTabPanel>
             <CustomTabPanel value={value} index={7}>
                 {isSuperAdmin && <AuditLogTab />}
+            </CustomTabPanel>
+            <CustomTabPanel value={value} index={8}>
+                {isSuperAdmin && <BackupRestoreTab />}
             </CustomTabPanel>
         </Box>
     );

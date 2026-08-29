@@ -212,6 +212,8 @@ export type AttachmentsWhere = {
 };
 
 export enum AuditAction {
+  DataBackup = 'DATA_BACKUP',
+  DataRestore = 'DATA_RESTORE',
   EntryCreate = 'ENTRY_CREATE',
   EntryDelete = 'ENTRY_DELETE',
   EntryUpdate = 'ENTRY_UPDATE',
@@ -276,6 +278,14 @@ export type AuthUser = {
   picture?: Maybe<Scalars['String']['output']>;
   role: UserRole;
   status: UserStatus;
+};
+
+export type BackupInfo = {
+  __typename?: 'BackupInfo';
+  createdAt: Scalars['Date']['output'];
+  filename: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  sizeBytes: Scalars['Float']['output'];
 };
 
 export type Budget = {
@@ -715,6 +725,7 @@ export type Mutation = {
   archiveFiscalYear: ArchiveFiscalYearPayload;
   clearAuditLog: Scalars['Int']['output'];
   createAccountCard: AccountCard;
+  createBackup: BackupInfo;
   createFiscalYear: CreateFiscalYearPayload;
   deleteAccountCard: Scalars['Boolean']['output'];
   /**
@@ -732,6 +743,7 @@ export type Mutation = {
   inviteUser: AuthUser;
   logout: Scalars['Boolean']['output'];
   reconcileEntries: ReconcileEntriesPayload;
+  restoreBackup: RestoreResult;
   restoreFiscalYear: RestoreFiscalYearPayload;
   revokePermission: Scalars['Boolean']['output'];
   updateAccountCard: AccountCard;
@@ -837,6 +849,12 @@ export type MutationInviteUserArgs = {
 
 export type MutationReconcileEntriesArgs = {
   input?: InputMaybe<ReconcileEntries>;
+};
+
+
+export type MutationRestoreBackupArgs = {
+  confirmationPhrase: Scalars['String']['input'];
+  filename: Scalars['String']['input'];
 };
 
 
@@ -1109,6 +1127,7 @@ export type Query = {
   attachment?: Maybe<Attachment>;
   attachments: Array<Attachment>;
   auditLog: Array<AuditLogEntry>;
+  backups: Array<BackupInfo>;
   budget: Budget;
   budgets: Array<Budget>;
   business: Business;
@@ -1363,6 +1382,13 @@ export type RestoreFiscalYearPayload = {
   budgetsRestored: Scalars['Int']['output'];
   entriesRestored: Scalars['Int']['output'];
   fiscalYear: FiscalYear;
+};
+
+export type RestoreResult = {
+  __typename?: 'RestoreResult';
+  preRestoreBackup: Scalars['String']['output'];
+  restoredFrom: Scalars['String']['output'];
+  success: Scalars['Boolean']['output'];
 };
 
 export type RevokePermissionInput = {
@@ -1756,6 +1782,7 @@ export type ResolversTypes = {
   AuditLogWhere: AuditLogWhere;
   AuthPayload: ResolverTypeWrapper<Omit<AuthPayload, 'user'> & { user: ResolversTypes['AuthUser'] }>;
   AuthUser: ResolverTypeWrapper<Omit<AuthUser, 'departments' | 'invitedBy'> & { departments: Array<ResolversTypes['UserPermission']>, invitedBy?: Maybe<ResolversTypes['AuthUser']> }>;
+  BackupInfo: ResolverTypeWrapper<BackupInfo>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Budget: ResolverTypeWrapper<BudgetDbRecord>;
   BudgetOwner: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['BudgetOwner']>;
@@ -1852,6 +1879,7 @@ export type ResolversTypes = {
   ReconcileEntriesPayload: ResolverTypeWrapper<Omit<ReconcileEntriesPayload, 'reconciledEntries' | 'reconciledRefunds'> & { reconciledEntries: Array<ResolversTypes['Entry']>, reconciledRefunds: Array<ResolversTypes['EntryRefund']> }>;
   RegexFlags: RegexFlags;
   RestoreFiscalYearPayload: ResolverTypeWrapper<Omit<RestoreFiscalYearPayload, 'fiscalYear'> & { fiscalYear: ResolversTypes['FiscalYear'] }>;
+  RestoreResult: ResolverTypeWrapper<RestoreResult>;
   RevokePermissionInput: RevokePermissionInput;
   Source: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['Source']>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
@@ -1914,6 +1942,7 @@ export type ResolversParentTypes = {
   AuditLogWhere: AuditLogWhere;
   AuthPayload: Omit<AuthPayload, 'user'> & { user: ResolversParentTypes['AuthUser'] };
   AuthUser: Omit<AuthUser, 'departments' | 'invitedBy'> & { departments: Array<ResolversParentTypes['UserPermission']>, invitedBy?: Maybe<ResolversParentTypes['AuthUser']> };
+  BackupInfo: BackupInfo;
   Boolean: Scalars['Boolean']['output'];
   Budget: BudgetDbRecord;
   BudgetOwner: ResolversUnionTypes<ResolversParentTypes>['BudgetOwner'];
@@ -2004,6 +2033,7 @@ export type ResolversParentTypes = {
   ReconcileEntries: ReconcileEntries;
   ReconcileEntriesPayload: Omit<ReconcileEntriesPayload, 'reconciledEntries' | 'reconciledRefunds'> & { reconciledEntries: Array<ResolversParentTypes['Entry']>, reconciledRefunds: Array<ResolversParentTypes['EntryRefund']> };
   RestoreFiscalYearPayload: Omit<RestoreFiscalYearPayload, 'fiscalYear'> & { fiscalYear: ResolversParentTypes['FiscalYear'] };
+  RestoreResult: RestoreResult;
   RevokePermissionInput: RevokePermissionInput;
   Source: ResolversUnionTypes<ResolversParentTypes>['Source'];
   String: Scalars['String']['output'];
@@ -2158,6 +2188,13 @@ export type AuthUserResolvers<ContextType = Context, ParentType = ResolversParen
   picture?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   role?: Resolver<ResolversTypes['UserRole'], ParentType, ContextType>;
   status?: Resolver<ResolversTypes['UserStatus'], ParentType, ContextType>;
+};
+
+export type BackupInfoResolvers<ContextType = Context, ParentType = ResolversParentTypes['BackupInfo']> = {
+  createdAt?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
+  filename?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  label?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  sizeBytes?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 };
 
 export type BudgetResolvers<ContextType = Context, ParentType = ResolversParentTypes['Budget']> = {
@@ -2381,6 +2418,7 @@ export type MutationResolvers<ContextType = Context, ParentType = ResolversParen
   archiveFiscalYear?: Resolver<ResolversTypes['ArchiveFiscalYearPayload'], ParentType, ContextType, RequireFields<MutationArchiveFiscalYearArgs, 'id'>>;
   clearAuditLog?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   createAccountCard?: Resolver<ResolversTypes['AccountCard'], ParentType, ContextType, RequireFields<MutationCreateAccountCardArgs, 'input'>>;
+  createBackup?: Resolver<ResolversTypes['BackupInfo'], ParentType, ContextType>;
   createFiscalYear?: Resolver<ResolversTypes['CreateFiscalYearPayload'], ParentType, ContextType, RequireFields<MutationCreateFiscalYearArgs, 'input'>>;
   deleteAccountCard?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAccountCardArgs, 'id'>>;
   deleteAttachment?: Resolver<ResolversTypes['DeleteAttachmentPayload'], ParentType, ContextType, RequireFields<MutationDeleteAttachmentArgs, 'id'>>;
@@ -2394,6 +2432,7 @@ export type MutationResolvers<ContextType = Context, ParentType = ResolversParen
   inviteUser?: Resolver<ResolversTypes['AuthUser'], ParentType, ContextType, RequireFields<MutationInviteUserArgs, 'input'>>;
   logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   reconcileEntries?: Resolver<ResolversTypes['ReconcileEntriesPayload'], ParentType, ContextType, Partial<MutationReconcileEntriesArgs>>;
+  restoreBackup?: Resolver<ResolversTypes['RestoreResult'], ParentType, ContextType, RequireFields<MutationRestoreBackupArgs, 'confirmationPhrase' | 'filename'>>;
   restoreFiscalYear?: Resolver<ResolversTypes['RestoreFiscalYearPayload'], ParentType, ContextType, RequireFields<MutationRestoreFiscalYearArgs, 'id'>>;
   revokePermission?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRevokePermissionArgs, 'input'>>;
   updateAccountCard?: Resolver<ResolversTypes['AccountCard'], ParentType, ContextType, RequireFields<MutationUpdateAccountCardArgs, 'id' | 'input'>>;
@@ -2484,6 +2523,7 @@ export type QueryResolvers<ContextType = Context, ParentType = ResolversParentTy
   attachment?: Resolver<Maybe<ResolversTypes['Attachment']>, ParentType, ContextType, RequireFields<QueryAttachmentArgs, 'id'>>;
   attachments?: Resolver<Array<ResolversTypes['Attachment']>, ParentType, ContextType, Partial<QueryAttachmentsArgs>>;
   auditLog?: Resolver<Array<ResolversTypes['AuditLogEntry']>, ParentType, ContextType, Partial<QueryAuditLogArgs>>;
+  backups?: Resolver<Array<ResolversTypes['BackupInfo']>, ParentType, ContextType>;
   budget?: Resolver<ResolversTypes['Budget'], ParentType, ContextType, RequireFields<QueryBudgetArgs, 'id'>>;
   budgets?: Resolver<Array<ResolversTypes['Budget']>, ParentType, ContextType, Partial<QueryBudgetsArgs>>;
   business?: Resolver<ResolversTypes['Business'], ParentType, ContextType, RequireFields<QueryBusinessArgs, 'id'>>;
@@ -2531,6 +2571,12 @@ export type RestoreFiscalYearPayloadResolvers<ContextType = Context, ParentType 
   budgetsRestored?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   entriesRestored?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   fiscalYear?: Resolver<ResolversTypes['FiscalYear'], ParentType, ContextType>;
+};
+
+export type RestoreResultResolvers<ContextType = Context, ParentType = ResolversParentTypes['RestoreResult']> = {
+  preRestoreBackup?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  restoredFrom?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  success?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
 export type SourceResolvers<ContextType = Context, ParentType = ResolversParentTypes['Source']> = {
@@ -2611,6 +2657,7 @@ export type Resolvers<ContextType = Context> = {
   AuditLogEntry?: AuditLogEntryResolvers<ContextType>;
   AuthPayload?: AuthPayloadResolvers<ContextType>;
   AuthUser?: AuthUserResolvers<ContextType>;
+  BackupInfo?: BackupInfoResolvers<ContextType>;
   Budget?: BudgetResolvers<ContextType>;
   BudgetOwner?: BudgetOwnerResolvers<ContextType>;
   Business?: BusinessResolvers<ContextType>;
@@ -2658,6 +2705,7 @@ export type Resolvers<ContextType = Context> = {
   Rational?: GraphQLScalarType;
   ReconcileEntriesPayload?: ReconcileEntriesPayloadResolvers<ContextType>;
   RestoreFiscalYearPayload?: RestoreFiscalYearPayloadResolvers<ContextType>;
+  RestoreResult?: RestoreResultResolvers<ContextType>;
   Source?: SourceResolvers<ContextType>;
   Subscription?: SubscriptionResolvers<ContextType>;
   UpdateBusinessPayload?: UpdateBusinessPayloadResolvers<ContextType>;

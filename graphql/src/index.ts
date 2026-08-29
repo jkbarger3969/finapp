@@ -5,6 +5,8 @@ import { ApolloServer } from "apollo-server-koa";
 import { ApolloServerPluginDrainHttpServer } from "apollo-server-core";
 import Koa from "koa";
 import * as http from "http";
+import * as path from "path";
+import { createReadStream } from "fs";
 import { graphqlUploadKoa } from "graphql-upload-minimal";
 import serve from "koa-static";
 import mount from "koa-mount";
@@ -23,6 +25,7 @@ import { verifyEmailConnection } from "./services/emailService";
 
 const PORT = process.env.PORT || 4000;
 const RECEIPT_STORAGE_PATH = process.env.RECEIPT_STORAGE_PATH || "/tmp/receipts";
+const BACKUP_ARCHIVES_DIR = path.join(process.env.BACKUP_STORAGE_PATH || "/tmp/backups", "archives");
 
 function getClientIP(ctx: any): string {
     return ctx?.request?.headers?.['x-real-ip'] ||
@@ -142,6 +145,44 @@ function getClientIP(ctx: any): string {
     } else {
       console.warn("Warning: RECEIPT_STORAGE_PATH not configured. Receipt serving disabled.");
     }
+
+    // Authenticated download for full-database backup archives created via the
+    // Admin > Backup & Restore tab. Unlike /receipts above, a backup archive
+    // contains the entire database (including all users), so - unlike static
+    // receipt serving - this route actually verifies the caller's JWT and role
+    // rather than relying on the path being hard to guess.
+    app.use(async (ctx, next) => {
+      if (!ctx.path.startsWith("/admin/backups/")) {
+        await next();
+        return;
+      }
+
+      const filename = decodeURIComponent(ctx.path.slice("/admin/backups/".length));
+      if (!/^[\w.-]+\.tar\.gz$/.test(filename)) {
+        ctx.status = 400;
+        return;
+      }
+
+      const authorization = ctx.request.headers.authorization || "";
+      const token = authorization.replace("Bearer ", "");
+      const payload = token && authService ? authService.verifyToken(token) : null;
+      const authUser = payload ? await authService!.getUserById(payload.userId) : null;
+
+      if (!authUser || authUser.role !== "SUPER_ADMIN") {
+        ctx.status = 401;
+        return;
+      }
+
+      const filePath = path.join(BACKUP_ARCHIVES_DIR, filename);
+      if (path.dirname(filePath) !== BACKUP_ARCHIVES_DIR) {
+        ctx.status = 400;
+        return;
+      }
+
+      ctx.type = "application/gzip";
+      ctx.attachment(filename);
+      ctx.body = createReadStream(filePath);
+    });
 
     server.applyMiddleware({ app });
 

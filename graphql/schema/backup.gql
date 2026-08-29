@@ -1,0 +1,21 @@
+type BackupInfo {
+  filename: String!
+  sizeBytes: Float!
+  createdAt: Date!
+  label: String!
+}
+
+type RestoreResult {
+  success: Boolean!
+  restoredFrom: String!
+  preRestoreBackup: String!
+}
+
+extend type Query {
+  backups: [BackupInfo!]!
+}
+
+extend type Mutation {
+  createBackup: BackupInfo!
+  restoreBackup(filename: String!, confirmationPhrase: String!): RestoreResult!
+}

@@ -66,6 +66,25 @@ From external network:
 - **SSL Certificate**: Must be at `/etc/letsencrypt/live/finapp.lonestarcowboychurch.org/`
 - **Port Forwarding**: Router must forward ports 80 and 443 to 172.16.2.5
 - **Google OAuth**: Redirect URI must be `https://finapp.lonestarcowboychurch.org/login`
+- **Backup & Restore (Admin tab)**: requires the `mongodb-database-tools` package
+  (`mongodump`/`mongorestore`/`tar` - the latter is already on every Linux/macOS
+  box) installed on the server itself, since backups run via the same server
+  process that talks to the local `mongod`. Install once with:
+  ```bash
+  # Debian/Ubuntu
+  sudo apt-get install -y mongodb-database-tools
+  ```
+  Then set `BACKUP_STORAGE_PATH` in `graphql/.env` (defaults to `/tmp/backups`
+  if unset, which is fine for a quick test but **will be wiped on reboot** -
+  set it to a persistent path in production, e.g.:
+  ```bash
+  BACKUP_STORAGE_PATH=/home/keith/finapp-backups
+  ```
+  Backups created via the Admin tab are stored under
+  `$BACKUP_STORAGE_PATH/archives/*.tar.gz`. To move a backup to another
+  server (e.g. seeding a new box), `scp` the file into that server's
+  `$BACKUP_STORAGE_PATH/archives/` directory - it appears in the Admin UI's
+  list automatically, no upload step needed.
 
 ## Troubleshooting
 

@@ -60,6 +60,7 @@ import { fiscalYear, fiscalYears, FiscalYear, createFiscalYear, archiveFiscalYea
 import { User } from "./resolvers/user";
 import { attachmentResolvers } from "./resolvers/attachment";
 import { authResolvers } from "./resolvers/auth/authResolvers";
+import { backupResolvers } from "./resolvers/backup/backupResolvers";
 
 import { dateScalar, rationalScalar, jsonScalar } from "./resolvers/scalars";
 import { Alias } from "./resolvers/alias";
@@ -165,11 +166,13 @@ const resolvers = {
   Query: {
     ...initialResolvers.Query,
     ...authResolvers.Query,
+    ...backupResolvers.Query,
   },
   Mutation: {
     ...initialResolvers.Mutation,
     ...attachmentResolvers.Mutation,
     ...authResolvers.Mutation,
+    ...backupResolvers.Mutation,
   },
 };
 
