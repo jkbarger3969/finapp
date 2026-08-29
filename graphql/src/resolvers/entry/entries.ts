@@ -1,4 +1,5 @@
 import { Db, Filter as FilterQuery, ObjectId } from "mongodb";
+import Fraction from "fraction.js";
 
 import {
   QueryResolvers,
@@ -14,6 +15,7 @@ import {
   whereRational,
   whereRegex,
 } from "../utils/queryUtils";
+import { fractionToRational, rationalComparison } from "../../utils/mongoRational";
 import { whereDepartments } from "../department/departments";
 import { whereCategories } from "../category";
 import { whereBusiness } from "../business";
@@ -1104,14 +1106,28 @@ export const searchEntries: QueryResolvers["searchEntries"] = async (
   const deptIds = matchingDepts.map(d => d._id);
   const catIds = matchingCats.map(c => c._id);
 
+  // If the query looks like a dollar amount (e.g. "45.99", "$1,200"), also
+  // match entries with that exact total - mirrors the Transactions search
+  // bar's amount matching (client/src/hooks/useTransactions.ts), reusing the
+  // same Rational comparison the `entries` query's `total` filter uses.
+  const numericTerm = query.trim().replace(/[$,]/g, "");
+  const amountCondition = /^\d+(\.\d{1,2})?$/.test(numericTerm)
+    ? {
+        $expr: rationalComparison(
+          { $arrayElemAt: ["$total.value", 0] },
+          "$eq",
+          fractionToRational(new Fraction(numericTerm))
+        ),
+      }
+    : undefined;
+
   // 2. Build Base Query
   const searchFilter: any = {
     $or: [
       { "description.0.value": regex },
       ...(deptIds.length > 0 ? [{ "department.0.value": { $in: deptIds } }] : []),
       ...(catIds.length > 0 ? [{ "category.0.value": { $in: catIds } }] : []),
-      // Attempt to match amount if query looks like a number?
-      // For now, keep it text-based as per plan.
+      ...(amountCondition ? [amountCondition] : []),
     ],
     // Ensure deleted entries are excluded
     "deleted.0.value": false,
