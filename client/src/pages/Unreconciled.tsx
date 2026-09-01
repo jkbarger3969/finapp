@@ -23,7 +23,7 @@ import { TableSkeleton } from '../components/common/TableSkeleton';
 import { useAuth } from '../context/AuthContext';
 import { useLayout } from '../context/LayoutContext';
 import { parseRational } from '../utils/rational';
-import type { DepartmentRef, CategoryRef, PaymentMethod } from '../types/transactions';
+import type { DepartmentRef, CategoryRef, PaymentMethod, EntryDateOfRecord } from '../types/transactions';
 import type { CategoryRecord, DepartmentRecord } from '../types/filterOptions';
 
 const GET_UNRECONCILED = `
@@ -32,6 +32,7 @@ const GET_UNRECONCILED = `
       id
       description
       date
+      dateOfRecord { date overrideFiscalYear }
       department { id name }
       category { id name type }
       total
@@ -48,6 +49,7 @@ const GET_UNRECONCILED = `
       id
       description
       date
+      dateOfRecord { date overrideFiscalYear }
       total
       paymentMethod {
         currency
@@ -95,6 +97,7 @@ interface UnreconciledEntry {
     id: string;
     description?: string | null;
     date: string;
+    dateOfRecord?: EntryDateOfRecord | null;
     department?: DepartmentRef | null;
     category?: CategoryRef | null;
     total: string;
@@ -105,6 +108,7 @@ interface UnreconciledRefund {
     id: string;
     description?: string | null;
     date: string;
+    dateOfRecord?: EntryDateOfRecord | null;
     total: string;
     paymentMethod: PaymentMethod;
     entry: {
@@ -126,6 +130,7 @@ interface UnreconciledRow {
     id: string;
     itemType: 'TRANSACTION' | 'REFUND';
     date: string;
+    dateOfRecord?: EntryDateOfRecord | null;
     description: string;
     department: DepartmentRef | null;
     category: CategoryRef;
@@ -259,6 +264,7 @@ export default function Unreconciled() {
             id: `entry-${entry.id}`,
             itemType: 'TRANSACTION',
             date: entry.date,
+            dateOfRecord: entry.dateOfRecord,
             description: entry.description || 'Transaction',
             department: entry.department ?? null,
             category: entry.category ?? { id: 'unknown', name: 'Uncategorized', type: 'DEBIT' },
@@ -271,6 +277,7 @@ export default function Unreconciled() {
             id: `refund-${refund.id}`,
             itemType: 'REFUND',
             date: refund.date,
+            dateOfRecord: refund.dateOfRecord,
             description: refund.description || `Refund for: ${refund.entry.description || 'Transaction'}`,
             department: refund.entry.department ?? null,
             category: { id: 'refund-category', name: 'Refund', type: 'CREDIT' },
@@ -337,8 +344,23 @@ export default function Unreconciled() {
         {
             field: 'date',
             headerName: 'Date',
-            width: 120,
-            valueGetter: (value: string) => new Date(value).toLocaleDateString(),
+            width: 140,
+            renderCell: (params) => {
+                const txDate = new Date(params.value as string).toLocaleDateString();
+                const postedDate = (params.row as UnreconciledRow).dateOfRecord?.date;
+
+                if (postedDate && postedDate !== params.value) {
+                    return (
+                        <Box sx={{ width: '100%' }}>
+                            <Typography variant="body2">{txDate}</Typography>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                                Posted: {new Date(postedDate).toLocaleDateString()}
+                            </Typography>
+                        </Box>
+                    );
+                }
+                return <Typography variant="body2">{txDate}</Typography>;
+            },
         },
         {
             field: 'description',
