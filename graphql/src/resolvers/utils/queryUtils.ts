@@ -370,3 +370,24 @@ export const whereInt = (intWhere: WhereInt): QuerySelector<unknown> => {
 
   return querySelector;
 };
+
+/**
+ * The date an entry (or refund, with `fieldPrefix: "refunds"`) actually
+ * counts against for fiscal-year/budget purposes: `dateOfRecord.date` when
+ * `dateOfRecord.overrideFiscalYear` is set ("use posted date for fiscal
+ * year" in the UI), otherwise the plain transaction `date`. This must stay
+ * the single source of truth for that decision - `Entry.fiscalYear` in
+ * `entryResolvers.ts` and every budget/report aggregation should compute it
+ * the same way, or a transaction posted across a fiscal-year boundary can
+ * silently count against the wrong year in one place but not another.
+ */
+export const effectiveDateExpr = (fieldPrefix?: string): object => {
+  const p = fieldPrefix ? `${fieldPrefix}.` : "";
+  return {
+    $cond: [
+      { $eq: [{ $arrayElemAt: [`$${p}dateOfRecord.overrideFiscalYear.value`, 0] }, true] },
+      { $arrayElemAt: [`$${p}dateOfRecord.date.value`, 0] },
+      { $arrayElemAt: [`$${p}date.value`, 0] },
+    ],
+  };
+};

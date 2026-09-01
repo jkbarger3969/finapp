@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { Context } from "../../types";
+import { effectiveDateExpr } from "../utils/queryUtils";
 
 interface DepartmentBudgetSummary {
   id: string;
@@ -66,18 +67,7 @@ export const departmentBudgetSummaries = async (
       // so an entry posted near a fiscal-year boundary with an overridden record date lands
       // in the correct year here too.
       $addFields: {
-        entryEffectiveDate: {
-          $cond: [
-            {
-              $eq: [
-                { $arrayElemAt: ["$dateOfRecord.overrideFiscalYear.value", 0] },
-                true
-              ]
-            },
-            { $arrayElemAt: ["$dateOfRecord.date.value", 0] },
-            { $arrayElemAt: ["$date.value", 0] }
-          ]
-        }
+        entryEffectiveDate: effectiveDateExpr()
       }
     },
     {
@@ -130,18 +120,7 @@ export const departmentBudgetSummaries = async (
     { $unwind: "$refunds" },
     {
       $addFields: {
-        refundEffectiveDate: {
-          $cond: [
-            {
-              $eq: [
-                { $arrayElemAt: ["$refunds.dateOfRecord.overrideFiscalYear.value", 0] },
-                true
-              ]
-            },
-            { $arrayElemAt: ["$refunds.dateOfRecord.date.value", 0] },
-            { $arrayElemAt: ["$refunds.date.value", 0] }
-          ]
-        }
+        refundEffectiveDate: effectiveDateExpr("refunds")
       }
     },
     {

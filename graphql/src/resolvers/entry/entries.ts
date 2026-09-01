@@ -9,6 +9,7 @@ import {
 } from "../../graphTypes";
 import { iterateOwnKeys, iterateOwnKeyValues } from "../../utils/iterableFns";
 import {
+  effectiveDateExpr,
   whereDate,
   whereId,
   whereInt,
@@ -1666,7 +1667,7 @@ export const entriesChartData: QueryResolvers["entriesChartData"] = async (
     ...basePipeline,
     {
       $addFields: {
-        dateValue: { $arrayElemAt: ["$date.value", 0] }
+        dateValue: effectiveDateExpr()
       }
     },
     {

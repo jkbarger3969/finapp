@@ -1,5 +1,23 @@
 import { ObjectId } from "mongodb";
 import { MutationResolvers, QueryResolvers } from "../../graphTypes";
+import { effectiveDateExpr } from "../utils/queryUtils";
+
+/**
+ * Entry documents have no stored `fiscalYear` field (it's a computed
+ * resolver field, see `entryResolvers.ts`) - matching entries to a fiscal
+ * year here must use the same effective-date range check `Entry.fiscalYear`
+ * and the budget aggregations use, honoring dateOfRecord/overrideFiscalYear.
+ */
+function entriesInFiscalYearFilter(fiscalYear: { begin: Date; end: Date }) {
+  return {
+    $expr: {
+      $and: [
+        { $gte: [effectiveDateExpr(), fiscalYear.begin] },
+        { $lt: [effectiveDateExpr(), fiscalYear.end] },
+      ],
+    },
+  };
+}
 
 export const archiveFiscalYear: MutationResolvers["archiveFiscalYear"] = async (
   _,
@@ -28,7 +46,7 @@ export const archiveFiscalYear: MutationResolvers["archiveFiscalYear"] = async (
   const entriesResult = await accountingDb.db
     .collection("entries")
     .updateMany(
-      { fiscalYear: fiscalYearId, archived: { $ne: true } },
+      { ...entriesInFiscalYearFilter(fiscalYear), archived: { $ne: true } },
       { $set: { archived: true, archivedAt: new Date(), archivedById: new ObjectId(user.id) } }
     );
 
@@ -102,7 +120,7 @@ export const restoreFiscalYear: MutationResolvers["restoreFiscalYear"] = async (
   const entriesResult = await accountingDb.db
     .collection("entries")
     .updateMany(
-      { fiscalYear: fiscalYearId, archived: true },
+      { ...entriesInFiscalYearFilter(fiscalYear), archived: true },
       { $unset: { archived: "", archivedAt: "", archivedById: "" } }
     );
 
@@ -167,7 +185,7 @@ export const exportFiscalYear: QueryResolvers["exportFiscalYear"] = async (
 
   const entries = await accountingDb.find({
     collection: "entries",
-    filter: { fiscalYear: fiscalYearId },
+    filter: entriesInFiscalYearFilter(fiscalYear),
   });
 
   const budgets = await accountingDb.find({
@@ -205,7 +223,7 @@ export const deleteFiscalYear: MutationResolvers["deleteFiscalYear"] = async (
 
   const entriesResult = await accountingDb.db
     .collection("entries")
-    .deleteMany({ fiscalYear: fiscalYearId });
+    .deleteMany(entriesInFiscalYearFilter(fiscalYear));
 
   const budgetsResult = await accountingDb.db
     .collection("budgets")
