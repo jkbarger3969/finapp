@@ -1,0 +1,19 @@
+appId: org.lonestarcowboychurch.finapp-sync
+productName: FinApp Sync Assistant
+directories:
+  output: dist
+files:
+  - out/**/*
+  - package.json
+mac:
+  category: public.app-category.finance
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+  # No Apple Developer ID certificate is configured in this environment, so
+  # the app ships unsigned. macOS Gatekeeper will block the first launch -
+  # right-click the app > Open (or `xattr -cr` it) once, per machine.
+  identity: null
+  hardenedRuntime: false

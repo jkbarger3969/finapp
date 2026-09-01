@@ -13,6 +13,8 @@ export interface SyncEntriesOptions {
   /** default true - callers must opt in to writing */
   dryRun?: boolean;
   batchSize?: number;
+  /** invoked once per processed doc - lets a long-running caller (e.g. a GUI) show live progress */
+  onProgress?: (processed: number) => void;
 }
 
 export interface EntryDecision {
@@ -43,7 +45,7 @@ export interface SyncEntriesReport {
  * same decisions without writing anything.
  */
 export async function syncEntries(options: SyncEntriesOptions): Promise<SyncEntriesReport> {
-  const { sourceDb, targetDb, idMaps, since, transformOptions, dryRun = true, batchSize = 500 } = options;
+  const { sourceDb, targetDb, idMaps, since, transformOptions, dryRun = true, batchSize = 500, onProgress } = options;
 
   const filter = since ? { lastUpdate: { $gt: since } } : {};
   const cursor = sourceDb.collection("entries").find(filter).sort({ lastUpdate: 1 });
@@ -62,6 +64,7 @@ export async function syncEntries(options: SyncEntriesOptions): Promise<SyncEntr
   let successfulMax: Date | undefined;
   let firstFailure: Date | undefined;
   let batch: Document[] = [];
+  let processed = 0;
 
   const flush = async () => {
     if (batch.length === 0) return;
@@ -134,6 +137,9 @@ export async function syncEntries(options: SyncEntriesOptions): Promise<SyncEntr
         error: error instanceof Error ? error.message : String(error),
       });
     }
+
+    processed++;
+    onProgress?.(processed);
   }
 
   await flush();

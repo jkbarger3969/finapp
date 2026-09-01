@@ -1,5 +1,5 @@
 import { existsSync } from "fs";
-import { readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 
 export const DEFAULT_STATE_DIR = __dirname;
@@ -37,6 +37,7 @@ export async function writeCheckpoint(
   checkpoint: SyncCheckpoint,
   dir: string = DEFAULT_STATE_DIR
 ): Promise<void> {
+  await mkdir(dir, { recursive: true });
   await writeFile(checkpointPath(dir), JSON.stringify(checkpoint, null, 2));
 }
 
@@ -48,6 +49,7 @@ export async function writeGeneratedIdMap(
   map: IdMapFile,
   dir: string = DEFAULT_STATE_DIR
 ): Promise<void> {
+  await mkdir(dir, { recursive: true });
   await writeFile(generatedIdMapPath(dir), JSON.stringify(map, null, 2));
 }
 
