@@ -192,23 +192,28 @@ export const Entry: EntryResolvers = {
   source: async ({ source, _id }, _, { loaders }): Promise<any> => {
     if (!source?.[0]?.value) {
       console.warn(`Entry ${_id} has no source`);
-      return { __typename: 'Business', id: 'unknown', name: 'Unknown Source' } as any;
+      return { __typename: 'Business', _id: new ObjectId(), id: 'unknown', name: 'Unknown Source' } as any;
     }
 
     const sourceValue = source[0].value;
-    
+
     // Handle case where sourceValue might be null/undefined or missing type/id
     if (!sourceValue || typeof sourceValue !== 'object') {
       console.warn(`Entry ${_id} has invalid source value: ${sourceValue}`);
-      return { __typename: 'Business', id: 'unknown', name: 'Unknown Source' } as any;
+      return { __typename: 'Business', _id: new ObjectId(), id: 'unknown', name: 'Unknown Source' } as any;
     }
-    
+
     const type = sourceValue.type;
     const id = sourceValue.id;
 
     if (!type || !id) {
       console.warn(`Entry ${_id} has invalid source (type: ${type}, id: ${id})`);
-      return { __typename: 'Business', id: id?.toString() || 'unknown', name: 'Unknown Source' } as any;
+      return {
+        __typename: 'Business',
+        _id: id instanceof ObjectId ? id : new ObjectId(),
+        id: id?.toString() || 'unknown',
+        name: 'Unknown Source',
+      } as any;
     }
 
     let result: any = null;
@@ -227,8 +232,13 @@ export const Entry: EntryResolvers = {
         break;
     }
 
+    // Referenced Business/Person/Department doc doesn't exist on this server
+    // (e.g. `users`/`businesses`/`people` are intentionally out of scope for
+    // the old->new server sync, so old-server ids are left in place) -
+    // Business/Person/Department's own `id` resolver does `_id.toString()`,
+    // so this fallback needs a real `_id`, not just a display `id` string.
     console.warn(`Entry source ${type}:${id} not found for entry ${_id}`);
-    return { __typename: 'Business', id: id.toString(), name: `Unknown ${type}` } as any;
+    return { __typename: 'Business', _id: id, id: id.toString(), name: `Unknown ${type}` } as any;
   },
   total: ({ total }) => total?.[0]?.value as any ?? 0,
   lastEditedAt: (root) => root.lastUpdate,
