@@ -213,6 +213,7 @@ export type AttachmentsWhere = {
 
 export enum AuditAction {
   DataBackup = 'DATA_BACKUP',
+  DataBackupDelete = 'DATA_BACKUP_DELETE',
   DataRestore = 'DATA_RESTORE',
   EntryCreate = 'ENTRY_CREATE',
   EntryDelete = 'ENTRY_DELETE',
@@ -280,12 +281,27 @@ export type AuthUser = {
   status: UserStatus;
 };
 
+export type BackupCollectionCheck = {
+  __typename?: 'BackupCollectionCheck';
+  actualCount: Scalars['Int']['output'];
+  collection: Scalars['String']['output'];
+  expectedCount: Scalars['Int']['output'];
+  ok: Scalars['Boolean']['output'];
+};
+
 export type BackupInfo = {
   __typename?: 'BackupInfo';
   createdAt: Scalars['Date']['output'];
   filename: Scalars['String']['output'];
   label: Scalars['String']['output'];
   sizeBytes: Scalars['Float']['output'];
+};
+
+export type BackupVerification = {
+  __typename?: 'BackupVerification';
+  collections: Array<BackupCollectionCheck>;
+  manifestFound: Scalars['Boolean']['output'];
+  ok: Scalars['Boolean']['output'];
 };
 
 export type Budget = {
@@ -381,6 +397,12 @@ export type CreateAccountCardInput = {
   label?: InputMaybe<Scalars['String']['input']>;
   trailingDigits: Scalars['String']['input'];
   type: PaymentCardType;
+};
+
+export type CreateBackupResult = {
+  __typename?: 'CreateBackupResult';
+  backup: BackupInfo;
+  verification: BackupVerification;
 };
 
 export type CreateFiscalYearInput = {
@@ -725,7 +747,7 @@ export type Mutation = {
   archiveFiscalYear: ArchiveFiscalYearPayload;
   clearAuditLog: Scalars['Int']['output'];
   createAccountCard: AccountCard;
-  createBackup: BackupInfo;
+  createBackup: CreateBackupResult;
   createFiscalYear: CreateFiscalYearPayload;
   deleteAccountCard: Scalars['Boolean']['output'];
   /**
@@ -733,6 +755,7 @@ export type Mutation = {
    * This marks the attachment as deleted in the database.
    */
   deleteAttachment: DeleteAttachmentPayload;
+  deleteBackup: Scalars['Boolean']['output'];
   deleteBudget: DeleteBudgetResult;
   deleteEntry: DeleteEntryPayload;
   deleteEntryRefund: DeleteEntryRefundPayload;
@@ -759,6 +782,7 @@ export type Mutation = {
    */
   uploadReceipt: UploadReceiptPayload;
   upsertBudget: UpsertBudgetResult;
+  verifyBackup: BackupVerification;
 };
 
 
@@ -804,6 +828,11 @@ export type MutationDeleteAccountCardArgs = {
 
 export type MutationDeleteAttachmentArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type MutationDeleteBackupArgs = {
+  filename: Scalars['String']['input'];
 };
 
 
@@ -916,6 +945,11 @@ export type MutationUploadReceiptArgs = {
 
 export type MutationUpsertBudgetArgs = {
   input: UpsertBudget;
+};
+
+
+export type MutationVerifyBackupArgs = {
+  filename: Scalars['String']['input'];
 };
 
 export type NewAlias = {
@@ -1782,7 +1816,9 @@ export type ResolversTypes = {
   AuditLogWhere: AuditLogWhere;
   AuthPayload: ResolverTypeWrapper<Omit<AuthPayload, 'user'> & { user: ResolversTypes['AuthUser'] }>;
   AuthUser: ResolverTypeWrapper<Omit<AuthUser, 'departments' | 'invitedBy'> & { departments: Array<ResolversTypes['UserPermission']>, invitedBy?: Maybe<ResolversTypes['AuthUser']> }>;
+  BackupCollectionCheck: ResolverTypeWrapper<BackupCollectionCheck>;
   BackupInfo: ResolverTypeWrapper<BackupInfo>;
+  BackupVerification: ResolverTypeWrapper<BackupVerification>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Budget: ResolverTypeWrapper<BudgetDbRecord>;
   BudgetOwner: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['BudgetOwner']>;
@@ -1793,6 +1829,7 @@ export type ResolversTypes = {
   Category: ResolverTypeWrapper<CategoryDbRecord>;
   CategoryChartItem: ResolverTypeWrapper<CategoryChartItem>;
   CreateAccountCardInput: CreateAccountCardInput;
+  CreateBackupResult: ResolverTypeWrapper<CreateBackupResult>;
   CreateFiscalYearInput: CreateFiscalYearInput;
   CreateFiscalYearPayload: ResolverTypeWrapper<Omit<CreateFiscalYearPayload, 'fiscalYear'> & { fiscalYear: ResolversTypes['FiscalYear'] }>;
   Currency: Currency;
@@ -1942,7 +1979,9 @@ export type ResolversParentTypes = {
   AuditLogWhere: AuditLogWhere;
   AuthPayload: Omit<AuthPayload, 'user'> & { user: ResolversParentTypes['AuthUser'] };
   AuthUser: Omit<AuthUser, 'departments' | 'invitedBy'> & { departments: Array<ResolversParentTypes['UserPermission']>, invitedBy?: Maybe<ResolversParentTypes['AuthUser']> };
+  BackupCollectionCheck: BackupCollectionCheck;
   BackupInfo: BackupInfo;
+  BackupVerification: BackupVerification;
   Boolean: Scalars['Boolean']['output'];
   Budget: BudgetDbRecord;
   BudgetOwner: ResolversUnionTypes<ResolversParentTypes>['BudgetOwner'];
@@ -1953,6 +1992,7 @@ export type ResolversParentTypes = {
   Category: CategoryDbRecord;
   CategoryChartItem: CategoryChartItem;
   CreateAccountCardInput: CreateAccountCardInput;
+  CreateBackupResult: CreateBackupResult;
   CreateFiscalYearInput: CreateFiscalYearInput;
   CreateFiscalYearPayload: Omit<CreateFiscalYearPayload, 'fiscalYear'> & { fiscalYear: ResolversParentTypes['FiscalYear'] };
   Date: Scalars['Date']['output'];
@@ -2190,11 +2230,24 @@ export type AuthUserResolvers<ContextType = Context, ParentType = ResolversParen
   status?: Resolver<ResolversTypes['UserStatus'], ParentType, ContextType>;
 };
 
+export type BackupCollectionCheckResolvers<ContextType = Context, ParentType = ResolversParentTypes['BackupCollectionCheck']> = {
+  actualCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  collection?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  expectedCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  ok?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
 export type BackupInfoResolvers<ContextType = Context, ParentType = ResolversParentTypes['BackupInfo']> = {
   createdAt?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
   filename?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   label?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   sizeBytes?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+};
+
+export type BackupVerificationResolvers<ContextType = Context, ParentType = ResolversParentTypes['BackupVerification']> = {
+  collections?: Resolver<Array<ResolversTypes['BackupCollectionCheck']>, ParentType, ContextType>;
+  manifestFound?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  ok?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
 export type BudgetResolvers<ContextType = Context, ParentType = ResolversParentTypes['Budget']> = {
@@ -2238,6 +2291,11 @@ export type CategoryResolvers<ContextType = Context, ParentType = ResolversParen
 export type CategoryChartItemResolvers<ContextType = Context, ParentType = ResolversParentTypes['CategoryChartItem']> = {
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   value?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+};
+
+export type CreateBackupResultResolvers<ContextType = Context, ParentType = ResolversParentTypes['CreateBackupResult']> = {
+  backup?: Resolver<ResolversTypes['BackupInfo'], ParentType, ContextType>;
+  verification?: Resolver<ResolversTypes['BackupVerification'], ParentType, ContextType>;
 };
 
 export type CreateFiscalYearPayloadResolvers<ContextType = Context, ParentType = ResolversParentTypes['CreateFiscalYearPayload']> = {
@@ -2418,10 +2476,11 @@ export type MutationResolvers<ContextType = Context, ParentType = ResolversParen
   archiveFiscalYear?: Resolver<ResolversTypes['ArchiveFiscalYearPayload'], ParentType, ContextType, RequireFields<MutationArchiveFiscalYearArgs, 'id'>>;
   clearAuditLog?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   createAccountCard?: Resolver<ResolversTypes['AccountCard'], ParentType, ContextType, RequireFields<MutationCreateAccountCardArgs, 'input'>>;
-  createBackup?: Resolver<ResolversTypes['BackupInfo'], ParentType, ContextType>;
+  createBackup?: Resolver<ResolversTypes['CreateBackupResult'], ParentType, ContextType>;
   createFiscalYear?: Resolver<ResolversTypes['CreateFiscalYearPayload'], ParentType, ContextType, RequireFields<MutationCreateFiscalYearArgs, 'input'>>;
   deleteAccountCard?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAccountCardArgs, 'id'>>;
   deleteAttachment?: Resolver<ResolversTypes['DeleteAttachmentPayload'], ParentType, ContextType, RequireFields<MutationDeleteAttachmentArgs, 'id'>>;
+  deleteBackup?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteBackupArgs, 'filename'>>;
   deleteBudget?: Resolver<ResolversTypes['DeleteBudgetResult'], ParentType, ContextType, RequireFields<MutationDeleteBudgetArgs, 'input'>>;
   deleteEntry?: Resolver<ResolversTypes['DeleteEntryPayload'], ParentType, ContextType, RequireFields<MutationDeleteEntryArgs, 'id'>>;
   deleteEntryRefund?: Resolver<ResolversTypes['DeleteEntryRefundPayload'], ParentType, ContextType, RequireFields<MutationDeleteEntryRefundArgs, 'id'>>;
@@ -2444,6 +2503,7 @@ export type MutationResolvers<ContextType = Context, ParentType = ResolversParen
   updateUser?: Resolver<ResolversTypes['AuthUser'], ParentType, ContextType, RequireFields<MutationUpdateUserArgs, 'id' | 'input'>>;
   uploadReceipt?: Resolver<ResolversTypes['UploadReceiptPayload'], ParentType, ContextType, RequireFields<MutationUploadReceiptArgs, 'entryId' | 'file'>>;
   upsertBudget?: Resolver<ResolversTypes['UpsertBudgetResult'], ParentType, ContextType, RequireFields<MutationUpsertBudgetArgs, 'input'>>;
+  verifyBackup?: Resolver<ResolversTypes['BackupVerification'], ParentType, ContextType, RequireFields<MutationVerifyBackupArgs, 'filename'>>;
 };
 
 export type PaymentCardResolvers<ContextType = Context, ParentType = ResolversParentTypes['PaymentCard']> = {
@@ -2657,12 +2717,15 @@ export type Resolvers<ContextType = Context> = {
   AuditLogEntry?: AuditLogEntryResolvers<ContextType>;
   AuthPayload?: AuthPayloadResolvers<ContextType>;
   AuthUser?: AuthUserResolvers<ContextType>;
+  BackupCollectionCheck?: BackupCollectionCheckResolvers<ContextType>;
   BackupInfo?: BackupInfoResolvers<ContextType>;
+  BackupVerification?: BackupVerificationResolvers<ContextType>;
   Budget?: BudgetResolvers<ContextType>;
   BudgetOwner?: BudgetOwnerResolvers<ContextType>;
   Business?: BusinessResolvers<ContextType>;
   Category?: CategoryResolvers<ContextType>;
   CategoryChartItem?: CategoryChartItemResolvers<ContextType>;
+  CreateBackupResult?: CreateBackupResultResolvers<ContextType>;
   CreateFiscalYearPayload?: CreateFiscalYearPayloadResolvers<ContextType>;
   Date?: GraphQLScalarType;
   DeleteAttachmentPayload?: DeleteAttachmentPayloadResolvers<ContextType>;

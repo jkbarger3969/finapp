@@ -6,8 +6,10 @@ import { Context } from "../../types";
 import {
   BackupConfig,
   createBackupArchive,
+  deleteBackupArchive,
   listBackups,
   restoreFromArchive,
+  verifyBackupArchive,
 } from "../../services/backupService";
 import { requireAuth } from "../auth/authResolvers";
 
@@ -39,18 +41,41 @@ export const backups: QueryResolvers["backups"] = async (_, __, context) => {
 
 export const createBackup: MutationResolvers["createBackup"] = async (_, __, context) => {
   const currentUser = await requireSuperAdmin(context);
+  const config = getBackupConfig();
 
-  const backup = await createBackupArchive(getBackupConfig(), "manual");
+  const backup = await createBackupArchive(config, "manual");
+  const verification = await verifyBackupArchive(config, backup.filename);
 
   await context.authService!.logAudit({
     userId: new ObjectId(currentUser._id),
     action: "DATA_BACKUP" as any,
     resourceType: "Database",
-    details: { filename: backup.filename, sizeBytes: backup.sizeBytes },
+    details: { filename: backup.filename, sizeBytes: backup.sizeBytes, verified: verification.ok },
     timestamp: new Date(),
   });
 
-  return backup;
+  return { backup, verification };
+};
+
+export const verifyBackup: MutationResolvers["verifyBackup"] = async (_, { filename }, context) => {
+  await requireSuperAdmin(context);
+  return verifyBackupArchive(getBackupConfig(), filename);
+};
+
+export const deleteBackup: MutationResolvers["deleteBackup"] = async (_, { filename }, context) => {
+  const currentUser = await requireSuperAdmin(context);
+
+  await deleteBackupArchive(getBackupConfig(), filename);
+
+  await context.authService!.logAudit({
+    userId: new ObjectId(currentUser._id),
+    action: "DATA_BACKUP_DELETE" as any,
+    resourceType: "Database",
+    details: { filename },
+    timestamp: new Date(),
+  });
+
+  return true;
 };
 
 export const restoreBackup: MutationResolvers["restoreBackup"] = async (
@@ -82,5 +107,5 @@ export const restoreBackup: MutationResolvers["restoreBackup"] = async (
 
 export const backupResolvers = {
   Query: { backups },
-  Mutation: { createBackup, restoreBackup },
+  Mutation: { createBackup, restoreBackup, deleteBackup, verifyBackup },
 };

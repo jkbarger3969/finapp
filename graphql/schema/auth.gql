@@ -37,6 +37,7 @@ enum AuditAction {
   FISCAL_YEAR_DELETE
   DATA_BACKUP
   DATA_RESTORE
+  DATA_BACKUP_DELETE
 }
 
 type AuthUser {
