@@ -1330,8 +1330,8 @@ export default function Transactions() {
                                 <MenuItem value="ALL">All</MenuItem>
                                 <MenuItem value="CARD">Card</MenuItem>
                                 <MenuItem value="CHECK">Check</MenuItem>
-                                <MenuItem value="cash">Cash</MenuItem>
-                                <MenuItem value="online">Online</MenuItem>
+                                <MenuItem value="CASH">Cash</MenuItem>
+                                <MenuItem value="ONLINE">Online</MenuItem>
                             </TextField>
 
                             {/* Category */}
