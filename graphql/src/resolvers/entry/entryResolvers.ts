@@ -185,7 +185,7 @@ export const Entry: EntryResolvers = {
       end: new Date(year + 1, 0, 1),
     } as any;
   },
-  items: ({ items }) => items ?? ([] as any),
+  items: ({ items }) => (items ?? []).filter((item) => item.deleted?.[0]?.value !== true) as any,
   paymentMethod: ({ paymentMethod }) => paymentMethod?.[0]?.value as any ?? { currency: "USD" },
   reconciled: ({ reconciled }) => reconciled?.[0]?.value ?? false,
   refunds: ({ refunds }) => (refunds || []).filter((refund) => refund.deleted?.[0]?.value !== true),

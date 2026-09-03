@@ -1,7 +1,7 @@
 import { ObjectId } from "mongodb";
 import { EntryRefundDbRecord } from "../../dataSources/accountingDb/types";
 
-import { QueryResolvers } from "../../graphTypes";
+import { EntryRefundsWhere, QueryResolvers } from "../../graphTypes";
 import { Context } from "../../types";
 import { getAccessibleDeptIdsWithDescendants } from "../utils/departmentAccess";
 import { whereEntryRefunds, whereEntries } from "./entries";
@@ -55,9 +55,13 @@ export const entryRefunds: QueryResolvers["entryRefunds"] = async (
 
   pipeline.push({ $unwind: "$refunds" });
 
-  if (where) {
-    pipeline.push({ $match: await whereEntryRefunds(where, accountingDb.db) });
-  }
+  // Default to excluding soft-deleted refunds unless the caller explicitly
+  // asks for them (e.g. an audit view) - matches Entry.refunds, which
+  // always excludes them. Without this, a caller that forgets to filter
+  // `deleted` gets every refund ever created for a matching entry back,
+  // deleted or not.
+  const effectiveWhere: EntryRefundsWhere = { deleted: false, ...(where ?? {}) };
+  pipeline.push({ $match: await whereEntryRefunds(effectiveWhere, accountingDb.db) });
 
   pipeline.push({
     $replaceRoot: { newRoot: "$refunds" },
