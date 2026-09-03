@@ -188,7 +188,7 @@ export const Entry: EntryResolvers = {
   items: ({ items }) => items ?? ([] as any),
   paymentMethod: ({ paymentMethod }) => paymentMethod?.[0]?.value as any ?? { currency: "USD" },
   reconciled: ({ reconciled }) => reconciled?.[0]?.value ?? false,
-  refunds: ({ refunds }) => refunds || [],
+  refunds: ({ refunds }) => (refunds || []).filter((refund) => refund.deleted?.[0]?.value !== true),
   source: async ({ source, _id }, _, { loaders }): Promise<any> => {
     if (!source?.[0]?.value) {
       console.warn(`Entry ${_id} has no source`);

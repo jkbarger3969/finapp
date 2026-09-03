@@ -59,3 +59,40 @@ describe("Entry.source", () => {
     expect(() => result._id.toString()).not.toThrow();
   });
 });
+
+describe("Entry.refunds", () => {
+  it("excludes soft-deleted refunds", () => {
+    // Real bug this guards against: deleteEntryRefund soft-deletes by
+    // pushing {value: true} onto the refund's historized `deleted` field
+    // rather than removing it from the array. This resolver previously
+    // returned the raw array unfiltered, so a deleted refund kept showing
+    // up forever - looking exactly like an un-deletable duplicate, since
+    // re-deleting it just added another no-op historized entry and the
+    // list never changed.
+    const keptRefund = { id: new ObjectId(), deleted: [h(false)] };
+    const deletedRefund = { id: new ObjectId(), deleted: [h(true)] };
+    const entry = { refunds: [keptRefund, deletedRefund] };
+
+    const result = (Entry.refunds as any)(entry, {}, {});
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(keptRefund.id);
+  });
+
+  it("keeps a refund with no deleted history at all", () => {
+    const refund = { id: new ObjectId() };
+    const entry = { refunds: [refund] };
+
+    const result = (Entry.refunds as any)(entry, {}, {});
+
+    expect(result).toHaveLength(1);
+  });
+
+  it("returns an empty array when the entry has no refunds", () => {
+    const entry = { refunds: undefined };
+
+    const result = (Entry.refunds as any)(entry, {}, {});
+
+    expect(result).toEqual([]);
+  });
+});
