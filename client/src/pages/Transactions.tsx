@@ -26,6 +26,7 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
+    Autocomplete,
 } from "@mui/material";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import type { GridColDef, GridRowSelectionModel, GridRowId, GridSortModel } from "@mui/x-data-grid";
@@ -52,7 +53,6 @@ import { ReceiptManagerDialog } from "../components/ReceiptManagerDialog";
 import EditEntryDialog from "../components/EditEntryDialog";
 import EntryFormDialog from "../components/EntryFormDialog";
 import PageHeader from "../components/PageHeader";
-import CategoryAutocomplete from "../components/CategoryAutocomplete";
 import PersonAutocomplete from "../components/PersonAutocomplete";
 import BusinessAutocomplete from "../components/BusinessAutocomplete";
 import { useLayout } from "../context/LayoutContext";
@@ -211,6 +211,7 @@ type ActiveFilterType =
 interface ActiveFilter {
     type: ActiveFilterType;
     label: string;
+    value?: string;
 }
 
 const CustomCheckbox = (props: object) => (
@@ -228,7 +229,7 @@ export default function Transactions() {
 
     // Advanced Filters (matching Reporting)
     const [entryType, setEntryType] = useState<string>('ALL');
-    const [selectedCategory, setSelectedCategory] = useState<CategoryRecord | null>(null);
+    const [selectedCategories, setSelectedCategories] = useState<CategoryRecord[]>([]);
     const [manualFilterDepartmentId, setManualFilterDepartmentId] = useState<string | null>(null);
     const [selectedPerson, setSelectedPerson] = useState<PersonRecord | null>(null);
 
@@ -552,7 +553,7 @@ export default function Transactions() {
         startDate,
         endDate,
         entryType,
-        categoryId: selectedCategory?.id,
+        categoryIds: selectedCategories.map((c) => c.id),
         personId: selectedPerson?.id,
         businessId: selectedBusiness?.id,
         paginationModel,
@@ -575,7 +576,7 @@ export default function Transactions() {
         setStartDate(null);
         setEndDate(null);
         setEntryType('ALL');
-        setSelectedCategory(null);
+        setSelectedCategories([]);
         setManualFilterDepartmentId(null);
         setSelectedPerson(null);
         setSelectedBusiness(null);
@@ -1098,7 +1099,7 @@ export default function Transactions() {
         if (endDate) filters.push({ type: 'endDate', label: `To: ${format(endDate, 'MMM dd, yyyy')}` });
 
         if (entryType !== 'ALL') filters.push({ type: 'entryType', label: entryType === 'CREDIT' ? 'Income' : 'Expense' });
-        if (selectedCategory) filters.push({ type: 'category', label: selectedCategory.name });
+        selectedCategories.forEach((cat) => filters.push({ type: 'category', label: cat.name, value: cat.id }));
         if (filterDepartmentId) {
             const d = departments.find((dept: DepartmentRecord) => dept.id === filterDepartmentId);
             if (d) filters.push({ type: 'department', label: d.name });
@@ -1112,13 +1113,13 @@ export default function Transactions() {
         if (showMatchingOnly) filters.push({ type: 'matching', label: 'Matching Transactions Only' });
         if (reconcileFilter !== 'ALL') filters.push({ type: 'reconciled', label: reconcileFilter === 'RECONCILED' ? 'Reconciled Only' : 'Unreconciled Only' });
         return filters;
-    }, [startDate, endDate, entryType, selectedCategory, filterDepartmentId, selectedPerson, selectedBusiness, paymentMethodType, showMatchingOnly, reconcileFilter, departments]);
+    }, [startDate, endDate, entryType, selectedCategories, filterDepartmentId, selectedPerson, selectedBusiness, paymentMethodType, showMatchingOnly, reconcileFilter, departments]);
 
     const handleClearFilter = (filter: ActiveFilter) => {
         if (filter.type === 'startDate') setStartDate(null);
         if (filter.type === 'endDate') setEndDate(null);
         if (filter.type === 'entryType') setEntryType('ALL');
-        if (filter.type === 'category') setSelectedCategory(null);
+        if (filter.type === 'category') setSelectedCategories((prev) => prev.filter((c) => c.id !== filter.value));
         if (filter.type === 'department') setManualFilterDepartmentId(null);
         if (filter.type === 'person') setSelectedPerson(null);
         if (filter.type === 'person') setSelectedPerson(null);
@@ -1293,8 +1294,8 @@ export default function Transactions() {
                                 onChange={(e) => {
                                     const newType = e.target.value;
                                     setEntryType(newType);
-                                    if (selectedCategory && newType !== 'ALL' && selectedCategory.type !== newType) {
-                                        setSelectedCategory(null);
+                                    if (newType !== 'ALL') {
+                                        setSelectedCategories((prev) => prev.filter((c) => c.type === newType));
                                     }
                                 }}
                                 sx={{ width: 120 }}
@@ -1336,24 +1337,47 @@ export default function Transactions() {
 
                             {/* Category */}
                             <Box sx={{ width: 250 }}>
-                                <CategoryAutocomplete
-                                    categories={categoryOptions.filter((cat) => {
-                                        if (entryType === 'ALL') return true;
-                                        if (entryType === 'CREDIT') return cat.type?.toUpperCase() === 'CREDIT';
-                                        if (entryType === 'DEBIT') return cat.type?.toUpperCase() === 'DEBIT';
-                                        return true;
-                                    }).map((cat) => ({
-                                        ...cat,
-                                        displayName: cat.displayName ?? undefined,
-                                        groupName: cat.groupName ?? undefined,
-                                        sortOrder: cat.sortOrder ?? undefined,
-                                    }))}
-                                    value={selectedCategory?.id || ''}
-                                    onChange={(categoryId) => {
-                                        const cat = categories.find((c) => c.id === categoryId);
-                                        setSelectedCategory(cat || null);
-                                    }}
+                                <Autocomplete
+                                    multiple
+                                    disableCloseOnSelect
                                     size="small"
+                                    options={categoryOptions
+                                        .filter((cat) => !cat.hidden)
+                                        .filter((cat) => entryType === 'ALL' || cat.type?.toUpperCase() === entryType)
+                                        .sort((a, b) => {
+                                            const aCredit = a.type?.toUpperCase() === 'CREDIT';
+                                            const bCredit = b.type?.toUpperCase() === 'CREDIT';
+                                            if (aCredit !== bCredit) return aCredit ? -1 : 1;
+                                            return (a.name || '').localeCompare(b.name || '');
+                                        })}
+                                    groupBy={(cat) => (cat.type?.toUpperCase() === 'CREDIT' ? 'Income' : 'Expense')}
+                                    getOptionLabel={(cat) => cat.name}
+                                    isOptionEqualToValue={(cat, value) => cat.id === value.id}
+                                    value={selectedCategories}
+                                    onChange={(_, newValue) => setSelectedCategories(newValue)}
+                                    renderOption={(props, cat, { selected }) => {
+                                        const { key, ...otherProps } = props;
+                                        return (
+                                            <Box component="li" key={key} {...otherProps}>
+                                                <Checkbox checked={selected} size="small" sx={{ p: 0.5, mr: 1 }} />
+                                                {cat.name}
+                                            </Box>
+                                        );
+                                    }}
+                                    renderTags={(value) =>
+                                        value.length === 0
+                                            ? null
+                                            : value.length === 1
+                                                ? value[0].name
+                                                : `${value.length} categories`
+                                    }
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Category"
+                                            placeholder={selectedCategories.length ? undefined : 'All'}
+                                        />
+                                    )}
                                 />
                             </Box>
 

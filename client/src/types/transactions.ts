@@ -120,7 +120,7 @@ export interface EntriesWhereInput {
   fiscalYear?: { id: { eq: string } };
   reconciled?: boolean;
   date?: { gte?: string; lte?: string };
-  category?: { type?: string; id?: { eq: string } };
+  category?: { type?: string; id?: { eq: string } | { in: string[] } };
   source?: {
     people?: { id: { eq: string } };
     businesses?: { id: { eq: string } };

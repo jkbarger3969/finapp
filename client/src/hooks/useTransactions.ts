@@ -98,7 +98,7 @@ interface UseTransactionsProps {
   startDate?: Date | null;
   endDate?: Date | null;
   entryType?: string;
-  categoryId?: string;
+  categoryIds?: string[];
   personId?: string;
   businessId?: string;
   paginationModel: { page: number; pageSize: number };
@@ -115,7 +115,7 @@ interface DebouncedFilters {
   startDate?: string;
   endDate?: string;
   entryType: string;
-  categoryId?: string;
+  categoryIds?: string[];
   personId?: string;
   businessId?: string;
   paymentMethodType: string;
@@ -131,7 +131,7 @@ export function useTransactions({
   startDate,
   endDate,
   entryType = 'ALL',
-  categoryId,
+  categoryIds,
   personId,
   businessId,
   paginationModel,
@@ -149,7 +149,7 @@ export function useTransactions({
     startDate: startDate?.toISOString(),
     endDate: endDate?.toISOString(),
     entryType,
-    categoryId,
+    categoryIds,
     personId,
     businessId,
     paymentMethodType,
@@ -175,7 +175,7 @@ export function useTransactions({
         startDate: startDate?.toISOString(),
         endDate: endDate?.toISOString(),
         entryType,
-        categoryId,
+        categoryIds,
         personId,
         businessId,
         paymentMethodType,
@@ -189,7 +189,7 @@ export function useTransactions({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [departmentId, accessibleDepartmentIds, fiscalYearId, reconcileFilter, startDate, endDate, entryType, categoryId, personId, businessId, paymentMethodType, searchTerm, hasRefunds]);
+  }, [departmentId, accessibleDepartmentIds, fiscalYearId, reconcileFilter, startDate, endDate, entryType, categoryIds, personId, businessId, paymentMethodType, searchTerm, hasRefunds]);
 
   // Build GraphQL where clause from debounced filters
   const where = useMemo(() => {
@@ -230,10 +230,10 @@ export function useTransactions({
       baseWhere.category = { type: debouncedFilters.entryType };
     }
 
-    if (debouncedFilters.categoryId) {
+    if (debouncedFilters.categoryIds && debouncedFilters.categoryIds.length > 0) {
       baseWhere.category = {
         ...baseWhere.category,
-        id: { eq: debouncedFilters.categoryId }
+        id: { in: debouncedFilters.categoryIds },
       };
     }
 
