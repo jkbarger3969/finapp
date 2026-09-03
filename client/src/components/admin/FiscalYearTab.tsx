@@ -148,6 +148,17 @@ interface FiscalYear {
     };
 }
 
+// The form collects the fiscal year's inclusive last day (e.g. Aug 31), but
+// FiscalYear.end is stored as the exclusive boundary one day after that
+// (see the FiscalYear schema doc: "[begin, end)") - this converts a
+// "YYYY-MM-DD" string forward one calendar day for submission, using UTC
+// arithmetic so it can't shift by timezone.
+function toExclusiveEndDate(inclusiveLastDay: string): string {
+    const d = new Date(`${inclusiveLastDay}T00:00:00.000Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+}
+
 export default function FiscalYearTab() {
     const navigate = useNavigate();
     const { refetchFiscalYears } = useDepartment();
@@ -189,7 +200,7 @@ export default function FiscalYearTab() {
     useEffect(() => {
         if (createDialogOpen && newFyYear) {
             const begin = `${newFyYear - 1}-09-01`;
-            const end = `${newFyYear}-09-01`;
+            const end = `${newFyYear}-08-31`;
             setNewFyBegin(begin);
             setNewFyEnd(end);
         }
@@ -273,7 +284,7 @@ export default function FiscalYearTab() {
 
     const getSuggestedDates = (year: number) => {
         const begin = `${year - 1}-09-01`;
-        const end = `${year}-09-01`;
+        const end = `${year}-08-31`;
         return { begin, end };
     };
 
@@ -303,7 +314,7 @@ export default function FiscalYearTab() {
                 input: {
                     name: displayName,
                     begin: newFyBegin,
-                    end: newFyEnd,
+                    end: toExclusiveEndDate(newFyEnd),
                 },
             });
 
@@ -341,12 +352,28 @@ export default function FiscalYearTab() {
         setExportingId(null);
     }
 
+    // Fiscal year begin/end are stored as exact UTC midnight boundary
+    // markers, not real event timestamps - formatting them with the
+    // browser's local timezone (the default for toLocaleDateString) rolls
+    // them back a calendar day in any timezone behind UTC (e.g. "Sep 1"
+    // UTC midnight displays as "Aug 31" in Central time). Explicitly
+    // formatting in UTC shows the date exactly as stored.
     const formatDate = (dateStr: string) => {
         return new Date(dateStr).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
+            timeZone: 'UTC',
         });
+    };
+
+    // `end` is stored exclusive (the fiscal year covers [begin, end) - see
+    // the FiscalYear schema doc), so the period's actual last day is one
+    // calendar day before the stored end value.
+    const formatPeriodEnd = (dateStr: string) => {
+        const d = new Date(dateStr);
+        d.setUTCDate(d.getUTCDate() - 1);
+        return formatDate(d.toISOString());
     };
 
     const renderFiscalYearTable = (years: FiscalYear[], showArchiveAction: boolean) => (
@@ -377,7 +404,7 @@ export default function FiscalYearTab() {
                                 <Typography fontWeight="medium">{fy.name}</Typography>
                             </TableCell>
                             <TableCell>
-                                {formatDate(fy.begin)} - {formatDate(fy.end)}
+                                {formatDate(fy.begin)} - {formatPeriodEnd(fy.end)}
                             </TableCell>
                             <TableCell>
                                 <Chip
@@ -613,13 +640,13 @@ export default function FiscalYearTab() {
                             helperText="First day of fiscal year (inclusive)"
                         />
                         <TextField
-                            label="End Date (Sept 1 of next year)"
+                            label="End Date (Aug 31)"
                             type="date"
                             value={newFyEnd}
                             onChange={(e) => setNewFyEnd(e.target.value)}
                             InputLabelProps={{ shrink: true }}
                             fullWidth
-                            helperText="Day after last day of fiscal year (exclusive boundary)"
+                            helperText="Last day of fiscal year (inclusive)"
                         />
                     </Stack>
                 </DialogContent>
