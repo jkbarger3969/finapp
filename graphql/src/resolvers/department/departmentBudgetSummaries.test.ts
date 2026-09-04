@@ -76,3 +76,79 @@ describe("departmentBudgetSummaries - respects dateOfRecord/overrideFiscalYear",
     expect(row?.spent).toBe(100);
   });
 });
+
+describe("departmentBudgetSummaries - nets income against expense", () => {
+  // Real bug this guards against: a revenue-generating department (e.g.
+  // Product, which sells merchandise) had its Credit-category income
+  // completely ignored - "spent" only ever summed Debit entries, so a
+  // department with $0 budget and real income showed a wildly wrong
+  // (very negative) remaining balance instead of reflecting that its
+  // income extends its effective spending power.
+  let env: TestEnv;
+  let dept: ObjectId;
+  let expenseCategory: ObjectId;
+  let incomeCategory: ObjectId;
+  let adminId: ObjectId;
+  let fy: ObjectId;
+
+  beforeAll(async () => {
+    env = await startTestEnv();
+    dept = await createDepartment(env.db, { name: "Product" });
+    expenseCategory = await createCategory(env.db, { name: "Cost of Goods", type: "Debit" });
+    incomeCategory = await createCategory(env.db, { name: "Merchandise Sales", type: "Credit" });
+    adminId = await createUser(env.db, { email: "admin2@test.com", role: "SUPER_ADMIN" });
+
+    fy = new ObjectId();
+    await env.db.collection("fiscalYears").insertOne({
+      _id: fy,
+      name: "FY25",
+      begin: new Date("2024-09-01"),
+      end: new Date("2025-09-01"),
+    });
+
+    const adminContext = buildContext(env, adminId);
+
+    await addNewEntry(
+      {},
+      {
+        input: {
+          date: new Date("2024-10-01"),
+          department: dept.toHexString(),
+          category: expenseCategory.toHexString(),
+          paymentMethod: { cash: { currency: "USD" } },
+          total: new Fraction(500, 1),
+          source: { business: { name: "Vendor" } },
+        },
+      },
+      adminContext
+    );
+    await addNewEntry(
+      {},
+      {
+        input: {
+          date: new Date("2024-10-02"),
+          department: dept.toHexString(),
+          category: incomeCategory.toHexString(),
+          paymentMethod: { cash: { currency: "USD" } },
+          total: new Fraction(700, 1),
+          source: { business: { name: "Customer" } },
+        },
+      },
+      adminContext
+    );
+  });
+
+  afterAll(async () => {
+    await stopTestEnv(env);
+  });
+
+  it("subtracts income from spent, so remaining (budget - spent) reflects net cost", async () => {
+    const adminContext = buildContext(env, adminId);
+    const result = await departmentBudgetSummaries({}, { fiscalYearId: fy.toHexString() }, adminContext);
+
+    const row = result.find((r) => r.id === dept.toHexString());
+    // $500 expense - $700 income = -$200 net "spent" (i.e. the department
+    // is $200 ahead) - with $0 budget, remaining should be +$200, not -$500.
+    expect(row?.spent).toBe(-200);
+  });
+});

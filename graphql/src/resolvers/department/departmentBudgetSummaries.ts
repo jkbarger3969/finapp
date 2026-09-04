@@ -48,138 +48,92 @@ export const departmentBudgetSummaries = async (
     }
   });
 
-  // Get all DEBIT category IDs for filtering expenses
+  // Get all DEBIT category IDs for filtering expenses, and CREDIT category
+  // IDs for filtering income. Revenue-generating departments (e.g. Product,
+  // which sells merchandise) earn income that extends their effective
+  // spending power beyond their allocated budget - "remaining" needs to add
+  // that income back in, not just subtract expenses. A pure cost-center
+  // department (no income entries) is unaffected, since its credit total is
+  // just 0.
   const debitCategories = await db.collection("categories").find({ type: "Debit" }).toArray();
   const debitCategoryIds = debitCategories.map((cat: any) => cat._id);
+  const creditCategories = await db.collection("categories").find({ type: "Credit" }).toArray();
+  const creditCategoryIds = creditCategories.map((cat: any) => cat._id);
 
-  // Aggregate spending by department for this fiscal year (DEBIT entries only)
-  // Note: In MongoDB aggregation, "$field.0.value" doesn't work - must use $arrayElemAt
-  // department.value returns array of all value props, then $arrayElemAt gets first
-  const spendingAgg = await db.collection("entries").aggregate([
-    {
-      $match: {
-        "deleted.0.value": { $ne: true },
-        "category.0.value": { $in: debitCategoryIds }
-      }
-    },
-    {
-      // Respect dateOfRecord/overrideFiscalYear the same way refund effective dates do below,
-      // so an entry posted near a fiscal-year boundary with an overridden record date lands
-      // in the correct year here too.
-      $addFields: {
-        entryEffectiveDate: effectiveDateExpr()
-      }
-    },
-    {
-      $match: {
-        entryEffectiveDate: { $gte: begin, $lt: end }
-      }
-    },
-    {
-      $group: {
-        _id: { $arrayElemAt: ["$department.value", 0] },
-        totalSpent: {
-          $sum: {
-            $let: {
-              vars: {
-                t: { $arrayElemAt: ["$total.value", 0] }
+  // Aggregates entries (and their refunds) matching `categoryIds` into a net
+  // amount per department for this fiscal year: sum of entry totals minus
+  // sum of non-deleted refund totals. Used for both DEBIT (expense) and
+  // CREDIT (income) categories - same shape, just a different category set.
+  // Note: In MongoDB aggregation, "$field.0.value" doesn't work - must use
+  // $arrayElemAt; department.value returns array of all value props, then
+  // $arrayElemAt gets first.
+  const rationalSum = (valueField: string) => ({
+    $sum: {
+      $let: {
+        vars: { t: { $arrayElemAt: [`$${valueField}`, 0] } },
+        in: {
+          $cond: [
+            { $eq: ["$$t", null] },
+            0,
+            {
+              $abs: {
+                $multiply: [
+                  { $cond: [{ $or: [{ $eq: ["$$t.d", 0] }, { $eq: ["$$t.d", null] }] }, 0, { $divide: [{ $ifNull: ["$$t.n", 0] }, "$$t.d"] }] },
+                  { $ifNull: ["$$t.s", 1] },
+                ],
               },
-              in: {
-                $cond: [
-                  { $eq: ["$$t", null] },
-                  0,
-                  {
-                    $abs: {
-                      $multiply: [
-                        { $cond: [{ $or: [{ $eq: ["$$t.d", 0] }, { $eq: ["$$t.d", null] }] }, 0, { $divide: [{ $ifNull: ["$$t.n", 0] }, "$$t.d"] }] },
-                        { $ifNull: ["$$t.s", 1] }
-                      ]
-                    }
-                  }
-                ]
-              }
-            }
-          }
+            },
+          ],
         },
-        count: { $sum: 1 }
-      }
-    }
-  ]).toArray();
+      },
+    },
+  });
 
-  // Aggregate refunds by department for this fiscal year (DEBIT entries only)
-  // Refunds reduce departmental spending as soon as they're recorded, matching how
-  // the originating entries count immediately regardless of reconciled status.
-  const refundsAgg = await db.collection("entries").aggregate([
-    {
-      $match: {
-        "deleted.0.value": { $ne: true },
-        "category.0.value": { $in: debitCategoryIds },
-        "refunds.0": { $exists: true }
-      }
-    },
-    { $unwind: "$refunds" },
-    {
-      $addFields: {
-        refundEffectiveDate: effectiveDateExpr("refunds")
-      }
-    },
-    {
-      $match: {
-        "refunds.deleted.0.value": { $ne: true },
-        refundEffectiveDate: { $gte: begin, $lt: end }
-      }
-    },
-    {
-      $group: {
-        _id: { $arrayElemAt: ["$department.value", 0] },
-        totalRefunded: {
-          $sum: {
-            $let: {
-              vars: {
-                t: { $arrayElemAt: ["$refunds.total.value", 0] }
-              },
-              in: {
-                $cond: [
-                  { $eq: ["$$t", null] },
-                  0,
-                  {
-                    $abs: {
-                      $multiply: [
-                        {
-                          $cond: [
-                            { $or: [{ $eq: ["$$t.d", 0] }, { $eq: ["$$t.d", null] }] },
-                            0,
-                            { $divide: [{ $ifNull: ["$$t.n", 0] }, "$$t.d"] }
-                          ]
-                        },
-                        { $ifNull: ["$$t.s", 1] }
-                      ]
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        }
-      }
-    }
-  ]).toArray();
+  const aggregateNetByDept = async (categoryIds: ObjectId[]): Promise<Map<string, number>> => {
+    // Respect dateOfRecord/overrideFiscalYear the same way refund effective
+    // dates do below, so an entry posted near a fiscal-year boundary with an
+    // overridden record date lands in the correct year here too.
+    const entryAgg = await db.collection("entries").aggregate([
+      { $match: { "deleted.0.value": { $ne: true }, "category.0.value": { $in: categoryIds } } },
+      { $addFields: { entryEffectiveDate: effectiveDateExpr() } },
+      { $match: { entryEffectiveDate: { $gte: begin, $lt: end } } },
+      { $group: { _id: { $arrayElemAt: ["$department.value", 0] }, total: rationalSum("total.value") } },
+    ]).toArray();
 
-  // Create spending map by department ID
+    // Refunds reduce the net amount as soon as they're recorded, matching
+    // how the originating entries count immediately regardless of
+    // reconciled status.
+    const refundAgg = await db.collection("entries").aggregate([
+      { $match: { "deleted.0.value": { $ne: true }, "category.0.value": { $in: categoryIds }, "refunds.0": { $exists: true } } },
+      { $unwind: "$refunds" },
+      { $addFields: { refundEffectiveDate: effectiveDateExpr("refunds") } },
+      { $match: { "refunds.deleted.0.value": { $ne: true }, refundEffectiveDate: { $gte: begin, $lt: end } } },
+      { $group: { _id: { $arrayElemAt: ["$department.value", 0] }, total: rationalSum("refunds.total.value") } },
+    ]).toArray();
+
+    const byDept = new Map<string, number>();
+    entryAgg.forEach((agg: any) => {
+      if (agg._id) byDept.set(agg._id.toString(), agg.total || 0);
+    });
+    refundAgg.forEach((agg: any) => {
+      if (!agg._id) return;
+      const deptId = agg._id.toString();
+      byDept.set(deptId, (byDept.get(deptId) || 0) - (agg.total || 0));
+    });
+    return byDept;
+  };
+
+  const netExpenseByDept = await aggregateNetByDept(debitCategoryIds);
+  const netIncomeByDept = await aggregateNetByDept(creditCategoryIds);
+
+  // Net cost per department: expenses reduce "remaining", income (e.g. from
+  // a department that sells merchandise or charges fees) extends it back
+  // out. A pure cost-center department earns no income here, so this is a
+  // no-op for it.
   const spendingByDept = new Map<string, number>();
-  spendingAgg.forEach((agg: any) => {
-    if (agg._id) {
-      spendingByDept.set(agg._id.toString(), agg.totalSpent || 0);
-    }
-  });
-
-  // Subtract reconciled refunds from departmental spending
-  refundsAgg.forEach((agg: any) => {
-    if (!agg._id) return;
-    const deptId = agg._id.toString();
-    const currentSpent = spendingByDept.get(deptId) || 0;
-    spendingByDept.set(deptId, currentSpent - (agg.totalRefunded || 0));
-  });
+  for (const deptId of new Set([...netExpenseByDept.keys(), ...netIncomeByDept.keys()])) {
+    spendingByDept.set(deptId, (netExpenseByDept.get(deptId) || 0) - (netIncomeByDept.get(deptId) || 0));
+  }
 
   // Build department hierarchy info
   const deptMap = new Map<string, any>();
