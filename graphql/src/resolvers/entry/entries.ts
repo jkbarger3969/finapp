@@ -639,6 +639,7 @@ export const whereEntries = (
 
             const dateOr: FilterQuery<unknown>[] = [];
             const dateOfRecordOr: FilterQuery<unknown>[] = [];
+            const refundInFiscalYearOr: FilterQuery<unknown>[] = [];
 
             for (const { begin, end } of fiscalYears) {
               dateOr.push({
@@ -653,6 +654,20 @@ export const whereEntries = (
                   $gte: begin,
                   $lt: end,
                 },
+              });
+
+              // A refund's effective date can fall in a different fiscal
+              // year than its parent purchase (e.g. bought in FY24, refunded
+              // in FY25) - the refund reduces spending in the year it
+              // actually happened, so its parent entry needs to be
+              // discoverable there too, not just in the purchase's own year.
+              refundInFiscalYearOr.push({
+                "dateOfRecord.overrideFiscalYear.0.value": { $ne: true },
+                "date.0.value": { $gte: begin, $lt: end },
+              });
+              refundInFiscalYearOr.push({
+                "dateOfRecord.overrideFiscalYear.0.value": true,
+                "dateOfRecord.date.0.value": { $gte: begin, $lt: end },
               });
             }
 
@@ -670,6 +685,14 @@ export const whereEntries = (
                   {
                     "dateOfRecord.overrideFiscalYear.0.value": true,
                     $or: dateOfRecordOr,
+                  },
+                  {
+                    refunds: {
+                      $elemMatch: {
+                        "deleted.0.value": { $ne: true },
+                        $or: refundInFiscalYearOr,
+                      },
+                    },
                   },
                 ],
               });
