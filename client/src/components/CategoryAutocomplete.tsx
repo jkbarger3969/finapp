@@ -18,6 +18,8 @@ interface Category {
     groupName?: string;
     sortOrder?: number;
     hidden?: boolean;
+    children?: { id: string }[];
+    allowStandalone?: boolean;
 }
 
 interface CategoryAutocompleteProps {
@@ -29,6 +31,18 @@ interface CategoryAutocompleteProps {
     error?: boolean;
     helperText?: string;
     size?: 'small' | 'medium';
+    /**
+     * Excludes "group" categories (ones with child categories, unless
+     * flagged allowStandalone) from what can be picked. The backend
+     * rejects assigning an entry directly to such a category ("Group
+     * category is not permitted... select a specific subcategory") -
+     * excluding them here means a user can't pick an option that would
+     * fail on submit. Only meaningful when `categories` includes
+     * `children`/`allowStandalone`; leave off for read-only/filter
+     * contexts where picking a group category to see rolled-up results
+     * is legitimate.
+     */
+    excludeGroupCategories?: boolean;
 }
 
 export default function CategoryAutocomplete({
@@ -40,6 +54,7 @@ export default function CategoryAutocomplete({
     error = false,
     helperText,
     size = 'medium',
+    excludeGroupCategories = false,
 }: CategoryAutocompleteProps) {
     const [browseOpen, setBrowseOpen] = useState(false);
 
@@ -47,12 +62,21 @@ export default function CategoryAutocomplete({
         return categories.filter(c => !c.hidden);
     }, [categories]);
 
+    // The currently-selected value is looked up against the full visible
+    // list (not the pickable-only list below) so an existing entry that
+    // already has a group category assigned still displays its name
+    // correctly, even though it can no longer be re-selected going forward.
     const selectedCategory = useMemo(() => {
         return visibleCategories.find(c => c.id === value) || null;
     }, [visibleCategories, value]);
 
+    const pickableCategories = useMemo(() => {
+        if (!excludeGroupCategories) return visibleCategories;
+        return visibleCategories.filter(c => c.allowStandalone || !c.children || c.children.length === 0);
+    }, [visibleCategories, excludeGroupCategories]);
+
     const sortedCategories = useMemo(() => {
-        return [...visibleCategories].sort((a, b) => {
+        return [...pickableCategories].sort((a, b) => {
             if (a.type !== b.type) {
                 return a.type === 'CREDIT' || a.type === 'Credit' ? -1 : 1;
             }
@@ -161,7 +185,7 @@ export default function CategoryAutocomplete({
                 open={browseOpen}
                 onClose={() => setBrowseOpen(false)}
                 onSelect={handleBrowseSelect}
-                categories={categories}
+                categories={pickableCategories}
                 selectedId={value}
             />
         </Box>

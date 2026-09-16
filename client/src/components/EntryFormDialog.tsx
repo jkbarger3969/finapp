@@ -58,6 +58,10 @@ const GET_FORM_DATA = `
       hidden
       groupName
       sortOrder
+      allowStandalone
+      children {
+        id
+      }
     }
     departments {
       id
@@ -393,6 +397,8 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
             groupName: cat.groupName ?? undefined,
             sortOrder: cat.sortOrder ?? undefined,
             hidden: cat.hidden,
+            allowStandalone: cat.allowStandalone ?? undefined,
+            children: cat.children ?? undefined,
         }));
     }, [data?.categories]);
 
@@ -817,6 +823,7 @@ export default function EntryFormDialog({ open, onClose, onSuccess, initialEntry
                                     onChange={(categoryId) => setFormData({ ...formData, categoryId })}
                                     disabled={fetching}
                                     required
+                                    excludeGroupCategories
                                 />
 
                                 <FormControl fullWidth required>

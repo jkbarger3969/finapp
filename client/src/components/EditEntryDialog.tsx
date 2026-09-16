@@ -29,6 +29,10 @@ const GET_FORM_DATA = `
         id
         name
         type
+        allowStandalone
+        children {
+            id
+        }
     }
     departments {
         id
@@ -343,7 +347,16 @@ export default function EditEntryDialog({ open, onClose, onSuccess, entry }: Edi
                                     onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
                                     disabled={fetching}
                                 >
-                                    {data?.categories.map((cat: { id: string; name: string; type: string }) => (
+                                    {data?.categories
+                                        .filter((cat: { id: string; allowStandalone?: boolean; children?: { id: string }[] }) =>
+                                            // Exclude "group" categories (have children, not flagged
+                                            // allowStandalone) - the backend rejects assigning an entry
+                                            // directly to one ("select a specific subcategory"). Always
+                                            // keep the entry's current category selectable even if it's
+                                            // a legacy group category, so the field doesn't go blank.
+                                            cat.id === formData.categoryId || cat.allowStandalone || !cat.children || cat.children.length === 0
+                                        )
+                                        .map((cat: { id: string; name: string; type: string }) => (
                                         <MenuItem key={cat.id} value={cat.id}>
                                             {cat.name} ({cat.type})
                                         </MenuItem>

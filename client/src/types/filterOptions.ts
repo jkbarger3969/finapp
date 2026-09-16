@@ -21,6 +21,8 @@ export interface CategoryRecord {
   hidden?: boolean;
   groupName?: string | null;
   sortOrder?: number | null;
+  allowStandalone?: boolean | null;
+  children?: { id: string }[];
 }
 
 export interface DepartmentParentDepartment {
