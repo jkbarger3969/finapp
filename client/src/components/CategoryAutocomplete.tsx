@@ -18,8 +18,8 @@ interface Category {
     groupName?: string;
     sortOrder?: number;
     hidden?: boolean;
-    children?: { id: string }[];
-    allowStandalone?: boolean;
+    children?: { id: string }[] | null;
+    allowStandalone?: boolean | null;
 }
 
 interface CategoryAutocompleteProps {

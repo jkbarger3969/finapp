@@ -214,6 +214,16 @@ interface ActiveFilter {
     value?: string;
 }
 
+interface CategoryFilterOption {
+    id: string;
+    name: string;
+    displayName?: string;
+    type: string;
+    groupName?: string;
+    sortOrder?: number;
+    hidden?: boolean;
+}
+
 const CustomCheckbox = (props: object) => (
     <Checkbox {...props} icon={<RadioButtonUncheckedIcon />} checkedIcon={<CheckCircleIcon />} />
 );
@@ -229,7 +239,7 @@ export default function Transactions() {
 
     // Advanced Filters (matching Reporting)
     const [entryType, setEntryType] = useState<string>('ALL');
-    const [selectedCategories, setSelectedCategories] = useState<CategoryRecord[]>([]);
+    const [selectedCategories, setSelectedCategories] = useState<CategoryFilterOption[]>([]);
     const [manualFilterDepartmentId, setManualFilterDepartmentId] = useState<string | null>(null);
     const [selectedPerson, setSelectedPerson] = useState<PersonRecord | null>(null);
 
@@ -343,10 +353,10 @@ export default function Transactions() {
         return categories.map((cat: CategoryRecord) => ({
             id: cat.id,
             name: cat.name,
-            displayName: cat.displayName,
+            displayName: cat.displayName ?? undefined,
             type: cat.type,
-            groupName: cat.groupName,
-            sortOrder: cat.sortOrder,
+            groupName: cat.groupName ?? undefined,
+            sortOrder: cat.sortOrder ?? undefined,
             hidden: cat.hidden,
         }));
     }, [categories]);
