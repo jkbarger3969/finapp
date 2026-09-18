@@ -6,6 +6,7 @@ import {
   EntriesWhere,
   EntryRefundsWhere,
   EntryItemsWhere,
+  FiscalYearsWhere,
 } from "../../graphTypes";
 import { iterateOwnKeys, iterateOwnKeyValues } from "../../utils/iterableFns";
 import {
@@ -508,8 +509,19 @@ export const whereEntries = (
   db: Db,
   {
     excludeWhereRefunds = false,
+    // Controls how the "fiscalYear" where-key matches on date:
+    // - "includeRefundVisibility" (default): an entry matches if its own
+    //   effective date is in range, OR it has a qualifying refund in range
+    //   (surfaces an out-of-year purchase in the year its refund happened).
+    // - "ownDateOnly": an entry matches only by its own effective date,
+    //   ignoring refund dates entirely.
+    // - "excludeEntirely": the fiscalYear where-key is ignored for date
+    //   matching (all other where-keys still apply) - used to get a
+    //   date-agnostic candidate set, e.g. for per-refund date checks.
+    fiscalYearDateMode = "includeRefundVisibility",
   }: {
     excludeWhereRefunds?: boolean;
+    fiscalYearDateMode?: "includeRefundVisibility" | "ownDateOnly" | "excludeEntirely";
   } = {}
 ) => {
   const filterQuery: FilterQuery<any> = {};
@@ -623,6 +635,10 @@ export const whereEntries = (
       case "fiscalYear":
         promises.push(
           (async () => {
+            if (fiscalYearDateMode === "excludeEntirely") {
+              return;
+            }
+
             const fiscalYearsQuery = whereFiscalYear(entriesWhere[whereKey]);
 
             const fiscalYears = await db
@@ -676,26 +692,29 @@ export const whereEntries = (
             }
 
             if (dateOr.length > 0) {
-              filterQuery.$and.push({
-                $or: [
-                  {
-                    "dateOfRecord.overrideFiscalYear.0.value": { $ne: true },
-                    $or: dateOr,
-                  },
-                  {
-                    "dateOfRecord.overrideFiscalYear.0.value": true,
-                    $or: dateOfRecordOr,
-                  },
-                  {
-                    refunds: {
-                      $elemMatch: {
-                        "deleted.0.value": { $ne: true },
-                        $or: refundInFiscalYearOr,
-                      },
+              const orBranches: FilterQuery<unknown>[] = [
+                {
+                  "dateOfRecord.overrideFiscalYear.0.value": { $ne: true },
+                  $or: dateOr,
+                },
+                {
+                  "dateOfRecord.overrideFiscalYear.0.value": true,
+                  $or: dateOfRecordOr,
+                },
+              ];
+
+              if (fiscalYearDateMode === "includeRefundVisibility") {
+                orBranches.push({
+                  refunds: {
+                    $elemMatch: {
+                      "deleted.0.value": { $ne: true },
+                      $or: refundInFiscalYearOr,
                     },
                   },
-                ],
-              });
+                });
+              }
+
+              filterQuery.$and.push({ $or: orBranches });
             } else {
               filterQuery.$and.push({ _id: { $in: [] } });
             }
@@ -1288,12 +1307,35 @@ export const entriesCount: QueryResolvers["entriesCount"] = async (
   return result.length > 0 ? result[0].count : 0;
 };
 
+async function getFiscalYearRanges(
+  fiscalYearWhere: FiscalYearsWhere,
+  db: Db
+): Promise<{ begin: Date; end: Date }[]> {
+  const fiscalYearsQuery = whereFiscalYear(fiscalYearWhere);
+  return db
+    .collection<Pick<FiscalYearDbRecord, "end" | "begin">>("fiscalYears")
+    .find(fiscalYearsQuery, { projection: { begin: true, end: true } })
+    .toArray();
+}
+
+// Tests whether a date expression falls inside any of the given fiscal-year
+// ranges - used to check an entry's or a refund's own effective date on its
+// own terms, independent of whatever matched the surrounding document.
+function dateInRangesExpr(dateFieldExpr: unknown, ranges: { begin: Date; end: Date }[]) {
+  return {
+    $or: ranges.map(({ begin, end }) => ({
+      $and: [{ $gte: [dateFieldExpr, begin] }, { $lt: [dateFieldExpr, end] }],
+    })),
+  };
+}
+
 export const entriesSummary: QueryResolvers["entriesSummary"] = async (
   _,
   { where },
   context
 ) => {
   const { dataSources: { accountingDb }, authService, user } = context as Context;
+  const db = accountingDb.db;
 
   // Reuse the logic from entries resolver for permissions and where clause
   const pipeline: any[] = [];
@@ -1312,7 +1354,7 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
       for (const deptId of accessibleDeptIds) {
         allAccessibleIds.add(deptId.toString());
 
-        const descendants = await getDescendantDeptIds(deptId, accountingDb.db);
+        const descendants = await getDescendantDeptIds(deptId, db);
         descendants.forEach((id) => allAccessibleIds.add(id.toString()));
       }
 
@@ -1328,8 +1370,23 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
 
   if (where) {
     pipeline.push({
-      $match: await whereEntries(where, accountingDb.db),
+      $match: await whereEntries(where, db),
     });
+  }
+
+  // A refund's effective date can fall in a different fiscal year than its
+  // parent purchase - the "fiscalYear" where-clause surfaces such a purchase
+  // into this year's row list via its refund (see whereEntries), but the
+  // purchase's own total belongs to the OTHER year and must not be counted
+  // here too. Gate each entry's own-total contribution to only those whose
+  // own effective date is actually in range; the entry still counts toward
+  // `count` below - it's still a legitimate, visible row.
+  const fiscalYearRanges = where?.fiscalYear
+    ? await getFiscalYearRanges(where.fiscalYear, db)
+    : null;
+
+  if (fiscalYearRanges) {
+    pipeline.push({ $addFields: { ownEffectiveDate: effectiveDateExpr() } });
   }
 
   // Lookup category to determine Credit vs Debit for proper balance calculation
@@ -1342,6 +1399,27 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
     }
   });
 
+  const ownTotalExpr = {
+    $let: {
+      vars: {
+        t: { $arrayElemAt: ["$total.value", 0] },
+        catType: { $toUpper: { $arrayElemAt: ["$categoryDoc.type", 0] } }
+      },
+      in: {
+        $cond: [
+          { $or: [{ $eq: ["$$t.d", 0] }, { $eq: ["$$t.d", null] }] },
+          0,
+          {
+            $multiply: [
+              { $abs: { $multiply: [{ $divide: ["$$t.n", "$$t.d"] }, "$$t.s"] } },
+              { $cond: [{ $eq: ["$$catType", "CREDIT"] }, 1, -1] }  // Credit positive, Debit negative
+            ]
+          }
+        ]
+      }
+    }
+  };
+
   // Calculate balance as: Credit entries (positive) - Debit entries (negative)
   // This matches the Reports page calculation: Income - Expenses
   pipeline.push({
@@ -1349,26 +1427,9 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
       _id: null,
       count: { $sum: 1 },
       balance: {
-        $sum: {
-          $let: {
-            vars: {
-              t: { $arrayElemAt: ["$total.value", 0] },
-              catType: { $toUpper: { $arrayElemAt: ["$categoryDoc.type", 0] } }
-            },
-            in: {
-              $cond: [
-                { $or: [{ $eq: ["$$t.d", 0] }, { $eq: ["$$t.d", null] }] },
-                0,
-                {
-                  $multiply: [
-                    { $abs: { $multiply: [{ $divide: ["$$t.n", "$$t.d"] }, "$$t.s"] } },
-                    { $cond: [{ $eq: ["$$catType", "CREDIT"] }, 1, -1] }  // Credit positive, Debit negative
-                  ]
-                }
-              ]
-            }
-          }
-        }
+        $sum: fiscalYearRanges
+          ? { $cond: [dateInRangesExpr("$ownEffectiveDate", fiscalYearRanges), ownTotalExpr, 0] }
+          : ownTotalExpr
       }
     }
   });
@@ -1377,12 +1438,14 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
   // matching how parent entries already count immediately regardless of reconciled status.
   // Refund impact uses reverse sign of parent entry category:
   // - Debit refund => + ; Credit refund => -
-  const whereFilter = where ? await whereEntries(where, accountingDb.db) : {};
-  const refundMatch: FilterQuery<any> = {
-    ...whereFilter,
-    "refunds.deleted.0.value": { $ne: true },
-  };
-
+  //
+  // When filtering by fiscal year, a refund belongs to the year its OWN
+  // effective date falls in, independent of its parent entry's date (mirror
+  // of the own-total gating above) - candidate entries are matched on every
+  // *non-date* where-condition, then each refund is tested against the
+  // fiscal year ranges on its own terms. Other date filters (a custom
+  // start/end range, or no date filter at all) keep the prior behavior: a
+  // refund counts if its parent entry matches the overall filter.
   const refundAdjustmentPipeline: any[] = [];
   if (authService && user?.id) {
     const authUser = await authService.getUserById(user.id);
@@ -1394,7 +1457,7 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
         const allAccessibleIds = new Set<string>();
         for (const deptId of accessibleDeptIds) {
           allAccessibleIds.add(deptId.toString());
-          const descendants = await getDescendantDeptIds(deptId, accountingDb.db);
+          const descendants = await getDescendantDeptIds(deptId, db);
           descendants.forEach((id) => allAccessibleIds.add(id.toString()));
         }
         const permittedDeptIds = Array.from(allAccessibleIds).map((id) => new ObjectId(id));
@@ -1407,17 +1470,46 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
     }
   }
 
-  refundAdjustmentPipeline.push(
-    { $unwind: "$refunds" },
-    {
-      $lookup: {
-        from: "categories",
-        localField: "category.0.value",
-        foreignField: "_id",
-        as: "categoryDoc",
+  if (fiscalYearRanges) {
+    const candidateFilter = where
+      ? await whereEntries(where, db, { fiscalYearDateMode: "excludeEntirely" })
+      : {};
+    refundAdjustmentPipeline.push(
+      { $match: candidateFilter },
+      { $unwind: "$refunds" },
+      { $match: { "refunds.deleted.0.value": { $ne: true } } },
+      { $addFields: { refundEffectiveDate: effectiveDateExpr("refunds") } },
+      { $match: { $expr: dateInRangesExpr("$refundEffectiveDate", fiscalYearRanges) } },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category.0.value",
+          foreignField: "_id",
+          as: "categoryDoc",
+        },
+      }
+    );
+  } else {
+    const whereFilter = where ? await whereEntries(where, db) : {};
+    const refundMatch: FilterQuery<any> = {
+      ...whereFilter,
+      "refunds.deleted.0.value": { $ne: true },
+    };
+    refundAdjustmentPipeline.push(
+      { $unwind: "$refunds" },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category.0.value",
+          foreignField: "_id",
+          as: "categoryDoc",
+        },
       },
-    },
-    { $match: refundMatch },
+      { $match: refundMatch }
+    );
+  }
+
+  refundAdjustmentPipeline.push(
     {
       $project: {
         categoryType: { $toUpper: { $arrayElemAt: ["$categoryDoc.type", 0] } },
