@@ -158,12 +158,34 @@ interface TransactionRow extends EntryRecord {
     isOriginalForRefund?: boolean;
     isSpacerRow?: boolean;
     hasRefunds?: boolean;
+    /**
+     * True when this entry's own effective date falls outside the currently
+     * selected fiscal year - it's only visible here because a refund of its
+     * own happened in this year. Its total is excluded from this year's
+     * balance (see entriesSummary); only the refund is netted in.
+     */
+    ownDateOutsideFiscalYear?: boolean;
     rowType?: 'CREDIT' | 'DEBIT';
     originalEntry?: EntryRecord;
     parentEntryId?: string;
     isLastDataRow?: boolean;
     formattedTotal?: string;
 }
+
+// Mirrors the backend's effective-date rule (dateOfRecord.date when
+// overrideFiscalYear is set, else the plain transaction date) so this stays
+// in sync with which year an entry's own total is actually counted against.
+const entryEffectiveDate = (entry: Pick<EntryRecord, 'date' | 'dateOfRecord'>): Date =>
+    new Date(entry.dateOfRecord?.overrideFiscalYear ? entry.dateOfRecord.date : entry.date);
+
+const isOwnDateOutsideFiscalYear = (
+    entry: Pick<EntryRecord, 'date' | 'dateOfRecord'>,
+    fiscalYearRange: { begin: Date; end: Date } | null
+): boolean => {
+    if (!fiscalYearRange) return false;
+    const effectiveDate = entryEffectiveDate(entry);
+    return effectiveDate < fiscalYearRange.begin || effectiveDate >= fiscalYearRange.end;
+};
 
 const toRefundCandidate = (row: TransactionRow | null): RefundCandidateEntry | null => {
     if (!row) return null;
@@ -236,6 +258,16 @@ export default function Transactions() {
     const [reconcileFilter, setReconcileFilter] = useState<string>('ALL');
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [endDate, setEndDate] = useState<Date | null>(null);
+
+    // Only meaningful when browsing by fiscal year (not a custom date range,
+    // which useTransactions queries by "date" instead - see its `where`
+    // builder) - used to flag rows whose own date belongs to a different
+    // year (see isOwnDateOutsideFiscalYear).
+    const selectedFiscalYearRange = useMemo(() => {
+        if (startDate || endDate) return null;
+        const fy = fiscalYears.find((f) => f.id === fiscalYearId);
+        return fy ? { begin: new Date(fy.begin), end: new Date(fy.end) } : null;
+    }, [fiscalYears, fiscalYearId, startDate, endDate]);
 
     // Advanced Filters (matching Reporting)
     const [entryType, setEntryType] = useState<string>('ALL');
@@ -647,19 +679,28 @@ export default function Transactions() {
             renderCell: (params: CellParams) => {
                 const txDate = format(new Date(String(params.value ?? "")), "MMM dd, yyyy");
                 const postedDate = params.row.dateOfRecord?.date;
+                const dateSx = params.row.ownDateOutsideFiscalYear
+                    ? { color: '#FFD600', fontWeight: 700 }
+                    : undefined;
 
-                if (postedDate && postedDate !== params.value) {
-                    const formattedPosted = format(new Date(postedDate), "MMM dd, yyyy");
-                    return (
-                        <Box sx={{ width: '100%' }}>
-                            <Typography variant="body2">{txDate}</Typography>
-                            <Typography variant="caption" color="text.secondary" display="block">
-                                Posted: {formattedPosted}
-                            </Typography>
-                        </Box>
-                    );
-                }
-                return <Typography variant="body2">{txDate}</Typography>;
+                const dateContent = postedDate && postedDate !== params.value ? (
+                    <Box sx={{ width: '100%' }}>
+                        <Typography variant="body2" sx={dateSx}>{txDate}</Typography>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                            Posted: {format(new Date(postedDate), "MMM dd, yyyy")}
+                        </Typography>
+                    </Box>
+                ) : (
+                    <Typography variant="body2" sx={dateSx}>{txDate}</Typography>
+                );
+
+                if (!params.row.ownDateOutsideFiscalYear) return dateContent;
+
+                return (
+                    <Tooltip title="This transaction is from a previous fiscal year - it's shown here because it has a refund in the current year. Only the refund counts toward this year's balance.">
+                        {dateContent}
+                    </Tooltip>
+                );
             },
         },
         {
@@ -926,6 +967,7 @@ export default function Transactions() {
                                 isOriginalForRefund: true,
                                 rowType: 'DEBIT',
                                 refundId: refund.id,
+                                ownDateOutsideFiscalYear: isOwnDateOutsideFiscalYear(entry, selectedFiscalYearRange),
                                 // Determine payment method type for filtering (original usually has same as refund?)
                                 // Actually entry has paymentMethod too.
                             });
@@ -989,6 +1031,7 @@ export default function Transactions() {
                     id: entry.id,
                     isRefund: false,
                     hasRefunds: true,
+                    ownDateOutsideFiscalYear: isOwnDateOutsideFiscalYear(entry, selectedFiscalYearRange),
                 });
 
                 // If expanded, show refund rows below (reverse of filter view)
@@ -1045,7 +1088,7 @@ export default function Transactions() {
         }
         
         return normalRows;
-    }, [entries, showMatchingOnly, expandedRefunds]);
+    }, [entries, showMatchingOnly, expandedRefunds, selectedFiscalYearRange]);
 
     const rowsById = useMemo(() => {
         const map = new Map<string, TransactionRow>();
