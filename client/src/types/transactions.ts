@@ -32,6 +32,7 @@ export interface PaymentMethodCard {
   __typename: "PaymentMethodCard";
   currency?: string;
   card?: {
+    id?: string;
     type?: string;
     trailingDigits?: string;
   };

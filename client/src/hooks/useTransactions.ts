@@ -55,6 +55,7 @@ const GET_ENTRIES_BY_DEPARTMENT = `
             card {
               type
               trailingDigits
+              ... on AccountCard { id }
             }
           }
           ... on PaymentMethodCheck {
@@ -73,6 +74,7 @@ const GET_ENTRIES_BY_DEPARTMENT = `
           card {
             type
             trailingDigits
+            ... on AccountCard { id }
           }
         }
         ... on PaymentMethodCheck {
