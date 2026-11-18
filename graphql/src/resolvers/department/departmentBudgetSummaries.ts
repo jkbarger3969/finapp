@@ -100,14 +100,23 @@ export const departmentBudgetSummaries = async (
       { $group: { _id: { $arrayElemAt: ["$department.value", 0] }, total: rationalSum("total.value") } },
     ]).toArray();
 
-    // Refunds reduce the net amount as soon as they're recorded, matching
-    // how the originating entries count immediately regardless of
-    // reconciled status.
+    // Refunds reduce the net amount only once reconciled - unlike the
+    // originating entries (which count immediately regardless of their own
+    // reconciled status), a refund is a separate bank-side event and
+    // shouldn't move the budget "remaining" figure until it has actually
+    // cleared. An unreconciled refund still exists (visible on the
+    // Unreconciled page) but doesn't affect this calculation yet.
     const refundAgg = await db.collection("entries").aggregate([
       { $match: { "deleted.0.value": { $ne: true }, "category.0.value": { $in: categoryIds }, "refunds.0": { $exists: true } } },
       { $unwind: "$refunds" },
       { $addFields: { refundEffectiveDate: effectiveDateExpr("refunds") } },
-      { $match: { "refunds.deleted.0.value": { $ne: true }, refundEffectiveDate: { $gte: begin, $lt: end } } },
+      {
+        $match: {
+          "refunds.deleted.0.value": { $ne: true },
+          "refunds.reconciled.0.value": true,
+          refundEffectiveDate: { $gte: begin, $lt: end },
+        },
+      },
       { $group: { _id: { $arrayElemAt: ["$department.value", 0] }, total: rationalSum("refunds.total.value") } },
     ]).toArray();
 

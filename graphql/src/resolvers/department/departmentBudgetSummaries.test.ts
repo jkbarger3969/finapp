@@ -12,6 +12,7 @@ import {
   stopTestEnv,
 } from "../../test/testDb";
 import { addNewEntry } from "../entry/addNewEntry";
+import { addNewEntryRefund } from "../entry/addNewEntryRefund";
 import { departmentBudgetSummaries } from "./departmentBudgetSummaries";
 
 describe("departmentBudgetSummaries - respects dateOfRecord/overrideFiscalYear", () => {
@@ -150,5 +151,104 @@ describe("departmentBudgetSummaries - nets income against expense", () => {
     // $500 expense - $700 income = -$200 net "spent" (i.e. the department
     // is $200 ahead) - with $0 budget, remaining should be +$200, not -$500.
     expect(row?.spent).toBe(-200);
+  });
+});
+
+describe("departmentBudgetSummaries - refunds only net once reconciled", () => {
+  // Real bug this guards against: marking the ORIGINAL purchase reconciled
+  // (a separate action from reconciling its refund) should never be
+  // required for the purchase to count - that already works. But an
+  // unreconciled REFUND was netting into "spent" immediately, before the
+  // bank/card statement actually reflected it - overstating how much
+  // budget was actually back in hand.
+  let env: TestEnv;
+  let dept: ObjectId;
+  let category: ObjectId;
+  let adminId: ObjectId;
+  let fy: ObjectId;
+  let purchaseId: ObjectId;
+
+  beforeAll(async () => {
+    env = await startTestEnv();
+    dept = await createDepartment(env.db, { name: "Local Missions" });
+    category = await createCategory(env.db, { name: "Equipment Expense", type: "Debit" });
+    adminId = await createUser(env.db, { email: "admin3@test.com", role: "SUPER_ADMIN" });
+
+    fy = new ObjectId();
+    await env.db.collection("fiscalYears").insertOne({
+      _id: fy,
+      name: "FY26",
+      begin: new Date("2025-09-01"),
+      end: new Date("2026-09-01"),
+    });
+
+    const adminContext = buildContext(env, adminId);
+
+    const { newEntry } = await addNewEntry(
+      {},
+      {
+        input: {
+          date: new Date("2025-10-01"),
+          department: dept.toHexString(),
+          category: category.toHexString(),
+          paymentMethod: { cash: { currency: "USD" } },
+          total: new Fraction(500, 1),
+          source: { business: { name: "Vendor" } },
+        },
+      },
+      adminContext
+    );
+    purchaseId = newEntry._id;
+  });
+
+  afterAll(async () => {
+    await stopTestEnv(env);
+  });
+
+  it("does not net an unreconciled refund into spent", async () => {
+    const adminContext = buildContext(env, adminId);
+
+    await addNewEntryRefund(
+      {},
+      {
+        input: {
+          entry: purchaseId.toHexString(),
+          date: new Date("2025-10-05"),
+          paymentMethod: { cash: { currency: "USD" } },
+          total: new Fraction(100, 1),
+          reconciled: false,
+        },
+      },
+      adminContext
+    );
+
+    const result = await departmentBudgetSummaries({}, { fiscalYearId: fy.toHexString() }, adminContext);
+    const row = result.find((r) => r.id === dept.toHexString());
+    // Full $500 purchase still counts; the $100 refund hasn't cleared yet.
+    expect(row?.spent).toBe(500);
+  });
+
+  it("nets the refund into spent once it's reconciled, independent of the purchase", async () => {
+    const adminContext = buildContext(env, adminId);
+
+    await addNewEntryRefund(
+      {},
+      {
+        input: {
+          entry: purchaseId.toHexString(),
+          date: new Date("2025-10-10"),
+          paymentMethod: { cash: { currency: "USD" } },
+          total: new Fraction(50, 1),
+          reconciled: true,
+        },
+      },
+      adminContext
+    );
+
+    const result = await departmentBudgetSummaries({}, { fiscalYearId: fy.toHexString() }, adminContext);
+    const row = result.find((r) => r.id === dept.toHexString());
+    // $500 purchase - $50 reconciled refund - the still-unreconciled $100
+    // refund from the previous test continues to be excluded.
+    expect(row?.spent).toBe(450);
   });
 });

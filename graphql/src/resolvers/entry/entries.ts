@@ -1434,8 +1434,12 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
     }
   });
 
-  // Refunds contribute to the same filtered balance scope as soon as they're recorded,
-  // matching how parent entries already count immediately regardless of reconciled status.
+  // Refunds only contribute to the balance once reconciled - unlike the
+  // parent entry (which counts immediately regardless of its own reconciled
+  // status), a refund is a separate bank-side event and shouldn't move this
+  // balance until it has actually cleared. An unreconciled refund still
+  // exists and remains visible (e.g. on the Unreconciled page) - it just
+  // doesn't affect this total yet.
   // Refund impact uses reverse sign of parent entry category:
   // - Debit refund => + ; Credit refund => -
   //
@@ -1477,7 +1481,7 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
     refundAdjustmentPipeline.push(
       { $match: candidateFilter },
       { $unwind: "$refunds" },
-      { $match: { "refunds.deleted.0.value": { $ne: true } } },
+      { $match: { "refunds.deleted.0.value": { $ne: true }, "refunds.reconciled.0.value": true } },
       { $addFields: { refundEffectiveDate: effectiveDateExpr("refunds") } },
       { $match: { $expr: dateInRangesExpr("$refundEffectiveDate", fiscalYearRanges) } },
       {
@@ -1494,6 +1498,7 @@ export const entriesSummary: QueryResolvers["entriesSummary"] = async (
     const refundMatch: FilterQuery<any> = {
       ...whereFilter,
       "refunds.deleted.0.value": { $ne: true },
+      "refunds.reconciled.0.value": true,
     };
     refundAdjustmentPipeline.push(
       { $unwind: "$refunds" },

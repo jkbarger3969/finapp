@@ -64,6 +64,10 @@ describe("entriesSummary - nets refunds into the fiscal year they happened in, n
     );
     purchaseId = newEntry._id;
 
+    // Reconciled so these refunds actually net into the balance below -
+    // this test is specifically about which FISCAL YEAR a refund's amount
+    // counts against, not about reconciliation gating (covered separately
+    // in entriesSummaryRefundReconciled.test.ts).
     await addNewEntryRefund(
       {},
       {
@@ -72,6 +76,7 @@ describe("entriesSummary - nets refunds into the fiscal year they happened in, n
           date: new Date("2025-09-17"), // FY2025-2026
           paymentMethod: { cash: { currency: "USD" } },
           total: new Fraction(9900, 100),
+          reconciled: true,
         },
       },
       adminContext
@@ -84,6 +89,7 @@ describe("entriesSummary - nets refunds into the fiscal year they happened in, n
           date: new Date("2025-09-25"), // FY2025-2026
           paymentMethod: { cash: { currency: "USD" } },
           total: new Fraction(53000, 100),
+          reconciled: true,
         },
       },
       adminContext

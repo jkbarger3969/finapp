@@ -14,6 +14,7 @@ import {
 import { addNewEntry } from "./addNewEntry";
 import { addNewEntryRefund } from "./addNewEntryRefund";
 import { entriesSummary } from "./entries";
+import { updateEntryRefund } from "./updateEntryRefund";
 
 describe("entriesSummary - refund balance regression", () => {
   let env: TestEnv;
@@ -38,7 +39,7 @@ describe("entriesSummary - refund balance regression", () => {
     await stopTestEnv(env);
   });
 
-  it("applies an unreconciled refund to the balance immediately, without requiring it be reconciled first", async () => {
+  it("does not apply a refund to the balance until it's reconciled, independent of the original entry", async () => {
     const adminContext = buildContext(env, adminId);
 
     const { newEntry } = await addNewEntry(
@@ -51,6 +52,7 @@ describe("entriesSummary - refund balance regression", () => {
           paymentMethod: { cash: { currency: "USD" } },
           total: new Fraction(100, 1),
           source: { business: { name: "Vendor" } },
+          reconciled: true,
         },
       },
       adminContext
@@ -64,8 +66,9 @@ describe("entriesSummary - refund balance regression", () => {
     // A $100 debit entry reduces balance by 100.
     expect(before.balance).toBe(-100);
 
-    // Refund left at its default (unreconciled).
-    await addNewEntryRefund(
+    // Refund left at its default (unreconciled) - the original entry being
+    // reconciled has no bearing on it.
+    const { newEntryRefund } = await addNewEntryRefund(
       {},
       {
         input: {
@@ -78,14 +81,26 @@ describe("entriesSummary - refund balance regression", () => {
       adminContext
     );
 
-    const after = await entriesSummary(
+    const afterUnreconciled = await entriesSummary(
       {},
       { where: { department: { id: { eq: dept.toHexString() } } } },
       adminContext
     );
+    // The unreconciled refund does not move the balance yet.
+    expect(afterUnreconciled.balance).toBe(-100);
 
-    // A debit refund adds back to balance: -100 + 30 = -70, immediately,
-    // with no reconcile step required.
-    expect(after.balance).toBe(-70);
+    await updateEntryRefund(
+      {},
+      { input: { id: newEntryRefund.id.toString(), reconciled: true } },
+      adminContext
+    );
+
+    const afterReconciled = await entriesSummary(
+      {},
+      { where: { department: { id: { eq: dept.toHexString() } } } },
+      adminContext
+    );
+    // Once reconciled, the debit refund adds back to balance: -100 + 30 = -70.
+    expect(afterReconciled.balance).toBe(-70);
   });
 });

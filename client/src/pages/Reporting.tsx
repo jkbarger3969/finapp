@@ -570,11 +570,18 @@ export default function Reporting() {
     }, [auditRows, paymentMethodType]);
 
     const aggregatedData = useMemo(() => {
-        const totalIncome = filteredRows
+        // An unreconciled refund is still listed (its own "Pending" row,
+        // same as everywhere else in the app) but doesn't move the dollar
+        // totals/charts below until it's reconciled - it's a separate
+        // bank-side event from the transaction it refunds, which counts
+        // immediately regardless of its own reconciled status.
+        const balanceRows = filteredRows.filter((r) => !r.isRefund || r.status === 'Reconciled');
+
+        const totalIncome = balanceRows
             .filter((r) => r.signedAmount > 0)
             .reduce((sum, r) => sum + r.signedAmount, 0);
         const totalExpenses = Math.abs(
-            filteredRows
+            balanceRows
                 .filter((r) => r.signedAmount < 0)
                 .reduce((sum, r) => sum + r.signedAmount, 0)
         );
@@ -584,7 +591,7 @@ export default function Reporting() {
         const unreconciledRows = filteredRows.length - reconciledRows;
 
         const categoryMap = new Map<string, number>();
-        filteredRows.forEach((r) => {
+        balanceRows.forEach((r) => {
             if (r.signedAmount >= 0) return;
             categoryMap.set(r.categoryName, (categoryMap.get(r.categoryName) || 0) + Math.abs(r.signedAmount));
         });
@@ -594,7 +601,7 @@ export default function Reporting() {
             .slice(0, 10);
 
         const trendMap = new Map<string, { income: number; expenses: number }>();
-        filteredRows.forEach((r) => {
+        balanceRows.forEach((r) => {
             const key = format(new Date(r.date), 'MMM yyyy');
             if (!trendMap.has(key)) trendMap.set(key, { income: 0, expenses: 0 });
             const v = trendMap.get(key)!;
