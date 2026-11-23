@@ -93,6 +93,16 @@ mutation DeleteEntry($id: ID!) {
 }
 `;
 
+const DELETE_ENTRY_REFUND_MUTATION = `
+mutation DeleteEntryRefund($id: ID!) {
+  deleteEntryRefund(id: $id) {
+    deletedEntryRefund {
+      id
+    }
+  }
+}
+`;
+
 const GET_FILTER_OPTIONS = `
   query GetFilterOptions {
     people {
@@ -579,6 +589,7 @@ export default function Transactions() {
 
     const [, reconcileEntries] = useMutation(RECONCILE_ENTRIES_MUTATION);
     const [, deleteEntry] = useMutation(DELETE_ENTRY_MUTATION);
+    const [, deleteEntryRefund] = useMutation(DELETE_ENTRY_REFUND_MUTATION);
 
     const { enqueueSnackbar } = useSnackbar();
     const { isOnline } = useOnlineStatus();
@@ -1808,7 +1819,7 @@ export default function Transactions() {
                         setActionMenuEntry(null);
                     }}
                     sx={{ color: 'error.main' }}
-                    disabled={!isOnline || !canDeleteTransaction() || !actionMenuEntry || !!actionMenuEntry?.isRefund || !!actionMenuEntry?.isRefundForEntry}
+                    disabled={!isOnline || !canDeleteTransaction() || !actionMenuEntry}
                 >
                     <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
                     <ListItemText>{actionMenuEntry?.isRefund || actionMenuEntry?.isRefundForEntry ? 'Delete Refund' : 'Delete Transaction'}</ListItemText>
@@ -1859,10 +1870,10 @@ export default function Transactions() {
                     setEntryToDelete(null);
                 }}
             >
-                <DialogTitle>Delete Transaction</DialogTitle>
+                <DialogTitle>{entryToDelete?.isRefund || entryToDelete?.isRefundForEntry ? 'Delete Refund' : 'Delete Transaction'}</DialogTitle>
                 <DialogContent>
                     <Typography>
-                        Are you sure you want to delete this transaction? This action cannot be undone.
+                        Are you sure you want to delete this {entryToDelete?.isRefund || entryToDelete?.isRefundForEntry ? 'refund' : 'transaction'}? This action cannot be undone.
                     </Typography>
                     {entryToDelete && (
                         <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
@@ -1870,7 +1881,7 @@ export default function Transactions() {
                                 Description: {entryToDelete.description}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                                Amount: {entryToDelete.formattedTotal}
+                                Amount: {currencyFormatter.format(Math.abs(parseRational(entryToDelete.total)))}
                             </Typography>
                         </Box>
                     )}
@@ -1883,11 +1894,14 @@ export default function Transactions() {
                     <Button
                         onClick={async () => {
                             if (entryToDelete) {
-                                const { error } = await deleteEntry({ id: entryToDelete.id });
+                                const isRefundRow = entryToDelete.isRefund || entryToDelete.isRefundForEntry;
+                                const { error } = isRefundRow
+                                    ? await deleteEntryRefund({ id: entryToDelete.refundId || entryToDelete.id })
+                                    : await deleteEntry({ id: entryToDelete.id });
                                 if (error) {
                                     enqueueSnackbar(`Failed to delete: ${error.message}`, { variant: 'error' });
                                 } else {
-                                    enqueueSnackbar('Transaction deleted', { variant: 'success' });
+                                    enqueueSnackbar(isRefundRow ? 'Refund deleted' : 'Transaction deleted', { variant: 'success' });
                                     handleReexecute();
                                 }
                             }
